@@ -32,4 +32,6 @@ export const api = {
   listTags: () => request("/tags"),
   scanLookup: (barcode) =>
     request("/scan/lookup", { method: "POST", body: JSON.stringify({ barcode }) }),
+  tmdbSearch: (query) =>
+    request(`/movies/tmdb-search?${new URLSearchParams({ query })}`),
 };

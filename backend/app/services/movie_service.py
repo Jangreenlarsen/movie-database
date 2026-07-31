@@ -4,6 +4,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
 from app.core.errors import DuplicateBarcodeError, MovieNotFoundError
+from app.integrations import tmdb_client
 from app.models.movie import Movie, MovieCreate, MovieUpdate
 from app.repositories import movie_repository
 from app.services import tag_service
@@ -30,15 +31,31 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate) -> Movie:
     canonical_tags = await tag_service.resolve_tags(db, payload.tags)
     now = datetime.now(timezone.utc)
 
+    if payload.tmdb_id is not None:
+        details = await tmdb_client.get_movie_details(payload.tmdb_id)
+        movie_fields = {
+            "tmdb_id": details["tmdb_id"],
+            "title": details["title"],
+            "year": details["year"],
+            "poster_url": details["poster_url"],
+            "overview": details["overview"],
+            "genres": details["genres"],
+            "cast": details["cast"],
+        }
+    else:
+        movie_fields = {
+            "tmdb_id": None,
+            "title": payload.title,
+            "year": payload.year,
+            "poster_url": payload.poster_url,
+            "overview": payload.overview,
+            "genres": payload.genres,
+            "cast": payload.cast,
+        }
+
     document = {
-        "tmdb_id": payload.tmdb_id,
+        **movie_fields,
         "barcode": payload.barcode,
-        "title": payload.title,
-        "year": payload.year,
-        "poster_url": payload.poster_url,
-        "overview": payload.overview,
-        "genres": payload.genres,
-        "cast": payload.cast,
         "tags": canonical_tags,
         "tags_normalized": [tag_service.normalize(tag) for tag in canonical_tags],
         "created_at": now,

@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.db import get_database
+from app.integrations import tmdb_client
 from app.models.movie import Movie, MovieCreate, MovieUpdate
+from app.models.scan import MovieCandidate
 from app.services import movie_service
 
 router = APIRouter(prefix="/api/movies", tags=["movies"])
@@ -21,6 +23,14 @@ async def list_movies(
 @router.post("", response_model=Movie, status_code=201)
 async def create_movie(payload: MovieCreate, db: AsyncIOMotorDatabase = Depends(get_database)):
     return await movie_service.create_movie(db, payload)
+
+
+# NOTE: must be registered before GET /{movie_id} — otherwise "tmdb-search"
+# matches the {movie_id} path parameter instead.
+@router.get("/tmdb-search", response_model=list[MovieCandidate])
+async def tmdb_search(query: str = Query(...)):
+    candidates = await tmdb_client.search_movies(query)
+    return [MovieCandidate(**candidate) for candidate in candidates]
 
 
 @router.get("/{movie_id}", response_model=Movie)

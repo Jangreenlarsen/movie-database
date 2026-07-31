@@ -1,18 +1,28 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class MovieCreate(BaseModel):
-    title: str
+    """Either `tmdb_id` (metadata is fetched from TMDb server-side) or a
+    manual `title` must be given. See ARCHITECTURE.md scan-til-gem flow."""
+
+    tmdb_id: int | None = None
+    barcode: str | None = None
+    tags: list[str] = Field(default_factory=list)
+
+    title: str | None = None
     year: int | None = None
     poster_url: str | None = None
     overview: str | None = None
     genres: list[str] = Field(default_factory=list)
     cast: list[str] = Field(default_factory=list)
-    tmdb_id: int | None = None
-    barcode: str | None = None
-    tags: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def require_tmdb_id_or_title(self) -> "MovieCreate":
+        if self.tmdb_id is None and not self.title:
+            raise ValueError("Enten tmdb_id eller title skal angives")
+        return self
 
 
 class MovieUpdate(BaseModel):

@@ -30,9 +30,11 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 | PATCH  | `/api/movies/{id}`             | Opdater film (fx tags, noter)                                | done |
 | DELETE | `/api/movies/{id}`             | Slet film                                                     | done |
 | GET    | `/api/tags`                    | Liste alle tags (til autocomplete)                            | done |
-| POST   | `/api/scan/lookup`             | Input: scannet UPC/EAN. Output: UPC-gæt + TMDb-kandidater      | planned |
-| GET    | `/api/movies/tmdb-search`      | Direkte TMDb-titel-søgning (fallback når scan ikke matcher)     | planned |
+| POST   | `/api/scan/lookup`             | Input: scannet UPC/EAN. Output: UPC-gæt + TMDb-kandidater. 502 hvis TMDb er utilgængelig/token mangler. | done |
+| GET    | `/api/movies/tmdb-search`      | Direkte TMDb-titel-søgning (fallback når scan ikke matcher). Registreret før `/{movie_id}`. | done |
 | GET    | `/api/health`                  | Health check (backend + MongoDB-forbindelse)                    | done |
+
+> `POST /api/movies` accepterer nu enten `tmdb_id` (backend henter fuld metadata fra TMDb server-side) eller en manuel `title` (fuldt manuel oprettelse uden TMDb). Se `MovieCreate` i `backend/app/models/movie.py`.
 
 > Der er ikke et separat `/api/search`-endpoint — kombineret fritekst+tag-søgning dækkes af `/api/movies?q=&tags=` (se ovenfor), for at undgå to endpoints med overlappende ansvar.
 

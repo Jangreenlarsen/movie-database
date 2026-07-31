@@ -1,5 +1,13 @@
 # Release Notes
 
+## v0.3.0 (build 0003) — 2026-07-31
+
+Stregkode-scanning virker nu hele vejen igennem:
+- Scan et cover → koden slås op i en gratis UPC-database for et titel-gæt → titlen søges automatisk på TMDb → du bekræfter det rigtige match → filmen gemmes med fuld metadata (poster, plot, genre, skuespillere).
+- Intet match ved scan? Der er nu en manuel søgeboks på Scan-siden, der søger direkte på TMDb på titel.
+
+**Kræver opsætning før det virker fuldt ud**: du skal selv oprette en gratis TMDb-konto og lægge en API-token i `backend/.env` (`TMDB_API_TOKEN`) — uden den svarer TMDb-relaterede kald med en tydelig fejl i stedet for at crashe. Se `MOVIE_API_REFERENCE.md`.
+
 ## v0.2.0 (build 0002) — 2026-07-31
 
 Filmbiblioteket kan nu bruges rigtigt mod databasen:

@@ -17,9 +17,10 @@ Konsulteres ved al teknisk implementering (jf. CLAUDE.md regel 10). Hold opdater
 - Async driver: **Motor** (`motor.motor_asyncio.AsyncIOMotorClient`).
 - Forbindelse oprettes én gang ved app-start (lifespan), genbruges via dependency injection i routers.
 - Indexes oprettes ved app-start (idempotent `create_index`-kald):
-  - `movies`: text-index på `title` + `overview` (til fritekstsøgning), index på `tags`, unique sparse index på `barcode`.
-  - `tags`: unique index på `name`.
-- Lokal udvikling uden Docker: da Docker ikke er installeret på udviklingsmaskinen pt., brug enten **MongoDB Atlas' gratis M0-cluster** (nemmest, ingen lokal installation) eller installer MongoDB Community Server direkte. `MONGO_URI` i `.env` peger på hvilken som helst af de to.
+  - `movies`: text-index på `title` + `overview` (til fritekstsøgning), index på `tags_normalized`, unique sparse index på `barcode`.
+  - `tags`: unique index på `normalized`.
+- **Lokal udvikling (Jans maskine)**: Docker er ikke installeret, så MongoDB Community Server kører i stedet som lokal Windows-service, installeret via `winget install --id MongoDB.Server`. Kører på standard-porten `localhost:27017` — matcher default `MONGO_URI` i `.env.example` uden yderligere config. Service-status: `Get-Service MongoDB` (PowerShell).
+- Alternativ uden lokal installation: **MongoDB Atlas' gratis M0-cluster** — peg `MONGO_URI` i `.env` på connection-stringen derfra i stedet.
 
 ## Frontend: React + Vite (PWA)
 

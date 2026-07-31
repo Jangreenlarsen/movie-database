@@ -8,12 +8,16 @@ from app.repositories import movie_repository, tag_repository
 
 
 @pytest_asyncio.fixture
-async def client():
+async def db():
     test_db = AsyncMongoMockClient()["test_moviedb"]
     await movie_repository.ensure_indexes(test_db)
     await tag_repository.ensure_indexes(test_db)
+    return test_db
 
-    app.dependency_overrides[get_database] = lambda: test_db
+
+@pytest_asyncio.fixture
+async def client(db):
+    app.dependency_overrides[get_database] = lambda: db
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

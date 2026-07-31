@@ -1,5 +1,15 @@
 # Release Notes
 
+## v0.4.0 (build 0004) — 2026-07-31
+
+Hver film kan nu få strukturerede attributter ud over frie tags:
+- **Format** (vælg én): VHS, DVD, Blu-ray, 4K Ultra HD eller Digital.
+- **Lyd-type** (vælg flere): Stereo, Mono, Dolby Digital (5.1/7.1), DTS, DTS-HD Master Audio, Dolby Atmos, Dolby TrueHD.
+- Hver film får automatisk et fortløbende **serienummer** (1, 2, 3, ...) den dag den oprettes — kan ikke ændres bagefter.
+- Biblioteket kan filtreres på format og lyd-type, ud over eksisterende tekst- og tag-søgning.
+
+**Fejlrettelse**: en fejl der forhindrede oprettelse af mere end én film uden stregkode er rettet (se BUGS.md #1) — opdaget under test af denne funktion mod den rigtige database.
+
 ## v0.3.0 (build 0003) — 2026-07-31
 
 Stregkode-scanning virker nu hele vejen igennem:

@@ -1,6 +1,27 @@
 from datetime import datetime
+from enum import Enum
 
 from pydantic import BaseModel, Field, model_validator
+
+
+class MovieFormat(str, Enum):
+    VHS = "VHS"
+    DVD = "DVD"
+    BLU_RAY = "Blu-ray"
+    UHD_4K = "4K Ultra HD"
+    DIGITAL = "Digital"
+
+
+class AudioType(str, Enum):
+    STEREO = "Stereo"
+    MONO = "Mono"
+    DOLBY_DIGITAL = "Dolby Digital"
+    DOLBY_DIGITAL_5_1 = "Dolby Digital 5.1"
+    DOLBY_DIGITAL_7_1 = "Dolby Digital 7.1"
+    DTS = "DTS"
+    DTS_HD_MASTER_AUDIO = "DTS-HD Master Audio"
+    DOLBY_ATMOS = "Dolby Atmos"
+    DOLBY_TRUEHD = "Dolby TrueHD"
 
 
 class MovieCreate(BaseModel):
@@ -10,6 +31,8 @@ class MovieCreate(BaseModel):
     tmdb_id: int | None = None
     barcode: str | None = None
     tags: list[str] = Field(default_factory=list)
+    format: MovieFormat | None = None
+    audio_types: list[AudioType] = Field(default_factory=list)
 
     title: str | None = None
     year: int | None = None
@@ -33,10 +56,13 @@ class MovieUpdate(BaseModel):
     genres: list[str] | None = None
     cast: list[str] | None = None
     tags: list[str] | None = None
+    format: MovieFormat | None = None
+    audio_types: list[AudioType] | None = None
 
 
 class Movie(BaseModel):
     id: str
+    serial_number: int
     tmdb_id: int | None = None
     barcode: str | None = None
     title: str
@@ -46,5 +72,7 @@ class Movie(BaseModel):
     genres: list[str] = Field(default_factory=list)
     cast: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
+    format: str | None = None
+    audio_types: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime

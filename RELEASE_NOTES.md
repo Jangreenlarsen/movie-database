@@ -1,5 +1,14 @@
 # Release Notes
 
+## v0.5.0 (build 0005) — 2026-07-31
+
+Nyt udseende og nye måder at bruge biblioteket på:
+- Hele appen har fået et gennemgående moderne design (lys/mørk tilstand), i stedet for Vite-standardskabelonen.
+- Klik på en film i biblioteket for at se detaljer (plot, cast, genre) og redigere tags/format/lyd-type — eller slette filmen.
+- Biblioteket kan nu filtreres med klikbare chips for tags, format og lyd-type, ikke kun fritekst-søgning.
+- Ved scan/manuel søgning vælger du nu tags, format og lyd-type *før* filmen gemmes, i stedet for at den blev gemt med det samme ved bekræftelse.
+- Kameraet vises nu i en tydelig "viewfinder" med sigtemærker, så det er klart hvornår scanning er aktiv.
+
 ## v0.4.0 (build 0004) — 2026-07-31
 
 Hver film kan nu få strukturerede attributter ud over frie tags:

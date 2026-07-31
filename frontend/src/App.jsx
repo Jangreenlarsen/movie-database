@@ -1,10 +1,33 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Library from "./pages/Library";
 import ScanMovie from "./pages/ScanMovie";
+import Login from "./pages/Login";
+import { api } from "./api/client";
 import "./App.css";
 
 function App() {
   const [tab, setTab] = useState("library");
+  const [user, setUser] = useState(undefined); // undefined = checking, null = logged out
+
+  useEffect(() => {
+    api
+      .me()
+      .then(setUser)
+      .catch(() => setUser(null));
+  }, []);
+
+  async function handleLogout() {
+    await api.logout();
+    setUser(null);
+  }
+
+  if (user === undefined) {
+    return null;
+  }
+
+  if (user === null) {
+    return <Login onAuthenticated={setUser} />;
+  }
 
   return (
     <div className="app">
@@ -30,11 +53,21 @@ function App() {
               Scan film
             </button>
           </nav>
+          <div className="header-user">
+            <span className="muted">{user.username}</span>
+            <button type="button" className="btn" onClick={handleLogout}>
+              Log ud
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="app-main">
-        {tab === "library" ? <Library /> : <ScanMovie />}
+        {tab === "library" ? (
+          <Library user={user} onSettingsChanged={setUser} />
+        ) : (
+          <ScanMovie />
+        )}
       </main>
     </div>
   );

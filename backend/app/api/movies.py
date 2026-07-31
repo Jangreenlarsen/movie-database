@@ -3,13 +3,14 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.api.deps import get_current_user
 from app.db import get_database
 from app.integrations import tmdb_client
 from app.models.movie import AudioType, Movie, MovieCreate, MovieFormat, MovieUpdate
 from app.models.scan import MovieCandidate
 from app.services import movie_service
 
-router = APIRouter(prefix="/api/movies", tags=["movies"])
+router = APIRouter(prefix="/api/movies", tags=["movies"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=list[Movie])

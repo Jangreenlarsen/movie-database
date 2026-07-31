@@ -3,11 +3,20 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     ...options,
   });
 
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.status} ${path}`);
+    let detail;
+    try {
+      detail = (await response.json()).detail;
+    } catch {
+      // ignore — no JSON body
+    }
+    const error = new Error(detail ?? `API request failed: ${response.status} ${path}`);
+    error.status = response.status;
+    throw error;
   }
 
   if (response.status === 204) return null;
@@ -16,6 +25,14 @@ async function request(path, options = {}) {
 
 export const api = {
   health: () => request("/health"),
+  register: (username, password) =>
+    request("/auth/register", { method: "POST", body: JSON.stringify({ username, password }) }),
+  login: (username, password) =>
+    request("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
+  logout: () => request("/auth/logout", { method: "POST" }),
+  me: () => request("/users/me"),
+  updateMySettings: (payload) =>
+    request("/users/me/settings", { method: "PATCH", body: JSON.stringify(payload) }),
   listMovies: ({ q, tags, format, audioTypes, sort, direction } = {}) => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);

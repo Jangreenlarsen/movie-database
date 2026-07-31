@@ -10,14 +10,6 @@ const SORT_OPTIONS = [
   { value: "rating", label: "Rating" },
 ];
 
-const VISIBLE_FIELDS_KEY = "movieLibrary.visibleFields";
-const DEFAULT_VISIBLE_FIELDS = {
-  year: true,
-  tags: true,
-  format: false,
-  audioTypes: false,
-  rating: false,
-};
 const VISIBLE_FIELD_OPTIONS = [
   { key: "year", label: "År" },
   { key: "tags", label: "Tags" },
@@ -26,14 +18,15 @@ const VISIBLE_FIELD_OPTIONS = [
   { key: "rating", label: "Rating" },
 ];
 
-function loadVisibleFields() {
-  try {
-    const raw = localStorage.getItem(VISIBLE_FIELDS_KEY);
-    if (!raw) return DEFAULT_VISIBLE_FIELDS;
-    return { ...DEFAULT_VISIBLE_FIELDS, ...JSON.parse(raw) };
-  } catch {
-    return DEFAULT_VISIBLE_FIELDS;
-  }
+function visibleFieldsFromSettings(settings) {
+  const vf = settings?.visible_fields ?? {};
+  return {
+    year: vf.year ?? true,
+    tags: vf.tags ?? true,
+    format: vf.format ?? false,
+    audioTypes: vf.audio_types ?? false,
+    rating: vf.rating ?? false,
+  };
 }
 
 function SearchIcon() {
@@ -49,20 +42,37 @@ function toggleValue(list, value) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
-export default function Library() {
+export default function Library({ user, onSettingsChanged }) {
   const [query, setQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedFormats, setSelectedFormats] = useState([]);
   const [selectedAudioTypes, setSelectedAudioTypes] = useState([]);
-  const [sortField, setSortField] = useState("serial_number");
-  const [sortDirection, setSortDirection] = useState("desc");
+  const [sortField, setSortField] = useState(user.settings.sort_field ?? "serial_number");
+  const [sortDirection, setSortDirection] = useState(user.settings.sort_direction ?? "desc");
   const [movies, setMovies] = useState([]);
   const [status, setStatus] = useState("loading");
   const [allTags, setAllTags] = useState([]);
   const [attributeOptions, setAttributeOptions] = useState({ formats: [], audio_types: [] });
   const [activeMovie, setActiveMovie] = useState(null);
-  const [visibleFields, setVisibleFields] = useState(loadVisibleFields);
+  const [visibleFields, setVisibleFields] = useState(() => visibleFieldsFromSettings(user.settings));
   const [showFieldPanel, setShowFieldPanel] = useState(false);
+
+  function persistSettings({ sortField: nextSort, sortDirection: nextDirection, visibleFields: nextVisible }) {
+    api
+      .updateMySettings({
+        sort_field: nextSort,
+        sort_direction: nextDirection,
+        visible_fields: {
+          year: nextVisible.year,
+          tags: nextVisible.tags,
+          format: nextVisible.format,
+          audio_types: nextVisible.audioTypes,
+          rating: nextVisible.rating,
+        },
+      })
+      .then(onSettingsChanged)
+      .catch(() => {});
+  }
 
   useEffect(() => {
     api.listTags().then(setAllTags).catch(() => {});
@@ -98,9 +108,20 @@ export default function Library() {
   function updateVisibleField(key, value) {
     setVisibleFields((prev) => {
       const next = { ...prev, [key]: value };
-      localStorage.setItem(VISIBLE_FIELDS_KEY, JSON.stringify(next));
+      persistSettings({ sortField, sortDirection, visibleFields: next });
       return next;
     });
+  }
+
+  function updateSortField(nextField) {
+    setSortField(nextField);
+    persistSettings({ sortField: nextField, sortDirection, visibleFields });
+  }
+
+  function toggleSortDirection() {
+    const nextDirection = sortDirection === "asc" ? "desc" : "asc";
+    setSortDirection(nextDirection);
+    persistSettings({ sortField, sortDirection: nextDirection, visibleFields });
   }
 
   const hasActiveFilters =
@@ -125,7 +146,7 @@ export default function Library() {
             />
           </div>
 
-          <select value={sortField} onChange={(e) => setSortField(e.target.value)}>
+          <select value={sortField} onChange={(e) => updateSortField(e.target.value)}>
             {SORT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 Sortér: {opt.label}
@@ -136,7 +157,7 @@ export default function Library() {
             type="button"
             className="btn"
             title={sortDirection === "asc" ? "Stigende" : "Faldende"}
-            onClick={() => setSortDirection((d) => (d === "asc" ? "desc" : "asc"))}
+            onClick={toggleSortDirection}
           >
             {sortDirection === "asc" ? "↑" : "↓"}
           </button>

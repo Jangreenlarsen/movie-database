@@ -1,0 +1,191 @@
+# Projekt: Movie Database App
+
+Dette er Claudes system-prompt for dette projekt. Den læses altid først og følges uden undtagelser.
+
+---
+
+## Projektbeskrivelse
+
+En **film-database webapp** til at katalogisere en fysisk/digital filmsamling, bygget med **React (Vite, PWA)** frontend, **Python/FastAPI** backend og **MongoDB** database.
+
+Brugeren opbygger sit filmbibliotek ved enten at oprette film manuelt, eller ved at **scanne stregkoden (UPC/EAN) på DVD/Blu-ray-covers** med iPhonens kamera direkte i browseren (ingen native app nødvendig — kræver HTTPS for kamera-adgang). Den scannede kode slås op i en UPC-opslagstjeneste for at forudfylde en titel, hvorefter rig metadata (poster, plot, skuespillere, genre, udgivelsesår m.m.) hentes fra **TMDb (The Movie Database)** til brugerens bekræftelse, før filmen gemmes.
+
+Hver film kan tildeles frie, **brugerdefinerede tags** (fx "Julefilm", "Set med Anna", "4K", "Skal ses igen"). Tags er — sammen med fritekstsøgning på titel/skuespiller/genre — den primære søge- og filtreringsmekanisme i hoved-appens biblioteksvisning.
+
+**Primær use case**: Hurtigt katalogisere en fysisk filmsamling ved at scanne covers med telefonen, og bagefter genfinde film via fritekst-søgning eller tags fra enhver enhed på netværket.
+
+**Reference-stack**:
+- **Frontend**: React + Vite, PWA (installérbar på iPhone hjemmeskærm via "Føj til hjemmeskærm", HTTPS krævet for kamera-adgang)
+- **Backend**: Python 3.x + FastAPI (async), Pydantic-modeller
+- **Database**: MongoDB (film-dokumenter, tags, cache af ekstern metadata)
+- **Stregkode-scanning**: klient-side JS i browseren via `getUserMedia` + en barcode-detection-lib (fx `@zxing/browser`)
+- **Eksterne API'er**: TMDb (film-metadata + posters), en UPC-opslagstjeneste (stregkode → produkt/titel-gæt)
+- **Deployment**: Docker Compose (backend + frontend + MongoDB), selv-hostet på hjemmenetværk
+
+---
+
+## Faste regler
+
+1. **Versionering (UFRAVIGELIG)**: Projektet versioneres via [version.json](version.json). Denne fil er den **eneste** kilde til versionsnumre — alle andre steder (backend, frontend, changelog) læser herfra.
+   - Normalt format: `{ "version": "MAJOR.MINOR.PATCH", "build": "NNNN" }`
+   - **build**: incrementeres med **1** ved HVERT commit med kodeændringer (0001 → 0002 → ...).
+   - **PATCH**: incrementeres ved bug fixes (afsluttede). Build nulstilles IKKE.
+   - **MINOR**: incrementeres ved nye features. PATCH sættes til 0.
+   - **MAJOR**: incrementeres ved breaking changes (fx skema-ændringer i MongoDB der kræver migration) eller store milepæle. MINOR og PATCH sættes til 0.
+   - **Debugging-format (4 decimaler)**: Under aktiv fejlsøgning bruges `MAJOR.MINOR.PATCH.D` hvor D starter på 1 og incrementeres for hvert debug-commit: `v0.1.0.1`, `v0.1.0.2`, osv. Commit-beskeder præfikses `vX.X.X.D-bNNNN: debug: beskrivelse`.
+   - **Afslutning af debugging**: Når Jan bekræfter *"nu virker det som det skal"*, incrementeres PATCH og D nulstilles: `v0.1.0.3` → `v0.1.1.0`. Commit markeres som `fix:` og afslutter debug-serien.
+   - **Kun-dokumentations-commits** (RELEASE_NOTES.md, CHANGELOG.md, BUGS.md, FEATURES.md uden kodeændringer): bump IKKE version — lav commit uden versionsbump.
+   - **RELEASE_NOTES.md skal opdateres ved ETHVERT commit der ændrer kode** — features, bugfixes og debug-afslutninger. Dokumentations-commits er undtaget. Glem aldrig dette.
+   - Changelog-entries tagges med versionsnummer: `## [0.1.0 build 0001] — 2026-07-31 — beskrivelse`.
+   - Claude **skal** opdatere `version.json` og vise den nye version i commit-beskeden.
+
+2. **Ny funktionalitet (features)** skal ALTID registreres i [FEATURES.md](FEATURES.md) *før* implementering påbegyndes. Opdatér status når den er færdig.
+
+3. **Bugs** skal ALTID registreres i [BUGS.md](BUGS.md) så snart de opdages. Opdatér med løsning når de er fikset.
+
+4. **Alle kodeændringer** skal logges i [CHANGELOG.md](CHANGELOG.md) med version, dato, berørte filer og kort beskrivelse. Nyeste øverst.
+
+5. **Lag-arkitekturen** beskrevet i [ARCHITECTURE.md](ARCHITECTURE.md) skal respekteres til enhver tid:
+   - Frontend taler **kun** med backendens REST API — aldrig direkte med MongoDB, TMDb eller UPC-tjenesten.
+   - API-laget (FastAPI routers) kalder **kun** service-laget.
+   - Service-laget kalder repository-laget (MongoDB) og integrations-laget (TMDb/UPC) — aldrig omvendt.
+   - Kun integrations-laget må foretage HTTP-kald til eksterne API'er.
+
+6. **Eksterne API-nøgler (UFRAVIGELIG)**: TMDb API-nøgle og UPC-opslagsnøgle ligger udelukkende i backendens `.env` (git-ignoreret). De må ALDRIG committes, logges i klartekst eller eksponeres til frontend. Frontend kalder udelukkende egne backend-endpoints — aldrig TMDb/UPC direkte.
+
+7. **Tags**: Tags er fritekst, normaliseres (trim + lowercase) ved gem og sammenligning for dedup, men vises i den formatering brugeren indtastede første gang. Der vedligeholdes en samlet tag-collection til autocomplete. Bibliotekets søgning skal understøtte kombination af fritekst (titel/skuespiller/genre) og tag-filtrering (en eller flere tags samtidig).
+
+8. **REST API-kontrakt**: Se [ARCHITECTURE.md](ARCHITECTURE.md) for komplet endpoint-tabel. Nye ressourcer/endpoints tilføjes altid i den tabel *før* implementering, og navngives ressource-orienteret (`/api/movies`, `/api/tags`, ...) — ikke handling-orienteret.
+
+9. **Film- og stregkode-reference**: [MOVIE_API_REFERENCE.md](MOVIE_API_REFERENCE.md) indeholder TMDb- og UPC-opslags-endpoints, rate-limits, felt-mapping og fejlhåndtering (fx "intet UPC-match" eller "flere TMDb-kandidater"). Konsultér og hold opdateret ved al integration med eksterne film-API'er.
+
+10. **Tech-reference**: [TECH_REFERENCE.md](TECH_REFERENCE.md) indeholder FastAPI-konventioner, MongoDB-skemaer/indexes, React/PWA-opsætning (manifest, service worker), og kamera/stregkode-scanning-implementation. Konsultér ved al teknisk implementering.
+
+11. **Runtime-logging**: Backend skal logge alle eksterne API-kald (TMDb/UPC) samt fejl via Python `logging`-modulet med struktureret kontekst (fx UPC/TMDb-id). Log-niveau konfigureres via miljøvariabel (`LOG_LEVEL`).
+
+12. **Read/write rettigheder**: Claude har forhåndsgodkendelse (via [.claude/settings.local.json](.claude/settings.local.json)) til at læse, skrive og redigere filer i projektmappen.
+
+13. **Versionskontrol**: Projektet er et git-repo. Efter enhver logisk afsluttet ændring skal Claude lave en git commit med en beskrivende commit-besked. Aldrig bulk-commits af urelaterede ændringer.
+
+14. **GitHub branch-strategi (UFRAVIGELIG)**:
+    - `dev` — aktiv udviklingsbranch. **Al ny kode commites hertil.** Claude arbejder altid på `dev`.
+    - `main` — stabil release-branch. Kun opdateret via PR/merge fra `dev` når en release er klar. Produktion følger `main`.
+    - Claude skal pushe til `origin dev` efter hvert commit — aldrig direkte til `main`.
+    - Merge `dev` → `main` gøres manuelt af Jan når en release er godkendt.
+
+15. **Push og merge efter commit (UFRAVIGELIG)**: Efter ethvert commit skal Claude automatisk:
+    - Pushe til `origin dev`
+    - Spørge Jan: *"Vil du også merge til `main` og pushe?"*
+    - Hvis ja: merge `dev` → `main` med `--no-ff` og pushe `origin main`
+    - Hvis nej: forblive på `dev` og informere om at `main` ikke er opdateret
+
+---
+
+## Workflow for enhver opgave
+
+1. Tilføj entry i `FEATURES.md` (feature) eller `BUGS.md` (bug).
+2. Implementer ændringen i det korrekte lag jf. `ARCHITECTURE.md`.
+3. Opdater `version.json`: bump build (altid), bump version (hvis feature/bugfix/breaking).
+4. Tilføj entry i `CHANGELOG.md` med `[version build NNNN]` prefix.
+5. Opdater `RELEASE_NOTES.md` hvis kode er ændret.
+6. Kør backend-/frontend-tests hvis relevant.
+7. `git add` + `git commit` med besked der inkluderer version: `v0.1.0-b0001: beskrivelse`.
+8. `git push origin dev` til GitHub.
+9. Spørg Jan: *"Vil du også merge til `main`?"* — merge og push `origin main` hvis ja.
+
+---
+
+## Stregkode & Film-metadata Quick Reference
+
+### Flow ved scanning
+```
+Scan cover (UPC/EAN) → UPC-opslag (titel-gæt) → TMDb-søgning på gættet titel
+ → bruger bekræfter match (poster + år vises) → gem film + metadata-cache i MongoDB
+```
+- Understøttede stregkode-formater: **UPC-A** og **EAN-13** (de mest almindelige på DVD/Blu-ray-covers).
+- **Intet UPC-match**: brugeren falder tilbage til direkte TMDb-titel-søgning.
+- **Flere TMDb-kandidater**: vis top-resultater (poster + år) og lad brugeren vælge.
+- TMDb-metadata caches i MongoDB ved gem, så samme film ikke slår op igen ved visning.
+
+### Registerdata pr. film (MongoDB-dokument, overblik)
+| Felt          | Kilde                          | Noter                              |
+|---------------|--------------------------------|-------------------------------------|
+| `barcode`     | Scannet af bruger               | UPC/EAN, valgfri (manuel oprettelse har ingen) |
+| `tmdb_id`     | TMDb-søgning                    | Bruges til at genhente/opdatere metadata |
+| `title`, `year`, `poster_url`, `overview`, `genres`, `cast` | TMDb | Cachet lokalt |
+| `tags`        | Bruger                          | Fritekst, normaliseret til søgning |
+| `created_at`, `updated_at` | Backend            | Timestamps |
+
+---
+
+## Projektstruktur
+
+```
+.
+├── CLAUDE.md                  # denne fil — regler Claude altid følger
+├── version.json               # SINGLE SOURCE OF TRUTH for version + build
+├── ARCHITECTURE.md            # lag-struktur, REST endpoint-tabel og arkitekturregler
+├── MOVIE_API_REFERENCE.md     # TMDb + UPC-opslag API-reference
+├── TECH_REFERENCE.md          # FastAPI/MongoDB/React-PWA/scanning-reference
+├── FEATURES.md                # features (planned / in-progress / done)
+├── BUGS.md                    # bugs (open / fixed)
+├── CHANGELOG.md               # alle kodeændringer, nyeste øverst
+├── RELEASE_NOTES.md           # brugervenlige release-noter
+├── docker-compose.yml         # backend + frontend + MongoDB
+├── .claude/
+│   └── settings.local.json    # Claude-rettigheder
+├── backend/                   # FastAPI-app
+│   ├── app/
+│   │   ├── main.py            # app-init, router-registrering
+│   │   ├── core/              # config (Pydantic Settings), logging
+│   │   ├── api/                # REST-routers pr. ressource (movies, tags, scan, search)
+│   │   ├── services/           # forretningslogik
+│   │   ├── integrations/       # tmdb_client.py, upc_client.py
+│   │   ├── repositories/       # MongoDB data-access (Motor)
+│   │   └── models/             # Pydantic schemas
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   └── .env.example
+└── frontend/                   # React (Vite) PWA — taler kun med backend API
+    ├── src/
+    │   ├── api/                 # backend API-client (fetch-wrapper)
+    │   ├── components/          # genanvendelige UI-komponenter
+    │   ├── pages/                # Library, MovieDetail, ScanMovie
+    │   └── scanner/              # kamera + stregkode-detection
+    ├── public/
+    │   └── manifest.json         # PWA manifest
+    ├── index.html
+    ├── package.json
+    ├── vite.config.js
+    └── Dockerfile
+```
+
+---
+
+## Arkitektur-lag (overblik)
+
+```
+┌───────────────────────────────────────────┐
+│      Web Frontend (iOS Safari / PWA)       │  React + Vite
+│   pages/  components/  scanner/  api/      │
+└──────────────────┬──────────────────────────┘
+                    │ HTTPS REST (JSON)
+┌──────────────────┼──────────────────────────┐
+│            API-lag (FastAPI routers)         │
+│   /api/movies  /api/tags  /api/scan  /api/search │
+└──────────────────┬──────────────────────────┘
+                    │
+┌──────────────────┼──────────────────────────┐
+│         Service-lag (forretningslogik)       │
+│   movie_service  tag_service  scan_service   │
+└──────┬────────────────────────────┬──────────┘
+       │                            │
+┌──────┼──────────┐        ┌────────┼─────────────┐
+│ Repository-lag  │        │  Integrations-lag     │
+│ MongoDB (Motor)  │        │  TMDb-client, UPC-client │
+└──────┬───────────┘        └────────┬─────────────┘
+       │                             │
+┌──────┼─────────┐          ┌────────┼─────────────┐
+│    MongoDB      │          │  TMDb API / UPC API   │
+└──────────────────┘          └───────────────────────┘
+```

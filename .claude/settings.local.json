@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm -v)",
+      "Bash(docker --version)",
+      "Bash(git --version)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(py -0p)",
+      "Bash(py --list)",
+      "Bash(py -3.12 --version)",
+      "Bash(py -3.11 --version)",
+      "Bash(py -3.10 --version)"
+    ]
+  }
+}

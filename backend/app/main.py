@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import auth, health, movies, scan, tags, users
+from app.api import auth, health, movies, scan, settings as settings_api, tags, users
 from app.core.config import settings
 from app.core.errors import (
     DuplicateBarcodeError,
@@ -89,3 +89,4 @@ app.include_router(users.router)
 app.include_router(movies.router)
 app.include_router(tags.router)
 app.include_router(scan.router)
+app.include_router(settings_api.router)

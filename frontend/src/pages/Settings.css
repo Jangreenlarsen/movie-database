@@ -7,31 +7,18 @@
   padding: 20px;
 }
 
-.serial-list {
-  list-style: none;
-  padding: 0;
-  margin: 16px 0 0;
+.serial-config-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 16px;
+  max-width: 320px;
+}
+
+.serial-config-form label {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
-.serial-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 4px;
-  border-bottom: 1px solid var(--border);
-}
-
-.serial-input {
-  width: 70px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.serial-title {
-  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }

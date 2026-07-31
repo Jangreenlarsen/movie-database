@@ -5,6 +5,8 @@ from pymongo import ReturnDocument
 COLLECTION = "movies"
 COUNTERS_COLLECTION = "counters"
 SERIAL_COUNTER_ID = "movie_serial"
+DEFAULT_SERIAL_CONFIG = {"next_value": 1, "increment": 1, "padding_width": 0}
+MAX_SERIAL_ASSIGN_ATTEMPTS = 10_000
 
 # Whitelist mapping API-facing sort keys -> actual document fields, so an
 # arbitrary/unindexed field can never be requested via the query string.
@@ -29,15 +31,77 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     await collection.create_index("year")
 
 
+async def _ensure_serial_config(db: AsyncIOMotorDatabase) -> dict:
+    doc = await db[COUNTERS_COLLECTION].find_one({"_id": SERIAL_COUNTER_ID})
+    if doc is None:
+        doc = {"_id": SERIAL_COUNTER_ID, **DEFAULT_SERIAL_CONFIG}
+        await db[COUNTERS_COLLECTION].insert_one(doc)
+        return doc
+
+    if "next_value" not in doc:
+        # Migrate the pre-v0.9.0 counter shape ({"value": <last assigned>})
+        # to the configurable one ({"next_value": <to assign next>, ...}).
+        next_value = doc.get("value", 0) + 1
+        await db[COUNTERS_COLLECTION].update_one(
+            {"_id": SERIAL_COUNTER_ID},
+            {"$set": {"next_value": next_value}, "$unset": {"value": ""}},
+        )
+        doc = await db[COUNTERS_COLLECTION].find_one({"_id": SERIAL_COUNTER_ID})
+
+    return doc
+
+
+async def get_serial_config(db: AsyncIOMotorDatabase) -> dict:
+    config = await _ensure_serial_config(db)
+    return {
+        "start_number": config.get("next_value", DEFAULT_SERIAL_CONFIG["next_value"]),
+        "increment": config.get("increment", DEFAULT_SERIAL_CONFIG["increment"]),
+        "padding_width": config.get("padding_width", DEFAULT_SERIAL_CONFIG["padding_width"]),
+    }
+
+
+async def update_serial_config(db: AsyncIOMotorDatabase, updates: dict) -> dict:
+    """`start_number` is a one-off "assign this to the next movie" action, not
+    a historical origin — it directly moves the next-value pointer.
+    `increment` only changes the step size going forward. `padding_width`
+    is display-only."""
+    await _ensure_serial_config(db)
+
+    mongo_updates: dict = {}
+    if "start_number" in updates:
+        mongo_updates["next_value"] = updates["start_number"]
+    if "increment" in updates:
+        mongo_updates["increment"] = updates["increment"]
+    if "padding_width" in updates:
+        mongo_updates["padding_width"] = updates["padding_width"]
+
+    if mongo_updates:
+        await db[COUNTERS_COLLECTION].update_one(
+            {"_id": SERIAL_COUNTER_ID}, {"$set": mongo_updates}
+        )
+    return await get_serial_config(db)
+
+
 async def next_serial_number(db: AsyncIOMotorDatabase) -> int:
-    """Atomically incremented, race-safe even under concurrent creates."""
-    counter = await db[COUNTERS_COLLECTION].find_one_and_update(
-        {"_id": SERIAL_COUNTER_ID},
-        {"$inc": {"value": 1}},
-        upsert=True,
-        return_document=ReturnDocument.AFTER,
-    )
-    return counter["value"]
+    """Race-safe even under concurrent creates. If the next value is already
+    taken (possible right after `start_number` was moved onto an
+    already-assigned number), keeps advancing by `increment` until a free
+    one is found."""
+    for _ in range(MAX_SERIAL_ASSIGN_ATTEMPTS):
+        config = await _ensure_serial_config(db)
+        increment = config.get("increment", DEFAULT_SERIAL_CONFIG["increment"])
+
+        before = await db[COUNTERS_COLLECTION].find_one_and_update(
+            {"_id": SERIAL_COUNTER_ID},
+            {"$inc": {"next_value": increment}},
+            return_document=ReturnDocument.BEFORE,
+        )
+        candidate = before["next_value"]
+
+        if await db[COLLECTION].find_one({"serial_number": candidate}, {"_id": 1}) is None:
+            return candidate
+
+    raise RuntimeError("Could not find a free serial number after many attempts")
 
 
 async def insert(db: AsyncIOMotorDatabase, document: dict) -> dict:

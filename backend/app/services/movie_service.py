@@ -6,6 +6,7 @@ from pymongo.errors import DuplicateKeyError
 from app.core.errors import DuplicateBarcodeError, MovieNotFoundError
 from app.integrations import tmdb_client
 from app.models.movie import Movie, MovieCreate, MovieUpdate
+from app.models.settings import SerialNumberConfig, SerialNumberConfigUpdate
 from app.repositories import movie_repository
 from app.services import tag_service
 
@@ -155,3 +156,16 @@ async def delete_movie(db: AsyncIOMotorDatabase, movie_id: str) -> None:
     deleted = await movie_repository.delete(db, movie_id)
     if not deleted:
         raise MovieNotFoundError(movie_id)
+
+
+async def get_serial_number_config(db: AsyncIOMotorDatabase) -> SerialNumberConfig:
+    config = await movie_repository.get_serial_config(db)
+    return SerialNumberConfig(**config)
+
+
+async def update_serial_number_config(
+    db: AsyncIOMotorDatabase, payload: SerialNumberConfigUpdate
+) -> SerialNumberConfig:
+    updates = payload.model_dump(exclude_unset=True)
+    config = await movie_repository.update_serial_config(db, updates)
+    return SerialNumberConfig(**config)

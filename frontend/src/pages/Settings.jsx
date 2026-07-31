@@ -3,51 +3,45 @@ import { api } from "../api/client";
 import "./Settings.css";
 
 export default function Settings({ user }) {
-  const [movies, setMovies] = useState([]);
   const [status, setStatus] = useState("loading");
-  const [edits, setEdits] = useState({});
-  const [savingId, setSavingId] = useState(null);
+  const [startNumber, setStartNumber] = useState("");
+  const [increment, setIncrement] = useState("");
+  const [paddingWidth, setPaddingWidth] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
 
-  function load() {
-    setStatus("loading");
+  useEffect(() => {
     api
-      .listMovies({ sort: "serial_number", direction: "asc" })
+      .getSerialNumberConfig()
       .then((data) => {
-        setMovies(data);
+        setStartNumber(String(data.start_number));
+        setIncrement(String(data.increment));
+        setPaddingWidth(String(data.padding_width));
         setStatus("ready");
       })
       .catch(() => setStatus("error"));
-  }
+  }, []);
 
-  useEffect(load, []);
-
-  function clearEdit(movieId) {
-    setEdits((prev) => {
-      const next = { ...prev };
-      delete next[movieId];
-      return next;
-    });
-  }
-
-  async function saveSerial(movie) {
-    const draft = edits[movie.id];
-    const next = Number(draft);
-    if (!Number.isInteger(next) || next <= 0 || next === movie.serial_number) {
-      clearEdit(movie.id);
-      return;
-    }
-
-    setSavingId(movie.id);
+  async function save(event) {
+    event.preventDefault();
+    setSaving(true);
+    setSaved(false);
     setError(null);
     try {
-      await api.updateMovie(movie.id, { serial_number: next });
-      load();
+      const updated = await api.updateSerialNumberConfig({
+        start_number: Number(startNumber),
+        increment: Number(increment),
+        padding_width: Number(paddingWidth),
+      });
+      setStartNumber(String(updated.start_number));
+      setIncrement(String(updated.increment));
+      setPaddingWidth(String(updated.padding_width));
+      setSaved(true);
     } catch (err) {
       setError(err.message);
     } finally {
-      setSavingId(null);
-      clearEdit(movie.id);
+      setSaving(false);
     }
   }
 
@@ -65,57 +59,56 @@ export default function Settings({ user }) {
       </div>
 
       <div className="card settings-section">
-        <h2>Film-serienumre</h2>
+        <h2>Serienummer-opsætning</h2>
         <p className="muted">
-          Ret en films serienummer for at omorganisere biblioteket. Er nummeret allerede
-          i brug af en anden film, bytter de to film automatisk plads.
+          Styrer hvilket nummer den næste tilføjede film får, og med hvilket spring
+          fremtidige film nummereres. Vil du rette en <em>bestemt</em> films
+          serienummer, gør du det i stedet i filmens redigeringsvindue i biblioteket.
         </p>
-
-        {error && (
-          <div className="banner banner-error" style={{ marginTop: 10 }}>
-            {error}
-          </div>
-        )}
 
         {status === "loading" && <p className="muted">Indlæser...</p>}
         {status === "error" && (
-          <div className="banner banner-error">Kunne ikke hente film.</div>
+          <div className="banner banner-error">Kunne ikke hente opsætning.</div>
         )}
 
         {status === "ready" && (
-          <ul className="serial-list">
-            {movies.map((movie) => {
-              const draft = edits[movie.id];
-              const isDirty = draft !== undefined && Number(draft) !== movie.serial_number;
-              return (
-                <li key={movie.id} className="serial-row">
-                  <input
-                    type="number"
-                    min="1"
-                    className="serial-input"
-                    value={draft ?? movie.serial_number}
-                    onChange={(e) =>
-                      setEdits((prev) => ({ ...prev, [movie.id]: e.target.value }))
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveSerial(movie);
-                    }}
-                  />
-                  <span className="serial-title">
-                    {movie.title} {movie.year ? `(${movie.year})` : ""}
-                  </span>
-                  <button
-                    type="button"
-                    className="btn"
-                    disabled={!isDirty || savingId === movie.id}
-                    onClick={() => saveSerial(movie)}
-                  >
-                    {savingId === movie.id ? "Gemmer..." : "Gem"}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          <form className="serial-config-form" onSubmit={save}>
+            <label>
+              Næste film-nummer
+              <input
+                type="number"
+                min="1"
+                value={startNumber}
+                onChange={(e) => setStartNumber(e.target.value)}
+              />
+            </label>
+            <label>
+              Spring (increment)
+              <input
+                type="number"
+                min="1"
+                value={increment}
+                onChange={(e) => setIncrement(e.target.value)}
+              />
+            </label>
+            <label>
+              Antal cifre (foranstillede nuller)
+              <input
+                type="number"
+                min="0"
+                max="10"
+                value={paddingWidth}
+                onChange={(e) => setPaddingWidth(e.target.value)}
+              />
+            </label>
+
+            {error && <div className="banner banner-error">{error}</div>}
+            {saved && <div className="banner banner-info">Gemt!</div>}
+
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? "Gemmer..." : "Gem"}
+            </button>
+          </form>
         )}
       </div>
     </section>

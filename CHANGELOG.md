@@ -2,6 +2,15 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.9.0 build 0010] — 2026-08-01 — Serienummer-generator-opsætning (afløser dele af v0.8.0)
+
+- **Redesign efter feedback**: Settings-siden viste i v0.8.0 en liste over alle film med redigérbart serienummer. Det er nu flyttet til filmens redigeringsvindue i biblioteket (hvor det hører hjemme sammen med tags/format/audio_types) — Settings-siden har i stedet fået en "Serienummer-opsætning"-formular til selve generatoren.
+- Counter-dokumentet (`counters._id: "movie_serial"`) har fået et nyt skema: `next_value` (hvilket nummer næste film får), `increment` (spring for fremtidige tildelinger), `padding_width` (kun visning). Migreres automatisk fra det gamle skema (`{"value": N}`) ved første tilgang — ingen manuel migrering nødvendig.
+- Nye endpoints `GET`/`PATCH /api/settings/serial-number`. `start_number` er en "flyt næste-nummer-markøren hertil"-handling (ikke en formel-oprindelse) — sætter du den til 500, får den næste tilføjede film nummer 500 præcis. `increment` ændrer kun springet for fremtidige tildelinger fra det nuværende punkt.
+- `movie_repository.next_serial_number` er nu kollisions-sikker efter reconfigurering: rammer det beregnede nummer en allerede-brugt værdi (fx efter at have flyttet `start_number` tilbage i et brugt interval), rykker den videre til første ledige nummer i stedet for at fejle med en duplicate-key-fejl.
+- `padding_width` bruges i frontend til at zero-padde serienummer-badges (fx "00007") — rent visuelt, påvirker ikke det lagrede tal eller sorteringen.
+- Pytest-suite: ny `tests/test_settings.py` (default-opsætning, ændring af start/increment, kollisions-omgåelse efter reconfigurering, validering, auth-krav). 48/48 grønne. Live-verificeret mod ægte MongoDB, inkl. den automatiske skema-migrering af det eksisterende counter-dokument.
+
 ## [0.8.0 build 0009] — 2026-08-01 — Settings-side: redigérbart serienummer
 
 - `MovieUpdate` accepterer nu `serial_number` (positivt heltal). `movie_service._reassign_serial_number` bytter automatisk plads med en evt. film der allerede har det ønskede nummer — via et sentinel-mellemtrin (`-1`), da MongoDB's unique index på `serial_number` ellers ville afvise et direkte byt (intet indbygget atomisk "swap to unique values" uden transaktioner).

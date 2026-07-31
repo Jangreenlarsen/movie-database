@@ -39,8 +39,16 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 | POST   | `/api/auth/logout`              | Rydder auth-cookien.                                           | done |
 | GET    | `/api/users/me`                 | Nuværende bruger + indstillinger. 401 hvis ikke logget ind.       | done |
 | PATCH  | `/api/users/me/settings`        | Opdatér bruger-specifikke view-/filter-indstillinger (sort_field, sort_direction, visible_fields). | done |
+| GET    | `/api/settings/serial-number`   | Hent serienummer-generatorens opsætning (`start_number`, `increment`, `padding_width`). | done |
+| PATCH  | `/api/settings/serial-number`   | Opdatér opsætningen. `start_number` flytter *direkte* næste-nummer-markøren (ikke en historisk oprindelse) — se note nedenfor. | done |
 
-> **Auth**: `/api/movies`, `/api/tags` og `/api/scan` kræver login (router-level `dependencies=[Depends(get_current_user)]` i `app/api/deps.py`) — 401 uden gyldig session. Session er en JWT i en httpOnly cookie (`access_token`), ikke en Bearer-header. Biblioteket er ét fælles bibliotek for alle brugere; kun view-/filterindstillinger er personlige (gemt i `users.settings`, ikke i browserens localStorage).
+> **Auth**: `/api/movies`, `/api/tags`, `/api/scan` og `/api/settings` kræver login (router-level `dependencies=[Depends(get_current_user)]` i `app/api/deps.py`) — 401 uden gyldig session. Session er en JWT i en httpOnly cookie (`access_token`), ikke en Bearer-header. Biblioteket er ét fælles bibliotek for alle brugere; kun view-/filterindstillinger er personlige (gemt i `users.settings`, ikke i browserens localStorage).
+
+> **Serienummer-generator vs. redigering af én films nummer**: dette er to adskilte ting, bevidst delt over to sider i frontend (Settings-siden vs. filmens redigeringsvindue i biblioteket):
+> - `PATCH /api/settings/serial-number` styrer *generatoren* — hvilket nummer NÆSTE tilføjede film får (`start_number`, som er en "flyt markøren hertil"-handling, ikke en formel-oprindelse), samt spring (`increment`, påvirker kun fremtidige tildelinger) og visnings-padding (`padding_width`, rent kosmetisk, påvirker ikke det lagrede tal).
+> - `PATCH /api/movies/{id}` med `serial_number` ændrer én **eksisterende** films nummer direkte og bytter automatisk med en evt. kolliderende film (se `movie_service._reassign_serial_number`).
+> - `movie_repository.next_serial_number` er kollisions-sikker: hvis det beregnede næste-nummer allerede er i brug (typisk lige efter `start_number` er flyttet tilbage til et brugt interval), rykker den videre til første ledige nummer i stedet for at fejle.
+> - Counter-dokumentet migrerede fra det gamle skema (`{"value": N}`) til det nye (`{"next_value": N, "increment": 1, "padding_width": 0}`) automatisk ved første tilgang efter v0.9.0 — ingen manuel migrering nødvendig.
 
 > `POST /api/movies` accepterer nu enten `tmdb_id` (backend henter fuld metadata fra TMDb server-side) eller en manuel `title` (fuldt manuel oprettelse uden TMDb). Se `MovieCreate` i `backend/app/models/movie.py`.
 

@@ -19,6 +19,6 @@ Status: `planned` → `in-progress` → `done`. Tilføj entry *før* implementer
 | 13| TMDb rating pr. film (vote_average, auto-hentet ved TMDb-oprettelse). Sortering i biblioteksvisning (titel/år/tilføjet/rating, stigende/faldende). Bruger-konfigurerbar visning af hvilke felter der vises på filmkort (år/tags/format/lyd/rating), gemt i browserens localStorage | done | 0.6.0       |
 | 14| Brugerlogin (brugernavn/adgangskode, åben tilmelding, JWT i httpOnly cookie). Ét fælles filmbibliotek for alle brugere — view-/filterindstillinger (sortering, synlige felter) gemmes server-side pr. bruger i stedet for localStorage. Alle `/api/movies`, `/api/tags`, `/api/scan`-endpoints kræver login. | done | 0.7.0       |
 | 15| Paginering af biblioteksvisning: side-navigation + valg af antal film pr. side | planned | -       |
-| 16| Settings-side: administrér film-serienumre (redigér, auto-byt ved kollision med en anden films nummer) | done | 0.8.0       |
+| 16| Settings-side: opsætning af serienummer-generatoren (næste nummer, increment, antal cifre). Redigering af en *bestemt* films serienummer sker i filmens redigeringsvindue (auto-byt ved kollision med en anden films nummer) | done | 0.9.0       |
 | 17| Fler-niveau sortering i biblioteksvisning (op til 3 niveauer, fx: 1. format, 2. lyd-type, 3. titel), hvert niveau med egen retning | planned | -       |
 | 18| Automatisk "Tilføjet af {brugernavn}"-tag på film ved oprettelse (uanset om det sker via scan, manuel TMDb-søgning eller ren manuel indtastning) | planned | -       |

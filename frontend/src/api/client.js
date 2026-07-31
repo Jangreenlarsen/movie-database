@@ -52,6 +52,9 @@ export const api = {
   deleteMovie: (id) => request(`/movies/${id}`, { method: "DELETE" }),
   listTags: () => request("/tags"),
   attributeOptions: () => request("/movies/attribute-options"),
+  getSerialNumberConfig: () => request("/settings/serial-number"),
+  updateSerialNumberConfig: (payload) =>
+    request("/settings/serial-number", { method: "PATCH", body: JSON.stringify(payload) }),
   scanLookup: (barcode) =>
     request("/scan/lookup", { method: "POST", body: JSON.stringify({ barcode }) }),
   tmdbSearch: (query) =>

@@ -24,16 +24,17 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 
 | Metode | Endpoint                     | Beskrivelse                                             | Status  |
 |--------|-------------------------------|-----------------------------------------------------------|---------|
-| GET    | `/api/movies`                  | Liste film, understøtter `?q=` (fritekst) og `?tags=`      | planned |
-| GET    | `/api/movies/{id}`             | Hent én film med fuld metadata                             | planned |
-| POST   | `/api/movies`                  | Opret film (manuelt eller efter scan-bekræftelse)           | planned |
-| PATCH  | `/api/movies/{id}`             | Opdater film (fx tags, noter)                                | planned |
-| DELETE | `/api/movies/{id}`             | Slet film                                                     | planned |
-| GET    | `/api/tags`                    | Liste alle tags (til autocomplete)                            | planned |
-| GET    | `/api/search`                  | Kombineret søgning: fritekst + tag-filter, pagineret           | planned |
+| GET    | `/api/movies`                  | Liste film, understøtter `?q=` (fritekst, MongoDB `$text`) og `?tags=` (kommasepareret, case-insensitiv `$all`-match) | done |
+| GET    | `/api/movies/{id}`             | Hent én film med fuld metadata                             | done |
+| POST   | `/api/movies`                  | Opret film (manuelt eller efter scan-bekræftelse). 409 ved dublet `barcode`. | done |
+| PATCH  | `/api/movies/{id}`             | Opdater film (fx tags, noter)                                | done |
+| DELETE | `/api/movies/{id}`             | Slet film                                                     | done |
+| GET    | `/api/tags`                    | Liste alle tags (til autocomplete)                            | done |
 | POST   | `/api/scan/lookup`             | Input: scannet UPC/EAN. Output: UPC-gæt + TMDb-kandidater      | planned |
 | GET    | `/api/movies/tmdb-search`      | Direkte TMDb-titel-søgning (fallback når scan ikke matcher)     | planned |
-| GET    | `/api/health`                  | Health check (backend + MongoDB-forbindelse)                    | planned |
+| GET    | `/api/health`                  | Health check (backend + MongoDB-forbindelse)                    | done |
+
+> Der er ikke et separat `/api/search`-endpoint — kombineret fritekst+tag-søgning dækkes af `/api/movies?q=&tags=` (se ovenfor), for at undgå to endpoints med overlappende ansvar.
 
 ---
 
@@ -56,9 +57,9 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 
 ## MongoDB collections (overblik)
 
-| Collection | Nøgle-felter                                  | Indexes                                  |
-|------------|--------------------------------------------------|--------------------------------------------|
-| `movies`   | `tmdb_id`, `barcode`, `title`, `tags[]`            | text-index på `title`+`overview`, index på `tags`, unique index på `barcode` (sparse) |
-| `tags`     | `name` (normaliseret)                              | unique index på `name`                      |
+| Collection | Nøgle-felter                                                     | Indexes                                  |
+|------------|-----------------------------------------------------------------------|--------------------------------------------|
+| `movies`   | `tmdb_id`, `barcode`, `title`, `tags[]` (display-case), `tags_normalized[]` (lowercase, bruges til filtrering) | text-index på `title`+`overview`, index på `tags_normalized`, unique sparse index på `barcode` |
+| `tags`     | `name` (første-typede casing), `normalized` (lowercase, unik nøgle)     | unique index på `normalized`                |
 
 Detaljeret skema og indexes: se [TECH_REFERENCE.md](TECH_REFERENCE.md).

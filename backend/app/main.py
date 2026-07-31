@@ -1,12 +1,15 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-from app.api import health
+from app.api import health, movies, tags
 from app.core.config import settings
-from app.db import close_client, get_client
+from app.core.errors import DuplicateBarcodeError, MovieNotFoundError
+from app.db import close_client, get_client, get_database
+from app.repositories import movie_repository, tag_repository
 
 logging.basicConfig(level=settings.log_level)
 logger = logging.getLogger("moviedb")
@@ -15,6 +18,9 @@ logger = logging.getLogger("moviedb")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     get_client()
+    db = get_database()
+    await movie_repository.ensure_indexes(db)
+    await tag_repository.ensure_indexes(db)
     logger.info("MongoDB client initialized (%s)", settings.mongo_db_name)
     yield
     await close_client()
@@ -30,4 +36,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.exception_handler(MovieNotFoundError)
+async def movie_not_found_handler(request: Request, exc: MovieNotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(DuplicateBarcodeError)
+async def duplicate_barcode_handler(request: Request, exc: DuplicateBarcodeError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
 app.include_router(health.router)
+app.include_router(movies.router)
+app.include_router(tags.router)

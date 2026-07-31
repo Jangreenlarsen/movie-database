@@ -41,6 +41,21 @@ Konsulteres ved al teknisk implementering (jf. CLAUDE.md regel 10). Hold opdater
 - Flow: `BrowserMultiFormatReader.decodeFromVideoDevice(...)` mod et `<video>`-element bundet til `getUserMedia`-stream; på match sendes koden til `POST /api/scan/lookup`.
 - iOS Safari-quirks: kræver eksplicit brugerinteraktion (tryk "start scan") før kamera-adgang tillades; test på faktisk iPhone, ikke kun desktop Safari-simulator.
 
+### Test fra telefon over LAN (HTTPS krævet for kamera)
+- `vite.config.js` sætter `server.host: true` (binder til `0.0.0.0`, ikke kun `localhost`) og `server.https` med et selvsigneret cert fra `frontend/.cert/` (git-ignoreret — genereres lokalt, committes aldrig).
+- Generér cert (kør fra `frontend/`):
+  ```
+  mkdir .cert && cd .cert
+  openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 365 \
+    -subj "/CN=movie-database-dev" \
+    -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:<din-lan-ip>"
+  ```
+  Find LAN-IP'en med `ipconfig` (Windows) — se efter den aktive adapters IPv4-adresse (typisk `192.168.x.x` eller `10.x.x.x`).
+- `npm run dev` viser derefter både en `Local` (`https://localhost:5173`) og en `Network`-URL (`https://<lan-ip>:5173`) — sidstnævnte er den telefonen skal bruge, forudsat telefon og PC er på samme netværk.
+- Selvsigneret cert ⇒ telefonens browser viser en sikkerhedsadvarsel ("Ikke privat"/"Avanceret") — accepter den for at fortsætte. Uden HTTPS blokerer browseren `getUserMedia()` fuldstændigt på alt andet end `localhost`.
+- **Windows-firewall**: der skal være en indgående regel der tillader TCP på Vite-porten (5173) på det private netværksprofil, ellers kan telefonen slet ikke oprette forbindelse (`New-NetFirewallRule -DisplayName "..." -Direction Inbound -Protocol TCP -LocalPort 5173 -Action Allow -Profile Private`).
+- Backend (`:8000`) behøver ikke selv eksponeres til netværket — Vite's dev-proxy videresender `/api`-kald server-side til `localhost:8000` på samme maskine, usynligt for telefonen.
+
 ## Deployment: Docker Compose
 
 - Tre services: `backend` (FastAPI + Uvicorn), `frontend` (bygget statisk build serveret via nginx, eller Vite preview), `mongo` (officielt `mongo` image med named volume for persistens).

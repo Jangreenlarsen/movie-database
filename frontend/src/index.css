@@ -95,10 +95,16 @@ body,
   height: 100%;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 #root {
@@ -134,7 +140,9 @@ input,
 select,
 textarea {
   font-family: inherit;
-  font-size: 0.95rem;
+  /* 16px minimum — iOS Safari auto-zooms the page on focus for any input
+     with a smaller computed font-size. */
+  font-size: 16px;
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -142,6 +150,7 @@ textarea {
   padding: 8px 12px;
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  max-width: 100%;
 }
 
 input:focus,

@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.11.0 (build 0012) — 2026-08-01
+
+- Du kan nu åbne appen fra din telefon på samme netværk: **https://10.1.1.72:5173/**. Telefonens browser advarer om at certifikatet ikke er "betroet" (fordi det er selvsigneret) — vælg "Avanceret"/"Fortsæt alligevel", det er sikkert på jeres eget netværk.
+- Hele sitet er gjort mere mobilvenligt: navigationen stables ordentligt på smalle skærme, filmkortene tilpasser sig skærmbredden, og film-detaljevinduet fylder næsten hele skærmen på telefonen i stedet for at være en lille boks.
+
 ## v0.10.0 (build 0011) — 2026-08-01
 
 - Din konto ("jan") er nu **administrator** — det sker automatisk for den første bruger i systemet.

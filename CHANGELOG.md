@@ -2,6 +2,13 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.11.0 build 0012] — 2026-08-01 — Telefon-adgang over LAN (HTTPS) + mobilvenligt design
+
+- `frontend/vite.config.js`: dev-serveren binder nu til `0.0.0.0` (`server.host: true`) og kører HTTPS med et selvsigneret cert fra `frontend/.cert/` (git-ignoreret, genereres lokalt med `openssl` — se TECH_REFERENCE.md). HTTPS er et hårdt krav fra browseren for at `getUserMedia` (kamera-scanning) må bruges fra andet end `localhost`.
+- Ny indgående firewall-regel (`Movie Database dev (Vite 5173)`, privat netværksprofil) så enheder på samme LAN kan nå dev-serveren. Backend (`:8000`) eksponeres ikke selv — Vite's proxy videresender `/api` server-side, usynligt for telefonen.
+- Mobilvenligt responsivt design: `index.css` (input `font-size: 16px` for at undgå iOS Safaris auto-zoom-på-fokus, `overflow-x: hidden`), `App.css` (header/navigation stables og bliver scrollbar under 640px, brugernavn skjules på smalle skærme), `Library.css` (værktøjslinje/filter-paneler stabler, film-detalje-modalen bliver fuldskærmsagtig og bund-forankret på mobil, grid-kolonner tilpasses), `ScanMovie.css` (kandidat-grid og handlingsknapper tilpasses).
+- Build verificeret (`npm run build`), HTTPS dev-server smoke-testet lokalt og via LAN-IP.
+
 ## [0.10.0 build 0011] — 2026-08-01 — Bruger-roller (admin/standard), adgangskode-ændring
 
 - `models/user.py`: ny `UserRole` enum (`admin`/`standard`), `User.role`. Nye modeller `PasswordChange`, `UserRoleUpdate`.

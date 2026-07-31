@@ -202,3 +202,42 @@
   flex-wrap: wrap;
   gap: 6px;
 }
+
+@media (max-width: 640px) {
+  .app-header-inner {
+    padding: 10px 14px;
+    gap: 10px;
+  }
+
+  .brand {
+    font-size: 0.95rem;
+  }
+
+  .tabs {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+
+  .tabs button {
+    padding: 8px 14px;
+    white-space: nowrap;
+  }
+
+  .header-user span {
+    display: none;
+  }
+
+  .app-main {
+    padding: 16px 14px 48px;
+  }
+
+  .page-header h1 {
+    font-size: 1.2rem;
+  }
+
+  .btn {
+    padding: 10px 14px;
+  }
+}

@@ -116,3 +116,23 @@
   gap: 8px;
   justify-content: flex-end;
 }
+
+@media (max-width: 640px) {
+  .scan-card {
+    padding: 16px;
+  }
+
+  .candidate-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 10px;
+  }
+
+  .review-actions {
+    flex-direction: column-reverse;
+  }
+
+  .review-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

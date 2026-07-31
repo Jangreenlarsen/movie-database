@@ -1,6 +1,7 @@
 {
   "permissions": {
     "allow": [
+      "Bash(*)",
       "Bash(npm -v)",
       "Bash(docker --version)",
       "Bash(git --version)",

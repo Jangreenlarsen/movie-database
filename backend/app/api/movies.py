@@ -3,7 +3,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.db import get_database
 from app.integrations import tmdb_client
-from app.models.movie import Movie, MovieCreate, MovieUpdate
+from app.models.movie import AudioType, Movie, MovieCreate, MovieFormat, MovieUpdate
 from app.models.scan import MovieCandidate
 from app.services import movie_service
 
@@ -14,10 +14,14 @@ router = APIRouter(prefix="/api/movies", tags=["movies"])
 async def list_movies(
     q: str | None = Query(default=None),
     tags: str | None = Query(default=None),
+    format: str | None = Query(default=None, alias="format"),
+    audio_types: str | None = Query(default=None),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     tag_list = tags.split(",") if tags else None
-    return await movie_service.list_movies(db, q, tag_list)
+    format_list = format.split(",") if format else None
+    audio_type_list = audio_types.split(",") if audio_types else None
+    return await movie_service.list_movies(db, q, tag_list, format_list, audio_type_list)
 
 
 @router.post("", response_model=Movie, status_code=201)
@@ -25,12 +29,20 @@ async def create_movie(payload: MovieCreate, db: AsyncIOMotorDatabase = Depends(
     return await movie_service.create_movie(db, payload)
 
 
-# NOTE: must be registered before GET /{movie_id} — otherwise "tmdb-search"
-# matches the {movie_id} path parameter instead.
+# NOTE: must be registered before GET /{movie_id} — otherwise these literal
+# paths match the {movie_id} path parameter instead.
 @router.get("/tmdb-search", response_model=list[MovieCandidate])
 async def tmdb_search(query: str = Query(...)):
     candidates = await tmdb_client.search_movies(query)
     return [MovieCandidate(**candidate) for candidate in candidates]
+
+
+@router.get("/attribute-options")
+async def attribute_options() -> dict:
+    return {
+        "formats": [f.value for f in MovieFormat],
+        "audio_types": [a.value for a in AudioType],
+    }
 
 
 @router.get("/{movie_id}", response_model=Movie)

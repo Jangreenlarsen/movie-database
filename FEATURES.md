@@ -14,3 +14,4 @@ Status: `planned` → `in-progress` → `done`. Tilføj entry *før* implementer
 | 8 | Redigér/slet film                                                     | planned | -       |
 | 9 | PWA-installation på iPhone (manifest + service worker + ikoner)        | planned | -       |
 | 10| Docker Compose-deployment (backend + frontend + MongoDB)                | planned | -       |
+| 11| Strukturerede valgfrie attributter (lyd-type multi-select, film-format single-select fra fast liste) + auto-tildelt fortløbende serienummer pr. film. Filtrerbare i biblioteksvisningen (`/api/movies?format=&audio_types=`) | done | 0.4.0       |

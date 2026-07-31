@@ -13,6 +13,7 @@ from app.services import tag_service
 def _to_model(document: dict) -> Movie:
     return Movie(
         id=str(document["_id"]),
+        serial_number=document["serial_number"],
         tmdb_id=document.get("tmdb_id"),
         barcode=document.get("barcode"),
         title=document["title"],
@@ -22,6 +23,8 @@ def _to_model(document: dict) -> Movie:
         genres=document.get("genres", []),
         cast=document.get("cast", []),
         tags=document.get("tags", []),
+        format=document.get("format"),
+        audio_types=document.get("audio_types", []),
         created_at=document["created_at"],
         updated_at=document["updated_at"],
     )
@@ -53,14 +56,21 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate) -> Movie:
             "cast": payload.cast,
         }
 
+    serial_number = await movie_repository.next_serial_number(db)
+
     document = {
         **movie_fields,
-        "barcode": payload.barcode,
+        "serial_number": serial_number,
         "tags": canonical_tags,
         "tags_normalized": [tag_service.normalize(tag) for tag in canonical_tags],
+        "format": payload.format.value if payload.format else None,
+        "audio_types": [audio_type.value for audio_type in payload.audio_types],
         "created_at": now,
         "updated_at": now,
     }
+    if payload.barcode is not None:
+        document["barcode"] = payload.barcode
+
     try:
         created = await movie_repository.insert(db, document)
     except DuplicateKeyError as exc:
@@ -69,10 +79,16 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate) -> Movie:
 
 
 async def list_movies(
-    db: AsyncIOMotorDatabase, q: str | None, tags: list[str] | None
+    db: AsyncIOMotorDatabase,
+    q: str | None,
+    tags: list[str] | None,
+    formats: list[str] | None = None,
+    audio_types: list[str] | None = None,
 ) -> list[Movie]:
     normalized_tags = [tag_service.normalize(tag) for tag in (tags or []) if tag.strip()]
-    documents = await movie_repository.find_many(db, q, normalized_tags or None)
+    documents = await movie_repository.find_many(
+        db, q, normalized_tags or None, formats or None, audio_types or None
+    )
     return [_to_model(doc) for doc in documents]
 
 
@@ -84,7 +100,7 @@ async def get_movie(db: AsyncIOMotorDatabase, movie_id: str) -> Movie:
 
 
 async def update_movie(db: AsyncIOMotorDatabase, movie_id: str, payload: MovieUpdate) -> Movie:
-    fields = payload.model_dump(exclude_unset=True)
+    fields = payload.model_dump(exclude_unset=True, mode="json")
 
     if "tags" in fields:
         canonical_tags = await tag_service.resolve_tags(db, fields["tags"])

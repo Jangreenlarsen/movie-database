@@ -1,7 +1,10 @@
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo import ReturnDocument
 
 COLLECTION = "movies"
+COUNTERS_COLLECTION = "counters"
+SERIAL_COUNTER_ID = "movie_serial"
 
 
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
@@ -9,6 +12,20 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     await collection.create_index([("title", "text"), ("overview", "text")])
     await collection.create_index("tags_normalized")
     await collection.create_index("barcode", unique=True, sparse=True)
+    await collection.create_index("format")
+    await collection.create_index("audio_types")
+    await collection.create_index("serial_number", unique=True)
+
+
+async def next_serial_number(db: AsyncIOMotorDatabase) -> int:
+    """Atomically incremented, race-safe even under concurrent creates."""
+    counter = await db[COUNTERS_COLLECTION].find_one_and_update(
+        {"_id": SERIAL_COUNTER_ID},
+        {"$inc": {"value": 1}},
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+    )
+    return counter["value"]
 
 
 async def insert(db: AsyncIOMotorDatabase, document: dict) -> dict:
@@ -23,13 +40,21 @@ async def find_by_id(db: AsyncIOMotorDatabase, movie_id: str) -> dict | None:
 
 
 async def find_many(
-    db: AsyncIOMotorDatabase, query: str | None, normalized_tags: list[str] | None
+    db: AsyncIOMotorDatabase,
+    query: str | None,
+    normalized_tags: list[str] | None,
+    formats: list[str] | None = None,
+    audio_types: list[str] | None = None,
 ) -> list[dict]:
     filter_: dict = {}
     if query:
         filter_["$text"] = {"$search": query}
     if normalized_tags:
         filter_["tags_normalized"] = {"$all": normalized_tags}
+    if formats:
+        filter_["format"] = {"$in": formats}
+    if audio_types:
+        filter_["audio_types"] = {"$in": audio_types}
 
     cursor = db[COLLECTION].find(filter_).sort("created_at", -1)
     return await cursor.to_list(length=500)

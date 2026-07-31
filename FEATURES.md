@@ -22,3 +22,6 @@ Status: `planned` → `in-progress` → `done`. Tilføj entry *før* implementer
 | 16| Settings-side: opsætning af serienummer-generatoren (næste nummer, increment, antal cifre). Redigering af en *bestemt* films serienummer sker i filmens redigeringsvindue (auto-byt ved kollision med en anden films nummer) | done | 0.9.0       |
 | 17| Fler-niveau sortering i biblioteksvisning (op til 3 niveauer, fx: 1. format, 2. lyd-type, 3. titel), hvert niveau med egen retning | planned | -       |
 | 18| Automatisk "Tilføjet af {brugernavn}"-tag på film ved oprettelse (uanset om det sker via scan, manuel TMDb-søgning eller ren manuel indtastning) | planned | -       |
+| 19| Bruger-roller (admin/standard). Første registrerede bruger bliver automatisk admin. Admin kan liste alle brugere og forfremme/degradere roller. Serienummer-generator-opsætning kræver admin (skrivning — læsning er åben for alle). Adgangskode-ændring på Settings-siden. | done | 0.10.0       |
+| 20| OTA-opdateringsfunktion fra GitHub-repo, inkl. tjek/installation af manglende afhængigheder (pip/npm) ved opdatering (kræver afklaring af deployment-model — se ARCHITECTURE.md/TECH_REFERENCE.md, feature #10 Docker Compose er stadig ikke verificeret) | planned | -       |
+| 21| Adgang fra telefon over LAN (HTTPS dev-server + firewall-regel) + mobilvenligt responsivt design | done | 0.11.0       |

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_admin
 from app.db import get_database
 from app.models.settings import SerialNumberConfig, SerialNumberConfigUpdate
 from app.services import movie_service
@@ -16,7 +16,7 @@ async def get_serial_number_config(db: AsyncIOMotorDatabase = Depends(get_databa
     return await movie_service.get_serial_number_config(db)
 
 
-@router.patch("/serial-number", response_model=SerialNumberConfig)
+@router.patch("/serial-number", response_model=SerialNumberConfig, dependencies=[Depends(require_admin)])
 async def update_serial_number_config(
     payload: SerialNumberConfigUpdate, db: AsyncIOMotorDatabase = Depends(get_database)
 ):

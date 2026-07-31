@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.10.0 build 0011] — 2026-08-01 — Bruger-roller (admin/standard), adgangskode-ændring
+
+- `models/user.py`: ny `UserRole` enum (`admin`/`standard`), `User.role`. Nye modeller `PasswordChange`, `UserRoleUpdate`.
+- **Bootstrap**: det allerførste registrerede bruger bliver automatisk `admin` (`user_repository.count(db) == 0` på registreringstidspunktet); alle efterfølgende registreringer bliver `standard`. Ingen separat seed-konto med kendt/lækbar adgangskode.
+- Ny `app/api/deps.py::require_admin`-dependency (403 `NotAuthorizedError` for ikke-admin). `PATCH /api/settings/serial-number` kræver nu admin — `GET` er fortsat åben for alle logget-ind brugere.
+- Nye endpoints: `POST /api/users/me/password` (skift egen adgangskode), `GET /api/users` (liste alle, admin), `PATCH /api/users/{id}/role` (forfremme/degradere, admin).
+- **Migreret eksisterende data**: den ægte "jan"-konto (oprettet før roller fandtes) fik sat `role: "admin"` direkte i databasen, da den reelt er den eneste/første bruger af appen.
+- Frontend: `Settings.jsx` har fået en adgangskode-skift-formular (alle brugere) og en "Brugere"-sektion (kun admin: liste + forfrem/degradér). Serienummer-opsætningen vises stadig for alle (læsning), men felterne er disabled og gem-knappen skjult for ikke-admins.
+- Pytest-suite: ny `tests/test_roles.py` (bootstrap, admin-gating på skriv/læs, adgangskode-skift, bruger-liste/rolle-ændring, 403 for standard-brugere). 57/57 grønne. Live-verificeret mod ægte MongoDB.
+
 ## [0.9.0 build 0010] — 2026-08-01 — Serienummer-generator-opsætning (afløser dele af v0.8.0)
 
 - **Redesign efter feedback**: Settings-siden viste i v0.8.0 en liste over alle film med redigérbart serienummer. Det er nu flyttet til filmens redigeringsvindue i biblioteket (hvor det hører hjemme sammen med tags/format/audio_types) — Settings-siden har i stedet fået en "Serienummer-opsætning"-formular til selve generatoren.

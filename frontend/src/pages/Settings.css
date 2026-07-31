@@ -5,6 +5,7 @@
 
 .settings-section {
   padding: 20px;
+  margin-bottom: 20px;
 }
 
 .serial-config-form {
@@ -21,4 +22,46 @@
   gap: 4px;
   font-size: 0.85rem;
   color: var(--text-muted);
+}
+
+.role-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.user-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.user-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.user-row-name {
+  flex: 1;
+  min-width: 120px;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .user-row {
+    gap: 8px;
+  }
 }

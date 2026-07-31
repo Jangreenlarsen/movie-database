@@ -33,6 +33,14 @@ export const api = {
   me: () => request("/users/me"),
   updateMySettings: (payload) =>
     request("/users/me/settings", { method: "PATCH", body: JSON.stringify(payload) }),
+  changeMyPassword: (currentPassword, newPassword) =>
+    request("/users/me/password", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    }),
+  listUsers: () => request("/users"),
+  updateUserRole: (userId, role) =>
+    request(`/users/${userId}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
   listMovies: ({ q, tags, format, audioTypes, sort, direction } = {}) => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);

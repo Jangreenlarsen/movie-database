@@ -12,6 +12,7 @@ from app.core.errors import (
     InvalidCredentialsError,
     MovieNotFoundError,
     NotAuthenticatedError,
+    NotAuthorizedError,
     TmdbNotFoundError,
     TmdbUnavailableError,
     UsernameTakenError,
@@ -81,6 +82,11 @@ async def invalid_credentials_handler(
 @app.exception_handler(NotAuthenticatedError)
 async def not_authenticated_handler(request: Request, exc: NotAuthenticatedError) -> JSONResponse:
     return JSONResponse(status_code=401, content={"detail": str(exc)})
+
+
+@app.exception_handler(NotAuthorizedError)
+async def not_authorized_handler(request: Request, exc: NotAuthorizedError) -> JSONResponse:
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
 
 
 app.include_router(health.router)

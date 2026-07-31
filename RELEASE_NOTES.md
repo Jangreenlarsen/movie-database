@@ -1,5 +1,12 @@
 # Release Notes
 
+## v0.10.0 (build 0011) — 2026-08-01
+
+- Din konto ("jan") er nu **administrator** — det sker automatisk for den første bruger i systemet.
+- Ny mulighed for at **skifte adgangskode** på Indstillinger-siden.
+- Kun administratorer kan ændre serienummer-opsætningen fremover (alle kan stadig se den).
+- Administratorer har fået en "Brugere"-oversigt på Indstillinger-siden, hvor man kan gøre andre brugere til admin (eller fjerne admin-rettigheder igen).
+
 ## v0.9.0 (build 0010) — 2026-08-01
 
 Justering af gårsdagens Settings-side: at rette én bestemt films serienummer gør du nu i filmens redigeringsvindue i biblioteket (sammen med tags/format/lyd), ikke på Settings-siden. Settings-siden har i stedet fået en "Serienummer-opsætning" hvor du styrer selve nummereringen: hvilket nummer den næste tilføjede film får, hvor stort et spring der er mellem numre, og om numrene skal vises med foranstillede nuller (fx "00007").

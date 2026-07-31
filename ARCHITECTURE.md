@@ -39,10 +39,15 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 | POST   | `/api/auth/logout`              | Rydder auth-cookien.                                           | done |
 | GET    | `/api/users/me`                 | Nuværende bruger + indstillinger. 401 hvis ikke logget ind.       | done |
 | PATCH  | `/api/users/me/settings`        | Opdatér bruger-specifikke view-/filter-indstillinger (sort_field, sort_direction, visible_fields). | done |
-| GET    | `/api/settings/serial-number`   | Hent serienummer-generatorens opsætning (`start_number`, `increment`, `padding_width`). | done |
-| PATCH  | `/api/settings/serial-number`   | Opdatér opsætningen. `start_number` flytter *direkte* næste-nummer-markøren (ikke en historisk oprindelse) — se note nedenfor. | done |
+| GET    | `/api/settings/serial-number`   | Hent serienummer-generatorens opsætning (`start_number`, `increment`, `padding_width`). Åben for alle logget-ind brugere. | done |
+| PATCH  | `/api/settings/serial-number`   | Opdatér opsætningen. **Kræver admin.** `start_number` flytter *direkte* næste-nummer-markøren (ikke en historisk oprindelse) — se note nedenfor. | done |
+| POST   | `/api/users/me/password`        | Skift egen adgangskode ({current_password, new_password}). 401 ved forkert nuværende adgangskode. | done |
+| GET    | `/api/users`                    | Liste alle brugere (id, username, role, created_at). **Kræver admin.** | done |
+| PATCH  | `/api/users/{id}/role`          | Sæt en brugers rolle (`admin`\|`standard`). **Kræver admin.**    | done |
 
-> **Auth**: `/api/movies`, `/api/tags`, `/api/scan` og `/api/settings` kræver login (router-level `dependencies=[Depends(get_current_user)]` i `app/api/deps.py`) — 401 uden gyldig session. Session er en JWT i en httpOnly cookie (`access_token`), ikke en Bearer-header. Biblioteket er ét fælles bibliotek for alle brugere; kun view-/filterindstillinger er personlige (gemt i `users.settings`, ikke i browserens localStorage).
+> **Auth**: `/api/movies`, `/api/tags`, `/api/scan` og `/api/settings` (GET) kræver login (router-level `dependencies=[Depends(get_current_user)]` i `app/api/deps.py`) — 401 uden gyldig session. Session er en JWT i en httpOnly cookie (`access_token`), ikke en Bearer-header. Biblioteket er ét fælles bibliotek for alle brugere; kun view-/filterindstillinger er personlige (gemt i `users.settings`, ikke i browserens localStorage).
+
+> **Roller (admin/standard)**: `users.role` — det allerførste registrerede brugere bliver automatisk `admin` (`user_repository.count(db) == 0` ved registrering), alle efterfølgende bliver `standard`. `Depends(require_admin)` (i `app/api/deps.py`, bygger oven på `get_current_user`) giver 403 (`NotAuthorizedError`) for ikke-admin-brugere. Admin kan forfremme/degradere andre via `PATCH /api/users/{id}/role`. Der findes ingen finere-kornet "read/write pr. bruger"-model end dette — alle logget-ind brugere (uanset rolle) kan læse/skrive i det fælles filmbibliotek; rollen styrer kun adgang til system-opsætning (pt. kun serienummer-generatoren) og bruger-administration.
 
 > **Serienummer-generator vs. redigering af én films nummer**: dette er to adskilte ting, bevidst delt over to sider i frontend (Settings-siden vs. filmens redigeringsvindue i biblioteket):
 > - `PATCH /api/settings/serial-number` styrer *generatoren* — hvilket nummer NÆSTE tilføjede film får (`start_number`, som er en "flyt markøren hertil"-handling, ikke en formel-oprindelse), samt spring (`increment`, påvirker kun fremtidige tildelinger) og visnings-padding (`padding_width`, rent kosmetisk, påvirker ikke det lagrede tal).
@@ -87,7 +92,7 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 |------------|-----------------------------------------------------------------------|--------------------------------------------|
 | `movies`   | `serial_number` (fortløbende, immutable), `tmdb_id`, `barcode` (**udelades helt af dokumentet når ikke angivet — se BUGS.md #1**), `title`, `year`, `tags[]` (display-case), `tags_normalized[]` (lowercase, bruges til filtrering), `format` (enum-streng), `audio_types[]` (enum-strenge), `rating` (0-10, TMDb `vote_average`, kun sat når `tmdb_id` er angivet) | text-index på `title`+`overview`, index på `tags_normalized`, `format`, `audio_types`, `year`, `rating`, unique sparse index på `barcode`, unique index på `serial_number` |
 | `tags`     | `name` (første-typede casing), `normalized` (lowercase, unik nøgle)     | unique index på `normalized`                |
-| `counters` | `_id` (fast nøgle `"movie_serial"`), `value` (seneste tildelte serienummer) | — (kun ét dokument, atomisk `$inc`)         |
-| `users`    | `username` (unik), `password_hash` (bcrypt), `settings` (sort_field, sort_direction, visible_fields — personlige view-/filterindstillinger) | unique index på `username`                  |
+| `counters` | `_id` (fast nøgle `"movie_serial"`), `next_value` (hvad næste film får), `increment`, `padding_width` (kun visning) | — (kun ét dokument, atomisk `$inc`)         |
+| `users`    | `username` (unik), `password_hash` (bcrypt), `role` (`admin`\|`standard`), `settings` (sort_field, sort_direction, visible_fields — personlige view-/filterindstillinger) | unique index på `username`                  |
 
 Detaljeret skema og indexes: se [TECH_REFERENCE.md](TECH_REFERENCE.md).

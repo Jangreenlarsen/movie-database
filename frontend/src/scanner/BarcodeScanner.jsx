@@ -1,5 +1,6 @@
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import { useEffect, useRef, useState } from "react";
+import "./BarcodeScanner.css";
 
 export default function BarcodeScanner({ onDetected }) {
   const videoRef = useRef(null);
@@ -39,9 +40,31 @@ export default function BarcodeScanner({ onDetected }) {
 
   return (
     <div className="barcode-scanner">
-      <video ref={videoRef} style={{ width: "100%", maxWidth: 480 }} muted playsInline />
-      {!scanning && <button onClick={startScan}>Start scan</button>}
-      {error && <p role="alert">{error}</p>}
+      <div className={`viewfinder${scanning ? " viewfinder-active" : ""}`}>
+        <video ref={videoRef} muted playsInline />
+        {scanning && (
+          <>
+            <span className="corner corner-tl" />
+            <span className="corner corner-tr" />
+            <span className="corner corner-bl" />
+            <span className="corner corner-br" />
+            <span className="scan-line" />
+          </>
+        )}
+        {!scanning && (
+          <div className="viewfinder-placeholder">
+            <span>📷</span>
+            <p className="muted">Kameraet er slukket</p>
+          </div>
+        )}
+      </div>
+
+      {!scanning && (
+        <button type="button" className="btn btn-primary" onClick={startScan}>
+          Start scan
+        </button>
+      )}
+      {error && <div className="banner banner-error">{error}</div>}
     </div>
   );
 }

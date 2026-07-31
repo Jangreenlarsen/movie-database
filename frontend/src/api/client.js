@@ -16,10 +16,12 @@ async function request(path, options = {}) {
 
 export const api = {
   health: () => request("/health"),
-  listMovies: ({ q, tags } = {}) => {
+  listMovies: ({ q, tags, format, audioTypes } = {}) => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (tags?.length) params.set("tags", tags.join(","));
+    if (format?.length) params.set("format", format.join(","));
+    if (audioTypes?.length) params.set("audio_types", audioTypes.join(","));
     const query = params.toString();
     return request(`/movies${query ? `?${query}` : ""}`);
   },
@@ -30,6 +32,7 @@ export const api = {
     request(`/movies/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteMovie: (id) => request(`/movies/${id}`, { method: "DELETE" }),
   listTags: () => request("/tags"),
+  attributeOptions: () => request("/movies/attribute-options"),
   scanLookup: (barcode) =>
     request("/scan/lookup", { method: "POST", body: JSON.stringify({ barcode }) }),
   tmdbSearch: (query) =>

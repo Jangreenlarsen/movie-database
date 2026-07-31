@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.api.deps import get_current_user
 from app.db import get_database
 from app.services import tag_service
 
-router = APIRouter(prefix="/api/tags", tags=["tags"])
+router = APIRouter(prefix="/api/tags", tags=["tags"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=list[str])

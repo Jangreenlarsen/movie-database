@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.7.0 build 0008] — 2026-08-01 — Brugerlogin + server-side view-indstillinger
+
+- Nye backend-moduler: `core/security.py` (bcrypt password-hash, JWT via `pyjwt`), `models/user.py`, `repositories/user_repository.py`, `services/auth_service.py`, `api/auth.py` (`POST /api/auth/register|login|logout`), `api/users.py` (`GET /api/users/me`, `PATCH /api/users/me/settings`), `api/deps.py::get_current_user`.
+- **Ét fælles filmbibliotek** for alle brugere — kun view-/filterindstillinger (`sort_field`, `sort_direction`, `visible_fields`) er personlige, gemt i `users.settings` i stedet for browserens `localStorage`.
+- `movies`/`tags`/`scan`-routerne kræver nu login (router-level `dependencies=[Depends(get_current_user)]`) — 401 uden gyldig session. Session er en JWT i en httpOnly cookie (`access_token`, `samesite=lax`), ikke en Bearer-header.
+- Åben tilmelding: alle kan oprette en konto via `POST /api/auth/register` (brugernavn 3-32 tegn, adgangskode min. 8 tegn, bcrypt-hashet). Der er ikke lagt et admin-lag ind til at begrænse hvem der kan registrere sig.
+- Frontend: ny `pages/Login.jsx` (login/opret-konto), `App.jsx` gater nu hele appen bag `GET /api/users/me` og har fået en "Log ud"-knap. `Library.jsx`'s sortering/synlige-felter er flyttet fra `localStorage` til `api.updateMySettings()`.
+- Nye JWT/cookie-relaterede indstillinger i `.env.example`: `JWT_SECRET_KEY` (skal genereres unikt pr. miljø), `COOKIE_SECURE` (sæt til `true` bag HTTPS i produktion).
+- Pytest-suite udvidet med `tests/test_auth.py` (register/login/logout/settings/gating). `tests/conftest.py`'s `client`-fixture logger nu automatisk en test-bruger ind via en rigtig `/api/auth/register`-kald (httpx's cookie-jar håndterer resten), så alle eksisterende movie-/tag-/scan-tests fortsat virker uændret. 38/38 grønne. Live-verificeret mod ægte MongoDB (register → beskyttet endpoint → settings-update → logout → 401).
+
 ## [0.6.1 build 0007] — 2026-08-01 — Fix: serienummer/format-badge skjult bag poster
 
 - `frontend/src/pages/Library.css`: `.movie-serial` og `.movie-format-badge` har fået `z-index: 2` — de blev malet under poster-billedet efter `.movie-poster` fik `position: relative` i v0.6.0 (nødvendig for rating-badgen). Se BUGS.md #2.

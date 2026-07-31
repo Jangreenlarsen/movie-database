@@ -8,9 +8,16 @@ Konsulteres ved al teknisk implementering (jf. CLAUDE.md regel 10). Hold opdater
 
 - Python 3.11+ anbefalet (async/await, moderne typing).
 - `backend/app/main.py`: opretter FastAPI-app, registrerer routers fra `app/api/`, sætter CORS (frontend-origin), starter/lukker MongoDB-forbindelse via lifespan-events.
-- Config via `pydantic-settings` (`app/core/config.py`), læser fra `.env`: `MONGO_URI`, `TMDB_API_TOKEN`, `LOG_LEVEL`, `CORS_ORIGINS`.
+- Config via `pydantic-settings` (`app/core/config.py`), læser fra `.env`: `MONGO_URI`, `TMDB_API_TOKEN`, `LOG_LEVEL`, `CORS_ORIGINS`, `JWT_SECRET_KEY`, `COOKIE_SECURE`.
 - Routers i `app/api/` er tynde: validér input (Pydantic), kald service-funktion, returnér response-model. Ingen forretningslogik her (jf. ARCHITECTURE.md).
 - Fejlhåndtering: brug FastAPI `HTTPException` i API-laget; service-laget kaster domæne-specifikke exceptions (fx `MovieNotFoundError`) som en exception-handler i `main.py` mapper til korrekte HTTP-statuskoder.
+
+### Auth (JWT i httpOnly cookie)
+- `app/core/security.py`: `bcrypt` til password-hashing, `pyjwt` til access-tokens. Token indeholder kun `sub` (bruger-id) + `exp`.
+- `app/api/deps.py::get_current_user`: læser `access_token`-cookien, dekoder JWT, slår brugeren op i MongoDB. Bruges som router-level `dependencies=[Depends(get_current_user)]` på `movies`/`tags`/`scan`-routerne — ikke per-endpoint.
+- **`JWT_SECRET_KEY` skal genereres unikt pr. miljø** (`python -c "import secrets; print(secrets.token_urlsafe(48))"`) — default-værdien i koden er kun et fallback for lokal udvikling og må ALDRIG bruges i produktion.
+- `COOKIE_SECURE=true` skal sættes når backend kører bag HTTPS i produktion (ellers sender browseren ikke cookien). `samesite="lax"` er brugt, hvilket virker fint til same-origin-opsætningen (frontend proxier `/api` til backend, se `vite.config.js`).
+- Test-suiten logger automatisk en test-bruger ind i `client`-fixturen (`tests/conftest.py`) via en rigtig `/api/auth/register`-kald, så cookien håndteres af `httpx`'s indbyggede cookie-jar ligesom en browser ville.
 
 ## Database: MongoDB
 

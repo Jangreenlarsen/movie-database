@@ -19,3 +19,19 @@ class TmdbNotFoundError(Exception):
 class TmdbUnavailableError(Exception):
     def __init__(self, message: str):
         super().__init__(message)
+
+
+class UsernameTakenError(Exception):
+    def __init__(self, username: str):
+        self.username = username
+        super().__init__(f"Username '{username}' is already taken")
+
+
+class InvalidCredentialsError(Exception):
+    def __init__(self):
+        super().__init__("Invalid username or password")
+
+
+class NotAuthenticatedError(Exception):
+    def __init__(self):
+        super().__init__("Not authenticated")

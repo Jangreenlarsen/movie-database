@@ -1,6 +1,12 @@
 from datetime import datetime
+from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator
+
+
+class UserRole(str, Enum):
+    ADMIN = "admin"
+    STANDARD = "standard"
 
 
 class VisibleFields(BaseModel):
@@ -40,8 +46,18 @@ class UserLogin(BaseModel):
     password: str
 
 
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class UserRoleUpdate(BaseModel):
+    role: UserRole
+
+
 class User(BaseModel):
     id: str
     username: str
+    role: UserRole
     settings: UserSettings
     created_at: datetime

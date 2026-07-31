@@ -18,6 +18,7 @@
 .search-input-wrap {
   position: relative;
   flex: 1;
+  min-width: 200px;
 }
 
 .search-input-wrap svg {
@@ -297,4 +298,54 @@
   gap: 8px;
   padding: 16px 20px;
   border-top: 1px solid var(--border);
+}
+
+@media (max-width: 640px) {
+  .movie-grid,
+  .skeleton-grid {
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 12px;
+  }
+
+  .filter-group {
+    gap: 6px;
+  }
+
+  .filter-group-label {
+    min-width: 100%;
+  }
+
+  .modal-backdrop {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal-card {
+    max-width: 100%;
+    max-height: 92vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .modal-header {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .modal-poster {
+    width: 76px;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+    padding: 12px 16px;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }

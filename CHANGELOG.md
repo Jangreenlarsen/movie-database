@@ -2,6 +2,39 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.11.0 build 0012] — 2026-08-01 — Telefon-adgang over LAN (HTTPS) + mobilvenligt design
+
+- `frontend/vite.config.js`: dev-serveren binder nu til `0.0.0.0` (`server.host: true`) og kører HTTPS med et selvsigneret cert fra `frontend/.cert/` (git-ignoreret, genereres lokalt med `openssl` — se TECH_REFERENCE.md). HTTPS er et hårdt krav fra browseren for at `getUserMedia` (kamera-scanning) må bruges fra andet end `localhost`.
+- Ny indgående firewall-regel (`Movie Database dev (Vite 5173)`, privat netværksprofil) så enheder på samme LAN kan nå dev-serveren. Backend (`:8000`) eksponeres ikke selv — Vite's proxy videresender `/api` server-side, usynligt for telefonen.
+- Mobilvenligt responsivt design: `index.css` (input `font-size: 16px` for at undgå iOS Safaris auto-zoom-på-fokus, `overflow-x: hidden`), `App.css` (header/navigation stables og bliver scrollbar under 640px, brugernavn skjules på smalle skærme), `Library.css` (værktøjslinje/filter-paneler stabler, film-detalje-modalen bliver fuldskærmsagtig og bund-forankret på mobil, grid-kolonner tilpasses), `ScanMovie.css` (kandidat-grid og handlingsknapper tilpasses).
+- Build verificeret (`npm run build`), HTTPS dev-server smoke-testet lokalt og via LAN-IP.
+
+## [0.10.0 build 0011] — 2026-08-01 — Bruger-roller (admin/standard), adgangskode-ændring
+
+- `models/user.py`: ny `UserRole` enum (`admin`/`standard`), `User.role`. Nye modeller `PasswordChange`, `UserRoleUpdate`.
+- **Bootstrap**: det allerførste registrerede bruger bliver automatisk `admin` (`user_repository.count(db) == 0` på registreringstidspunktet); alle efterfølgende registreringer bliver `standard`. Ingen separat seed-konto med kendt/lækbar adgangskode.
+- Ny `app/api/deps.py::require_admin`-dependency (403 `NotAuthorizedError` for ikke-admin). `PATCH /api/settings/serial-number` kræver nu admin — `GET` er fortsat åben for alle logget-ind brugere.
+- Nye endpoints: `POST /api/users/me/password` (skift egen adgangskode), `GET /api/users` (liste alle, admin), `PATCH /api/users/{id}/role` (forfremme/degradere, admin).
+- **Migreret eksisterende data**: den ægte "jan"-konto (oprettet før roller fandtes) fik sat `role: "admin"` direkte i databasen, da den reelt er den eneste/første bruger af appen.
+- Frontend: `Settings.jsx` har fået en adgangskode-skift-formular (alle brugere) og en "Brugere"-sektion (kun admin: liste + forfrem/degradér). Serienummer-opsætningen vises stadig for alle (læsning), men felterne er disabled og gem-knappen skjult for ikke-admins.
+- Pytest-suite: ny `tests/test_roles.py` (bootstrap, admin-gating på skriv/læs, adgangskode-skift, bruger-liste/rolle-ændring, 403 for standard-brugere). 57/57 grønne. Live-verificeret mod ægte MongoDB.
+
+## [0.9.0 build 0010] — 2026-08-01 — Serienummer-generator-opsætning (afløser dele af v0.8.0)
+
+- **Redesign efter feedback**: Settings-siden viste i v0.8.0 en liste over alle film med redigérbart serienummer. Det er nu flyttet til filmens redigeringsvindue i biblioteket (hvor det hører hjemme sammen med tags/format/audio_types) — Settings-siden har i stedet fået en "Serienummer-opsætning"-formular til selve generatoren.
+- Counter-dokumentet (`counters._id: "movie_serial"`) har fået et nyt skema: `next_value` (hvilket nummer næste film får), `increment` (spring for fremtidige tildelinger), `padding_width` (kun visning). Migreres automatisk fra det gamle skema (`{"value": N}`) ved første tilgang — ingen manuel migrering nødvendig.
+- Nye endpoints `GET`/`PATCH /api/settings/serial-number`. `start_number` er en "flyt næste-nummer-markøren hertil"-handling (ikke en formel-oprindelse) — sætter du den til 500, får den næste tilføjede film nummer 500 præcis. `increment` ændrer kun springet for fremtidige tildelinger fra det nuværende punkt.
+- `movie_repository.next_serial_number` er nu kollisions-sikker efter reconfigurering: rammer det beregnede nummer en allerede-brugt værdi (fx efter at have flyttet `start_number` tilbage i et brugt interval), rykker den videre til første ledige nummer i stedet for at fejle med en duplicate-key-fejl.
+- `padding_width` bruges i frontend til at zero-padde serienummer-badges (fx "00007") — rent visuelt, påvirker ikke det lagrede tal eller sorteringen.
+- Pytest-suite: ny `tests/test_settings.py` (default-opsætning, ændring af start/increment, kollisions-omgåelse efter reconfigurering, validering, auth-krav). 48/48 grønne. Live-verificeret mod ægte MongoDB, inkl. den automatiske skema-migrering af det eksisterende counter-dokument.
+
+## [0.8.0 build 0009] — 2026-08-01 — Settings-side: redigérbart serienummer
+
+- `MovieUpdate` accepterer nu `serial_number` (positivt heltal). `movie_service._reassign_serial_number` bytter automatisk plads med en evt. film der allerede har det ønskede nummer — via et sentinel-mellemtrin (`-1`), da MongoDB's unique index på `serial_number` ellers ville afvise et direkte byt (intet indbygget atomisk "swap to unique values" uden transaktioner).
+- Nye repository-funktioner `find_by_serial_number` og `set_serial_number` i `movie_repository.py`.
+- Ny frontend-side `pages/Settings.jsx` (+ `Settings.css`), tilgået via en ny "Indstillinger"-fane i hovednavigationen. Viser konto-info (brugernavn) og en liste over alle film med redigérbart serienummer pr. række.
+- Pytest-suite udvidet med swap-scenariet, "sæt til ubrugt nummer" og validering af ikke-positive værdier (422). 41/41 grønne. Live-verificeret mod ægte MongoDB (byt bekræftet i begge retninger).
+
 ## [0.7.0 build 0008] — 2026-08-01 — Brugerlogin + server-side view-indstillinger
 
 - Nye backend-moduler: `core/security.py` (bcrypt password-hash, JWT via `pyjwt`), `models/user.py`, `repositories/user_repository.py`, `services/auth_service.py`, `api/auth.py` (`POST /api/auth/register|login|logout`), `api/users.py` (`GET /api/users/me`, `PATCH /api/users/me/settings`), `api/deps.py::get_current_user`.

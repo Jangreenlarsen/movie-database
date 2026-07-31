@@ -5,13 +5,14 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import auth, health, movies, scan, tags, users
+from app.api import auth, health, movies, scan, settings as settings_api, tags, users
 from app.core.config import settings
 from app.core.errors import (
     DuplicateBarcodeError,
     InvalidCredentialsError,
     MovieNotFoundError,
     NotAuthenticatedError,
+    NotAuthorizedError,
     TmdbNotFoundError,
     TmdbUnavailableError,
     UsernameTakenError,
@@ -83,9 +84,15 @@ async def not_authenticated_handler(request: Request, exc: NotAuthenticatedError
     return JSONResponse(status_code=401, content={"detail": str(exc)})
 
 
+@app.exception_handler(NotAuthorizedError)
+async def not_authorized_handler(request: Request, exc: NotAuthorizedError) -> JSONResponse:
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(movies.router)
 app.include_router(tags.router)
 app.include_router(scan.router)
+app.include_router(settings_api.router)

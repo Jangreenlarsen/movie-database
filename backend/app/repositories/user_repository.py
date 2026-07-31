@@ -40,3 +40,25 @@ async def update_settings(db: AsyncIOMotorDatabase, user_id: str, settings: dict
         return None
     await db[COLLECTION].update_one({"_id": ObjectId(user_id)}, {"$set": {"settings": settings}})
     return await db[COLLECTION].find_one({"_id": ObjectId(user_id)})
+
+
+async def count(db: AsyncIOMotorDatabase) -> int:
+    return await db[COLLECTION].count_documents({})
+
+
+async def list_all(db: AsyncIOMotorDatabase) -> list[dict]:
+    cursor = db[COLLECTION].find().sort("created_at", 1)
+    return await cursor.to_list(length=1000)
+
+
+async def set_role(db: AsyncIOMotorDatabase, user_id: str, role: str) -> dict | None:
+    if not ObjectId.is_valid(user_id):
+        return None
+    await db[COLLECTION].update_one({"_id": ObjectId(user_id)}, {"$set": {"role": role}})
+    return await db[COLLECTION].find_one({"_id": ObjectId(user_id)})
+
+
+async def set_password_hash(db: AsyncIOMotorDatabase, user_id: str, password_hash: str) -> None:
+    await db[COLLECTION].update_one(
+        {"_id": ObjectId(user_id)}, {"$set": {"password_hash": password_hash}}
+    )

@@ -58,6 +58,7 @@ class MovieUpdate(BaseModel):
     tags: list[str] | None = None
     format: MovieFormat | None = None
     audio_types: list[AudioType] | None = None
+    serial_number: int | None = Field(default=None, gt=0)
 
 
 class Movie(BaseModel):

@@ -1,7 +1,7 @@
 from fastapi import Cookie, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.core.errors import NotAuthenticatedError
+from app.core.errors import NotAuthenticatedError, NotAuthorizedError
 from app.core.security import decode_access_token
 from app.db import get_database
 from app.repositories import user_repository
@@ -25,3 +25,9 @@ async def get_current_user(
         raise NotAuthenticatedError()
 
     return user
+
+
+async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    if current_user.get("role") != "admin":
+        raise NotAuthorizedError()
+    return current_user

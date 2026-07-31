@@ -27,7 +27,7 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 | GET    | `/api/movies`                  | Liste film, understøtter `?q=` (fritekst, MongoDB `$text`), `?tags=` (kommasepareret, case-insensitiv `$all`-match), `?format=` og `?audio_types=` (kommasepareret, `$in`-match), samt `?sort=` (`title`\|`year`\|`serial_number`\|`rating`) + `?direction=` (`asc`\|`desc`, default `desc`) | done |
 | GET    | `/api/movies/{id}`             | Hent én film med fuld metadata                             | done |
 | POST   | `/api/movies`                  | Opret film (manuelt eller efter scan-bekræftelse). 409 ved dublet `barcode`. Tildeler automatisk fortløbende `serial_number`. | done |
-| PATCH  | `/api/movies/{id}`             | Opdater film (tags, format, audio_types, noter — IKKE `serial_number`, den er immutable) | done |
+| PATCH  | `/api/movies/{id}`             | Opdater film (tags, format, audio_types, noter, samt `serial_number` — se note nedenfor) | done |
 | DELETE | `/api/movies/{id}`             | Slet film                                                     | done |
 | GET    | `/api/movies/attribute-options`| Liste gyldige `format`- og `audio_types`-værdier (enum-kilde til frontend-dropdowns). Registreret før `/{movie_id}`. | done |
 | GET    | `/api/tags`                    | Liste alle tags (til autocomplete)                            | done |
@@ -39,12 +39,27 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 | POST   | `/api/auth/logout`              | Rydder auth-cookien.                                           | done |
 | GET    | `/api/users/me`                 | Nuværende bruger + indstillinger. 401 hvis ikke logget ind.       | done |
 | PATCH  | `/api/users/me/settings`        | Opdatér bruger-specifikke view-/filter-indstillinger (sort_field, sort_direction, visible_fields). | done |
+| GET    | `/api/settings/serial-number`   | Hent serienummer-generatorens opsætning (`start_number`, `increment`, `padding_width`). Åben for alle logget-ind brugere. | done |
+| PATCH  | `/api/settings/serial-number`   | Opdatér opsætningen. **Kræver admin.** `start_number` flytter *direkte* næste-nummer-markøren (ikke en historisk oprindelse) — se note nedenfor. | done |
+| POST   | `/api/users/me/password`        | Skift egen adgangskode ({current_password, new_password}). 401 ved forkert nuværende adgangskode. | done |
+| GET    | `/api/users`                    | Liste alle brugere (id, username, role, created_at). **Kræver admin.** | done |
+| PATCH  | `/api/users/{id}/role`          | Sæt en brugers rolle (`admin`\|`standard`). **Kræver admin.**    | done |
 
-> **Auth**: `/api/movies`, `/api/tags` og `/api/scan` kræver login (router-level `dependencies=[Depends(get_current_user)]` i `app/api/deps.py`) — 401 uden gyldig session. Session er en JWT i en httpOnly cookie (`access_token`), ikke en Bearer-header. Biblioteket er ét fælles bibliotek for alle brugere; kun view-/filterindstillinger er personlige (gemt i `users.settings`, ikke i browserens localStorage).
+> **Auth**: `/api/movies`, `/api/tags`, `/api/scan` og `/api/settings` (GET) kræver login (router-level `dependencies=[Depends(get_current_user)]` i `app/api/deps.py`) — 401 uden gyldig session. Session er en JWT i en httpOnly cookie (`access_token`), ikke en Bearer-header. Biblioteket er ét fælles bibliotek for alle brugere; kun view-/filterindstillinger er personlige (gemt i `users.settings`, ikke i browserens localStorage).
+
+> **Roller (admin/standard)**: `users.role` — det allerførste registrerede brugere bliver automatisk `admin` (`user_repository.count(db) == 0` ved registrering), alle efterfølgende bliver `standard`. `Depends(require_admin)` (i `app/api/deps.py`, bygger oven på `get_current_user`) giver 403 (`NotAuthorizedError`) for ikke-admin-brugere. Admin kan forfremme/degradere andre via `PATCH /api/users/{id}/role`. Der findes ingen finere-kornet "read/write pr. bruger"-model end dette — alle logget-ind brugere (uanset rolle) kan læse/skrive i det fælles filmbibliotek; rollen styrer kun adgang til system-opsætning (pt. kun serienummer-generatoren) og bruger-administration.
+
+> **Serienummer-generator vs. redigering af én films nummer**: dette er to adskilte ting, bevidst delt over to sider i frontend (Settings-siden vs. filmens redigeringsvindue i biblioteket):
+> - `PATCH /api/settings/serial-number` styrer *generatoren* — hvilket nummer NÆSTE tilføjede film får (`start_number`, som er en "flyt markøren hertil"-handling, ikke en formel-oprindelse), samt spring (`increment`, påvirker kun fremtidige tildelinger) og visnings-padding (`padding_width`, rent kosmetisk, påvirker ikke det lagrede tal).
+> - `PATCH /api/movies/{id}` med `serial_number` ændrer én **eksisterende** films nummer direkte og bytter automatisk med en evt. kolliderende film (se `movie_service._reassign_serial_number`).
+> - `movie_repository.next_serial_number` er kollisions-sikker: hvis det beregnede næste-nummer allerede er i brug (typisk lige efter `start_number` er flyttet tilbage til et brugt interval), rykker den videre til første ledige nummer i stedet for at fejle.
+> - Counter-dokumentet migrerede fra det gamle skema (`{"value": N}`) til det nye (`{"next_value": N, "increment": 1, "padding_width": 0}`) automatisk ved første tilgang efter v0.9.0 — ingen manuel migrering nødvendig.
 
 > `POST /api/movies` accepterer nu enten `tmdb_id` (backend henter fuld metadata fra TMDb server-side) eller en manuel `title` (fuldt manuel oprettelse uden TMDb). Se `MovieCreate` i `backend/app/models/movie.py`.
 
-> **Strukturerede attributter**: `format` (étvalg, fast enum: VHS/DVD/Blu-ray/4K Ultra HD/Digital) og `audio_types` (flervalg, fast enum: Stereo/Mono/Dolby Digital/Dolby Digital 5.1/Dolby Digital 7.1/DTS/DTS-HD Master Audio/Dolby Atmos/Dolby TrueHD) — se `MovieFormat`/`AudioType` i `backend/app/models/movie.py`. I modsætning til tags er disse IKKE fritekst; ugyldige værdier afvises med 422. `serial_number` er et fortløbende heltal tildelt server-side ved oprettelse (atomisk `$inc` på en `counters`-collection, se `movie_repository.next_serial_number`) — kan ikke sættes eller ændres af klienten.
+> **Strukturerede attributter**: `format` (étvalg, fast enum: VHS/DVD/Blu-ray/4K Ultra HD/Digital) og `audio_types` (flervalg, fast enum: Stereo/Mono/Dolby Digital/Dolby Digital 5.1/Dolby Digital 7.1/DTS/DTS-HD Master Audio/Dolby Atmos/Dolby TrueHD) — se `MovieFormat`/`AudioType` i `backend/app/models/movie.py`. I modsætning til tags er disse IKKE fritekst; ugyldige værdier afvises med 422. `serial_number` er et fortløbende heltal tildelt server-side ved oprettelse (atomisk `$inc` på en `counters`-collection, se `movie_repository.next_serial_number`).
+
+> **Redigering af `serial_number`** (Settings-siden, feature #16): `PATCH /api/movies/{id}` accepterer nu `serial_number` (positivt heltal). Kolliderer den ønskede værdi med en anden films eksisterende serienummer, **bytter** de to film automatisk plads (`movie_service._reassign_serial_number`) — via et mellemtrin gennem en sentinel-værdi (`-1`), da MongoDB's unique index ellers ville afvise et direkte byt (ingen indbygget atomisk swap uden transaktioner).
 
 > **Rating**: `rating` (0-10, TMDb's `vote_average` — IKKE den faktiske IMDb-rating, se MOVIE_API_REFERENCE.md) hentes automatisk ved oprettelse via `tmdb_id` og caches lokalt som alle andre TMDb-felter. Ikke sættelig af klienten (hverken `MovieCreate` eller `MovieUpdate`); manuelt oprettede film (uden `tmdb_id`) har altid `rating: null`.
 
@@ -77,7 +92,7 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 |------------|-----------------------------------------------------------------------|--------------------------------------------|
 | `movies`   | `serial_number` (fortløbende, immutable), `tmdb_id`, `barcode` (**udelades helt af dokumentet når ikke angivet — se BUGS.md #1**), `title`, `year`, `tags[]` (display-case), `tags_normalized[]` (lowercase, bruges til filtrering), `format` (enum-streng), `audio_types[]` (enum-strenge), `rating` (0-10, TMDb `vote_average`, kun sat når `tmdb_id` er angivet) | text-index på `title`+`overview`, index på `tags_normalized`, `format`, `audio_types`, `year`, `rating`, unique sparse index på `barcode`, unique index på `serial_number` |
 | `tags`     | `name` (første-typede casing), `normalized` (lowercase, unik nøgle)     | unique index på `normalized`                |
-| `counters` | `_id` (fast nøgle `"movie_serial"`), `value` (seneste tildelte serienummer) | — (kun ét dokument, atomisk `$inc`)         |
-| `users`    | `username` (unik), `password_hash` (bcrypt), `settings` (sort_field, sort_direction, visible_fields — personlige view-/filterindstillinger) | unique index på `username`                  |
+| `counters` | `_id` (fast nøgle `"movie_serial"`), `next_value` (hvad næste film får), `increment`, `padding_width` (kun visning) | — (kun ét dokument, atomisk `$inc`)         |
+| `users`    | `username` (unik), `password_hash` (bcrypt), `role` (`admin`\|`standard`), `settings` (sort_field, sort_direction, visible_fields — personlige view-/filterindstillinger) | unique index på `username`                  |
 
 Detaljeret skema og indexes: se [TECH_REFERENCE.md](TECH_REFERENCE.md).

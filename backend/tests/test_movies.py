@@ -217,6 +217,39 @@ async def test_update_movie_format_and_audio_types(client):
     assert update_response.json()["audio_types"] == ["Dolby Atmos"]
 
 
+async def test_update_serial_number_swaps_with_conflicting_movie(client):
+    first = await client.post("/api/movies", json={"title": "First"})
+    second = await client.post("/api/movies", json={"title": "Second"})
+    first_id = first.json()["id"]
+    second_id = second.json()["id"]
+    assert first.json()["serial_number"] == 1
+    assert second.json()["serial_number"] == 2
+
+    response = await client.patch(f"/api/movies/{first_id}", json={"serial_number": 2})
+    assert response.status_code == 200
+    assert response.json()["serial_number"] == 2
+
+    swapped = await client.get(f"/api/movies/{second_id}")
+    assert swapped.json()["serial_number"] == 1
+
+
+async def test_update_serial_number_to_unused_value_does_not_swap(client):
+    only = await client.post("/api/movies", json={"title": "Only"})
+    only_id = only.json()["id"]
+
+    response = await client.patch(f"/api/movies/{only_id}", json={"serial_number": 42})
+    assert response.status_code == 200
+    assert response.json()["serial_number"] == 42
+
+
+async def test_update_serial_number_rejects_non_positive(client):
+    created = await client.post("/api/movies", json={"title": "Foo"})
+    movie_id = created.json()["id"]
+
+    response = await client.patch(f"/api/movies/{movie_id}", json={"serial_number": 0})
+    assert response.status_code == 422
+
+
 async def test_attribute_options_endpoint(client):
     response = await client.get("/api/movies/attribute-options")
     assert response.status_code == 200

@@ -42,6 +42,10 @@ function toggleValue(list, value) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
+function formatSerial(serialNumber, paddingWidth) {
+  return `#${String(serialNumber).padStart(paddingWidth, "0")}`;
+}
+
 export default function Library({ user, onSettingsChanged }) {
   const [query, setQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
@@ -56,6 +60,7 @@ export default function Library({ user, onSettingsChanged }) {
   const [activeMovie, setActiveMovie] = useState(null);
   const [visibleFields, setVisibleFields] = useState(() => visibleFieldsFromSettings(user.settings));
   const [showFieldPanel, setShowFieldPanel] = useState(false);
+  const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
 
   function persistSettings({ sortField: nextSort, sortDirection: nextDirection, visibleFields: nextVisible }) {
     api
@@ -77,6 +82,10 @@ export default function Library({ user, onSettingsChanged }) {
   useEffect(() => {
     api.listTags().then(setAllTags).catch(() => {});
     api.attributeOptions().then(setAttributeOptions).catch(() => {});
+    api
+      .getSerialNumberConfig()
+      .then((config) => setSerialPaddingWidth(config.padding_width))
+      .catch(() => {});
   }, []);
 
   function fetchMovies() {
@@ -281,7 +290,7 @@ export default function Library({ user, onSettingsChanged }) {
         <ul className="movie-grid">
           {movies.map((movie) => (
             <li key={movie.id} className="movie-card" onClick={() => setActiveMovie(movie)}>
-              <div className="movie-serial">#{movie.serial_number}</div>
+              <div className="movie-serial">{formatSerial(movie.serial_number, serialPaddingWidth)}</div>
               {movie.format && <div className="movie-format-badge">{movie.format}</div>}
               <div className="movie-poster">
                 {movie.poster_url ? (
@@ -324,6 +333,7 @@ export default function Library({ user, onSettingsChanged }) {
           movie={activeMovie}
           allTags={allTags}
           attributeOptions={attributeOptions}
+          serialPaddingWidth={serialPaddingWidth}
           onClose={() => setActiveMovie(null)}
           onChanged={() => {
             refresh();
@@ -335,30 +345,47 @@ export default function Library({ user, onSettingsChanged }) {
   );
 }
 
-function MovieDetailModal({ movie, attributeOptions, onClose, onChanged }) {
+function MovieDetailModal({ movie, attributeOptions, serialPaddingWidth, onClose, onChanged }) {
   const [tagsInput, setTagsInput] = useState(movie.tags.join(", "));
   const [format, setFormat] = useState(movie.format ?? "");
   const [audioTypes, setAudioTypes] = useState(movie.audio_types);
+  const [serialNumberInput, setSerialNumberInput] = useState(String(movie.serial_number));
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState(null);
 
   const dirty = useMemo(() => {
     const tagsChanged =
       tagsInput.split(",").map((t) => t.trim()).filter(Boolean).join(",") !==
       movie.tags.join(",");
-    return tagsChanged || format !== (movie.format ?? "") || audioTypes.join(",") !== movie.audio_types.join(",");
-  }, [tagsInput, format, audioTypes, movie]);
+    const serialChanged =
+      Number(serialNumberInput) > 0 && Number(serialNumberInput) !== movie.serial_number;
+    return (
+      tagsChanged ||
+      format !== (movie.format ?? "") ||
+      audioTypes.join(",") !== movie.audio_types.join(",") ||
+      serialChanged
+    );
+  }, [tagsInput, format, audioTypes, serialNumberInput, movie]);
 
   async function save() {
     setSaving(true);
+    setError(null);
     try {
-      await api.updateMovie(movie.id, {
+      const payload = {
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
         format: format || null,
         audio_types: audioTypes,
-      });
+      };
+      const nextSerial = Number(serialNumberInput);
+      if (nextSerial > 0 && nextSerial !== movie.serial_number) {
+        payload.serial_number = nextSerial;
+      }
+      await api.updateMovie(movie.id, payload);
       onChanged();
       onClose();
+    } catch (err) {
+      setError(err.message);
     } finally {
       setSaving(false);
     }
@@ -386,7 +413,8 @@ function MovieDetailModal({ movie, attributeOptions, onClose, onChanged }) {
           <div>
             <h2>{movie.title}</h2>
             <p className="muted">
-              {movie.year ?? "År ukendt"} · Serienr. #{movie.serial_number}
+              {movie.year ?? "År ukendt"} · Serienr.{" "}
+              {formatSerial(movie.serial_number, serialPaddingWidth)}
               {movie.rating != null && <> · ★ {movie.rating.toFixed(1)}</>}
             </p>
             {movie.genres.length > 0 && <p className="muted">{movie.genres.join(", ")}</p>}
@@ -403,6 +431,21 @@ function MovieDetailModal({ movie, attributeOptions, onClose, onChanged }) {
               <strong>Medvirkende:</strong> {movie.cast.join(", ")}
             </p>
           )}
+
+          <div>
+            <div className="modal-section-label">Serienummer</div>
+            <input
+              type="number"
+              min="1"
+              value={serialNumberInput}
+              onChange={(e) => setSerialNumberInput(e.target.value)}
+              style={{ width: 100 }}
+            />
+            <p className="muted" style={{ marginTop: 4 }}>
+              Er nummeret allerede i brug af en anden film, bytter de to film
+              automatisk plads.
+            </p>
+          </div>
 
           <div>
             <div className="modal-section-label">Tags</div>
@@ -434,6 +477,8 @@ function MovieDetailModal({ movie, attributeOptions, onClose, onChanged }) {
               ))}
             </div>
           </div>
+
+          {error && <div className="banner banner-error">{error}</div>}
         </div>
 
         <div className="modal-footer">

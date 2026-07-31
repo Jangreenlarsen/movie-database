@@ -7,9 +7,12 @@ export default function ScanMovie() {
   const [candidates, setCandidates] = useState([]);
   const [status, setStatus] = useState("idle");
   const [tags, setTags] = useState("");
+  const [manualQuery, setManualQuery] = useState("");
+  const [manualStatus, setManualStatus] = useState("idle");
 
   async function handleDetected(code) {
     setBarcode(code);
+    setManualStatus("idle");
     setStatus("looking-up");
     try {
       const result = await api.scanLookup(code);
@@ -17,6 +20,22 @@ export default function ScanMovie() {
       setStatus("ready");
     } catch {
       setStatus("error");
+    }
+  }
+
+  async function searchManually(event) {
+    event.preventDefault();
+    if (!manualQuery.trim()) return;
+
+    setBarcode(null);
+    setManualStatus("searching");
+    try {
+      const results = await api.tmdbSearch(manualQuery.trim());
+      setCandidates(results);
+      setStatus("ready");
+      setManualStatus("ready");
+    } catch {
+      setManualStatus("error");
     }
   }
 
@@ -41,12 +60,34 @@ export default function ScanMovie() {
       {status === "looking-up" && <p>Slår op...</p>}
       {status === "error" && (
         <p role="alert">
-          Opslag fejlede. `/api/scan/lookup` er muligvis ikke implementeret endnu.
+          Opslag fejlede. Prøv igen, eller søg manuelt på titel i stedet.
         </p>
       )}
 
       {status === "ready" && candidates.length === 0 && (
         <p>Intet match fundet — søg manuelt på titel i stedet.</p>
+      )}
+
+      <form onSubmit={searchManually}>
+        <label>
+          Søg manuelt på titel (TMDb):
+          <input
+            value={manualQuery}
+            onChange={(e) => setManualQuery(e.target.value)}
+            placeholder="Filmtitel..."
+          />
+        </label>
+        <button type="submit">Søg</button>
+      </form>
+      {manualStatus === "searching" && <p>Søger på TMDb...</p>}
+      {manualStatus === "error" && (
+        <p role="alert">
+          TMDb-søgning fejlede. Tjek at backend har en gyldig TMDB_API_TOKEN
+          konfigureret (se MOVIE_API_REFERENCE.md).
+        </p>
+      )}
+      {manualStatus === "ready" && candidates.length === 0 && (
+        <p>Ingen film matchede din søgning.</p>
       )}
 
       {status === "ready" && candidates.length > 0 && (

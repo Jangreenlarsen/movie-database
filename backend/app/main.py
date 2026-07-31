@@ -5,9 +5,14 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import health, movies, tags
+from app.api import health, movies, scan, tags
 from app.core.config import settings
-from app.core.errors import DuplicateBarcodeError, MovieNotFoundError
+from app.core.errors import (
+    DuplicateBarcodeError,
+    MovieNotFoundError,
+    TmdbNotFoundError,
+    TmdbUnavailableError,
+)
 from app.db import close_client, get_client, get_database
 from app.repositories import movie_repository, tag_repository
 
@@ -47,6 +52,17 @@ async def duplicate_barcode_handler(request: Request, exc: DuplicateBarcodeError
     return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
+@app.exception_handler(TmdbNotFoundError)
+async def tmdb_not_found_handler(request: Request, exc: TmdbNotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(TmdbUnavailableError)
+async def tmdb_unavailable_handler(request: Request, exc: TmdbUnavailableError) -> JSONResponse:
+    return JSONResponse(status_code=502, content={"detail": str(exc)})
+
+
 app.include_router(health.router)
 app.include_router(movies.router)
 app.include_router(tags.router)
+app.include_router(scan.router)

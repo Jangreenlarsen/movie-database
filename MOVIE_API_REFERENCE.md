@@ -39,9 +39,9 @@ Konsulteres ved al integration med eksterne film-/stregkode-API'er (jf. CLAUDE.m
 
 ## UPC-opslagstjeneste (stregkode → produkt/titel)
 
-> **TODO ved implementering**: Vælg og opret konto hos en konkret udbyder. Anbefalet startpunkt er **UPCitemdb** (gratis "trial" tier, ingen kreditkort krævet, ~100 opslag/dag), men skift frit hvis en anden udbyder (fx Barcode Lookup, Barcodable) passer bedre. Uanset udbyder skal integrationen isoleres i `backend/app/integrations/upc_client.py` så udbyderen kan skiftes uden at røre service-laget.
+Implementeret i `backend/app/integrations/upc_client.py` mod **UPCitemdb**'s gratis trial-tier (live-verificeret). Skift udbyder ved at ændre denne fil alene — service-laget kender kun til `lookup_title(barcode) -> str | None`.
 
-### UPCitemdb (foreløbig reference)
+### UPCitemdb
 - **Base URL**: `https://api.upcitemdb.com/prod/trial/lookup`
 - **Auth**: ingen nøgle krævet på trial-tier, men rate-limited pr. IP (~100/dag). Produktions-tier kræver `user_key` + `key_type` headers.
 - **Request**: `GET ?upc=<stregkode>`

@@ -8,3 +8,14 @@ class DuplicateBarcodeError(Exception):
     def __init__(self, barcode: str):
         self.barcode = barcode
         super().__init__(f"A movie with barcode '{barcode}' already exists")
+
+
+class TmdbNotFoundError(Exception):
+    def __init__(self, tmdb_id: int):
+        self.tmdb_id = tmdb_id
+        super().__init__(f"TMDb movie not found: {tmdb_id}")
+
+
+class TmdbUnavailableError(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)

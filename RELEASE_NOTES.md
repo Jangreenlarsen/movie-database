@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.6.1 (build 0007) — 2026-08-01
+
+Rettet: serienummer- og format-mærkaterne på filmkort i biblioteket var utilsigtet skjult bag poster-billedet (regression fra v0.6.0's rating-badge). De vises nu korrekt igen.
+
 ## v0.6.0 (build 0006) — 2026-07-31
 
 - Film får nu automatisk en **rating** (TMDb's egen bedømmelse, 0-10) når de oprettes via TMDb — bemærk at dette ikke er den faktiske IMDb-rating (se `MOVIE_API_REFERENCE.md` hvis I senere ønsker rigtig IMDb-data via OMDb).

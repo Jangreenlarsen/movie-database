@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.6.1 build 0007] — 2026-08-01 — Fix: serienummer/format-badge skjult bag poster
+
+- `frontend/src/pages/Library.css`: `.movie-serial` og `.movie-format-badge` har fået `z-index: 2` — de blev malet under poster-billedet efter `.movie-poster` fik `position: relative` i v0.6.0 (nødvendig for rating-badgen). Se BUGS.md #2.
+
 ## [0.6.0 build 0006] — 2026-07-31 — Rating, sortering og konfigurerbar kort-visning
 
 - `backend/app/integrations/tmdb_client.py`: `search_movies()` og `get_movie_details()` returnerer nu også `rating` (TMDb `vote_average`, rundet til 1 decimal — **ikke** den faktiske IMDb-rating, se MOVIE_API_REFERENCE.md).

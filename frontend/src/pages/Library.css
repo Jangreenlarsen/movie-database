@@ -119,6 +119,7 @@
 
 .movie-serial {
   position: absolute;
+  z-index: 2;
   top: 8px;
   left: 8px;
   background: rgba(0, 0, 0, 0.55);
@@ -132,6 +133,7 @@
 
 .movie-format-badge {
   position: absolute;
+  z-index: 2;
   top: 8px;
   right: 8px;
   background: var(--accent);

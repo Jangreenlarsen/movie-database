@@ -24,7 +24,7 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 
 | Metode | Endpoint                     | Beskrivelse                                             | Status  |
 |--------|-------------------------------|-----------------------------------------------------------|---------|
-| GET    | `/api/movies`                  | Liste film, understøtter `?q=` (fritekst, MongoDB `$text`), `?tags=` (kommasepareret, case-insensitiv `$all`-match), `?format=` og `?audio_types=` (kommasepareret, `$in`-match) | done |
+| GET    | `/api/movies`                  | Liste film, understøtter `?q=` (fritekst, MongoDB `$text`), `?tags=` (kommasepareret, case-insensitiv `$all`-match), `?format=` og `?audio_types=` (kommasepareret, `$in`-match), samt `?sort=` (`title`\|`year`\|`serial_number`\|`rating`) + `?direction=` (`asc`\|`desc`, default `desc`) | done |
 | GET    | `/api/movies/{id}`             | Hent én film med fuld metadata                             | done |
 | POST   | `/api/movies`                  | Opret film (manuelt eller efter scan-bekræftelse). 409 ved dublet `barcode`. Tildeler automatisk fortløbende `serial_number`. | done |
 | PATCH  | `/api/movies/{id}`             | Opdater film (tags, format, audio_types, noter — IKKE `serial_number`, den er immutable) | done |
@@ -38,6 +38,10 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 > `POST /api/movies` accepterer nu enten `tmdb_id` (backend henter fuld metadata fra TMDb server-side) eller en manuel `title` (fuldt manuel oprettelse uden TMDb). Se `MovieCreate` i `backend/app/models/movie.py`.
 
 > **Strukturerede attributter**: `format` (étvalg, fast enum: VHS/DVD/Blu-ray/4K Ultra HD/Digital) og `audio_types` (flervalg, fast enum: Stereo/Mono/Dolby Digital/Dolby Digital 5.1/Dolby Digital 7.1/DTS/DTS-HD Master Audio/Dolby Atmos/Dolby TrueHD) — se `MovieFormat`/`AudioType` i `backend/app/models/movie.py`. I modsætning til tags er disse IKKE fritekst; ugyldige værdier afvises med 422. `serial_number` er et fortløbende heltal tildelt server-side ved oprettelse (atomisk `$inc` på en `counters`-collection, se `movie_repository.next_serial_number`) — kan ikke sættes eller ændres af klienten.
+
+> **Rating**: `rating` (0-10, TMDb's `vote_average` — IKKE den faktiske IMDb-rating, se MOVIE_API_REFERENCE.md) hentes automatisk ved oprettelse via `tmdb_id` og caches lokalt som alle andre TMDb-felter. Ikke sættelig af klienten (hverken `MovieCreate` eller `MovieUpdate`); manuelt oprettede film (uden `tmdb_id`) har altid `rating: null`.
+
+> **Sortering**: `sort`-værdier er whitelistet i `movie_repository.SORT_FIELDS` (kan aldrig bruges til at sortere på et vilkårligt/uindekseret felt). Ugyldig `sort`/`direction`-værdi afvises af FastAPI med 422 (`Literal`-type på query-parametrene).
 
 > Der er ikke et separat `/api/search`-endpoint — kombineret fritekst+tag-søgning dækkes af `/api/movies?q=&tags=` (se ovenfor), for at undgå to endpoints med overlappende ansvar.
 
@@ -64,7 +68,7 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 
 | Collection | Nøgle-felter                                                     | Indexes                                  |
 |------------|-----------------------------------------------------------------------|--------------------------------------------|
-| `movies`   | `serial_number` (fortløbende, immutable), `tmdb_id`, `barcode` (**udelades helt af dokumentet når ikke angivet — se BUGS.md #1**), `title`, `tags[]` (display-case), `tags_normalized[]` (lowercase, bruges til filtrering), `format` (enum-streng), `audio_types[]` (enum-strenge) | text-index på `title`+`overview`, index på `tags_normalized`, `format`, `audio_types`, unique sparse index på `barcode`, unique index på `serial_number` |
+| `movies`   | `serial_number` (fortløbende, immutable), `tmdb_id`, `barcode` (**udelades helt af dokumentet når ikke angivet — se BUGS.md #1**), `title`, `year`, `tags[]` (display-case), `tags_normalized[]` (lowercase, bruges til filtrering), `format` (enum-streng), `audio_types[]` (enum-strenge), `rating` (0-10, TMDb `vote_average`, kun sat når `tmdb_id` er angivet) | text-index på `title`+`overview`, index på `tags_normalized`, `format`, `audio_types`, `year`, `rating`, unique sparse index på `barcode`, unique index på `serial_number` |
 | `tags`     | `name` (første-typede casing), `normalized` (lowercase, unik nøgle)     | unique index på `normalized`                |
 | `counters` | `_id` (fast nøgle `"movie_serial"`), `value` (seneste tildelte serienummer) | — (kun ét dokument, atomisk `$inc`)         |
 

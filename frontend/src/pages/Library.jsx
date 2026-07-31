@@ -3,6 +3,39 @@ import { api } from "../api/client";
 import Chip from "../components/Chip";
 import "./Library.css";
 
+const SORT_OPTIONS = [
+  { value: "serial_number", label: "Tilføjet" },
+  { value: "title", label: "Titel" },
+  { value: "year", label: "År" },
+  { value: "rating", label: "Rating" },
+];
+
+const VISIBLE_FIELDS_KEY = "movieLibrary.visibleFields";
+const DEFAULT_VISIBLE_FIELDS = {
+  year: true,
+  tags: true,
+  format: false,
+  audioTypes: false,
+  rating: false,
+};
+const VISIBLE_FIELD_OPTIONS = [
+  { key: "year", label: "År" },
+  { key: "tags", label: "Tags" },
+  { key: "format", label: "Format" },
+  { key: "audioTypes", label: "Lyd-type" },
+  { key: "rating", label: "Rating" },
+];
+
+function loadVisibleFields() {
+  try {
+    const raw = localStorage.getItem(VISIBLE_FIELDS_KEY);
+    if (!raw) return DEFAULT_VISIBLE_FIELDS;
+    return { ...DEFAULT_VISIBLE_FIELDS, ...JSON.parse(raw) };
+  } catch {
+    return DEFAULT_VISIBLE_FIELDS;
+  }
+}
+
 function SearchIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -21,55 +54,63 @@ export default function Library() {
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedFormats, setSelectedFormats] = useState([]);
   const [selectedAudioTypes, setSelectedAudioTypes] = useState([]);
+  const [sortField, setSortField] = useState("serial_number");
+  const [sortDirection, setSortDirection] = useState("desc");
   const [movies, setMovies] = useState([]);
   const [status, setStatus] = useState("loading");
   const [allTags, setAllTags] = useState([]);
   const [attributeOptions, setAttributeOptions] = useState({ formats: [], audio_types: [] });
   const [activeMovie, setActiveMovie] = useState(null);
+  const [visibleFields, setVisibleFields] = useState(loadVisibleFields);
+  const [showFieldPanel, setShowFieldPanel] = useState(false);
 
   useEffect(() => {
     api.listTags().then(setAllTags).catch(() => {});
     api.attributeOptions().then(setAttributeOptions).catch(() => {});
   }, []);
 
+  function fetchMovies() {
+    return api.listMovies({
+      q: query || undefined,
+      tags: selectedTags,
+      format: selectedFormats,
+      audioTypes: selectedAudioTypes,
+      sort: sortField,
+      direction: sortDirection,
+    });
+  }
+
   useEffect(() => {
     setStatus("loading");
-    api
-      .listMovies({
-        q: query || undefined,
-        tags: selectedTags,
-        format: selectedFormats,
-        audioTypes: selectedAudioTypes,
-      })
+    fetchMovies()
       .then((data) => {
         setMovies(data);
         setStatus("ready");
       })
       .catch(() => setStatus("error"));
-  }, [query, selectedTags, selectedFormats, selectedAudioTypes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, selectedTags, selectedFormats, selectedAudioTypes, sortField, sortDirection]);
+
+  function refresh() {
+    fetchMovies().then(setMovies).catch(() => {});
+  }
+
+  function updateVisibleField(key, value) {
+    setVisibleFields((prev) => {
+      const next = { ...prev, [key]: value };
+      localStorage.setItem(VISIBLE_FIELDS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
 
   const hasActiveFilters =
     selectedTags.length > 0 || selectedFormats.length > 0 || selectedAudioTypes.length > 0;
-
-  function refresh() {
-    api
-      .listMovies({
-        q: query || undefined,
-        tags: selectedTags,
-        format: selectedFormats,
-        audioTypes: selectedAudioTypes,
-      })
-      .then(setMovies)
-      .catch(() => {});
-  }
 
   return (
     <section>
       <div className="page-header">
         <h1>Filmbibliotek</h1>
-        <span className="muted">
-          {status === "ready" ? `${movies.length} film` : " "}
-        </span>
+        <span className="muted">{status === "ready" ? `${movies.length} film` : " "}</span>
       </div>
 
       <div className="library-toolbar">
@@ -83,7 +124,45 @@ export default function Library() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
+
+          <select value={sortField} onChange={(e) => setSortField(e.target.value)}>
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                Sortér: {opt.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn"
+            title={sortDirection === "asc" ? "Stigende" : "Faldende"}
+            onClick={() => setSortDirection((d) => (d === "asc" ? "desc" : "asc"))}
+          >
+            {sortDirection === "asc" ? "↑" : "↓"}
+          </button>
+
+          <button type="button" className="btn" onClick={() => setShowFieldPanel((v) => !v)}>
+            Vis felter ▾
+          </button>
         </div>
+
+        {showFieldPanel && (
+          <div className="filter-panel">
+            <div className="filter-group">
+              <span className="filter-group-label">Vis på kort</span>
+              <div className="chip-row">
+                {VISIBLE_FIELD_OPTIONS.map((opt) => (
+                  <Chip
+                    key={opt.key}
+                    label={opt.label}
+                    active={visibleFields[opt.key]}
+                    onClick={() => updateVisibleField(opt.key, !visibleFields[opt.key])}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {(allTags.length > 0 || attributeOptions.formats.length > 0) && (
           <div className="filter-panel">
@@ -189,11 +268,22 @@ export default function Library() {
                 ) : (
                   "🎬"
                 )}
+                {visibleFields.rating && movie.rating != null && (
+                  <div className="movie-rating-badge">★ {movie.rating.toFixed(1)}</div>
+                )}
               </div>
               <div className="movie-info">
                 <div className="movie-title">{movie.title}</div>
-                {movie.year && <div className="movie-year">{movie.year}</div>}
-                {movie.tags.length > 0 && (
+                {visibleFields.year && movie.year && (
+                  <div className="movie-year">{movie.year}</div>
+                )}
+                {visibleFields.format && movie.format && (
+                  <div className="movie-year">{movie.format}</div>
+                )}
+                {visibleFields.audioTypes && movie.audio_types.length > 0 && (
+                  <div className="movie-year">{movie.audio_types.join(", ")}</div>
+                )}
+                {visibleFields.tags && movie.tags.length > 0 && (
                   <div className="movie-tags">
                     {movie.tags.map((tag) => (
                       <span key={tag} className="movie-tag-pill">
@@ -276,6 +366,7 @@ function MovieDetailModal({ movie, attributeOptions, onClose, onChanged }) {
             <h2>{movie.title}</h2>
             <p className="muted">
               {movie.year ?? "År ukendt"} · Serienr. #{movie.serial_number}
+              {movie.rating != null && <> · ★ {movie.rating.toFixed(1)}</>}
             </p>
             {movie.genres.length > 0 && <p className="muted">{movie.genres.join(", ")}</p>}
           </div>

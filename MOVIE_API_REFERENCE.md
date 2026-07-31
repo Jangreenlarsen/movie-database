@@ -29,6 +29,9 @@ Konsulteres ved al integration med eksterne film-/stregkode-API'er (jf. CLAUDE.m
 | `genre_ids` → navne | `genres`         |
 | `poster_path`       | `poster_url` (præfikset med image base URL) |
 | `credits.cast[0..N]`| `cast`           |
+| `vote_average`      | `rating` (0-10, rundet til 1 decimal) |
+
+> **OBS**: `vote_average` er TMDb's egen community-rating — det er **ikke** den faktiske IMDb-rating. Ægte IMDb-rating (og Rotten Tomatoes/Metacritic) kræver en separat integration mod OMDb API (omdbapi.com), som ikke er implementeret. Valgt fra (se BUGS.md/FEATURES.md #13): TMDb's rating var tilgængelig med det samme uden ny konto/nøgle.
 
 ### Fejlhåndtering
 - Tomt `results[]` ved søgning → vis "ingen match, prøv en anden titel" i frontend, tilbyd manuel indtastning.

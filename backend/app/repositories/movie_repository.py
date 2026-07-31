@@ -6,6 +6,16 @@ COLLECTION = "movies"
 COUNTERS_COLLECTION = "counters"
 SERIAL_COUNTER_ID = "movie_serial"
 
+# Whitelist mapping API-facing sort keys -> actual document fields, so an
+# arbitrary/unindexed field can never be requested via the query string.
+SORT_FIELDS = {
+    "title": "title",
+    "year": "year",
+    "serial_number": "serial_number",
+    "rating": "rating",
+}
+DEFAULT_SORT_FIELD = "created_at"
+
 
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     collection = db[COLLECTION]
@@ -15,6 +25,8 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     await collection.create_index("format")
     await collection.create_index("audio_types")
     await collection.create_index("serial_number", unique=True)
+    await collection.create_index("rating")
+    await collection.create_index("year")
 
 
 async def next_serial_number(db: AsyncIOMotorDatabase) -> int:
@@ -45,6 +57,8 @@ async def find_many(
     normalized_tags: list[str] | None,
     formats: list[str] | None = None,
     audio_types: list[str] | None = None,
+    sort_field: str | None = None,
+    sort_direction: int = -1,
 ) -> list[dict]:
     filter_: dict = {}
     if query:
@@ -56,7 +70,8 @@ async def find_many(
     if audio_types:
         filter_["audio_types"] = {"$in": audio_types}
 
-    cursor = db[COLLECTION].find(filter_).sort("created_at", -1)
+    mongo_sort_field = SORT_FIELDS.get(sort_field, DEFAULT_SORT_FIELD)
+    cursor = db[COLLECTION].find(filter_).sort(mongo_sort_field, sort_direction)
     return await cursor.to_list(length=500)
 
 

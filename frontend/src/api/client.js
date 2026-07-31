@@ -16,12 +16,14 @@ async function request(path, options = {}) {
 
 export const api = {
   health: () => request("/health"),
-  listMovies: ({ q, tags, format, audioTypes } = {}) => {
+  listMovies: ({ q, tags, format, audioTypes, sort, direction } = {}) => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (tags?.length) params.set("tags", tags.join(","));
     if (format?.length) params.set("format", format.join(","));
     if (audioTypes?.length) params.set("audio_types", audioTypes.join(","));
+    if (sort) params.set("sort", sort);
+    if (direction) params.set("direction", direction);
     const query = params.toString();
     return request(`/movies${query ? `?${query}` : ""}`);
   },

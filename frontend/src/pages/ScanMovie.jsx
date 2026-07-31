@@ -142,7 +142,10 @@ export default function ScanMovie() {
                 </div>
                 <div className="candidate-info">
                   <div className="candidate-title">{candidate.title}</div>
-                  <div className="candidate-year">{candidate.year ?? ""}</div>
+                  <div className="candidate-year">
+                    {candidate.year ?? ""}
+                    {candidate.rating != null && <> · ★ {candidate.rating.toFixed(1)}</>}
+                  </div>
                 </div>
               </li>
             ))}

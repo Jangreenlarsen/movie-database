@@ -2,6 +2,15 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.6.0 build 0006] — 2026-07-31 — Rating, sortering og konfigurerbar kort-visning
+
+- `backend/app/integrations/tmdb_client.py`: `search_movies()` og `get_movie_details()` returnerer nu også `rating` (TMDb `vote_average`, rundet til 1 decimal — **ikke** den faktiske IMDb-rating, se MOVIE_API_REFERENCE.md).
+- `Movie` og `MovieCandidate` har fået feltet `rating`. Kun sat automatisk via `tmdb_id`-oprettelse — ikke en del af `MovieCreate`/`MovieUpdate` (samme princip som `overview`/`genres`/`cast` for TMDb-stien).
+- `GET /api/movies` har nye query-params `?sort=` (`title`\|`year`\|`serial_number`\|`rating`) og `?direction=` (`asc`\|`desc`). Sortérbare felter er whitelistet i `movie_repository.SORT_FIELDS` — ugyldige værdier afvises med 422 (`Literal`-typer på query-parametrene).
+- Nye indexes på `year` og `rating` i `movies`-collectionen.
+- Frontend: `Library.jsx` har fået en sortér-kontrol (felt + stigende/faldende) og en "Vis felter"-indstillingspanel (afkrydsning af År/Tags/Format/Lyd-type/Rating pr. filmkort), gemt i `localStorage` så valget huskes. Rating vises som badge på filmkort, i scan-kandidatlisten og i detalje-modalen.
+- Pytest-suite udvidet med sortering (titel/år/serienr./rating, begge retninger) og ugyldig sort/direction-validering. 28/28 grønne. Live-verificeret mod ægte MongoDB + TMDb.
+
 ## [0.5.0 build 0005] — 2026-07-31 — Moderne redesign + film-detaljer/redigering
 
 - `frontend/src/index.css`: nyt design-system — CSS custom properties for farver/radius/skygge, lys + mørk tilstand (inkl. `data-theme`-override), fjernet Vite-template-resterne (centreret `#root`, 56px-overskrifter, lilla accent).

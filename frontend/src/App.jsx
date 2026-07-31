@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Library from "./pages/Library";
 import ScanMovie from "./pages/ScanMovie";
+import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import { api } from "./api/client";
 import "./App.css";
@@ -52,6 +53,12 @@ function App() {
             >
               Scan film
             </button>
+            <button
+              className={tab === "settings" ? "active" : ""}
+              onClick={() => setTab("settings")}
+            >
+              Indstillinger
+            </button>
           </nav>
           <div className="header-user">
             <span className="muted">{user.username}</span>
@@ -63,11 +70,9 @@ function App() {
       </header>
 
       <main className="app-main">
-        {tab === "library" ? (
-          <Library user={user} onSettingsChanged={setUser} />
-        ) : (
-          <ScanMovie />
-        )}
+        {tab === "library" && <Library user={user} onSettingsChanged={setUser} />}
+        {tab === "scan" && <ScanMovie />}
+        {tab === "settings" && <Settings user={user} />}
       </main>
     </div>
   );

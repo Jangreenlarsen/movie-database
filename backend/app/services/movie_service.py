@@ -105,6 +105,29 @@ async def get_movie(db: AsyncIOMotorDatabase, movie_id: str) -> Movie:
     return _to_model(document)
 
 
+_TEMP_SERIAL_NUMBER = -1
+
+
+async def _reassign_serial_number(
+    db: AsyncIOMotorDatabase, movie_id: str, current_doc: dict, new_serial: int
+) -> None:
+    """Swap with whichever movie currently holds `new_serial`, if any — serial
+    numbers are unique, so a direct move would otherwise raise a duplicate-key
+    error. See BUGS.md / FEATURES.md #16 for why this trades a hop through a
+    sentinel value instead of a single atomic update (Mongo has no built-in
+    "swap two unique values" operation without transactions)."""
+    old_serial = current_doc["serial_number"]
+    if new_serial == old_serial:
+        return
+
+    conflicting = await movie_repository.find_by_serial_number(db, new_serial)
+    if conflicting is not None and conflicting["_id"] != current_doc["_id"]:
+        await movie_repository.set_serial_number(db, movie_id, _TEMP_SERIAL_NUMBER)
+        await movie_repository.set_serial_number(db, str(conflicting["_id"]), old_serial)
+
+    await movie_repository.set_serial_number(db, movie_id, new_serial)
+
+
 async def update_movie(db: AsyncIOMotorDatabase, movie_id: str, payload: MovieUpdate) -> Movie:
     fields = payload.model_dump(exclude_unset=True, mode="json")
 
@@ -112,6 +135,13 @@ async def update_movie(db: AsyncIOMotorDatabase, movie_id: str, payload: MovieUp
         canonical_tags = await tag_service.resolve_tags(db, fields["tags"])
         fields["tags"] = canonical_tags
         fields["tags_normalized"] = [tag_service.normalize(tag) for tag in canonical_tags]
+
+    requested_serial = fields.pop("serial_number", None)
+    if requested_serial is not None:
+        current_doc = await movie_repository.find_by_id(db, movie_id)
+        if current_doc is None:
+            raise MovieNotFoundError(movie_id)
+        await _reassign_serial_number(db, movie_id, current_doc, requested_serial)
 
     fields["updated_at"] = datetime.now(timezone.utc)
 

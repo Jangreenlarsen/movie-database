@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -16,12 +18,16 @@ async def list_movies(
     tags: str | None = Query(default=None),
     format: str | None = Query(default=None, alias="format"),
     audio_types: str | None = Query(default=None),
+    sort: Literal["title", "year", "serial_number", "rating"] | None = Query(default=None),
+    direction: Literal["asc", "desc"] | None = Query(default=None),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     tag_list = tags.split(",") if tags else None
     format_list = format.split(",") if format else None
     audio_type_list = audio_types.split(",") if audio_types else None
-    return await movie_service.list_movies(db, q, tag_list, format_list, audio_type_list)
+    return await movie_service.list_movies(
+        db, q, tag_list, format_list, audio_type_list, sort, direction
+    )
 
 
 @router.post("", response_model=Movie, status_code=201)

@@ -10,6 +10,7 @@ class MovieCandidate(BaseModel):
     title: str | None = None
     year: int | None = None
     poster_url: str | None = None
+    rating: float | None = None
 
 
 class ScanLookupResponse(BaseModel):

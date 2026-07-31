@@ -74,5 +74,6 @@ class Movie(BaseModel):
     tags: list[str] = Field(default_factory=list)
     format: str | None = None
     audio_types: list[str] = Field(default_factory=list)
+    rating: float | None = None
     created_at: datetime
     updated_at: datetime

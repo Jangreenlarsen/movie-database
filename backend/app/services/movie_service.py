@@ -25,6 +25,7 @@ def _to_model(document: dict) -> Movie:
         tags=document.get("tags", []),
         format=document.get("format"),
         audio_types=document.get("audio_types", []),
+        rating=document.get("rating"),
         created_at=document["created_at"],
         updated_at=document["updated_at"],
     )
@@ -44,6 +45,7 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate) -> Movie:
             "overview": details["overview"],
             "genres": details["genres"],
             "cast": details["cast"],
+            "rating": details["rating"],
         }
     else:
         movie_fields = {
@@ -54,6 +56,7 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate) -> Movie:
             "overview": payload.overview,
             "genres": payload.genres,
             "cast": payload.cast,
+            "rating": None,
         }
 
     serial_number = await movie_repository.next_serial_number(db)
@@ -84,10 +87,13 @@ async def list_movies(
     tags: list[str] | None,
     formats: list[str] | None = None,
     audio_types: list[str] | None = None,
+    sort: str | None = None,
+    direction: str | None = None,
 ) -> list[Movie]:
     normalized_tags = [tag_service.normalize(tag) for tag in (tags or []) if tag.strip()]
+    sort_direction = 1 if direction == "asc" else -1
     documents = await movie_repository.find_many(
-        db, q, normalized_tags or None, formats or None, audio_types or None
+        db, q, normalized_tags or None, formats or None, audio_types or None, sort, sort_direction
     )
     return [_to_model(doc) for doc in documents]
 

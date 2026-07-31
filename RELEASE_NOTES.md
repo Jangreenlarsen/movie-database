@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.6.0 (build 0006) — 2026-07-31
+
+- Film får nu automatisk en **rating** (TMDb's egen bedømmelse, 0-10) når de oprettes via TMDb — bemærk at dette ikke er den faktiske IMDb-rating (se `MOVIE_API_REFERENCE.md` hvis I senere ønsker rigtig IMDb-data via OMDb).
+- Biblioteket kan nu **sorteres**: Titel, År, Tilføjet eller Rating, stigende eller faldende.
+- Ny **"Vis felter"**-knap lader dig selv vælge hvilke oplysninger der vises under hver films ikon (År, Tags, Format, Lyd-type, Rating) — valget huskes i din browser.
+
 ## v0.5.0 (build 0005) — 2026-07-31
 
 Nyt udseende og nye måder at bruge biblioteket på:

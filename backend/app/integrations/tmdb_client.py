@@ -29,12 +29,17 @@ def _poster_url(poster_path: str | None) -> str | None:
     return f"{IMAGE_BASE_URL}{poster_path}" if poster_path else None
 
 
+def _rating(vote_average: float | None) -> float | None:
+    return round(vote_average, 1) if vote_average else None
+
+
 def _to_candidate(item: dict) -> dict:
     return {
         "tmdb_id": item["id"],
         "title": item.get("title"),
         "year": _year_from_release_date(item.get("release_date")),
         "poster_url": _poster_url(item.get("poster_path")),
+        "rating": _rating(item.get("vote_average")),
     }
 
 
@@ -87,4 +92,5 @@ async def get_movie_details(tmdb_id: int) -> dict:
         "overview": detail.get("overview"),
         "genres": [genre["name"] for genre in detail.get("genres", [])],
         "cast": [member["name"] for member in credits.get("cast", [])[:10]],
+        "rating": _rating(detail.get("vote_average")),
     }

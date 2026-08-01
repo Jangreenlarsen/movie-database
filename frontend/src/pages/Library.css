@@ -52,6 +52,62 @@
   flex-wrap: wrap;
 }
 
+.sort-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sort-level-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sort-level-index {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  width: 14px;
+}
+
+.sort-preset-row {
+  flex-wrap: wrap;
+}
+
+.sort-preset-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sort-preset-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 6px 8px 6px 13px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.sort-preset-remove {
+  appearance: none;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 2px;
+  opacity: 0.7;
+}
+
+.sort-preset-remove:hover {
+  opacity: 1;
+}
+
 .filter-group-label {
   font-size: 0.78rem;
   font-weight: 700;

@@ -103,3 +103,25 @@ async def test_new_user_has_default_settings(client):
     assert settings["sort_field"] is None
     assert settings["visible_fields"]["year"] is True
     assert settings["visible_fields"]["rating"] is False
+    assert settings["sort_levels"] == []
+    assert settings["sort_presets"] == []
+
+
+async def test_multi_level_sort_and_presets_roundtrip(client):
+    """Regression test for FEATURES.md #17/#27."""
+    levels = [
+        {"field": "format", "direction": "asc"},
+        {"field": "title", "direction": "desc"},
+    ]
+    response = await client.patch("/api/users/me/settings", json={"sort_levels": levels})
+    assert response.status_code == 200
+    assert response.json()["settings"]["sort_levels"] == levels
+
+    presets = [{"name": "Efter format", "levels": levels}]
+    response = await client.patch("/api/users/me/settings", json={"sort_presets": presets})
+    assert response.status_code == 200
+    assert response.json()["settings"]["sort_presets"] == presets
+
+    # sort_levels must survive a later update that only touches sort_presets.
+    me = await client.get("/api/users/me")
+    assert me.json()["settings"]["sort_levels"] == levels

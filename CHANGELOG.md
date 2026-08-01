@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.17.0 build 0019] — 2026-08-01 — Fler-niveau sortering + gemte sorterings-presets
+
+- **Breaking (internt) API-kontrakt-ændring**: `GET /api/movies`s `?sort=`/`?direction=` (to separate, single-felt, `Literal`-valideret) er erstattet af ét `?sort=` med op til 3 kommaseparerede `felt:retning`-tokens (fx `format:asc,audio_types:asc,title:desc`). Ukendt felt/retning droppes/defaulter i stedet for at give 422 — se `movie_service.parse_sort_param` (ny) og `ARCHITECTURE.md`.
+- `movie_repository.find_many` bruger nu et compound Mongo-sort (`cursor.sort([...])`) i stedet for ét felt. `SORT_FIELDS`-whitelisten udvidet med `format`, `audio_types`.
+- `UserSettings`/`UserSettingsUpdate` (`models/user.py`) har nye felter `sort_levels` (aktive niveauer) og `sort_presets` (navngivne, gemte kombinationer af niveauer) — nye `SortLevel`/`SortPreset`-modeller. Gamle `sort_field`/`sort_direction` bevares i skemaet for bagudkompatibilitet, men skrives ikke længere af nye klienter.
+- `Library.jsx`s sorterings-panel (fra v0.12.0's klik-til-vis) udvidet til op til 3 niveauer (tilføj/fjern/vælg felt/vend retning pr. niveau), plus en "Presets"-dropdown til hurtigt at genanvende en gemt kombination, et navn-felt + "Gem som preset"-knap, og en liste over gemte presets med sletteknap.
+- `api/client.js`s `listMovies` accepterer nu `sort` som enten en klar streng eller en `[{field, direction}]`-liste (bygger selv query-strengen). `PrintList.jsx` opdateret til den nye kontrakt.
+- Eksisterende sorterings-tests i `test_movies.py` opdateret til ny kontrakt + ny `test_multi_level_sort_falls_through_to_second_field`. Nye `test_sort_parsing.py` (enheds-tests af `parse_sort_param`) og `test_auth.py::test_multi_level_sort_and_presets_roundtrip`.
+- `ARCHITECTURE.md`, `FEATURES.md` #17/#27 markeret done.
+
 ## [0.16.0 build 0018] — 2026-08-01 — Discogs som fallback ved stregkode-opslag
 
 - Undersøgt FEATURES.md #30 / brugerens rapport om at "stregkode-scanning ikke virker": ikke en fejl i koden — UPCitemdb's trial-tier svarer korrekt (live-verificeret), men er stærkt USA-detail-centreret og misser ofte europæiske EAN-13 stregkoder på film, hvilket viste sig som "intet match" i UI'et.

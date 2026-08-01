@@ -24,7 +24,7 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 
 | Metode | Endpoint                     | Beskrivelse                                             | Status  |
 |--------|-------------------------------|-----------------------------------------------------------|---------|
-| GET    | `/api/movies`                  | Liste film, understøtter `?q=` (fritekst, MongoDB `$text`), `?tags=` (kommasepareret, case-insensitiv `$all`-match), `?format=` og `?audio_types=` (kommasepareret, `$in`-match), samt `?sort=` (`title`\|`year`\|`serial_number`\|`rating`) + `?direction=` (`asc`\|`desc`, default `desc`) | done |
+| GET    | `/api/movies`                  | Liste film, understøtter `?q=` (fritekst, MongoDB `$text`), `?tags=` (kommasepareret, case-insensitiv `$all`-match), `?format=` og `?audio_types=` (kommasepareret, `$in`-match), samt `?sort=` — kommasepareret liste af op til 3 `felt:retning`-tokens (fx `format:asc,audio_types:asc,title:desc`), se note om fler-niveau-sortering nedenfor | done |
 | GET    | `/api/movies/{id}`             | Hent én film med fuld metadata                             | done |
 | POST   | `/api/movies`                  | Opret film (manuelt eller efter scan-bekræftelse). 409 ved dublet `barcode`. Tildeler automatisk fortløbende `serial_number`. Sætter `registered_by` til den indloggede bruger; `owner` defaulter til samme hvis ikke angivet. Accepterer valgfri `location`, `owner`. | done |
 | PATCH  | `/api/movies/{id}`             | Opdater film (tags, format, audio_types, location, owner, samt `serial_number` — se note nedenfor). `serial_number` kan **kun** ændres af en admin eller den bruger der står i filmens `registered_by` (403 ellers). | done |
@@ -39,7 +39,7 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 | POST   | `/api/auth/login`              | Login ({username, password}). 401 ved forkert login. Sætter auth-cookie.  | done |
 | POST   | `/api/auth/logout`              | Rydder auth-cookien.                                           | done |
 | GET    | `/api/users/me`                 | Nuværende bruger + indstillinger. 401 hvis ikke logget ind.       | done |
-| PATCH  | `/api/users/me/settings`        | Opdatér bruger-specifikke view-/filter-indstillinger (sort_field, sort_direction, visible_fields). | done |
+| PATCH  | `/api/users/me/settings`        | Opdatér bruger-specifikke view-/filter-indstillinger (sort_field/sort_direction — lagt til side til fordel for `sort_levels`, se note nedenfor — visible_fields, sort_levels, sort_presets). | done |
 | GET    | `/api/settings/serial-number`   | Hent serienummer-generatorens opsætning (`start_number`, `increment`, `padding_width`). Åben for alle logget-ind brugere. | done |
 | PATCH  | `/api/settings/serial-number`   | Opdatér opsætningen. **Kræver admin.** `start_number` flytter *direkte* næste-nummer-markøren (ikke en historisk oprindelse) — se note nedenfor. | done |
 | POST   | `/api/users/me/password`        | Skift egen adgangskode ({current_password, new_password}). 401 ved forkert nuværende adgangskode. | done |
@@ -66,7 +66,7 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 
 > **Rating**: `rating` (0-10, TMDb's `vote_average` — IKKE den faktiske IMDb-rating, se MOVIE_API_REFERENCE.md) hentes automatisk ved oprettelse via `tmdb_id` og caches lokalt som alle andre TMDb-felter. Ikke sættelig af klienten (hverken `MovieCreate` eller `MovieUpdate`); manuelt oprettede film (uden `tmdb_id`) har altid `rating: null`.
 
-> **Sortering**: `sort`-værdier er whitelistet i `movie_repository.SORT_FIELDS` (kan aldrig bruges til at sortere på et vilkårligt/uindekseret felt). Ugyldig `sort`/`direction`-værdi afvises af FastAPI med 422 (`Literal`-type på query-parametrene).
+> **Fler-niveau sortering** (feature #17/#27): `?sort=` accepterer op til `movie_repository.MAX_SORT_LEVELS` (3) kommasepararede `felt:retning`-tokens, fx `format:asc,audio_types:asc,title:desc`. `movie_service.parse_sort_param` validerer hvert felt mod whitelistet `movie_repository.SORT_FIELDS` (kan aldrig sortere på et vilkårligt/uindekseret felt) og bygger et compound Mongo-sort (`cursor.sort([(felt1, retning1), ...])`). Et ukendt felt-token *afvises ikke* med 422 — det droppes stille og roligt, så et gemt preset der refererer et felt der senere er fjernet degraderer i stedet for at fejle hele biblioteksvisningen. Manglende `:retning` defaulter til `asc`; et ukendt `:retning`-ord behandles også som `asc`. Brugerens valgte niveauer gemmes som `sort_levels` (`UserSettings`) og kan navngives og gemmes som et gengenkaldeligt `sort_presets`-indgang (samme model), begge server-side pr. bruger — se `frontend/src/pages/Library.jsx`s sorterings-panel.
 
 > Der er ikke et separat `/api/search`-endpoint — kombineret fritekst+tag-søgning dækkes af `/api/movies?q=&tags=` (se ovenfor), for at undgå to endpoints med overlappende ansvar.
 

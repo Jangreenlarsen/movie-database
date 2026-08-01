@@ -18,8 +18,11 @@ SORT_FIELDS = {
     "year": "year",
     "serial_number": "serial_number",
     "rating": "rating",
+    "format": "format",
+    "audio_types": "audio_types",
 }
 DEFAULT_SORT_FIELD = "created_at"
+MAX_SORT_LEVELS = 3
 
 
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
@@ -135,9 +138,12 @@ async def find_many(
     normalized_tags: list[str] | None,
     formats: list[str] | None = None,
     audio_types: list[str] | None = None,
-    sort_field: str | None = None,
-    sort_direction: int = -1,
+    sort_spec: list[tuple[str, int]] | None = None,
 ) -> list[dict]:
+    """`sort_spec` is a list of up to `MAX_SORT_LEVELS` (already-whitelisted
+    mongo field name, direction) tuples for compound multi-level sorting
+    (see FEATURES.md #17/#27) — validation against `SORT_FIELDS` happens in
+    `movie_service`, this layer just applies whatever it is given."""
     filter_: dict = {}
     if query:
         filter_["$text"] = {"$search": query}
@@ -148,8 +154,8 @@ async def find_many(
     if audio_types:
         filter_["audio_types"] = {"$in": audio_types}
 
-    mongo_sort_field = SORT_FIELDS.get(sort_field, DEFAULT_SORT_FIELD)
-    cursor = db[COLLECTION].find(filter_).sort(mongo_sort_field, sort_direction)
+    cursor = db[COLLECTION].find(filter_)
+    cursor = cursor.sort(sort_spec) if sort_spec else cursor.sort(DEFAULT_SORT_FIELD, -1)
     return await cursor.to_list(length=500)
 
 

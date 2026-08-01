@@ -23,7 +23,7 @@ export default function PrintList() {
   useEffect(() => {
     setStatus("loading");
     api
-      .listMovies({ q: query || undefined, sort: "serial_number", direction: "asc" })
+      .listMovies({ q: query || undefined, sort: "serial_number:asc" })
       .then((data) => {
         setMovies(data);
         setStatus("ready");

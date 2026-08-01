@@ -14,6 +14,8 @@ DEFAULT_SETTINGS = {
         "rating": False,
         "runtime": False,
     },
+    "sort_levels": [],
+    "sort_presets": [],
 }
 
 

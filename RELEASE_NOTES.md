@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.17.0 (build 0019) — 2026-08-01
+
+- Sortering i biblioteket understøtter nu op til 3 niveauer ad gangen (fx: format → lyd-type → titel) — klik "Sortér ▾" for at tilføje/fjerne niveauer.
+- Du kan gemme en sorterings-kombination som et navngivet preset og hurtigt vælge det igen fra en dropdown, i stedet for at skulle stille alle niveauerne op igen hver gang.
+
 ## v0.16.0 (build 0018) — 2026-08-01
 
 - Stregkode-scanning fandt ofte intet match — det var ikke en fejl, men fordi den hidtidige opslagstjeneste (UPCitemdb) er amerikansk-centreret og ofte ikke kender europæiske stregkoder på film. Appen prøver nu automatisk **Discogs** som ekstra kilde, hvis den første ikke finder noget — bedre chance for at ramme danske/europæiske udgivelser.

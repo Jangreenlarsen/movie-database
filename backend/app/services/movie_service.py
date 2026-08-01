@@ -92,6 +92,24 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registere
     return _to_model(created)
 
 
+def parse_sort_param(sort: str | None) -> list[tuple[str, int]]:
+    """Parses up to `movie_repository.MAX_SORT_LEVELS` comma-separated
+    "field:direction" tokens (direction optional, defaults to asc) into a
+    compound Mongo sort spec — see FEATURES.md #17/#27. Unknown fields are
+    silently dropped rather than rejected, since a saved preset referencing a
+    since-removed field should degrade gracefully instead of erroring."""
+    if not sort:
+        return []
+    levels: list[tuple[str, int]] = []
+    for token in sort.split(",")[: movie_repository.MAX_SORT_LEVELS]:
+        field, _, direction = token.partition(":")
+        mongo_field = movie_repository.SORT_FIELDS.get(field)
+        if mongo_field is None:
+            continue
+        levels.append((mongo_field, -1 if direction == "desc" else 1))
+    return levels
+
+
 async def list_movies(
     db: AsyncIOMotorDatabase,
     q: str | None,
@@ -99,12 +117,11 @@ async def list_movies(
     formats: list[str] | None = None,
     audio_types: list[str] | None = None,
     sort: str | None = None,
-    direction: str | None = None,
 ) -> list[Movie]:
     normalized_tags = [tag_service.normalize(tag) for tag in (tags or []) if tag.strip()]
-    sort_direction = 1 if direction == "asc" else -1
+    sort_spec = parse_sort_param(sort)
     documents = await movie_repository.find_many(
-        db, q, normalized_tags or None, formats or None, audio_types or None, sort, sort_direction
+        db, q, normalized_tags or None, formats or None, audio_types or None, sort_spec or None
     )
     return [_to_model(doc) for doc in documents]
 

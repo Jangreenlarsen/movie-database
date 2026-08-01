@@ -8,7 +8,15 @@ const SORT_OPTIONS = [
   { value: "title", label: "Titel" },
   { value: "year", label: "År" },
   { value: "rating", label: "Rating" },
+  { value: "format", label: "Format" },
+  { value: "audio_types", label: "Lyd-type" },
 ];
+const MAX_SORT_LEVELS = 3;
+
+function initialSortLevels(settings) {
+  if (settings?.sort_levels?.length) return settings.sort_levels;
+  return [{ field: settings?.sort_field ?? "serial_number", direction: settings?.sort_direction ?? "desc" }];
+}
 
 const VISIBLE_FIELD_OPTIONS = [
   { key: "year", label: "År" },
@@ -53,8 +61,9 @@ export default function Library({ user, onSettingsChanged }) {
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedFormats, setSelectedFormats] = useState([]);
   const [selectedAudioTypes, setSelectedAudioTypes] = useState([]);
-  const [sortField, setSortField] = useState(user.settings.sort_field ?? "serial_number");
-  const [sortDirection, setSortDirection] = useState(user.settings.sort_direction ?? "desc");
+  const [sortLevels, setSortLevels] = useState(() => initialSortLevels(user.settings));
+  const [presets, setPresets] = useState(user.settings.sort_presets ?? []);
+  const [presetNameInput, setPresetNameInput] = useState("");
   const [movies, setMovies] = useState([]);
   const [status, setStatus] = useState("loading");
   const [allTags, setAllTags] = useState([]);
@@ -66,11 +75,9 @@ export default function Library({ user, onSettingsChanged }) {
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
 
-  function persistSettings({ sortField: nextSort, sortDirection: nextDirection, visibleFields: nextVisible }) {
+  function persistVisibleFields(nextVisible) {
     api
       .updateMySettings({
-        sort_field: nextSort,
-        sort_direction: nextDirection,
         visible_fields: {
           year: nextVisible.year,
           tags: nextVisible.tags,
@@ -82,6 +89,14 @@ export default function Library({ user, onSettingsChanged }) {
       })
       .then(onSettingsChanged)
       .catch(() => {});
+  }
+
+  function persistSortLevels(nextLevels) {
+    api.updateMySettings({ sort_levels: nextLevels }).then(onSettingsChanged).catch(() => {});
+  }
+
+  function persistSortPresets(nextPresets) {
+    api.updateMySettings({ sort_presets: nextPresets }).then(onSettingsChanged).catch(() => {});
   }
 
   useEffect(() => {
@@ -99,8 +114,7 @@ export default function Library({ user, onSettingsChanged }) {
       tags: selectedTags,
       format: selectedFormats,
       audioTypes: selectedAudioTypes,
-      sort: sortField,
-      direction: sortDirection,
+      sort: sortLevels,
     });
   }
 
@@ -113,7 +127,7 @@ export default function Library({ user, onSettingsChanged }) {
       })
       .catch(() => setStatus("error"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, selectedTags, selectedFormats, selectedAudioTypes, sortField, sortDirection]);
+  }, [query, selectedTags, selectedFormats, selectedAudioTypes, sortLevels]);
 
   function refresh() {
     fetchMovies().then(setMovies).catch(() => {});
@@ -122,20 +136,69 @@ export default function Library({ user, onSettingsChanged }) {
   function updateVisibleField(key, value) {
     setVisibleFields((prev) => {
       const next = { ...prev, [key]: value };
-      persistSettings({ sortField, sortDirection, visibleFields: next });
+      persistVisibleFields(next);
       return next;
     });
   }
 
-  function updateSortField(nextField) {
-    setSortField(nextField);
-    persistSettings({ sortField: nextField, sortDirection, visibleFields });
+  function updateSortLevelField(index, field) {
+    setSortLevels((prev) => {
+      const next = prev.map((level, i) => (i === index ? { ...level, field } : level));
+      persistSortLevels(next);
+      return next;
+    });
   }
 
-  function toggleSortDirection() {
-    const nextDirection = sortDirection === "asc" ? "desc" : "asc";
-    setSortDirection(nextDirection);
-    persistSettings({ sortField, sortDirection: nextDirection, visibleFields });
+  function toggleSortLevelDirection(index) {
+    setSortLevels((prev) => {
+      const next = prev.map((level, i) =>
+        i === index ? { ...level, direction: level.direction === "asc" ? "desc" : "asc" } : level
+      );
+      persistSortLevels(next);
+      return next;
+    });
+  }
+
+  function addSortLevel() {
+    setSortLevels((prev) => {
+      if (prev.length >= MAX_SORT_LEVELS) return prev;
+      const used = new Set(prev.map((level) => level.field));
+      const nextField = SORT_OPTIONS.find((opt) => !used.has(opt.value))?.value ?? SORT_OPTIONS[0].value;
+      const next = [...prev, { field: nextField, direction: "asc" }];
+      persistSortLevels(next);
+      return next;
+    });
+  }
+
+  function removeSortLevel(index) {
+    setSortLevels((prev) => {
+      if (prev.length <= 1) return prev;
+      const next = prev.filter((_, i) => i !== index);
+      persistSortLevels(next);
+      return next;
+    });
+  }
+
+  function applyPreset(name) {
+    const preset = presets.find((p) => p.name === name);
+    if (!preset) return;
+    setSortLevels(preset.levels);
+    persistSortLevels(preset.levels);
+  }
+
+  function saveCurrentAsPreset() {
+    const name = presetNameInput.trim();
+    if (!name) return;
+    const next = [...presets.filter((p) => p.name !== name), { name, levels: sortLevels }];
+    setPresets(next);
+    persistSortPresets(next);
+    setPresetNameInput("");
+  }
+
+  function deletePreset(name) {
+    const next = presets.filter((p) => p.name !== name);
+    setPresets(next);
+    persistSortPresets(next);
   }
 
   const hasActiveFilters =
@@ -175,24 +238,87 @@ export default function Library({ user, onSettingsChanged }) {
 
         {showSortPanel && (
           <div className="filter-panel">
-            <div className="filter-group">
-              <span className="filter-group-label">Sortér efter</span>
-              <select value={sortField} onChange={(e) => updateSortField(e.target.value)}>
-                {SORT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
+            <div className="sort-levels">
+              {sortLevels.map((level, index) => (
+                <div key={index} className="sort-level-row">
+                  <span className="sort-level-index">{index + 1}.</span>
+                  <select value={level.field} onChange={(e) => updateSortLevelField(index, e.target.value)}>
+                    {SORT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn"
+                    title={level.direction === "asc" ? "Stigende" : "Faldende"}
+                    onClick={() => toggleSortLevelDirection(index)}
+                  >
+                    {level.direction === "asc" ? "↑" : "↓"}
+                  </button>
+                  {sortLevels.length > 1 && (
+                    <button
+                      type="button"
+                      className="btn"
+                      title="Fjern niveau"
+                      onClick={() => removeSortLevel(index)}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+              {sortLevels.length < MAX_SORT_LEVELS && (
+                <button type="button" className="btn" onClick={addSortLevel}>
+                  + Tilføj sorteringsniveau
+                </button>
+              )}
+            </div>
+
+            <div className="filter-group sort-preset-row">
+              <span className="filter-group-label">Presets</span>
+              <select value="" onChange={(e) => e.target.value && applyPreset(e.target.value)}>
+                <option value="">Vælg gemt preset...</option>
+                {presets.map((preset) => (
+                  <option key={preset.name} value={preset.name}>
+                    {preset.name}
                   </option>
                 ))}
               </select>
+              <input
+                placeholder="Navngiv preset..."
+                value={presetNameInput}
+                onChange={(e) => setPresetNameInput(e.target.value)}
+                style={{ maxWidth: 160 }}
+              />
               <button
                 type="button"
                 className="btn"
-                title={sortDirection === "asc" ? "Stigende" : "Faldende"}
-                onClick={toggleSortDirection}
+                onClick={saveCurrentAsPreset}
+                disabled={!presetNameInput.trim()}
               >
-                {sortDirection === "asc" ? "↑ Stigende" : "↓ Faldende"}
+                Gem som preset
               </button>
             </div>
+
+            {presets.length > 0 && (
+              <div className="sort-preset-list">
+                {presets.map((preset) => (
+                  <span key={preset.name} className="sort-preset-item">
+                    {preset.name}
+                    <button
+                      type="button"
+                      className="sort-preset-remove"
+                      title={`Slet preset "${preset.name}"`}
+                      onClick={() => deletePreset(preset.name)}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

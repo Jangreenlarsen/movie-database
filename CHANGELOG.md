@@ -2,6 +2,13 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.23.0 build 0027] — 2026-08-01 — OTA-feature live-verificeret på produktionsserveren (dokumentation, ingen versionsbump)
+
+- Server-side opsætning fuldført: `/opt/moviedb-deploy.sh` installeret (executable, ejet af `jgl`), gammel bred `jgl ALL=(ALL) NOPASSWD:ALL`-sudoers-regel fjernet og erstattet af snæver `/etc/sudoers.d/jgl-deploy-ota` (kun `systemctl restart moviedb-backend` + `systemctl reload caddy`) — bekræftet med `sudo -n` at hverken mere eller mindre end de to kommandoer er tilladt uden password.
+- `deploy_service.trigger_deploy()` kørt direkte på serveren: fuldt deploy-forløb (`git pull` → `pip install` → genstart backend → `npm run build` → genindlæs caddy) gennemført uden fejl på ~15 sek., begge services `active` bagefter, `/api/health` svarede korrekt før/under/efter.
+- `FEATURES.md` #20 opdateret `in-progress` → `done`. `DEPLOYMENT.md` opdateret til at afspejle den endelige (snævre) sudoers-opsætning og live-verifikationen.
+- Selve knappen i browseren (admin-login → klik → polling) er endnu ikke afprøvet af Jan — funktionaliteten bag den er nu verificeret direkte.
+
 ## [0.23.0 build 0027] — 2026-08-01 — OTA-opdatering fra GitHub (feature #20)
 
 - Ny `POST /api/system/deploy` (**admin-only**, `app/api/system.py`) starter et detached baggrunds-subprocess (`deploy_service.trigger_deploy`) der kører et deploy-script og returnerer med det samme (202) uden at vente på det er færdigt.

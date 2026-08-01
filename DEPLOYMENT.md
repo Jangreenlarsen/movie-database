@@ -10,7 +10,7 @@ Produktion kører **native** på en dedikeret Debian-server — ikke Docker Comp
 |---|---|
 | OS | Debian 13 (trixie) |
 | Host | `10.1.130.10` (kun tilgængelig på hjemmenetværket — intet domænenavn) |
-| Bruger | `jgl` (har passwordless sudo via `/etc/sudoers.d/jgl-deploy`) |
+| Bruger | `jgl` (har **kun** snæver passwordless sudo til to specifikke kommandoer, via `/etc/sudoers.d/jgl-deploy-ota` — se "Opdatere produktion" nedenfor) |
 | Repo | klonet til `/opt/moviedb` fra `main`-branchen, via en **read-only deploy key** (ikke en personlig adgangstoken) — se GitHub repo → Settings → Deploy keys, "moviedb-prod-server" |
 
 ## Komponenter
@@ -38,6 +38,8 @@ Ligger i `/opt/moviedb/backend/.env` (git-ignoreret, `chmod 600`, ejes af `jgl`)
 
 Indstillinger-siden har en **admin-only** "Opdatér fra GitHub"-knap. Den kalder `POST /api/system/deploy`, som starter `/opt/moviedb-deploy.sh` i baggrunden (`git pull` + geninstaller afhængigheder + genstart `moviedb-backend` + genindlæs `caddy`) og svarer med det samme — siden poller derefter `/api/health`s `build`-felt indtil den nye version er oppe (typisk under et minut). Se ARCHITECTURE.md's note om OTA-opdatering for de tekniske detaljer.
 
+**Live-verificeret** 2026-08-01: `deploy_service.trigger_deploy()` kørt direkte på serveren (detached subprocess), fuldt deploy-forløb kørte igennem uden fejl (~15 sek: `git pull` → `pip install` → `systemctl restart moviedb-backend` → `npm run build` → `systemctl reload caddy`), begge services `active` bagefter, `/api/health` svarede korrekt undervejs og efter. Selve knappen (admin-login → klik → polling) er endnu ikke afprøvet i browseren af Jan.
+
 **Opsætning på serveren** (kun nødvendigt én gang, eller hvis `scripts/deploy.sh` ændres i repoet):
 
 ```bash
@@ -55,7 +57,7 @@ sudo chmod 440 /etc/sudoers.d/jgl-deploy-ota
 sudo visudo -c
 ```
 
-(Dette **erstatter** den bredere `jgl ALL=(ALL) NOPASSWD:ALL`-regel fra `/etc/sudoers.d/jgl-deploy` der blev sat op under den oprindelige installation — den var kun nødvendig mens serveren blev sat op fra bunden. Fjern den gamle fil, eller lad den blive hvis du fortsat vil have bred sudo-adgang til manuel drift via SSH.)
+(Dette **erstattede** den bredere `jgl ALL=(ALL) NOPASSWD:ALL`-regel fra `/etc/sudoers.d/jgl-deploy` der blev sat op under den oprindelige installation — den var kun nødvendig mens serveren blev sat op fra bunden, og er siden fjernet fra serveren. `jgl` har nu udelukkende passwordless sudo til de to `systemctl`-kommandoer ovenfor; alt andet (fx `sudo whoami`) kræver adgangskode.)
 
 ### Manuelt (uden knappen, fx hvis backend slet ikke kan starte)
 

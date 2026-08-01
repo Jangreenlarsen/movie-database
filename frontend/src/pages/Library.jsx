@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import Chip from "../components/Chip";
+import MovieLookupForm from "../components/MovieLookupForm";
 import "./Library.css";
 
 const SORT_OPTIONS = [
@@ -73,6 +74,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
   const [showFieldPanel, setShowFieldPanel] = useState(false);
   const [showSortPanel, setShowSortPanel] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [showAddPanel, setShowAddPanel] = useState(false);
   const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
 
   function persistVisibleFields(nextVisible) {
@@ -224,6 +226,16 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
             />
           </div>
 
+          {wishlist && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setShowAddPanel((v) => !v)}
+            >
+              {showAddPanel ? "Luk" : "+ Tilføj ønske"} ▾
+            </button>
+          )}
+
           <button type="button" className="btn" onClick={() => setShowSortPanel((v) => !v)}>
             Sortér ▾
           </button>
@@ -236,6 +248,19 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
             Vis felter ▾
           </button>
         </div>
+
+        {wishlist && showAddPanel && (
+          <div style={{ marginTop: 8 }}>
+            <MovieLookupForm
+              user={user}
+              wishlist
+              onSaved={() => {
+                refresh();
+                setShowAddPanel(false);
+              }}
+            />
+          </div>
+        )}
 
         {showSortPanel && (
           <div className="filter-panel">
@@ -515,6 +540,7 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
   const [owner, setOwner] = useState(movie.owner ?? "");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [moving, setMoving] = useState(false);
   const [error, setError] = useState(null);
 
   const canEditSerial = user.role === "admin" || user.username === movie.registered_by;
@@ -571,6 +597,20 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
       onClose();
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function moveToLibrary() {
+    setMoving(true);
+    setError(null);
+    try {
+      await api.updateMovie(movie.id, { is_wishlist: false });
+      onChanged();
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setMoving(false);
     }
   }
 
@@ -687,6 +727,11 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
           <button type="button" className="btn" onClick={remove} disabled={deleting}>
             {deleting ? "Sletter..." : "Slet film"}
           </button>
+          {movie.is_wishlist && (
+            <button type="button" className="btn" onClick={moveToLibrary} disabled={moving}>
+              {moving ? "Flytter..." : "Flyt til bibliotek"}
+            </button>
+          )}
           <button type="button" className="btn btn-primary" onClick={save} disabled={!dirty || saving}>
             {saving ? "Gemmer..." : "Gem ændringer"}
           </button>

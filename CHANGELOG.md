@@ -2,6 +2,22 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.20.0 build 0023] — 2026-08-01 — "Flyt til bibliotek"-knap på ønskeliste-film
+
+- `MovieUpdate` fik `is_wishlist: bool | None`. `movie_service.update_movie` opdager overgangen: `is_wishlist: true → false` tildeler et nyt `serial_number` via `next_serial_number` (ubegrænset, som ved oprettelse — ikke gated af `_assert_can_edit_serial_number`, da det er en førstegangs-tildeling, ikke en ændring). `is_wishlist: false → true` fjerner nummeret igen (nyt `movie_repository.clear_serial_number`, `$unset` — samme "udelad frem for null"-mønster som `barcode`/BUGS.md #1/#10) og *er* gated af samme adgangsregel som at redigere et eksisterende serienummer.
+- Filmens detaljevindue i `Library.jsx` har nu en "Flyt til bibliotek"-knap, vist når filmen er en ønske-post.
+- Nye tests i `test_wishlist.py`: flytning tildeler et nyt serienummer og flytter filmen mellem de to lister; flytning er ikke begrænset til registranten; den omvendte retning (bibliotek → ønske) fjerner nummeret korrekt. Live-verificeret mod den rigtige database.
+- `ARCHITECTURE.md` opdateret. `FEATURES.md` #32 tilføjet, markeret done.
+
+## [0.19.0 build 0022] — 2026-08-01 — Ønskelisten bruger nu samme scan/søge-metode som "Scan film"
+
+- Jan påpegede at ønskelisten kun kunne udfyldes via en afkrydsningsboks gemt inde i "Scan film"-siden — ikke "samme metode og data opslag" direkte i ønske-sektionen selv.
+- Udtrukket hele scan-/manuel TMDb-søgning-/bekræft-og-gem-flowet fra `pages/ScanMovie.jsx` til en ny delt komponent `frontend/src/components/MovieLookupForm.jsx` (props: `user`, `wishlist`, `onSaved`) — samme barcode-scanner, samme UPC/Discogs/TMDb-opslag, samme bekræftelsesformular.
+- `pages/ScanMovie.jsx` er nu en tynd wrapper der renderer `<MovieLookupForm user={user} />` (biblioteks-tilstand, uændret opførsel/UI).
+- `pages/Library.jsx` fik et nyt "+ Tilføj ønske ▾"-panel i toolbaren (kun vist når `wishlist`-prop er sat) der renderer `<MovieLookupForm user={user} wishlist onSaved={...} />` — samme metode/data-opslag direkte i ønske-sektionen, ingen omvej via Scan film-fanen. Fjernet den tidligere afkrydsningsboks fra `ScanMovie`/`MovieLookupForm` (mode sættes nu af den side der bruger komponenten, ikke en runtime-toggle). Lokation/ejer-felter skjules i ønskeliste-tilstand (giver ikke mening for noget du endnu ikke ejer).
+- `ScanMovie.css` omdøbt/flyttet til `components/MovieLookupForm.css`.
+- `ARCHITECTURE.md`, `FEATURES.md` #28 opdateret.
+
 ## [0.18.1 build 0021] — 2026-08-01 — Fix: gemte sorterings-presets kunne forsvinde igen (race condition)
 
 - `auth_service.update_settings` gjorde læs-hele-settings → flet ét felt → overskriv-hele-settings. `Library.jsx` sender flere `PATCH /api/users/me/settings`-kald i hurtig rækkefølge uden nogen kø (fx sorterings-niveau-justering straks efterfulgt af "Gem som preset") — to overlappende kald kunne race, så det ene kalds skrivning (bygget på en forældet læsning) tavst overskrev det andets, og et lige-gemt preset forsvandt fra databasen (så det ikke kunne vælges igen efter siden blev genindlæst/fanen genbesøgt). Rapporteret af Jan.

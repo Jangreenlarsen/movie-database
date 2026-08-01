@@ -192,10 +192,29 @@ async def update_movie(
         fields["tags_normalized"] = [tag_service.normalize(tag) for tag in canonical_tags]
 
     requested_serial = fields.pop("serial_number", None)
-    if requested_serial is not None:
+    requested_wishlist = fields.pop("is_wishlist", None)
+
+    current_doc = None
+    if requested_serial is not None or requested_wishlist is not None:
         current_doc = await movie_repository.find_by_id(db, movie_id)
         if current_doc is None:
             raise MovieNotFoundError(movie_id)
+
+    if requested_wishlist is not None:
+        was_wishlist = current_doc.get("is_wishlist", False)
+        fields["is_wishlist"] = requested_wishlist
+        if was_wishlist and not requested_wishlist:
+            # Moving from the wishlist into the real collection (feature
+            # #28/#32) — assign a fresh serial number, same as at creation.
+            # Unrestricted, like POST /api/movies: this isn't "editing" an
+            # existing number, it's assigning the first one.
+            fields["serial_number"] = await movie_repository.next_serial_number(db)
+        elif not was_wishlist and requested_wishlist:
+            # The reverse direction strips an existing serial number, which
+            # is at least as sensitive as changing one — same gate applies.
+            _assert_can_edit_serial_number(current_user, current_doc)
+            await movie_repository.clear_serial_number(db, movie_id)
+    elif requested_serial is not None:
         _assert_can_edit_serial_number(current_user, current_doc)
         await _reassign_serial_number(db, movie_id, current_doc, requested_serial)
 

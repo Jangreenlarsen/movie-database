@@ -65,6 +65,7 @@ class MovieUpdate(BaseModel):
     runtime: int | None = None
     location: str | None = None
     owner: str | None = None
+    is_wishlist: bool | None = None
     serial_number: int | None = Field(default=None, gt=0)
 
 

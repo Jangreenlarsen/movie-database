@@ -145,6 +145,15 @@ async def set_serial_number(db: AsyncIOMotorDatabase, movie_id: str, serial_numb
     )
 
 
+async def clear_serial_number(db: AsyncIOMotorDatabase, movie_id: str) -> None:
+    """Removes the field entirely (not `$set` to null) — same "omit, don't
+    null" pattern as `barcode` (BUGS.md #1/#10), required for the sparse
+    unique index on `serial_number` to treat this movie as unnumbered."""
+    await db[COLLECTION].update_one(
+        {"_id": ObjectId(movie_id)}, {"$unset": {"serial_number": ""}}
+    )
+
+
 async def find_many(
     db: AsyncIOMotorDatabase,
     query: str | None,

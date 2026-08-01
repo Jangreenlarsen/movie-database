@@ -1,5 +1,13 @@
 # Release Notes
 
+## v0.20.0 (build 0023) — 2026-08-01
+
+- Fik du fat i en film der stod på din ønskeliste? Åbn den og tryk "Flyt til bibliotek" — den får automatisk et rigtigt serienummer og flyttes over i filmbiblioteket.
+
+## v0.19.0 (build 0022) — 2026-08-01
+
+- Ønskelisten har nu sin egen "+ Tilføj ønske"-knap der åbner præcis samme scan/søge-metode som "Scan film"-siden (barcode-scan eller TMDb-søgning) — direkte inde i Ønsker-fanen, i stedet for at skulle huske en afkrydsningsboks på Scan film-siden.
+
 ## v0.18.1 (build 0021) — 2026-08-01
 
 - Rettet: gemte sorterings-presets kunne i sjældne tilfælde forsvinde igen kort efter du gemte dem (hvis du nåede at ændre noget andet i sorteringen lige efter). De gemmes nu pålideligt.

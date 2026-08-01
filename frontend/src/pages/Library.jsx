@@ -849,6 +849,10 @@ function MovieDetailModal({
             </p>
           )}
 
+          {movie.collection_id && (
+            <CollectionSection movie={movie} onChanged={onChanged} />
+          )}
+
           {!movie.is_wishlist && (
             <div>
               <div className="modal-section-label">Serienummer</div>
@@ -991,6 +995,86 @@ function MovieDetailModal({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function CollectionSection({ movie, onChanged }) {
+  const [expanded, setExpanded] = useState(false);
+  const [collection, setCollection] = useState(null);
+  const [status, setStatus] = useState("idle");
+  const [addingId, setAddingId] = useState(null);
+
+  function load() {
+    setStatus("loading");
+    api
+      .getCollection(movie.collection_id)
+      .then((data) => {
+        setCollection(data);
+        setStatus("ready");
+      })
+      .catch(() => setStatus("error"));
+  }
+
+  function toggle() {
+    setExpanded((prev) => {
+      const next = !prev;
+      if (next && !collection) load();
+      return next;
+    });
+  }
+
+  async function addPart(part) {
+    setAddingId(part.tmdb_id);
+    try {
+      await api.createMovie({ tmdb_id: part.tmdb_id });
+      load();
+      onChanged();
+    } catch {
+      // fejlen vises ikke separat her — brugeren kan se delen stadig mangler
+      // og prøve igen; hovedfilmens egen gem-flow har sin egen fejlvisning.
+    } finally {
+      setAddingId(null);
+    }
+  }
+
+  const ownedCount = collection?.parts.filter((p) => p.owned && !p.owned_is_wishlist).length ?? null;
+
+  return (
+    <div>
+      <button type="button" className="person-link" onClick={toggle}>
+        Del af samlingen: {movie.collection_name}
+        {ownedCount != null && ` (ejer ${ownedCount} af ${collection.parts.length})`} {expanded ? "▴" : "▾"}
+      </button>
+
+      {expanded && (
+        <div className="collection-parts">
+          {status === "loading" && <p className="muted">Indlæser...</p>}
+          {status === "error" && (
+            <div className="banner banner-error">Kunne ikke hente samlingen fra TMDb.</div>
+          )}
+          {status === "ready" &&
+            collection.parts.map((part) => (
+              <div key={part.tmdb_id} className="collection-part-row">
+                <span>
+                  {part.title} {part.year ? `(${part.year})` : ""}
+                </span>
+                {part.owned ? (
+                  <span className="muted">{part.owned_is_wishlist ? "På ønskelisten" : "✓ Ejer"}</span>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => addPart(part)}
+                    disabled={addingId === part.tmdb_id}
+                  >
+                    {addingId === part.tmdb_id ? "Tilføjer..." : "+ Tilføj"}
+                  </button>
+                )}
+              </div>
+            ))}
+        </div>
+      )}
     </div>
   );
 }

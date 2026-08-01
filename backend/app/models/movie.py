@@ -124,8 +124,27 @@ class Movie(BaseModel):
     personal_note: str | None = None
     watched: bool = False
     watched_at: datetime | None = None
+    collection_id: int | None = None
+    collection_name: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class CollectionPart(BaseModel):
+    tmdb_id: int
+    title: str | None = None
+    year: int | None = None
+    poster_url: str | None = None
+    owned: bool
+    owned_movie_id: str | None = None
+    owned_is_wishlist: bool = False
+
+
+class CollectionInfo(BaseModel):
+    id: int
+    name: str | None = None
+    poster_url: str | None = None
+    parts: list[CollectionPart]
 
 
 class TmdbSyncResult(BaseModel):

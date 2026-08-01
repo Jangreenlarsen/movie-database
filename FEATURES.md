@@ -45,7 +45,7 @@ Status: `planned` → `in-progress` → `done`. Tilføj entry *før* implementer
 | 39| Personlig rating (1-10) + fritekst-note pr. film — adskilt fra TMDb's offentlige `rating`, redigeres i filmens detaljevindue | done | 0.27.0       |
 | 40| "Set"-status (set/ikke set) + set-dato pr. film. Filtrerbar og sorterbar i biblioteksvisningen | done | 0.28.0       |
 | 41| Skuespiller/instruktør-browsing: klik en person i filmens detaljevindue for at filtrere biblioteket til andre film i samlingen med samme person. Kræver nyt `director`-felt (hentet fra TMDb's `credits.crew`, job=Director) | done | 0.29.0       |
-| 42| Set/franchise-gruppering: viser TMDb's `belongs_to_collection` på filmens detaljevindue ("Del af samlingen: X") med hvor mange af samlingens film brugeren ejer, og link til at se/tilføje resten | planned | -       |
+| 42| Set/franchise-gruppering: viser TMDb's `belongs_to_collection` på filmens detaljevindue ("Del af samlingen: X") med hvor mange af samlingens film brugeren ejer, og link til at se/tilføje resten | done | 0.30.0       |
 | 43| Statistik-side: samlet antal film, samlet spilletid, fordeling på genre/årti/format, mest forekommende instruktør/skuespiller i samlingen | planned | -       |
 | 44| Gemte fulde filter-sæt ("visninger"): udvider de eksisterende sorterings-presets (#27) til også at gemme søgetekst/tags/format/lyd/medietype/set-status, ikke kun sorteringsniveauer | planned | -       |
 | 45| Plex-integration: "Afspil i Plex"-knap + tilgængeligheds-badge på filmens detaljevindue, via Plex's egen API mod en admin-konfigureret server-URL+token (samme mønster som feature #36's system-indstillinger) | planned | -       |

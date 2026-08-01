@@ -115,6 +115,7 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     await collection.create_index("watched_at")
     await collection.create_index("cast")
     await collection.create_index("director")
+    await collection.create_index("collection_id")
     await collection.create_index("year")
     await collection.create_index("created_at")
     await collection.create_index("runtime")
@@ -218,6 +219,15 @@ async def find_by_tmdb_id(db: AsyncIOMotorDatabase, tmdb_id: int) -> list[dict]:
     match is possible and legitimate (e.g. two physical copies)."""
     cursor = db[COLLECTION].find({"tmdb_id": tmdb_id})
     return await cursor.to_list(length=100)
+
+
+async def find_by_tmdb_ids(db: AsyncIOMotorDatabase, tmdb_ids: list[int]) -> list[dict]:
+    """Batch lookup for feature #42 (collection ownership) — a single query
+    instead of one per collection part."""
+    if not tmdb_ids:
+        return []
+    cursor = db[COLLECTION].find({"tmdb_id": {"$in": tmdb_ids}})
+    return await cursor.to_list(length=len(tmdb_ids))
 
 
 async def find_all_with_tmdb_id(db: AsyncIOMotorDatabase) -> list[dict]:

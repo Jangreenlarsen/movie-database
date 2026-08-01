@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.30.0 (build 0035) — 2026-08-01
+
+- Film der er del af en filmserie/franchise (fx en trilogi) viser nu det i detaljevinduet, sammen med hvor mange af filmene i serien du allerede ejer — og en "+ Tilføj"-knap til at hente de manglende.
+
 ## v0.29.0 (build 0034) — 2026-08-01
 
 - Skuespillere og instruktør i filmens detaljevindue er nu klikbare — klik for at se andre film i din samling med samme person.

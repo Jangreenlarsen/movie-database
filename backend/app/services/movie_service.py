@@ -15,6 +15,8 @@ from app.core.errors import (
 )
 from app.integrations import tmdb_client
 from app.models.movie import (
+    CollectionInfo,
+    CollectionPart,
     DeletedMovie,
     DuplicateMatch,
     Movie,
@@ -56,6 +58,8 @@ def _to_model(document: dict) -> Movie:
         personal_note=document.get("personal_note"),
         watched=document.get("watched", False),
         watched_at=document.get("watched_at"),
+        collection_id=document.get("collection_id"),
+        collection_name=document.get("collection_name"),
         created_at=document["created_at"],
         updated_at=document["updated_at"],
     )
@@ -80,6 +84,8 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registere
             "runtime": details["runtime"],
             "imdb_url": details["imdb_url"],
             "trailer_url": details["trailer_url"],
+            "collection_id": details["collection_id"],
+            "collection_name": details["collection_name"],
         }
     else:
         movie_fields = {
@@ -176,6 +182,31 @@ async def list_movies(
         director,
     )
     return [_to_model(doc) for doc in documents]
+
+
+async def get_collection_info(db: AsyncIOMotorDatabase, collection_id: int) -> CollectionInfo:
+    collection = await tmdb_client.get_collection(collection_id)
+    tmdb_ids = [part["tmdb_id"] for part in collection["parts"]]
+    owned_docs = await movie_repository.find_by_tmdb_ids(db, tmdb_ids)
+    owned_by_tmdb_id = {doc["tmdb_id"]: doc for doc in owned_docs}
+
+    parts = []
+    for part in collection["parts"]:
+        owned_doc = owned_by_tmdb_id.get(part["tmdb_id"])
+        parts.append(
+            CollectionPart(
+                tmdb_id=part["tmdb_id"],
+                title=part["title"],
+                year=part["year"],
+                poster_url=part["poster_url"],
+                owned=owned_doc is not None,
+                owned_movie_id=str(owned_doc["_id"]) if owned_doc else None,
+                owned_is_wishlist=owned_doc.get("is_wishlist", False) if owned_doc else False,
+            )
+        )
+    return CollectionInfo(
+        id=collection["id"], name=collection["name"], poster_url=collection["poster_url"], parts=parts
+    )
 
 
 async def check_tmdb_duplicates(db: AsyncIOMotorDatabase, tmdb_id: int) -> list[DuplicateMatch]:
@@ -365,6 +396,8 @@ async def sync_all_from_tmdb(db: AsyncIOMotorDatabase) -> TmdbSyncResult:
             "runtime": details["runtime"],
             "imdb_url": details["imdb_url"],
             "trailer_url": details["trailer_url"],
+            "collection_id": details["collection_id"],
+            "collection_name": details["collection_name"],
             "updated_at": datetime.now(timezone.utc),
         }
         await movie_repository.update(db, str(document["_id"]), fields)

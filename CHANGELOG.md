@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.30.0 build 0035] — 2026-08-01 — Set/franchise-gruppering (feature #42)
+
+- Nye `collection_id`/`collection_name` (TMDb's `belongs_to_collection`) — TMDb-sourced, ikke klient-sættelig (samme mønster som `rating`), hentet ved oprettelse og opdateret ved synkronisering.
+- Ny `tmdb_client.get_collection()` mod TMDb's `/collection/{id}` — fuld liste af en samlings film.
+- Ny `GET /api/movies/collections/{collection_id}`: krydsreferer TMDb's samlingsliste mod egne film via ét batch-opslag (`movie_repository.find_by_tmdb_ids`, `$in`) i stedet for ét pr. del — hver del markeret `owned`/`owned_movie_id`/`owned_is_wishlist`.
+- `Library.jsx`: "Del af samlingen: X (ejer N af M) ▾" i detaljevinduet, udvides til en liste med ejer-status pr. del og en "+ Tilføj"-knap for manglende (opretter direkte via `tmdb_id`, samme minimalistiske ét-klik-mønster som "Flyt til bibliotek").
+- Nye tests i `test_collections.py`: uden samling, gemmer samlingsdata, ejer/mangler/ønskeliste-markering, synkronisering opdaterer samlingsfelter.
+
 ## [0.29.0 build 0034] — 2026-08-01 — Skuespiller/instruktør-browsing (feature #41)
 
 - Nyt `director`-felt (TMDb's `credits.crew`, første `job == "Director"`-kredit, `tmdb_client._director`) — hentet ved oprettelse og opdateret ved TMDb-synkronisering, ligesom `cast`. Sættelig manuelt for film oprettet uden `tmdb_id`.

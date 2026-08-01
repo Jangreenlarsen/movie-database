@@ -6,6 +6,7 @@ from app.db import get_database
 from app.integrations import tmdb_client
 from app.models.movie import (
     AudioType,
+    CollectionInfo,
     DeletedMovie,
     DuplicateMatch,
     MediaType,
@@ -83,6 +84,13 @@ async def check_duplicate(
     tmdb_id: int = Query(...), db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     return await movie_service.check_tmdb_duplicates(db, tmdb_id)
+
+
+@router.get("/collections/{collection_id}", response_model=CollectionInfo)
+async def get_collection(
+    collection_id: int, db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    return await movie_service.get_collection_info(db, collection_id)
 
 
 @router.get("/attribute-options")

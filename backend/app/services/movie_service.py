@@ -14,7 +14,7 @@ from app.core.errors import (
     TmdbRateLimitedError,
     TmdbUnavailableError,
 )
-from app.integrations import tmdb_client
+from app.integrations import omdb_client, tmdb_client
 from app.models.movie import (
     CollectionInfo,
     CollectionPart,
@@ -68,6 +68,16 @@ def _to_model(document: dict) -> Movie:
     )
 
 
+async def _resolve_rating(details: dict) -> float | None:
+    """Prefers the real IMDb rating (via OMDb) over TMDb's own vote_average
+    when available (feature #46) — falls back to TMDb's rating if OMDb is
+    unconfigured, unavailable, or has nothing for this imdb_id, so the
+    feature degrades to "same as before" rather than losing the rating
+    entirely."""
+    imdb_rating = await omdb_client.get_imdb_rating(details.get("imdb_id"))
+    return imdb_rating if imdb_rating is not None else details["rating"]
+
+
 async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registered_by: str) -> Movie:
     canonical_tags = await tag_service.resolve_tags(db, payload.tags)
     now = datetime.now(timezone.utc)
@@ -83,7 +93,7 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registere
             "genres": details["genres"],
             "cast": details["cast"],
             "director": details["director"],
-            "rating": details["rating"],
+            "rating": await _resolve_rating(details),
             "runtime": details["runtime"],
             "imdb_url": details["imdb_url"],
             "trailer_url": details["trailer_url"],
@@ -395,8 +405,9 @@ async def list_deleted_movies(db: AsyncIOMotorDatabase) -> list[DeletedMovie]:
 
 async def sync_all_from_tmdb(db: AsyncIOMotorDatabase) -> TmdbSyncResult:
     """Re-fetches every TMDb-sourced movie's cached metadata (title, year,
-    poster, overview, genres, cast, director, rating, runtime, IMDb/trailer
-    links) from
+    poster, overview, genres, cast, director, rating — real IMDb rating via
+    OMDb when available, TMDb's vote_average otherwise, see
+    _resolve_rating/feature #46 — runtime, IMDb/trailer links) from
     TMDb as it stands right now — see FEATURES.md #33. User-entered fields (tags, format,
     audio_types, location, owner, serial_number, registered_by, barcode)
     are never touched. A single movie's TMDb lookup failing (removed from
@@ -449,7 +460,7 @@ async def sync_all_from_tmdb(db: AsyncIOMotorDatabase) -> TmdbSyncResult:
             "genres": details["genres"],
             "cast": details["cast"],
             "director": details["director"],
-            "rating": details["rating"],
+            "rating": await _resolve_rating(details),
             "runtime": details["runtime"],
             "imdb_url": details["imdb_url"],
             "trailer_url": details["trailer_url"],

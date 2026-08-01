@@ -13,6 +13,7 @@ OVERRIDABLE_KEYS = (
     "tmdb_api_token",
     "upc_api_key",
     "discogs_token",
+    "omdb_api_key",
     "plex_server_url",
     "plex_token",
 )

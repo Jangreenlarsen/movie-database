@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.34.0 build 0040] — 2026-08-02 — Faktisk IMDb-rating i stedet for TMDb's (feature #46)
+
+- Ny `app/integrations/omdb_client.py`: henter den reelle IMDb-rating via OMDb (`GET ?i=<imdb_id>&apikey=`), nøglet på TMDb's `imdb_id` (nu også eksponeret direkte i `tmdb_client.get_movie_details`'s returdict). Fejler aldrig synligt — manglende nøgle/imdb_id/match/fejl giver alle `None`.
+- Ny `movie_service._resolve_rating()`: bruges ved både oprettelse (`create_movie`) og synkronisering (`sync_all_from_tmdb`) — foretrækker IMDb's rating, falder tilbage til TMDb's `vote_average` hvis OMDb ikke er konfigureret eller intet har at byde på. Fuldt bagudkompatibelt: uden en OMDb-nøgle sat er adfærden identisk med før.
+- `system_settings`-mekanismen (feature #36) udvidet med `omdb_api_key` — samme skriv-kun mønster som TMDb/UPC/Discogs/Plex-token. Ny `ApiKeyRow` i Settings.jsx.
+- `ARCHITECTURE.md`/`MOVIE_API_REFERENCE.md` opdateret — det tidligere eksplicit dokumenterede fravalg af OMDb (FEATURES.md #13) er nu omgjort på Jans ønske.
+- Nye tests i `test_omdb.py` (8): guard clauses uden nøgle/imdb_id, `_resolve_rating` foretrækker/falder tilbage, fuld oprettelse/synkronisering bruger IMDb-rating når tilgængelig. Plus 1 ny test i `test_system_settings.py`.
+
 ## [0.33.1 build 0039] — 2026-08-02 — Fix: kamera-scan fandt ofte intet match (BUGS.md #19)
 
 - `BarcodeScanner.jsx`: `BrowserMultiFormatReader` begrænses nu eksplicit til `EAN_13`/`UPC_A` via `DecodeHintType.POSSIBLE_FORMATS`, i stedet for at forsøge alle stregkode-symbologier zxing understøtter på hver frame. Uden begrænsningen kunne scanneren på et cover med flere stregkoder/meget grafik låse fast på støj og stille returnere et forkert tal for en anden symbologi — hvilket fejlagtigt fremstod som "intet match", selvom brugerens øjne/manuel indtastning af samme tal virkede fint. `@zxing/library` tilføjet som direkte dependency (var kun transitiv peer-dependency).

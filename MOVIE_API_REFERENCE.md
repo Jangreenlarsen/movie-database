@@ -29,14 +29,27 @@ Konsulteres ved al integration med eksterne film-/stregkode-API'er (jf. CLAUDE.m
 | `genre_ids` → navne | `genres`         |
 | `poster_path`       | `poster_url` (præfikset med image base URL) |
 | `credits.cast[0..N]`| `cast`           |
-| `vote_average`      | `rating` (0-10, rundet til 1 decimal) |
+| `vote_average`      | `rating`-fallback (0-10, rundet til 1 decimal) — kun hvis OMDb ikke har et bedre svar, se OMDb-afsnittet nedenfor |
 
-> **OBS**: `vote_average` er TMDb's egen community-rating — det er **ikke** den faktiske IMDb-rating. Ægte IMDb-rating (og Rotten Tomatoes/Metacritic) kræver en separat integration mod OMDb API (omdbapi.com), som ikke er implementeret. Valgt fra (se BUGS.md/FEATURES.md #13): TMDb's rating var tilgængelig med det samme uden ny konto/nøgle.
+> **OBS**: `vote_average` er TMDb's egen community-rating — det er **ikke** den faktiske IMDb-rating. Siden feature #46 (2026-08-02) hentes den *faktiske* IMDb-rating via OMDb i stedet, med `vote_average` som fallback hvis OMDb ikke er konfigureret/tilgængelig — se `## OMDb` nedenfor.
 
 ### Fejlhåndtering
 - Tomt `results[]` ved søgning → vis "ingen match, prøv en anden titel" i frontend, tilbyd manuel indtastning.
 - HTTP 401 → ugyldig/manglende token, log som konfigurationsfejl (ikke bruger-fejl).
 - HTTP 429 → backoff og retry (se `TECH_REFERENCE.md` for retry-strategi i `integrations/tmdb_client.py`).
+
+---
+
+## OMDb (faktisk IMDb-rating, feature #46)
+
+Implementeret i `backend/app/integrations/omdb_client.py`. **Ikke** en erstatning for TMDb — bruges udelukkende til at berige én enkelt værdi (`rating`) med det tal der reelt vises på imdb.com, da TMDb's `vote_average` er en helt separat community-rating. Nøglet på det `imdb_id` TMDb allerede leverer via `external_ids`, ingen fritekst-matching involveret.
+
+- **Base URL**: `https://www.omdbapi.com/`
+- **Auth**: `apikey=`-query-param. Gratis nøgle (1.000 opslag/dag) på http://www.omdbapi.com/apikey.aspx. Opbevares som `OMDB_API_KEY` i `.env`, eller admin-sat i UI'et under Indstillinger → System-indstillinger (samme mønster som de øvrige nøgler) — overstyrer `.env` med det samme, uden genstart.
+- **Request**: `GET ?i=<imdb_id>&apikey=<nøgle>` (fx `?i=tt0133093`).
+- **Response**: `imdbRating` (streng, fx `"8.7"`, eller `"N/A"` hvis ingen rating findes endnu). `Response: "False"` + `Error`-felt hvis `imdb_id` ikke findes hos OMDb.
+- **Fejlhåndtering**: samme filosofi som UPC/Discogs/Plex — manglende nøgle, intet `imdb_id`, `N/A`-rating, `Response: "False"`, en ikke-200-status eller en netværksfejl giver alle sammen `None` (aldrig en kastet exception). `movie_service._resolve_rating` falder i så fald tilbage til TMDb's `vote_average`, så filmen aldrig ender uden nogen rating overhovedet.
+- **Kaldes**: automatisk ved oprettelse af en film via `tmdb_id`, og ved `POST /api/movies/sync-tmdb`. Ikke et separat brugerflow/knap — helt usynligt for brugeren ud over at tallet nu matcher IMDb i stedet for TMDb.
 
 ---
 

@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     tmdb_api_token: str = ""
     upc_api_key: str = ""
     discogs_token: str = ""
+    # Faktisk IMDb-rating (feature #46) — TMDb's egen vote_average er ikke
+    # det samme tal som vises på imdb.com.
+    omdb_api_key: str = ""
 
     # Plex-integration (feature #45) — server_url er ikke en hemmelighed
     # (bare en LAN-adresse) og eksponeres derfor med sin faktiske værdi via
@@ -54,6 +57,7 @@ ENV_DEFAULT_API_KEYS: dict[str, str] = {
     "tmdb_api_token": settings.tmdb_api_token,
     "upc_api_key": settings.upc_api_key,
     "discogs_token": settings.discogs_token,
+    "omdb_api_key": settings.omdb_api_key,
     "plex_server_url": settings.plex_server_url,
     "plex_token": settings.plex_token,
 }

@@ -10,7 +10,7 @@ Produktion kører **native** på en dedikeret Debian-server — ikke Docker Comp
 |---|---|
 | OS | Debian 13 (trixie) |
 | Host | `10.1.130.10` (kun tilgængelig på hjemmenetværket — intet domænenavn) |
-| Bruger | `jgl` (har passwordless sudo via `/etc/sudoers.d/jgl-deploy`) |
+| Bruger | `jgl` (har **kun** snæver passwordless sudo til to specifikke kommandoer, via `/etc/sudoers.d/jgl-deploy-ota` — se "Opdatere produktion" nedenfor) |
 | Repo | klonet til `/opt/moviedb` fra `main`-branchen, via en **read-only deploy key** (ikke en personlig adgangstoken) — se GitHub repo → Settings → Deploy keys, "moviedb-prod-server" |
 
 ## Komponenter
@@ -36,26 +36,36 @@ Ligger i `/opt/moviedb/backend/.env` (git-ignoreret, `chmod 600`, ejes af `jgl`)
 
 ### Via "Opdatér fra GitHub"-knappen (feature #20, anbefalet)
 
-Indstillinger-siden har en **admin-only** "Opdatér fra GitHub"-knap. Den kalder `POST /api/system/deploy`, som starter `/opt/moviedb-deploy.sh` i baggrunden (`git pull` + geninstaller afhængigheder + genstart `moviedb-backend` + genindlæs `caddy`) og svarer med det samme — siden poller derefter `/api/health`s `build`-felt indtil den nye version er oppe (typisk under et minut). Se ARCHITECTURE.md's note om OTA-opdatering for de tekniske detaljer.
+Indstillinger-siden har en **admin-only** "Opdatér fra GitHub"-knap. Den kalder `POST /api/system/deploy`, som starter `/opt/moviedb-deploy.sh` i baggrunden (`git pull` + geninstaller afhængigheder + `npm run build`) og svarer med det samme — siden poller derefter `/api/health`s `build`-felt indtil den nye version er oppe (typisk under et minut). Se ARCHITECTURE.md's note om OTA-opdatering for de tekniske detaljer.
 
-**Opsætning på serveren** (kun nødvendigt én gang, eller hvis `scripts/deploy.sh` ændres i repoet):
+**Live-verificeret** 2026-08-01 (efter at have fanget og rettet to reelle sandbox-relaterede fejl — se BUGS.md #18): hele kæden kørt igennem direkte inde i den *faktiske* sandboxede mount-namespace for den kørende `moviedb-backend`-proces (via `nsenter` på processens PID, ikke et almindeligt shell), for at reproducere præcis den kontekst en rigtig admin-klik kører i. `git pull` → `pip install` → `npm run build` → trigger-fil → automatisk genstart af `moviedb-backend` + genindlæsning af `caddy` gennemført uden fejl, `moviedb-backend`s `ActiveEnterTimestamp` bekræftede en reel genstart, `/api/health` svarede korrekt undervejs og efter. Selve knappen (admin-login → klik → polling i browseren) er endnu ikke afprøvet af Jan, men den underliggende mekanisme er nu verificeret i den rigtige runtime-kontekst.
+
+**Vigtigt om `moviedb-backend.service`'s sandboxing**: servicen kører med `ProtectSystem=strict` + `NoNewPrivileges=true` (se opsætning nedenfor). `NoNewPrivileges=true` gør `sudo` **permanent ubrugeligt** for servicen og alle dens child-processer, uanset sudoers-opsætning — deploy-scriptet bruger derfor **ikke** `sudo` til at genstarte services. I stedet rører scriptet en trigger-fil (`/opt/moviedb/.deploy-restart-trigger`), som en separat, ikke-sandboxed root-ejet systemd path-unit (`moviedb-deploy-restart.path` → `.service`) reagerer på og udfører den faktiske genstart/reload. Se `scripts/moviedb-deploy-restart.path` og `scripts/moviedb-deploy-restart.service`.
+
+**Opsætning på serveren** (kun nødvendigt én gang, eller hvis `scripts/deploy.sh`/de to nye unit-filer ændres i repoet):
 
 ```bash
+# Deploy-scriptet
 sudo cp /opt/moviedb/scripts/deploy.sh /opt/moviedb-deploy.sh
 sudo chmod +x /opt/moviedb-deploy.sh
 sudo chown jgl:jgl /opt/moviedb-deploy.sh
 sudo touch /opt/moviedb-deploy.log && sudo chown jgl:jgl /opt/moviedb-deploy.log
+
+# Restart-watcher (kører som root, uden for sandkassen — undgår sudo helt)
+sudo cp /opt/moviedb/scripts/moviedb-deploy-restart.path /opt/moviedb/scripts/moviedb-deploy-restart.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now moviedb-deploy-restart.path
 ```
 
-Scriptet selv kører som `jgl` (ingen sudo for `git`/`npm`/`pip`) — kun de to `systemctl`-kommandoer det til sidst kalder kræver root, via en **snæver** navngiven sudoers-regel (ikke bred `ALL`-adgang):
+`moviedb-backend.service` skal have følgende `ReadWritePaths`/`PrivateTmp`, ellers fejler `git pull`/`npm run build`/log-skrivning med `Read-only file system` (BUGS.md #18):
 
-```bash
-echo 'jgl ALL=(root) NOPASSWD: /usr/bin/systemctl restart moviedb-backend, /usr/bin/systemctl reload caddy' | sudo tee /etc/sudoers.d/jgl-deploy-ota
-sudo chmod 440 /etc/sudoers.d/jgl-deploy-ota
-sudo visudo -c
+```ini
+ProtectSystem=strict
+PrivateTmp=true
+ReadWritePaths=/opt/moviedb /opt/moviedb-deploy.log
 ```
 
-(Dette **erstatter** den bredere `jgl ALL=(ALL) NOPASSWD:ALL`-regel fra `/etc/sudoers.d/jgl-deploy` der blev sat op under den oprindelige installation — den var kun nødvendig mens serveren blev sat op fra bunden. Fjern den gamle fil, eller lad den blive hvis du fortsat vil have bred sudo-adgang til manuel drift via SSH.)
+Der er **ingen** sudoers-regel involveret længere til selve deploy-flowet — den tidligere snævre `/etc/sudoers.d/jgl-deploy-ota`-regel (der viste sig aldrig at kunne virke pga. `NoNewPrivileges=true`) er fjernet fra serveren. `jgl` har fortsat almindelig (password-krævende) sudo-adgang via `sudo`-gruppen til manuel drift over SSH — det er en helt separat sti, upåvirket af servicens sandboxing, da et login-shell aldrig er en child-proces af `moviedb-backend`.
 
 ### Manuelt (uden knappen, fx hvis backend slet ikke kan starte)
 
@@ -203,7 +213,7 @@ Testet manuelt først (5 sekunders kørsel, aflyst igen) for at fange evt. opsta
 timeout 5 .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Derefter en systemd-service (`/etc/systemd/system/moviedb-backend.service`) der binder uvicorn til `127.0.0.1:8000` som bruger `jgl`, med et par hærdnings-flag (`NoNewPrivileges`, `ProtectSystem=strict`) og `Restart=on-failure`:
+Derefter en systemd-service (`/etc/systemd/system/moviedb-backend.service`) der binder uvicorn til `127.0.0.1:8000` som bruger `jgl`, med et par hærdnings-flag (`NoNewPrivileges`, `ProtectSystem=strict`, `PrivateTmp=true`, `ReadWritePaths=/opt/moviedb /opt/moviedb-deploy.log` — se "Opdatere produktion" ovenfor for hvorfor disse specifikke paths/flag er nødvendige) og `Restart=on-failure`:
 
 ```bash
 sudo systemctl daemon-reload

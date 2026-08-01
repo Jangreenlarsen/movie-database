@@ -13,6 +13,7 @@ export default function Settings({ user }) {
 
       <AccountSection user={user} />
       <SerialNumberSection isAdmin={isAdmin} />
+      <DeletedMoviesSection />
       {isAdmin && <UsersSection currentUserId={user.id} />}
     </section>
   );
@@ -185,6 +186,57 @@ function SerialNumberSection({ isAdmin }) {
             </button>
           )}
         </form>
+      )}
+    </div>
+  );
+}
+
+function DeletedMoviesSection() {
+  const [entries, setEntries] = useState([]);
+  const [status, setStatus] = useState("loading");
+
+  useEffect(() => {
+    api
+      .listDeletedMovies()
+      .then((data) => {
+        setEntries(data);
+        setStatus("ready");
+      })
+      .catch(() => setStatus("error"));
+  }, []);
+
+  return (
+    <div className="card settings-section">
+      <h2>Slettede film</h2>
+      <p className="muted">
+        Når en film slettes, logges den her sammen med serienummeret — nummeret er
+        derefter frit til at blive genbrugt af en ny film.
+      </p>
+
+      {status === "loading" && <p className="muted">Indlæser...</p>}
+      {status === "error" && (
+        <div className="banner banner-error">Kunne ikke hente slettede film.</div>
+      )}
+
+      {status === "ready" && entries.length === 0 && (
+        <p className="muted">Ingen film er slettet endnu.</p>
+      )}
+
+      {status === "ready" && entries.length > 0 && (
+        <ul className="user-list">
+          {entries.map((entry) => (
+            <li key={entry.id} className="user-row">
+              <span className="user-row-name">
+                #{entry.serial_number ?? "—"} · {entry.title}
+                {entry.year ? ` (${entry.year})` : ""}
+              </span>
+              <span className="muted">
+                Slettet af {entry.deleted_by ?? "ukendt"} d.{" "}
+                {new Date(entry.deleted_at).toLocaleDateString("da-DK")}
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

@@ -58,6 +58,7 @@ export const api = {
   updateMovie: (id, payload) =>
     request(`/movies/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteMovie: (id) => request(`/movies/${id}`, { method: "DELETE" }),
+  listDeletedMovies: () => request("/movies/deleted"),
   listTags: () => request("/tags"),
   attributeOptions: () => request("/movies/attribute-options"),
   getSerialNumberConfig: () => request("/settings/serial-number"),

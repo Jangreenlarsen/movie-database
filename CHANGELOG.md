@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.15.0 build 0017] — 2026-08-01 — Soft-delete af film + slettet-liste
+
+- Ny collection `deleted_movies` (`movie_repository.archive_deleted`/`list_deleted`, index på `deleted_at`).
+- `movie_service.delete_movie` logger nu filmen (serienr, titel, år, format, tidspunkt, hvem) i `deleted_movies` *før* den fjernes fra `movies` — i stedet for bare at forsvinde. Serienummeret er automatisk frit til genbrug bagefter (det unikke index kender kun til film der stadig findes i `movies`).
+- Ny `GET /api/movies/deleted` (registreret før `/{movie_id}`), nyt `DeletedMovie`-model.
+- `DELETE /api/movies/{id}`-handleren henter nu `current_user` for at kunne logge hvem der slettede.
+- Ny sektion "Slettede film" på Indstillinger-siden, viser serienr./titel/år/hvornår/hvem.
+- Nye regressionstests i `test_deleted_movies.py`: sletning logges korrekt, et frigjort serienummer kan genbruges af en ny film, sletning af ukendt film giver stadig 404.
+- `ARCHITECTURE.md` opdateret (REST-kontrakt, MongoDB-collections). `FEATURES.md` #29 markeret done.
+
 ## [0.14.0 build 0016] — 2026-08-01 — Print-venlig liste-side
 
 - Ny frontend-side `frontend/src/pages/PrintList.jsx` + `PrintList.css`, ny fane "Print" i navigationen.

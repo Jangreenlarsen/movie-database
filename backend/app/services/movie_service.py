@@ -5,7 +5,7 @@ from pymongo.errors import DuplicateKeyError
 
 from app.core.errors import DuplicateBarcodeError, MovieNotFoundError, NotAuthorizedError
 from app.integrations import tmdb_client
-from app.models.movie import Movie, MovieCreate, MovieUpdate
+from app.models.movie import DeletedMovie, Movie, MovieCreate, MovieUpdate
 from app.models.settings import SerialNumberConfig, SerialNumberConfigUpdate
 from app.repositories import movie_repository
 from app.services import tag_service
@@ -177,10 +177,31 @@ async def update_movie(
     return _to_model(document)
 
 
-async def delete_movie(db: AsyncIOMotorDatabase, movie_id: str) -> None:
+async def delete_movie(db: AsyncIOMotorDatabase, movie_id: str, deleted_by: str) -> None:
+    document = await movie_repository.find_by_id(db, movie_id)
+    if document is None:
+        raise MovieNotFoundError(movie_id)
+
+    await movie_repository.archive_deleted(db, document, deleted_by)
     deleted = await movie_repository.delete(db, movie_id)
     if not deleted:
         raise MovieNotFoundError(movie_id)
+
+
+async def list_deleted_movies(db: AsyncIOMotorDatabase) -> list[DeletedMovie]:
+    documents = await movie_repository.list_deleted(db)
+    return [
+        DeletedMovie(
+            id=str(doc["_id"]),
+            serial_number=doc.get("serial_number"),
+            title=doc["title"],
+            year=doc.get("year"),
+            format=doc.get("format"),
+            deleted_at=doc["deleted_at"],
+            deleted_by=doc.get("deleted_by"),
+        )
+        for doc in documents
+    ]
 
 
 async def get_serial_number_config(db: AsyncIOMotorDatabase) -> SerialNumberConfig:

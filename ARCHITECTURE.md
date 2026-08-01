@@ -28,7 +28,8 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 | GET    | `/api/movies/{id}`             | Hent én film med fuld metadata                             | done |
 | POST   | `/api/movies`                  | Opret film (manuelt eller efter scan-bekræftelse). 409 ved dublet `barcode`. Tildeler automatisk fortløbende `serial_number`. Sætter `registered_by` til den indloggede bruger; `owner` defaulter til samme hvis ikke angivet. Accepterer valgfri `location`, `owner`. | done |
 | PATCH  | `/api/movies/{id}`             | Opdater film (tags, format, audio_types, location, owner, samt `serial_number` — se note nedenfor). `serial_number` kan **kun** ændres af en admin eller den bruger der står i filmens `registered_by` (403 ellers). | done |
-| DELETE | `/api/movies/{id}`             | Slet film                                                     | done |
+| DELETE | `/api/movies/{id}`             | Slet film. Filmen logges først i `deleted_movies` (serienr, titel, hvornår, hvem — se `GET /api/movies/deleted`), derefter fjernes den fra `movies`; dens serienummer er derefter frit til genbrug. | done |
+| GET    | `/api/movies/deleted`          | Liste over slettede film (serienr, titel, år, format, tidspunkt, hvem). Registreret før `/{movie_id}`. | done |
 | GET    | `/api/movies/attribute-options`| Liste gyldige `format`- og `audio_types`-værdier (enum-kilde til frontend-dropdowns). Registreret før `/{movie_id}`. | done |
 | GET    | `/api/tags`                    | Liste alle tags (til autocomplete)                            | done |
 | POST   | `/api/scan/lookup`             | Input: scannet UPC/EAN. Output: UPC-gæt + TMDb-kandidater. 502 hvis TMDb er utilgængelig/token mangler. | done |
@@ -95,6 +96,7 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 | `movies`   | `serial_number` (fortløbende, immutable — se dog #29 planlagt soft-delete/genbrug), `tmdb_id`, `barcode` (**udelades helt af dokumentet når ikke angivet — se BUGS.md #1**), `title`, `year`, `tags[]` (display-case), `tags_normalized[]` (lowercase, bruges til filtrering), `format` (enum-streng), `audio_types[]` (enum-strenge), `rating` (0-10, TMDb `vote_average`, kun sat når `tmdb_id` er angivet), `runtime` (minutter, fra TMDb eller manuel), `location` (fritekst), `owner` (brugernavn, defaulter til `registered_by`), `registered_by` (brugernavn, sat automatisk ved oprettelse, immutable) | text-index på `title`+`overview`, index på `tags_normalized`, `format`, `audio_types`, `year`, `rating`, unique sparse index på `barcode`, unique index på `serial_number` |
 | `tags`     | `name` (første-typede casing), `normalized` (lowercase, unik nøgle)     | unique index på `normalized`                |
 | `counters` | `_id` (fast nøgle `"movie_serial"`), `next_value` (hvad næste film får), `increment`, `padding_width` (kun visning) | — (kun ét dokument, atomisk `$inc`)         |
+| `deleted_movies` | `movie_id` (den oprindelige films `_id`), `serial_number`, `title`, `year`, `format`, `deleted_at`, `deleted_by` (brugernavn) — se `movie_repository.archive_deleted` | index på `deleted_at`                       |
 | `users`    | `username` (unik), `password_hash` (bcrypt), `role` (`admin`\|`standard`), `settings` (sort_field, sort_direction, visible_fields — personlige view-/filterindstillinger) | unique index på `username`                  |
 
 Detaljeret skema og indexes: se [TECH_REFERENCE.md](TECH_REFERENCE.md).

@@ -88,3 +88,13 @@ class Movie(BaseModel):
     registered_by: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class DeletedMovie(BaseModel):
+    id: str
+    serial_number: int | None = None
+    title: str
+    year: int | None = None
+    format: str | None = None
+    deleted_at: datetime
+    deleted_by: str | None = None

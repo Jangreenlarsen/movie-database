@@ -1,8 +1,11 @@
+from datetime import datetime, timezone
+
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
 COLLECTION = "movies"
+DELETED_COLLECTION = "deleted_movies"
 COUNTERS_COLLECTION = "counters"
 SERIAL_COUNTER_ID = "movie_serial"
 DEFAULT_SERIAL_CONFIG = {"next_value": 1, "increment": 1, "padding_width": 0}
@@ -29,6 +32,7 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     await collection.create_index("serial_number", unique=True)
     await collection.create_index("rating")
     await collection.create_index("year")
+    await db[DELETED_COLLECTION].create_index("deleted_at")
 
 
 async def _ensure_serial_config(db: AsyncIOMotorDatabase) -> dict:
@@ -161,3 +165,26 @@ async def delete(db: AsyncIOMotorDatabase, movie_id: str) -> bool:
         return False
     result = await db[COLLECTION].delete_one({"_id": ObjectId(movie_id)})
     return result.deleted_count > 0
+
+
+async def archive_deleted(db: AsyncIOMotorDatabase, movie_doc: dict, deleted_by: str) -> None:
+    """Logs a deleted movie (serial_number, title, when, who) before the
+    document itself is removed from `movies` — see FEATURES.md #29. Once the
+    document is gone, its serial_number is no longer taken, so it is
+    automatically free for the counter or a manual edit to reuse."""
+    await db[DELETED_COLLECTION].insert_one(
+        {
+            "movie_id": movie_doc["_id"],
+            "serial_number": movie_doc.get("serial_number"),
+            "title": movie_doc["title"],
+            "year": movie_doc.get("year"),
+            "format": movie_doc.get("format"),
+            "deleted_at": datetime.now(timezone.utc),
+            "deleted_by": deleted_by,
+        }
+    )
+
+
+async def list_deleted(db: AsyncIOMotorDatabase) -> list[dict]:
+    cursor = db[DELETED_COLLECTION].find().sort("deleted_at", -1)
+    return await cursor.to_list(length=1000)

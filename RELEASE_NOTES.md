@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.15.0 (build 0017) — 2026-08-01
+
+- Sletter du en film forsvinder den ikke bare — den logges nu i en ny liste under Indstillinger ("Slettede film") med serienummer, titel, hvornår og hvem der slettede den. Serienummeret bliver automatisk frit til en ny film bagefter.
+
 ## v0.14.0 (build 0016) — 2026-08-01
 
 - Ny fane "Print": en kompakt, print-venlig liste over hele filmsamlingen (serienr., titel, år, format, lokation), én linje pr. film. Tryk "🖨️ Print" for at udskrive.

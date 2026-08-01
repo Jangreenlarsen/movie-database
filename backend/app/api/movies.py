@@ -6,7 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.api.deps import get_current_user
 from app.db import get_database
 from app.integrations import tmdb_client
-from app.models.movie import AudioType, Movie, MovieCreate, MovieFormat, MovieUpdate
+from app.models.movie import AudioType, DeletedMovie, Movie, MovieCreate, MovieFormat, MovieUpdate
 from app.models.scan import MovieCandidate
 from app.services import movie_service
 
@@ -56,6 +56,11 @@ async def attribute_options() -> dict:
     }
 
 
+@router.get("/deleted", response_model=list[DeletedMovie])
+async def list_deleted_movies(db: AsyncIOMotorDatabase = Depends(get_database)):
+    return await movie_service.list_deleted_movies(db)
+
+
 @router.get("/{movie_id}", response_model=Movie)
 async def get_movie(movie_id: str, db: AsyncIOMotorDatabase = Depends(get_database)):
     return await movie_service.get_movie(db, movie_id)
@@ -72,5 +77,9 @@ async def update_movie(
 
 
 @router.delete("/{movie_id}", status_code=204)
-async def delete_movie(movie_id: str, db: AsyncIOMotorDatabase = Depends(get_database)):
-    await movie_service.delete_movie(db, movie_id)
+async def delete_movie(
+    movie_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    await movie_service.delete_movie(db, movie_id, current_user["username"])

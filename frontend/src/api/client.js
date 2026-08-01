@@ -68,6 +68,8 @@ export const api = {
   syncMoviesFromTmdb: () => request("/movies/sync-tmdb", { method: "POST" }),
   listTags: () => request("/tags"),
   attributeOptions: () => request("/movies/attribute-options"),
+  checkDuplicate: (tmdbId) =>
+    request(`/movies/check-duplicate?${new URLSearchParams({ tmdb_id: tmdbId })}`),
   getSerialNumberConfig: () => request("/settings/serial-number"),
   updateSerialNumberConfig: (payload) =>
     request("/settings/serial-number", { method: "PATCH", body: JSON.stringify(payload) }),

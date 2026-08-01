@@ -32,6 +32,7 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 | GET    | `/api/movies/deleted`          | Liste over slettede film (serienr, titel, år, format, tidspunkt, hvem). Registreret før `/{movie_id}`. | done |
 | POST   | `/api/movies/sync-tmdb`        | Genindlæser TMDb-metadata for alle film med `tmdb_id` (se note nedenfor). **Kræver admin.** Registreret før `/{movie_id}`. | done |
 | GET    | `/api/movies/attribute-options`| Liste gyldige `format`-, `audio_types`- og `media_types`-værdier (enum-kilde til frontend-dropdowns). Registreret før `/{movie_id}`. | done |
+| GET    | `/api/movies/check-duplicate`  | Input: `tmdb_id`. Output: liste af eksisterende film (bibliotek og/eller ønskeliste) med samme `tmdb_id` — blød advarsel før gem, ikke en blokering (feature #38). Registreret før `/{movie_id}`. | done |
 | GET    | `/api/tags`                    | Liste alle tags (til autocomplete)                            | done |
 | POST   | `/api/scan/lookup`             | Input: scannet UPC/EAN. Output: titel-gæt + TMDb-kandidater. Prøver UPCitemdb først, herefter Discogs som fallback hvis intet match (se MOVIE_API_REFERENCE.md). 502 hvis TMDb er utilgængelig/token mangler. | done |
 | GET    | `/api/movies/tmdb-search`      | Direkte TMDb-titel-søgning (fallback når scan ikke matcher). Registreret før `/{movie_id}`. | done |

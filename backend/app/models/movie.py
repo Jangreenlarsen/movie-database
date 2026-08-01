@@ -125,6 +125,13 @@ class TmdbSyncResult(BaseModel):
     stopped_early: bool = False
 
 
+class DuplicateMatch(BaseModel):
+    id: str
+    title: str
+    serial_number: int | None = None
+    is_wishlist: bool = False
+
+
 class DeletedMovie(BaseModel):
     id: str
     serial_number: int | None = None

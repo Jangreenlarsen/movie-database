@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.26.0 build 0031] — 2026-08-01 — Dublet-advarsel ved oprettelse (feature #38)
+
+- Ny `GET /api/movies/check-duplicate?tmdb_id=` (`movie_repository.find_by_tmdb_id`, `movie_service.check_tmdb_duplicates`) — returnerer alle eksisterende film (bibliotek og/eller ønskeliste) med samme `tmdb_id`. Registreret før `/{movie_id}`, som de andre specifikke rute-litteraler.
+- `MovieLookupForm.jsx`: kaldes automatisk når en TMDb-kandidat vælges. Viser en blød advarsel ("findes allerede i biblioteket (#12)" / "på ønskelisten") uden at blokere gem — flere fysiske kopier er en legitim use case.
+- Nye tests i `test_duplicate_check.py`: intet match, match i bibliotek, match i ønskeliste, og at oprettelse af en reel dublet ikke blokeres.
+
 ## [0.25.0 build 0030] — 2026-08-01 — Manuel indtastning af stregkode (feature #37)
 
 - `MovieLookupForm.jsx`: nyt tekstfelt + "Slå op"-knap under kamera-scanneren i både "Scan film" og ønskelistens "+ Tilføj ønske"-panel. Kalder samme `handleDetected`-flow (→ `/api/scan/lookup`) som en kamera-scan — ingen backend-ændring nødvendig, stregkoden var allerede bare en streng.

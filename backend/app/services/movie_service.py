@@ -14,7 +14,14 @@ from app.core.errors import (
     TmdbUnavailableError,
 )
 from app.integrations import tmdb_client
-from app.models.movie import DeletedMovie, Movie, MovieCreate, MovieUpdate, TmdbSyncResult
+from app.models.movie import (
+    DeletedMovie,
+    DuplicateMatch,
+    Movie,
+    MovieCreate,
+    MovieUpdate,
+    TmdbSyncResult,
+)
 from app.models.settings import SerialNumberConfig, SerialNumberConfigUpdate
 from app.repositories import movie_repository
 from app.services import tag_service
@@ -156,6 +163,19 @@ async def list_movies(
         is_wishlist,
     )
     return [_to_model(doc) for doc in documents]
+
+
+async def check_tmdb_duplicates(db: AsyncIOMotorDatabase, tmdb_id: int) -> list[DuplicateMatch]:
+    documents = await movie_repository.find_by_tmdb_id(db, tmdb_id)
+    return [
+        DuplicateMatch(
+            id=str(doc["_id"]),
+            title=doc["title"],
+            serial_number=doc.get("serial_number"),
+            is_wishlist=doc.get("is_wishlist", False),
+        )
+        for doc in documents
+    ]
 
 
 async def get_movie(db: AsyncIOMotorDatabase, movie_id: str) -> Movie:

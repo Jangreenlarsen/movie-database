@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.26.0 (build 0031) — 2026-08-01
+
+- Ny advarsel når du vælger en film der allerede findes i biblioteket eller på ønskelisten — praktisk hvis du er i tvivl om du allerede har scannet den. Du kan stadig tilføje den igen, fx hvis du ejer flere kopier.
+
 ## v0.25.0 (build 0030) — 2026-08-01
 
 - Kan nu indtaste en stregkode manuelt (i stedet for kun at scanne med kameraet) på både "Scan film"-siden og ønskelistens "+ Tilføj ønske"-panel — praktisk hvis kameraet driller eller en kode er svær at scanne.

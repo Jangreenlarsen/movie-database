@@ -36,6 +36,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   });
   const [saveStatus, setSaveStatus] = useState("idle");
   const [saveError, setSaveError] = useState(null);
+  const [duplicates, setDuplicates] = useState([]);
 
   useEffect(() => {
     api.attributeOptions().then(setAttributeOptions).catch(() => {});
@@ -80,6 +81,8 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   function selectCandidate(candidate) {
     setSelectedCandidate(candidate);
     setSaveStatus("idle");
+    setDuplicates([]);
+    api.checkDuplicate(candidate.tmdb_id).then(setDuplicates).catch(() => {});
   }
 
   async function saveMovie() {
@@ -107,6 +110,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
       setLocation("");
       setOwner(user?.username ?? "");
       setBarcode(null);
+      setDuplicates([]);
       onSaved?.();
     } catch (err) {
       setSaveStatus("error");
@@ -213,6 +217,20 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
               <p className="muted">{selectedCandidate.year}</p>
             </div>
           </div>
+
+          {duplicates.length > 0 && (
+            <div className="banner banner-error">
+              Findes allerede: denne film er allerede{" "}
+              {duplicates
+                .map((d) =>
+                  d.is_wishlist
+                    ? "på ønskelisten"
+                    : `i biblioteket${d.serial_number ? ` (#${d.serial_number})` : ""}`
+                )
+                .join(" og ")}
+              . Du kan stadig tilføje den igen — fx hvis du ejer flere kopier.
+            </div>
+          )}
 
           <div>
             <label className="field-label" htmlFor="tags-input">

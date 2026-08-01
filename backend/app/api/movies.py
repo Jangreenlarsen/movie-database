@@ -7,6 +7,7 @@ from app.integrations import tmdb_client
 from app.models.movie import (
     AudioType,
     DeletedMovie,
+    DuplicateMatch,
     MediaType,
     Movie,
     MovieCreate,
@@ -62,6 +63,13 @@ async def create_movie(
 async def tmdb_search(query: str = Query(...)):
     candidates = await tmdb_client.search_movies(query)
     return [MovieCandidate(**candidate) for candidate in candidates]
+
+
+@router.get("/check-duplicate", response_model=list[DuplicateMatch])
+async def check_duplicate(
+    tmdb_id: int = Query(...), db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    return await movie_service.check_tmdb_duplicates(db, tmdb_id)
 
 
 @router.get("/attribute-options")

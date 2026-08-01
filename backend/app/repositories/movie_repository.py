@@ -205,6 +205,14 @@ async def find_by_serial_number(db: AsyncIOMotorDatabase, serial_number: int) ->
     return await db[COLLECTION].find_one({"serial_number": serial_number})
 
 
+async def find_by_tmdb_id(db: AsyncIOMotorDatabase, tmdb_id: int) -> list[dict]:
+    """All existing documents (library and/or wishlist) for a given TMDb id —
+    used for the pre-save duplicate warning (FEATURES.md #38). More than one
+    match is possible and legitimate (e.g. two physical copies)."""
+    cursor = db[COLLECTION].find({"tmdb_id": tmdb_id})
+    return await cursor.to_list(length=100)
+
+
 async def find_all_with_tmdb_id(db: AsyncIOMotorDatabase) -> list[dict]:
     """Movies whose metadata was originally sourced from TMDb — the only
     ones a bulk re-sync (FEATURES.md #33) can refresh anything for."""

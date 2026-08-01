@@ -37,3 +37,14 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Immutable snapshot of the .env-derived values, taken once at import time —
+# used to restore the "no override" value when an admin clears a custom
+# key via `PATCH /api/settings/system` (feature #36). `settings` itself gets
+# mutated in place at runtime (see system_settings_service), so this is the
+# only remaining record of what .env actually provided.
+ENV_DEFAULT_API_KEYS: dict[str, str] = {
+    "tmdb_api_token": settings.tmdb_api_token,
+    "upc_api_key": settings.upc_api_key,
+    "discogs_token": settings.discogs_token,
+}

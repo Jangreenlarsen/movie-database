@@ -2,6 +2,15 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.24.0 build 0029] — 2026-08-01 — Admin-konfigurerbare API-nøgler i Indstillinger (feature #36)
+
+- Ny "System-indstillinger"-sektion (admin-only) på Indstillinger-siden: TMDb API-token, UPC API-nøgle og Discogs-token kan nu sættes/opdateres direkte i UI'et, uden SSH/redeploy.
+- Nyt `system_settings_repository`/`system_settings_service`: overstyringer gemmes i en ny `system_settings`-collection (singleton-dokument, `$set`/`$unset` — aldrig read-modify-write) og skrives med det samme ind i den globale `settings`-singleton i hukommelsen, så `tmdb_client`/`discogs_client` osv. bruger den nye værdi uden genstart. `.env` forbliver bootstrap-fallback; et tomt felt rydder overstyringen og falder tilbage til den (ny `ENV_DEFAULT_API_KEYS`-snapshot i `core/config.py`, taget ved opstart før noget kan overskrive den).
+- Nye `GET`/`PATCH /api/settings/system` (begge admin-only). **Skriv-kun**: response indeholder kun `configured`/`source` (`env`/`custom`/`unset`) pr. nøgle — aldrig den faktiske værdi, hverken ved læsning eller lige efter en `PATCH` — for at overholde CLAUDE.md regel 6 (udvidet til at dække den nye overstyrings-mekanisme).
+- Frontend: tre uafhængige felter (ét pr. nøgle) med status-label og en "Ryd"-knap når en brugerdefineret værdi er sat. Inputs er altid tomme ved indlæsning (viser aldrig en tidligere-gemt værdi).
+- Nye tests i `test_system_settings.py`: admin-gating, status uden lækage af værdien, sæt/ryd/uberørte felter, persistens på tværs af requests. Live-verificeret mod en rigtig lokal MongoDB (ikke kun mongomock) via direkte HTTP-kald — bekræftet at værdien aldrig optræder i noget response, at kilden korrekt skifter env → custom → env, og at admin-gating giver 403 for en standard-bruger.
+- `ARCHITECTURE.md`, `CLAUDE.md` (regel 6), `FEATURES.md` opdateret.
+
 ## [0.23.1 build 0028] — 2026-08-01 — Fix: "Opdatér fra GitHub" fejlede med 500 i produktion (BUGS.md #18)
 
 - Rodårsag var todelt og skjult under udviklingen fordi den manuelle verifikation kørte som et almindeligt SSH-shell i stedet for gennem den faktiske sandboxede `moviedb-backend`-systemd-service: (1) `ProtectSystem=strict` gjorde det meste af filsystemet read-only, men `ReadWritePaths` dækkede kun `backend/`, ikke deploy-loggen, resten af git-repoet eller `npm run build`'s brug af `/tmp`; (2) `NoNewPrivileges=true` gør `sudo` permanent ubrugeligt for servicen og alle dens child-processer — deploy-scriptets `sudo systemctl restart/reload` kunne aldrig lykkes, uanset sudoers-opsætning.

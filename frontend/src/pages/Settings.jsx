@@ -13,6 +13,8 @@ export default function Settings({ user }) {
 
       <AccountSection user={user} />
       <SerialNumberSection isAdmin={isAdmin} />
+      <DeletedMoviesSection />
+      {isAdmin && <TmdbSyncSection />}
       {isAdmin && <UsersSection currentUserId={user.id} />}
     </section>
   );
@@ -185,6 +187,123 @@ function SerialNumberSection({ isAdmin }) {
             </button>
           )}
         </form>
+      )}
+    </div>
+  );
+}
+
+function DeletedMoviesSection() {
+  const [entries, setEntries] = useState([]);
+  const [status, setStatus] = useState("loading");
+
+  useEffect(() => {
+    api
+      .listDeletedMovies()
+      .then((data) => {
+        setEntries(data);
+        setStatus("ready");
+      })
+      .catch(() => setStatus("error"));
+  }, []);
+
+  return (
+    <div className="card settings-section">
+      <h2>Slettede film</h2>
+      <p className="muted">
+        Når en film slettes, logges den her sammen med serienummeret — nummeret er
+        derefter frit til at blive genbrugt af en ny film.
+      </p>
+
+      {status === "loading" && <p className="muted">Indlæser...</p>}
+      {status === "error" && (
+        <div className="banner banner-error">Kunne ikke hente slettede film.</div>
+      )}
+
+      {status === "ready" && entries.length === 0 && (
+        <p className="muted">Ingen film er slettet endnu.</p>
+      )}
+
+      {status === "ready" && entries.length > 0 && (
+        <ul className="user-list">
+          {entries.map((entry) => (
+            <li key={entry.id} className="user-row">
+              <span className="user-row-name">
+                #{entry.serial_number ?? "—"} · {entry.title}
+                {entry.year ? ` (${entry.year})` : ""}
+              </span>
+              <span className="muted">
+                Slettet af {entry.deleted_by ?? "ukendt"} d.{" "}
+                {new Date(entry.deleted_at).toLocaleDateString("da-DK")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function TmdbSyncSection() {
+  const [status, setStatus] = useState("idle");
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+
+  async function sync() {
+    setStatus("syncing");
+    setError(null);
+    setResult(null);
+    try {
+      const data = await api.syncMoviesFromTmdb();
+      setResult(data);
+      setStatus("done");
+    } catch (err) {
+      setError(err.message);
+      setStatus("error");
+    }
+  }
+
+  return (
+    <div className="card settings-section">
+      <h2>TMDb-synkronisering</h2>
+      <p className="muted">
+        Henter frisk metadata (titel, år, poster, plot, genrer, medvirkende, rating,
+        spilletid) fra TMDb for alle film der er oprettet via TMDb, og opdaterer det
+        lokalt gemte. Dine egne oplysninger (tags, format, lyd-type, lokation, ejer,
+        serienummer) rører den ikke. Kan tage et øjeblik afhængig af antal film.
+      </p>
+
+      <button type="button" className="btn btn-primary" onClick={sync} disabled={status === "syncing"}>
+        {status === "syncing" ? "Synkroniserer..." : "Opdatér alle film fra TMDb"}
+      </button>
+
+      {status === "error" && (
+        <div className="banner banner-error" style={{ marginTop: 12 }}>
+          {error}
+        </div>
+      )}
+
+      {status === "done" && result && (
+        <div
+          className={`banner ${result.stopped_early ? "banner-error" : "banner-info"}`}
+          style={{ marginTop: 12 }}
+        >
+          {result.stopped_early ? (
+            result.synced === 0 && result.total === result.failed && result.failed > 0 ? (
+              <>Synkronisering afbrudt — tjek at backend har en gyldig TMDB_API_TOKEN.</>
+            ) : (
+              <>
+                {result.synced} af {result.total} film opdateret, men stoppet tidligt fordi TMDb
+                ramte et rate-limit. Prøv igen om lidt for at opdatere resten.
+              </>
+            )
+          ) : (
+            <>
+              {result.synced} af {result.total} film opdateret.
+              {result.failed > 0 &&
+                ` ${result.failed} kunne ikke hentes: ${result.failed_titles.join(", ")}.`}
+            </>
+          )}
+        </div>
       )}
     </div>
   );

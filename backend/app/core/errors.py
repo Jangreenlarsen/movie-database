@@ -21,6 +21,15 @@ class TmdbUnavailableError(Exception):
         super().__init__(message)
 
 
+class TmdbRateLimitedError(Exception):
+    """Distinct from TmdbUnavailableError so callers doing bulk TMDb work
+    (movie_service.sync_all_from_tmdb) can stop early instead of treating a
+    429 as N independent per-movie failures."""
+
+    def __init__(self):
+        super().__init__("TMDb rate-limit ramt (429)")
+
+
 class UsernameTakenError(Exception):
     def __init__(self, username: str):
         self.username = username

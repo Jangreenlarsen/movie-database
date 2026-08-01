@@ -62,13 +62,17 @@ async def authenticate(db: AsyncIOMotorDatabase, payload: UserLogin) -> User:
 async def update_settings(
     db: AsyncIOMotorDatabase, user_id: str, payload: UserSettingsUpdate
 ) -> User:
-    document = await user_repository.find_by_id(db, user_id)
-    current_settings = {**user_repository.DEFAULT_SETTINGS, **document.get("settings", {})}
-
+    """Only the fields actually present in `payload` are touched — via
+    dotted-path `$set`s in the repository, not a read-full-then-overwrite of
+    the whole `settings` sub-document. The Library page fires several of
+    these PATCHes in quick succession (e.g. adjusting sort levels, then
+    saving a preset) with no client-side queuing, so a read-modify-write
+    here would silently lose whichever update's write landed first once a
+    later one overwrote it wholesale with a stale snapshot. See BUGS.md."""
     updates = payload.model_dump(exclude_unset=True, mode="json")
-    current_settings.update(updates)
-
-    updated = await user_repository.update_settings(db, user_id, current_settings)
+    updated = await user_repository.update_settings(db, user_id, updates)
+    if updated is None:
+        raise UserNotFoundError(user_id)
     return to_user_model(updated)
 
 

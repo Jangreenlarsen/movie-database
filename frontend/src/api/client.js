@@ -41,14 +41,20 @@ export const api = {
   listUsers: () => request("/users"),
   updateUserRole: (userId, role) =>
     request(`/users/${userId}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
-  listMovies: ({ q, tags, format, audioTypes, sort, direction } = {}) => {
+  listMovies: ({ q, tags, format, audioTypes, mediaTypes, sort, wishlist } = {}) => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (tags?.length) params.set("tags", tags.join(","));
     if (format?.length) params.set("format", format.join(","));
     if (audioTypes?.length) params.set("audio_types", audioTypes.join(","));
-    if (sort) params.set("sort", sort);
-    if (direction) params.set("direction", direction);
+    if (mediaTypes?.length) params.set("media_types", mediaTypes.join(","));
+    // `sort` is either a ready-made "field:direction,..." string, or an
+    // array of { field, direction } levels (up to 3, see Library.jsx).
+    const sortParam = Array.isArray(sort)
+      ? sort.map((level) => `${level.field}:${level.direction}`).join(",")
+      : sort;
+    if (sortParam) params.set("sort", sortParam);
+    if (wishlist) params.set("wishlist", "true");
     const query = params.toString();
     return request(`/movies${query ? `?${query}` : ""}`);
   },
@@ -58,6 +64,8 @@ export const api = {
   updateMovie: (id, payload) =>
     request(`/movies/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteMovie: (id) => request(`/movies/${id}`, { method: "DELETE" }),
+  listDeletedMovies: () => request("/movies/deleted"),
+  syncMoviesFromTmdb: () => request("/movies/sync-tmdb", { method: "POST" }),
   listTags: () => request("/tags"),
   attributeOptions: () => request("/movies/attribute-options"),
   getSerialNumberConfig: () => request("/settings/serial-number"),

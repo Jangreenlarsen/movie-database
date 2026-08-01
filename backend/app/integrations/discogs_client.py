@@ -1,0 +1,53 @@
+import logging
+
+import httpx
+
+from app.core.config import settings
+from app.integrations.text_cleanup import clean_bracketed_title
+
+BASE_URL = "https://api.discogs.com/database/search"
+USER_AGENT = "MovieDatabaseApp/1.0"
+
+logger = logging.getLogger("moviedb")
+
+
+def _strip_artist_prefix(title: str) -> str:
+    """Discogs formats nearly every release as "Artist - Title" (even for
+    movies, where "Artist" is often "Various" or a studio name) — drop that
+    prefix so the remainder is a cleaner TMDb search query."""
+    _, separator, rest = title.partition(" - ")
+    return rest if separator and rest else title
+
+
+async def lookup_title(barcode: str) -> str | None:
+    """Best-effort fallback UPC/EAN -> title guess when UPCitemdb has no
+    match — Discogs' community-catalogued database covers DVD/Blu-ray/VHS
+    releases (including European EAN codes) that UPCitemdb's US-centric
+    trial tier often misses. Never raises: nice-to-have prefill, not a
+    critical path (see MOVIE_API_REFERENCE.md)."""
+    params = {"barcode": barcode}
+    if settings.discogs_token:
+        params["token"] = settings.discogs_token
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                BASE_URL, params=params, headers={"User-Agent": USER_AGENT}
+            )
+    except httpx.HTTPError as exc:
+        logger.warning("Discogs lookup failed for %s: %s", barcode, exc)
+        return None
+
+    if response.status_code != 200:
+        logger.info("Discogs lookup returned %s for %s", response.status_code, barcode)
+        return None
+
+    results = response.json().get("results") or []
+    if not results:
+        return None
+
+    raw_title = results[0].get("title")
+    if not raw_title:
+        return None
+
+    return clean_bracketed_title(_strip_artist_prefix(raw_title))

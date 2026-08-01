@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     tmdb_api_token: str = ""
     upc_api_key: str = ""
+    discogs_token: str = ""
 
     log_level: str = "INFO"
     cors_origins: str = "http://localhost:5173"

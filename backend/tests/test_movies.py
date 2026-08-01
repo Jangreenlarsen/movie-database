@@ -142,14 +142,14 @@ async def test_create_movie_with_format_and_audio_types(client):
         "/api/movies",
         json={
             "title": "The Matrix",
-            "format": "Blu-ray",
-            "audio_types": ["Dolby Digital 5.1", "DTS"],
+            "format": "BD",
+            "audio_types": ["DD5.1", "DTS"],
         },
     )
     assert response.status_code == 201
     movie = response.json()
-    assert movie["format"] == "Blu-ray"
-    assert movie["audio_types"] == ["Dolby Digital 5.1", "DTS"]
+    assert movie["format"] == "BD"
+    assert movie["audio_types"] == ["DD5.1", "DTS"]
 
 
 async def test_create_movie_rejects_invalid_format(client):
@@ -169,28 +169,71 @@ async def test_create_movie_rejects_invalid_audio_type(client):
 async def test_filter_by_format_and_audio_type(client):
     await client.post(
         "/api/movies",
-        json={"title": "Blu-ray DTS", "format": "Blu-ray", "audio_types": ["DTS"]},
+        json={"title": "Blu-ray DTS", "format": "BD", "audio_types": ["DTS"]},
     )
     await client.post(
         "/api/movies",
         json={"title": "DVD Stereo", "format": "DVD", "audio_types": ["Stereo"]},
     )
 
-    by_format = await client.get("/api/movies", params={"format": "Blu-ray"})
+    by_format = await client.get("/api/movies", params={"format": "BD"})
     assert [m["title"] for m in by_format.json()] == ["Blu-ray DTS"]
 
     by_audio = await client.get("/api/movies", params={"audio_types": "Stereo"})
     assert [m["title"] for m in by_audio.json()] == ["DVD Stereo"]
 
 
+async def test_media_type_roundtrip_and_filter(client):
+    """Regression test for FEATURES.md #35."""
+    physical = await client.post(
+        "/api/movies", json={"title": "Physical Copy", "media_type": "Fysisk"}
+    )
+    assert physical.json()["media_type"] == "Fysisk"
+    await client.post("/api/movies", json={"title": "Digital Copy", "media_type": "Digital"})
+
+    by_media_type = await client.get("/api/movies", params={"media_types": "Digital"})
+    assert [m["title"] for m in by_media_type.json()] == ["Digital Copy"]
+
+    options = await client.get("/api/movies/attribute-options")
+    assert options.json()["media_types"] == ["Fysisk", "Digital"]
+
+
+async def test_sort_by_newly_added_fields(client):
+    """Regression test: serial_number and created_at must be independently
+    sortable (previously the frontend mislabeled serial_number as
+    "Tilføjet"), and runtime/location/owner/registered_by must be sortable
+    too — Jan asked to be able to sort by "all fields"."""
+    await client.post(
+        "/api/movies", json={"title": "B Movie", "runtime": 90, "location": "Loft", "owner": "anna"}
+    )
+    await client.post(
+        "/api/movies", json={"title": "A Movie", "runtime": 150, "location": "Stue", "owner": "bo"}
+    )
+
+    by_runtime = await client.get("/api/movies", params={"sort": "runtime:asc"})
+    assert [m["title"] for m in by_runtime.json()] == ["B Movie", "A Movie"]
+
+    by_location = await client.get("/api/movies", params={"sort": "location:asc"})
+    assert [m["title"] for m in by_location.json()] == ["B Movie", "A Movie"]
+
+    by_owner = await client.get("/api/movies", params={"sort": "owner:asc"})
+    assert [m["title"] for m in by_owner.json()] == ["B Movie", "A Movie"]
+
+    by_registered_by = await client.get("/api/movies", params={"sort": "registered_by:asc"})
+    assert len(by_registered_by.json()) == 2
+
+    by_created_at = await client.get("/api/movies", params={"sort": "created_at:asc"})
+    assert [m["title"] for m in by_created_at.json()] == ["B Movie", "A Movie"]
+
+
 async def test_sort_by_title(client):
     await client.post("/api/movies", json={"title": "Zebra"})
     await client.post("/api/movies", json={"title": "Apple"})
 
-    asc = await client.get("/api/movies", params={"sort": "title", "direction": "asc"})
+    asc = await client.get("/api/movies", params={"sort": "title:asc"})
     assert [m["title"] for m in asc.json()] == ["Apple", "Zebra"]
 
-    desc = await client.get("/api/movies", params={"sort": "title", "direction": "desc"})
+    desc = await client.get("/api/movies", params={"sort": "title:desc"})
     assert [m["title"] for m in desc.json()] == ["Zebra", "Apple"]
 
 
@@ -198,7 +241,7 @@ async def test_sort_by_year(client):
     await client.post("/api/movies", json={"title": "Old", "year": 1980})
     await client.post("/api/movies", json={"title": "New", "year": 2020})
 
-    response = await client.get("/api/movies", params={"sort": "year", "direction": "asc"})
+    response = await client.get("/api/movies", params={"sort": "year:asc"})
     assert [m["title"] for m in response.json()] == ["Old", "New"]
 
 
@@ -206,10 +249,21 @@ async def test_sort_by_serial_number(client):
     await client.post("/api/movies", json={"title": "First"})
     await client.post("/api/movies", json={"title": "Second"})
 
-    response = await client.get(
-        "/api/movies", params={"sort": "serial_number", "direction": "desc"}
-    )
+    response = await client.get("/api/movies", params={"sort": "serial_number:desc"})
     assert [m["title"] for m in response.json()] == ["Second", "First"]
+
+
+async def test_multi_level_sort_falls_through_to_second_field(client):
+    """Regression test for FEATURES.md #17/#27 — ties on the first level
+    should be broken by the second level."""
+    await client.post("/api/movies", json={"title": "Zeta", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Alpha", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Middle", "format": "BD"})
+
+    response = await client.get(
+        "/api/movies", params={"sort": "format:asc,title:asc"}
+    )
+    assert [m["title"] for m in response.json()] == ["Middle", "Alpha", "Zeta"]
 
 
 async def test_sort_by_rating(client, monkeypatch):
@@ -226,6 +280,9 @@ async def test_sort_by_rating(client, monkeypatch):
             "genres": [],
             "cast": [],
             "rating": ratings[tmdb_id],
+            "runtime": None,
+            "imdb_url": None,
+            "trailer_url": None,
         }
 
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
@@ -233,20 +290,27 @@ async def test_sort_by_rating(client, monkeypatch):
     await client.post("/api/movies", json={"tmdb_id": 1})
     await client.post("/api/movies", json={"tmdb_id": 2})
 
-    response = await client.get("/api/movies", params={"sort": "rating", "direction": "desc"})
+    response = await client.get("/api/movies", params={"sort": "rating:desc"})
     assert [m["rating"] for m in response.json()] == [9.0, 5.0]
 
 
-async def test_sort_rejects_invalid_field(client):
+async def test_sort_ignores_unknown_field_and_falls_back_to_default(client):
+    """An unrecognized sort field is dropped rather than rejected — a saved
+    preset referencing a since-removed field should degrade gracefully
+    (see movie_service.parse_sort_param) instead of erroring the whole page."""
+    await client.post("/api/movies", json={"title": "Movie"})
     response = await client.get("/api/movies", params={"sort": "invalid_field"})
-    assert response.status_code == 422
+    assert response.status_code == 200
+    assert len(response.json()) == 1
 
 
-async def test_sort_rejects_invalid_direction(client):
-    response = await client.get(
-        "/api/movies", params={"sort": "title", "direction": "sideways"}
-    )
-    assert response.status_code == 422
+async def test_sort_treats_unrecognized_direction_as_ascending(client):
+    await client.post("/api/movies", json={"title": "Zebra"})
+    await client.post("/api/movies", json={"title": "Apple"})
+
+    response = await client.get("/api/movies", params={"sort": "title:sideways"})
+    assert response.status_code == 200
+    assert [m["title"] for m in response.json()] == ["Apple", "Zebra"]
 
 
 async def test_update_movie_format_and_audio_types(client):
@@ -255,11 +319,11 @@ async def test_update_movie_format_and_audio_types(client):
 
     update_response = await client.patch(
         f"/api/movies/{movie_id}",
-        json={"format": "4K Ultra HD", "audio_types": ["Dolby Atmos"]},
+        json={"format": "UHD", "audio_types": ["Atmos"]},
     )
     assert update_response.status_code == 200
-    assert update_response.json()["format"] == "4K Ultra HD"
-    assert update_response.json()["audio_types"] == ["Dolby Atmos"]
+    assert update_response.json()["format"] == "UHD"
+    assert update_response.json()["audio_types"] == ["Atmos"]
 
 
 async def test_update_serial_number_swaps_with_conflicting_movie(client):
@@ -299,5 +363,6 @@ async def test_attribute_options_endpoint(client):
     response = await client.get("/api/movies/attribute-options")
     assert response.status_code == 200
     data = response.json()
-    assert "Blu-ray" in data["formats"]
-    assert "Dolby Atmos" in data["audio_types"]
+    assert "BD" in data["formats"]
+    assert "Atmos" in data["audio_types"]
+    assert data["media_types"] == ["Fysisk", "Digital"]

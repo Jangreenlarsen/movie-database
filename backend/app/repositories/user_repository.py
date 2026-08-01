@@ -12,7 +12,10 @@ DEFAULT_SETTINGS = {
         "format": False,
         "audio_types": False,
         "rating": False,
+        "runtime": False,
     },
+    "sort_levels": [],
+    "sort_presets": [],
 }
 
 
@@ -36,9 +39,15 @@ async def find_by_id(db: AsyncIOMotorDatabase, user_id: str) -> dict | None:
 
 
 async def update_settings(db: AsyncIOMotorDatabase, user_id: str, settings: dict) -> dict | None:
+    """Updates only the given top-level `settings.*` keys via dotted-path
+    `$set`s — atomic per-field, so concurrent requests touching different
+    keys (e.g. `sort_levels` vs `sort_presets`) can never race and lose one
+    another's write, unlike a read-whole-settings-then-overwrite approach."""
     if not ObjectId.is_valid(user_id):
         return None
-    await db[COLLECTION].update_one({"_id": ObjectId(user_id)}, {"$set": {"settings": settings}})
+    dotted_updates = {f"settings.{key}": value for key, value in settings.items()}
+    if dotted_updates:
+        await db[COLLECTION].update_one({"_id": ObjectId(user_id)}, {"$set": dotted_updates})
     return await db[COLLECTION].find_one({"_id": ObjectId(user_id)})
 
 

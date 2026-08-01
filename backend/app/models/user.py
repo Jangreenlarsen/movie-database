@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -27,18 +28,33 @@ class VisibleFields(BaseModel):
     format: bool = False
     audio_types: bool = False
     rating: bool = False
+    runtime: bool = False
+
+
+class SortLevel(BaseModel):
+    field: str
+    direction: Literal["asc", "desc"] = "asc"
+
+
+class SortPreset(BaseModel):
+    name: str
+    levels: list[SortLevel]
 
 
 class UserSettings(BaseModel):
     sort_field: str | None = None
     sort_direction: str | None = None
     visible_fields: VisibleFields = Field(default_factory=VisibleFields)
+    sort_levels: list[SortLevel] = Field(default_factory=list)
+    sort_presets: list[SortPreset] = Field(default_factory=list)
 
 
 class UserSettingsUpdate(BaseModel):
     sort_field: str | None = None
     sort_direction: str | None = None
     visible_fields: VisibleFields | None = None
+    sort_levels: list[SortLevel] | None = None
+    sort_presets: list[SortPreset] | None = None
 
 
 class UserRegister(BaseModel):

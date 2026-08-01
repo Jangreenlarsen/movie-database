@@ -1,7 +1,7 @@
 import httpx
 
 from app.core.config import settings
-from app.core.errors import TmdbNotFoundError, TmdbUnavailableError
+from app.core.errors import TmdbNotFoundError, TmdbRateLimitedError, TmdbUnavailableError
 
 BASE_URL = "https://api.themoviedb.org/3"
 IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
@@ -31,6 +31,22 @@ def _poster_url(poster_path: str | None) -> str | None:
 
 def _rating(vote_average: float | None) -> float | None:
     return round(vote_average, 1) if vote_average is not None else None
+
+
+def _imdb_url(imdb_id: str | None) -> str | None:
+    return f"https://www.imdb.com/title/{imdb_id}/" if imdb_id else None
+
+
+def _trailer_url(videos: list[dict]) -> str | None:
+    """First official YouTube trailer, if any — TMDb lists teasers/clips/
+    featurettes in the same `videos.results` array, so both site and type
+    are checked, not just the first entry. A video entry missing its `key`
+    is skipped rather than turned into a broken "...watch?v=None" URL."""
+    for video in videos:
+        key = video.get("key")
+        if key and video.get("site") == "YouTube" and video.get("type") == "Trailer":
+            return f"https://www.youtube.com/watch?v={key}"
+    return None
 
 
 def _raise_for_status(response: httpx.Response) -> None:
@@ -77,10 +93,9 @@ async def get_movie_details(tmdb_id: int) -> dict:
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             detail_response = await client.get(
-                f"{BASE_URL}/movie/{tmdb_id}", headers=_headers()
-            )
-            credits_response = await client.get(
-                f"{BASE_URL}/movie/{tmdb_id}/credits", headers=_headers()
+                f"{BASE_URL}/movie/{tmdb_id}",
+                headers=_headers(),
+                params={"append_to_response": "credits,videos,external_ids"},
             )
     except httpx.HTTPError as exc:
         raise TmdbUnavailableError(f"TMDb er ikke tilgængelig: {exc}") from exc
@@ -89,11 +104,14 @@ async def get_movie_details(tmdb_id: int) -> dict:
         raise TmdbNotFoundError(tmdb_id)
     if detail_response.status_code == 401:
         raise TmdbUnavailableError("TMDb afviste API-tokenet (401) — tjek TMDB_API_TOKEN")
+    if detail_response.status_code == 429:
+        raise TmdbRateLimitedError()
     _raise_for_status(detail_response)
-    _raise_for_status(credits_response)
 
     detail = detail_response.json()
-    credits = credits_response.json()
+    credits = detail.get("credits", {})
+    videos = detail.get("videos", {}).get("results", [])
+    external_ids = detail.get("external_ids", {})
 
     return {
         "tmdb_id": detail["id"],
@@ -104,4 +122,7 @@ async def get_movie_details(tmdb_id: int) -> dict:
         "genres": [genre["name"] for genre in detail.get("genres", [])],
         "cast": [member["name"] for member in credits.get("cast", [])[:10]],
         "rating": _rating(detail.get("vote_average")),
+        "runtime": detail.get("runtime"),
+        "imdb_url": _imdb_url(external_ids.get("imdb_id")),
+        "trailer_url": _trailer_url(videos),
     }

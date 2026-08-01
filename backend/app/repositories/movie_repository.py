@@ -1,8 +1,11 @@
+from datetime import datetime, timezone
+
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
 COLLECTION = "movies"
+DELETED_COLLECTION = "deleted_movies"
 COUNTERS_COLLECTION = "counters"
 SERIAL_COUNTER_ID = "movie_serial"
 DEFAULT_SERIAL_CONFIG = {"next_value": 1, "increment": 1, "padding_width": 0}
@@ -14,21 +17,104 @@ SORT_FIELDS = {
     "title": "title",
     "year": "year",
     "serial_number": "serial_number",
+    "created_at": "created_at",
     "rating": "rating",
+    "runtime": "runtime",
+    "format": "format",
+    "audio_types": "audio_types",
+    "media_type": "media_type",
+    "location": "location",
+    "owner": "owner",
+    "registered_by": "registered_by",
 }
 DEFAULT_SORT_FIELD = "created_at"
+MAX_SORT_LEVELS = 3
+
+# Pre-v0.22.0 AudioType labels -> the new, shorter ones — see
+# `_migrate_audio_type_labels` and `models/movie.py::AudioType`.
+_AUDIO_TYPE_LABEL_MIGRATIONS = {
+    "Dolby Digital": "DD",
+    "Dolby Digital 5.1": "DD5.1",
+    "Dolby Digital 7.1": "DD7.1",
+    "DTS-HD Master Audio": "DTS-HD-M",
+    "Dolby Atmos": "Atmos",
+    "Dolby TrueHD": "D-true-HD",
+}
+
+
+async def _migrate_audio_type_labels(db: AsyncIOMotorDatabase) -> None:
+    """One-time rewrite of existing documents' `audio_types` values from the
+    old, longer labels to the new short ones, so they keep validating
+    against `AudioType` on the next edit and keep matching the (now
+    relabeled) filter chips. Done document-by-document in Python rather than
+    a single `arrayFilters` update, since mongomock's support for it is
+    inconsistent (see BUGS.md #1's note on mongomock's sparse-index gaps —
+    same category of testsuite-vs-real-Mongo mismatch)."""
+    collection = db[COLLECTION]
+    cursor = collection.find(
+        {"audio_types": {"$in": list(_AUDIO_TYPE_LABEL_MIGRATIONS)}}, {"audio_types": 1}
+    )
+    async for doc in cursor:
+        relabeled = [
+            _AUDIO_TYPE_LABEL_MIGRATIONS.get(label, label) for label in doc.get("audio_types", [])
+        ]
+        if relabeled != doc.get("audio_types", []):
+            await collection.update_one({"_id": doc["_id"]}, {"$set": {"audio_types": relabeled}})
+
+
+# Pre-v0.22.0 MovieFormat labels -> the new, shorter ones. "Digital" had no
+# quality tier before this version, so it can't be migrated exactly — it
+# defaults to "Digital-HD" (the most common digital-purchase quality); check
+# BUGS.md/CHANGELOG.md and correct any that should be UHD/STD instead.
+_FORMAT_LABEL_MIGRATIONS = {
+    "Blu-ray": "BD",
+    "4K Ultra HD": "UHD",
+    "Digital": "Digital-HD",
+}
+
+
+async def _migrate_format_labels(db: AsyncIOMotorDatabase) -> None:
+    """One-time rewrite of existing documents' `format` value from the old,
+    longer labels to the new short ones — same rationale as
+    `_migrate_audio_type_labels`, but `format` is a single field, not an
+    array, so a plain `update_many` per old value suffices."""
+    collection = db[COLLECTION]
+    for old_label, new_label in _FORMAT_LABEL_MIGRATIONS.items():
+        await collection.update_many({"format": old_label}, {"$set": {"format": new_label}})
 
 
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     collection = db[COLLECTION]
+    await _migrate_audio_type_labels(db)
+    await _migrate_format_labels(db)
     await collection.create_index([("title", "text"), ("overview", "text")])
     await collection.create_index("tags_normalized")
     await collection.create_index("barcode", unique=True, sparse=True)
     await collection.create_index("format")
     await collection.create_index("audio_types")
-    await collection.create_index("serial_number", unique=True)
+    await collection.create_index("media_type")
+
+    # Migrate the pre-v0.18.0 serial_number index (unique, NOT sparse) to
+    # sparse — wishlist movies (FEATURES.md #28) omit serial_number entirely,
+    # and a non-sparse unique index would treat every such document as a
+    # colliding `null`. Mongo refuses to silently redefine an existing index
+    # under the same auto-generated name with different options, so an
+    # old non-sparse index must be dropped before the sparse one is created.
+    existing_indexes = await collection.index_information()
+    serial_index = existing_indexes.get("serial_number_1")
+    if serial_index is not None and not serial_index.get("sparse"):
+        await collection.drop_index("serial_number_1")
+    await collection.create_index("serial_number", unique=True, sparse=True)
+
+    await collection.create_index("is_wishlist")
     await collection.create_index("rating")
     await collection.create_index("year")
+    await collection.create_index("created_at")
+    await collection.create_index("runtime")
+    await collection.create_index("location")
+    await collection.create_index("owner")
+    await collection.create_index("registered_by")
+    await db[DELETED_COLLECTION].create_index("deleted_at")
 
 
 async def _ensure_serial_config(db: AsyncIOMotorDatabase) -> dict:
@@ -119,9 +205,25 @@ async def find_by_serial_number(db: AsyncIOMotorDatabase, serial_number: int) ->
     return await db[COLLECTION].find_one({"serial_number": serial_number})
 
 
+async def find_all_with_tmdb_id(db: AsyncIOMotorDatabase) -> list[dict]:
+    """Movies whose metadata was originally sourced from TMDb — the only
+    ones a bulk re-sync (FEATURES.md #33) can refresh anything for."""
+    cursor = db[COLLECTION].find({"tmdb_id": {"$ne": None}})
+    return await cursor.to_list(length=10_000)
+
+
 async def set_serial_number(db: AsyncIOMotorDatabase, movie_id: str, serial_number: int) -> None:
     await db[COLLECTION].update_one(
         {"_id": ObjectId(movie_id)}, {"$set": {"serial_number": serial_number}}
+    )
+
+
+async def clear_serial_number(db: AsyncIOMotorDatabase, movie_id: str) -> None:
+    """Removes the field entirely (not `$set` to null) — same "omit, don't
+    null" pattern as `barcode` (BUGS.md #1/#10), required for the sparse
+    unique index on `serial_number` to treat this movie as unnumbered."""
+    await db[COLLECTION].update_one(
+        {"_id": ObjectId(movie_id)}, {"$unset": {"serial_number": ""}}
     )
 
 
@@ -131,10 +233,20 @@ async def find_many(
     normalized_tags: list[str] | None,
     formats: list[str] | None = None,
     audio_types: list[str] | None = None,
-    sort_field: str | None = None,
-    sort_direction: int = -1,
+    media_types: list[str] | None = None,
+    sort_spec: list[tuple[str, int]] | None = None,
+    is_wishlist: bool = False,
 ) -> list[dict]:
-    filter_: dict = {}
+    """`sort_spec` is a list of up to `MAX_SORT_LEVELS` (already-whitelisted
+    mongo field name, direction) tuples for compound multi-level sorting
+    (see FEATURES.md #17/#27) — validation against `SORT_FIELDS` happens in
+    `movie_service`, this layer just applies whatever it is given.
+
+    `is_wishlist=False` matches both `is_wishlist: false` *and* documents
+    that predate this field entirely (`$ne: True`, not a `False` equality
+    check) — see FEATURES.md #28 and BUGS.md's "check every representation
+    of empty" lesson (CLAUDE.md regel 16)."""
+    filter_: dict = {"is_wishlist": True if is_wishlist else {"$ne": True}}
     if query:
         filter_["$text"] = {"$search": query}
     if normalized_tags:
@@ -143,9 +255,11 @@ async def find_many(
         filter_["format"] = {"$in": formats}
     if audio_types:
         filter_["audio_types"] = {"$in": audio_types}
+    if media_types:
+        filter_["media_type"] = {"$in": media_types}
 
-    mongo_sort_field = SORT_FIELDS.get(sort_field, DEFAULT_SORT_FIELD)
-    cursor = db[COLLECTION].find(filter_).sort(mongo_sort_field, sort_direction)
+    cursor = db[COLLECTION].find(filter_)
+    cursor = cursor.sort(sort_spec) if sort_spec else cursor.sort(DEFAULT_SORT_FIELD, -1)
     return await cursor.to_list(length=500)
 
 
@@ -161,3 +275,26 @@ async def delete(db: AsyncIOMotorDatabase, movie_id: str) -> bool:
         return False
     result = await db[COLLECTION].delete_one({"_id": ObjectId(movie_id)})
     return result.deleted_count > 0
+
+
+async def archive_deleted(db: AsyncIOMotorDatabase, movie_doc: dict, deleted_by: str) -> None:
+    """Logs a deleted movie (serial_number, title, when, who) before the
+    document itself is removed from `movies` — see FEATURES.md #29. Once the
+    document is gone, its serial_number is no longer taken, so it is
+    automatically free for the counter or a manual edit to reuse."""
+    await db[DELETED_COLLECTION].insert_one(
+        {
+            "movie_id": movie_doc["_id"],
+            "serial_number": movie_doc.get("serial_number"),
+            "title": movie_doc["title"],
+            "year": movie_doc.get("year"),
+            "format": movie_doc.get("format"),
+            "deleted_at": datetime.now(timezone.utc),
+            "deleted_by": deleted_by,
+        }
+    )
+
+
+async def list_deleted(db: AsyncIOMotorDatabase) -> list[dict]:
+    cursor = db[DELETED_COLLECTION].find().sort("deleted_at", -1)
+    return await cursor.to_list(length=1000)

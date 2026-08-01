@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Library from "./pages/Library";
 import ScanMovie from "./pages/ScanMovie";
 import Settings from "./pages/Settings";
+import PrintList from "./pages/PrintList";
 import Login from "./pages/Login";
 import { api } from "./api/client";
 import "./App.css";
@@ -9,12 +10,17 @@ import "./App.css";
 function App() {
   const [tab, setTab] = useState("library");
   const [user, setUser] = useState(undefined); // undefined = checking, null = logged out
+  const [versionInfo, setVersionInfo] = useState(null);
 
   useEffect(() => {
     api
       .me()
       .then(setUser)
       .catch(() => setUser(null));
+    api
+      .health()
+      .then((data) => setVersionInfo({ version: data.version, build: data.build }))
+      .catch(() => {});
   }, []);
 
   async function handleLogout() {
@@ -54,6 +60,18 @@ function App() {
               Scan film
             </button>
             <button
+              className={tab === "wishlist" ? "active" : ""}
+              onClick={() => setTab("wishlist")}
+            >
+              Ønsker
+            </button>
+            <button
+              className={tab === "print" ? "active" : ""}
+              onClick={() => setTab("print")}
+            >
+              Print
+            </button>
+            <button
               className={tab === "settings" ? "active" : ""}
               onClick={() => setTab("settings")}
             >
@@ -71,9 +89,17 @@ function App() {
 
       <main className="app-main">
         {tab === "library" && <Library user={user} onSettingsChanged={setUser} />}
-        {tab === "scan" && <ScanMovie />}
+        {tab === "scan" && <ScanMovie user={user} />}
+        {tab === "wishlist" && <Library user={user} onSettingsChanged={setUser} wishlist />}
+        {tab === "print" && <PrintList />}
         {tab === "settings" && <Settings user={user} />}
       </main>
+
+      <footer className="app-footer">
+        <span className="muted">
+          {versionInfo ? `v${versionInfo.version} (build ${versionInfo.build})` : ""}
+        </span>
+      </footer>
     </div>
   );
 }

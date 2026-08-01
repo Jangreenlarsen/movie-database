@@ -26,6 +26,8 @@ Kun port 22 (SSH), 80 og 443 er åbne udefra (`ufw`). MongoDB og backend er kun 
 
 Certifikatet er **selvsigneret** (Caddys interne CA, samme tilgang som dev-serveren) — telefonen/browseren skal acceptere sikkerhedsadvarslen første gang. Intet domænenavn er sat op, så en rigtig Let's Encrypt-cert er ikke muligt lige nu (kræver et domæne der peger på serveren).
 
+**HTTP/3 er slået fra** (`servers { protocols h1 h2 }` i Caddyfile'ens globale block). Caddy annoncerer ellers HTTP/3 (QUIC/**UDP** 443) via en `Alt-Svc`-header, men `ufw` åbner kun **TCP** 443 — browseren forsøger så at opgradere til QUIC, det fejler stille mod den lukkede UDP-port, og det viste sig i Firefox som `SSL_ERROR_INTERNAL_ERROR_ALERT` i stedet for det forventede "usikker forbindelse, fortsæt alligevel"-varsel. Løsningen er enten at slå HTTP/3 fra (valgt her — unødvendigt for en lille LAN-app) eller at åbne UDP 443 i firewallen også.
+
 ## `.env` (produktion)
 
 Ligger i `/opt/moviedb/backend/.env` (git-ignoreret, `chmod 600`, ejes af `jgl`). Indeholder en **unik** `JWT_SECRET_KEY` genereret direkte på serveren (ikke genbrugt fra dev), `TMDB_API_TOKEN`, og `COOKIE_SECURE=true` (rigtig HTTPS i produktion). `DISCOGS_TOKEN` er tom (Discogs-opslag virker uden token, bare med lavere rate-limit — se MOVIE_API_REFERENCE.md).
@@ -202,6 +204,12 @@ Verificeret at hele stien til `dist/` var læsbar for `caddy`-systembrugeren (`n
 `/etc/caddy/Caddyfile`:
 
 ```caddyfile
+{
+    servers {
+        protocols h1 h2
+    }
+}
+
 10.1.130.10 {
     tls internal
 
@@ -218,6 +226,8 @@ Verificeret at hele stien til `dist/` var læsbar for `caddy`-systembrugeren (`n
 ```
 
 Valideret før brug (`sudo caddy validate --config /etc/caddy/Caddyfile`), derefter `sudo systemctl enable --now caddy`.
+
+Den globale `protocols h1 h2`-block blev tilføjet **efter** første opsætning, som en rettelse — se `SSL_ERROR_INTERNAL_ERROR_ALERT`-noten under "Komponenter" ovenfor.
 
 ### 11. Firewall
 

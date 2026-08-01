@@ -43,6 +43,7 @@ class MovieCreate(BaseModel):
     runtime: int | None = None
     location: str | None = None
     owner: str | None = None
+    is_wishlist: bool = False
 
     @model_validator(mode="after")
     def require_tmdb_id_or_title(self) -> "MovieCreate":
@@ -69,7 +70,7 @@ class MovieUpdate(BaseModel):
 
 class Movie(BaseModel):
     id: str
-    serial_number: int
+    serial_number: int | None = None
     tmdb_id: int | None = None
     barcode: str | None = None
     title: str
@@ -86,6 +87,7 @@ class Movie(BaseModel):
     location: str | None = None
     owner: str | None = None
     registered_by: str | None = None
+    is_wishlist: bool = False
     created_at: datetime
     updated_at: datetime
 

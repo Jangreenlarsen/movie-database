@@ -14,7 +14,7 @@ from app.services import tag_service
 def _to_model(document: dict) -> Movie:
     return Movie(
         id=str(document["_id"]),
-        serial_number=document["serial_number"],
+        serial_number=document.get("serial_number"),
         tmdb_id=document.get("tmdb_id"),
         barcode=document.get("barcode"),
         title=document["title"],
@@ -31,6 +31,7 @@ def _to_model(document: dict) -> Movie:
         location=document.get("location"),
         owner=document.get("owner"),
         registered_by=document.get("registered_by"),
+        is_wishlist=document.get("is_wishlist", False),
         created_at=document["created_at"],
         updated_at=document["updated_at"],
     )
@@ -66,11 +67,8 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registere
             "runtime": payload.runtime,
         }
 
-    serial_number = await movie_repository.next_serial_number(db)
-
     document = {
         **movie_fields,
-        "serial_number": serial_number,
         "tags": canonical_tags,
         "tags_normalized": [tag_service.normalize(tag) for tag in canonical_tags],
         "format": payload.format.value if payload.format else None,
@@ -78,9 +76,17 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registere
         "location": payload.location,
         "owner": payload.owner or registered_by,
         "registered_by": registered_by,
+        "is_wishlist": payload.is_wishlist,
         "created_at": now,
         "updated_at": now,
     }
+    # Wishlist items aren't part of the numbered physical collection — omit
+    # the key entirely (same "absent, not null" pattern as `barcode`, see
+    # BUGS.md #1/#10) so the sparse unique index on `serial_number` never
+    # sees a collision between two wishlist items.
+    if not payload.is_wishlist:
+        document["serial_number"] = await movie_repository.next_serial_number(db)
+
     trimmed_barcode = payload.barcode.strip() if payload.barcode else ""
     if trimmed_barcode:
         document["barcode"] = trimmed_barcode
@@ -117,11 +123,18 @@ async def list_movies(
     formats: list[str] | None = None,
     audio_types: list[str] | None = None,
     sort: str | None = None,
+    is_wishlist: bool = False,
 ) -> list[Movie]:
     normalized_tags = [tag_service.normalize(tag) for tag in (tags or []) if tag.strip()]
     sort_spec = parse_sort_param(sort)
     documents = await movie_repository.find_many(
-        db, q, normalized_tags or None, formats or None, audio_types or None, sort_spec or None
+        db,
+        q,
+        normalized_tags or None,
+        formats or None,
+        audio_types or None,
+        sort_spec or None,
+        is_wishlist,
     )
     return [_to_model(doc) for doc in documents]
 

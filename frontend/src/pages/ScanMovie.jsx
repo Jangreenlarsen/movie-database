@@ -21,9 +21,11 @@ export default function ScanMovie({ user }) {
   const [audioTypes, setAudioTypes] = useState([]);
   const [location, setLocation] = useState("");
   const [owner, setOwner] = useState(user?.username ?? "");
+  const [isWishlist, setIsWishlist] = useState(false);
   const [attributeOptions, setAttributeOptions] = useState({ formats: [], audio_types: [] });
   const [saveStatus, setSaveStatus] = useState("idle");
   const [saveError, setSaveError] = useState(null);
+  const [lastSavedWasWishlist, setLastSavedWasWishlist] = useState(false);
 
   useEffect(() => {
     api.attributeOptions().then(setAttributeOptions).catch(() => {});
@@ -75,8 +77,10 @@ export default function ScanMovie({ user }) {
         audio_types: audioTypes,
         location: location.trim() || null,
         owner: owner.trim() || null,
+        is_wishlist: isWishlist,
       });
       setSaveStatus("saved");
+      setLastSavedWasWishlist(isWishlist);
       setSelectedCandidate(null);
       setCandidates([]);
       setTagsInput("");
@@ -84,6 +88,7 @@ export default function ScanMovie({ user }) {
       setAudioTypes([]);
       setLocation("");
       setOwner(user?.username ?? "");
+      setIsWishlist(false);
       setBarcode(null);
     } catch (err) {
       setSaveStatus("error");
@@ -240,6 +245,15 @@ export default function ScanMovie({ user }) {
             />
           </div>
 
+          <label className="field-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={isWishlist}
+              onChange={(e) => setIsWishlist(e.target.checked)}
+            />
+            Tilføj til ønskeliste i stedet for biblioteket (intet serienummer)
+          </label>
+
           {saveStatus === "error" && (
             <div className="banner banner-error">
               {saveError ?? "Kunne ikke gemme filmen. Prøv igen."}
@@ -256,13 +270,17 @@ export default function ScanMovie({ user }) {
               onClick={saveMovie}
               disabled={saveStatus === "saving"}
             >
-              {saveStatus === "saving" ? "Gemmer..." : "Gem film"}
+              {saveStatus === "saving" ? "Gemmer..." : isWishlist ? "Tilføj til ønskeliste" : "Gem film"}
             </button>
           </div>
         </div>
       )}
 
-      {saveStatus === "saved" && <div className="banner banner-info">Film gemt i biblioteket!</div>}
+      {saveStatus === "saved" && (
+        <div className="banner banner-info">
+          {lastSavedWasWishlist ? "Film tilføjet til ønskeliste!" : "Film gemt i biblioteket!"}
+        </div>
+      )}
     </section>
   );
 }

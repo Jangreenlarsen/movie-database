@@ -32,7 +32,20 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     await collection.create_index("barcode", unique=True, sparse=True)
     await collection.create_index("format")
     await collection.create_index("audio_types")
-    await collection.create_index("serial_number", unique=True)
+
+    # Migrate the pre-v0.18.0 serial_number index (unique, NOT sparse) to
+    # sparse — wishlist movies (FEATURES.md #28) omit serial_number entirely,
+    # and a non-sparse unique index would treat every such document as a
+    # colliding `null`. Mongo refuses to silently redefine an existing index
+    # under the same auto-generated name with different options, so an
+    # old non-sparse index must be dropped before the sparse one is created.
+    existing_indexes = await collection.index_information()
+    serial_index = existing_indexes.get("serial_number_1")
+    if serial_index is not None and not serial_index.get("sparse"):
+        await collection.drop_index("serial_number_1")
+    await collection.create_index("serial_number", unique=True, sparse=True)
+
+    await collection.create_index("is_wishlist")
     await collection.create_index("rating")
     await collection.create_index("year")
     await db[DELETED_COLLECTION].create_index("deleted_at")
@@ -139,12 +152,18 @@ async def find_many(
     formats: list[str] | None = None,
     audio_types: list[str] | None = None,
     sort_spec: list[tuple[str, int]] | None = None,
+    is_wishlist: bool = False,
 ) -> list[dict]:
     """`sort_spec` is a list of up to `MAX_SORT_LEVELS` (already-whitelisted
     mongo field name, direction) tuples for compound multi-level sorting
     (see FEATURES.md #17/#27) — validation against `SORT_FIELDS` happens in
-    `movie_service`, this layer just applies whatever it is given."""
-    filter_: dict = {}
+    `movie_service`, this layer just applies whatever it is given.
+
+    `is_wishlist=False` matches both `is_wishlist: false` *and* documents
+    that predate this field entirely (`$ne: True`, not a `False` equality
+    check) — see FEATURES.md #28 and BUGS.md's "check every representation
+    of empty" lesson (CLAUDE.md regel 16)."""
+    filter_: dict = {"is_wishlist": True if is_wishlist else {"$ne": True}}
     if query:
         filter_["$text"] = {"$search": query}
     if normalized_tags:

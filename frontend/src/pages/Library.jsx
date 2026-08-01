@@ -56,7 +56,7 @@ function formatSerial(serialNumber, paddingWidth) {
   return `#${String(serialNumber).padStart(paddingWidth, "0")}`;
 }
 
-export default function Library({ user, onSettingsChanged }) {
+export default function Library({ user, onSettingsChanged, wishlist = false }) {
   const [query, setQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedFormats, setSelectedFormats] = useState([]);
@@ -115,6 +115,7 @@ export default function Library({ user, onSettingsChanged }) {
       format: selectedFormats,
       audioTypes: selectedAudioTypes,
       sort: sortLevels,
+      wishlist,
     });
   }
 
@@ -207,7 +208,7 @@ export default function Library({ user, onSettingsChanged }) {
   return (
     <section>
       <div className="page-header">
-        <h1>Filmbibliotek</h1>
+        <h1>{wishlist ? "Ønskeliste" : "Filmbibliotek"}</h1>
         <span className="muted">{status === "ready" ? `${movies.length} film` : " "}</span>
       </div>
 
@@ -427,7 +428,9 @@ export default function Library({ user, onSettingsChanged }) {
           <p>
             {hasActiveFilters || query
               ? "Ingen film matcher dine filtre."
-              : "Biblioteket er tomt endnu — scan et cover for at komme i gang."}
+              : wishlist
+                ? "Ønskelisten er tom endnu."
+                : "Biblioteket er tomt endnu — scan et cover for at komme i gang."}
           </p>
         </div>
       )}
@@ -436,7 +439,11 @@ export default function Library({ user, onSettingsChanged }) {
         <ul className="movie-grid">
           {movies.map((movie) => (
             <li key={movie.id} className="movie-card" onClick={() => setActiveMovie(movie)}>
-              <div className="movie-serial">{formatSerial(movie.serial_number, serialPaddingWidth)}</div>
+              {!movie.is_wishlist && (
+                <div className="movie-serial">
+                  {formatSerial(movie.serial_number, serialPaddingWidth)}
+                </div>
+              )}
               {movie.format && <div className="movie-format-badge">{movie.format}</div>}
               <div className="movie-poster">
                 {movie.poster_url ? (
@@ -501,7 +508,9 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
   const [tagsInput, setTagsInput] = useState(movie.tags.join(", "));
   const [format, setFormat] = useState(movie.format ?? "");
   const [audioTypes, setAudioTypes] = useState(movie.audio_types);
-  const [serialNumberInput, setSerialNumberInput] = useState(String(movie.serial_number));
+  const [serialNumberInput, setSerialNumberInput] = useState(
+    movie.serial_number != null ? String(movie.serial_number) : ""
+  );
   const [location, setLocation] = useState(movie.location ?? "");
   const [owner, setOwner] = useState(movie.owner ?? "");
   const [saving, setSaving] = useState(false);
@@ -575,8 +584,10 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
           <div>
             <h2>{movie.title}</h2>
             <p className="muted">
-              {movie.year ?? "År ukendt"} · Serienr.{" "}
-              {formatSerial(movie.serial_number, serialPaddingWidth)}
+              {movie.year ?? "År ukendt"}
+              {!movie.is_wishlist && (
+                <> · Serienr. {formatSerial(movie.serial_number, serialPaddingWidth)}</>
+              )}
               {movie.runtime != null && <> · {movie.runtime} min</>}
               {movie.rating != null && <> · ★ {movie.rating.toFixed(1)}</>}
             </p>
@@ -595,28 +606,30 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
             </p>
           )}
 
-          <div>
-            <div className="modal-section-label">Serienummer</div>
-            <input
-              type="number"
-              min="1"
-              disabled={!canEditSerial}
-              value={serialNumberInput}
-              onChange={(e) => setSerialNumberInput(e.target.value)}
-              style={{ width: 100 }}
-            />
-            {canEditSerial ? (
-              <p className="muted" style={{ marginTop: 4 }}>
-                Er nummeret allerede i brug af en anden film, bytter de to film
-                automatisk plads.
-              </p>
-            ) : (
-              <p className="muted" style={{ marginTop: 4 }}>
-                Kun en admin eller {movie.registered_by ?? "den der registrerede filmen"} kan ændre
-                serienummeret.
-              </p>
-            )}
-          </div>
+          {!movie.is_wishlist && (
+            <div>
+              <div className="modal-section-label">Serienummer</div>
+              <input
+                type="number"
+                min="1"
+                disabled={!canEditSerial}
+                value={serialNumberInput}
+                onChange={(e) => setSerialNumberInput(e.target.value)}
+                style={{ width: 100 }}
+              />
+              {canEditSerial ? (
+                <p className="muted" style={{ marginTop: 4 }}>
+                  Er nummeret allerede i brug af en anden film, bytter de to film
+                  automatisk plads.
+                </p>
+              ) : (
+                <p className="muted" style={{ marginTop: 4 }}>
+                  Kun en admin eller {movie.registered_by ?? "den der registrerede filmen"} kan ændre
+                  serienummeret.
+                </p>
+              )}
+            </div>
+          )}
 
           <div>
             <div className="modal-section-label">Tags</div>

@@ -31,7 +31,7 @@ Status: `planned` → `in-progress` → `done`. Tilføj entry *før* implementer
 | 25| Lokation, automatisk "registreret af"-felt og "ejer" pr. film, indtastet ved scan/registrering | done | 0.13.0       |
 | 26| Films `serial_number` kan kun ændres af en admin eller den bruger der oprindeligt registrerede filmen (afhænger af #25) | done | 0.13.0       |
 | 27| Fler-niveau sortering (se #17) udvides: en valgt kombination af sorteringsniveauer kan gemmes som navngivet preset og hurtigt genvælges via dropdown i biblioteksvisningen | done | 0.17.0       |
-| 28| Ønskeliste-side ("Ønsker"): samme søge-/filtrerings-/sorteringsfunktioner som biblioteksvisningen, men uden serienummer | planned | -       |
+| 28| Ønskeliste-side ("Ønsker"): samme søge-/filtrerings-/sorteringsfunktioner som biblioteksvisningen, men uden serienummer | done | 0.18.0       |
 | 29| Soft-delete af film: ved sletning logges film (serienr, titel, hvornår, hvem) i en separat slettet-film-liste i stedet for kun at forsvinde. Serienummeret frigøres derved automatisk til genbrug | done | 0.15.0       |
 | 30| Discogs som fallback-kilde ved stregkode-opslag (`/api/scan/lookup`) når UPCitemdb ikke finder et match — bedre dækning for europæiske EAN-koder | done | 0.16.0       |
 | 31| Print-venlig liste-visning af biblioteket: kompakt tabel (serienr/titel/år/format/lokation), én film pr. linje, optimeret til udskrift | done | 0.14.0       |

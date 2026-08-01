@@ -60,6 +60,12 @@ function App() {
               Scan film
             </button>
             <button
+              className={tab === "wishlist" ? "active" : ""}
+              onClick={() => setTab("wishlist")}
+            >
+              Ønsker
+            </button>
+            <button
               className={tab === "print" ? "active" : ""}
               onClick={() => setTab("print")}
             >
@@ -84,6 +90,7 @@ function App() {
       <main className="app-main">
         {tab === "library" && <Library user={user} onSettingsChanged={setUser} />}
         {tab === "scan" && <ScanMovie user={user} />}
+        {tab === "wishlist" && <Library user={user} onSettingsChanged={setUser} wishlist />}
         {tab === "print" && <PrintList />}
         {tab === "settings" && <Settings user={user} />}
       </main>

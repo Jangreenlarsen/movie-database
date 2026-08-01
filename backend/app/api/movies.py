@@ -23,12 +23,17 @@ async def list_movies(
         'e.g. "format:asc,audio_types:asc,title:asc". Unknown fields are '
         "ignored; see movie_repository.SORT_FIELDS for the whitelist.",
     ),
+    wishlist: bool = Query(
+        default=False, description="True lists the wishlist instead of the main library."
+    ),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     tag_list = tags.split(",") if tags else None
     format_list = format.split(",") if format else None
     audio_type_list = audio_types.split(",") if audio_types else None
-    return await movie_service.list_movies(db, q, tag_list, format_list, audio_type_list, sort)
+    return await movie_service.list_movies(
+        db, q, tag_list, format_list, audio_type_list, sort, wishlist
+    )
 
 
 @router.post("", response_model=Movie, status_code=201)

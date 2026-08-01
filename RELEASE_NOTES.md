@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.18.0 (build 0020) — 2026-08-01
+
+- Ny fane "Ønsker": en ønskeliste med samme søgning/filtrering/sortering som filmbiblioteket, men uden serienummer — til film du gerne vil have, men ikke ejer endnu.
+- Når du scanner eller søger en film op, kan du nu krydse af "Tilføj til ønskeliste i stedet for biblioteket".
+
 ## v0.17.0 (build 0019) — 2026-08-01
 
 - Sortering i biblioteket understøtter nu op til 3 niveauer ad gangen (fx: format → lyd-type → titel) — klik "Sortér ▾" for at tilføje/fjerne niveauer.

@@ -2,6 +2,17 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.18.0 build 0020] — 2026-08-01 — Ønskeliste
+
+- `Movie`/`MovieCreate` (`models/movie.py`) fik `is_wishlist: bool = False`. `Movie.serial_number` er nu `int | None` — ønskeliste-poster udelader feltet helt fra dokumentet (samme "udelad frem for null"-mønster som `barcode`, BUGS.md #1/#10), og `movie_service.create_movie` springer `next_serial_number()` helt over for dem.
+- **Vigtig migration**: `serial_number`-indexet var unikt men ikke sparse før denne version — det ville kollidere hvis to dokumenter mangler feltet. Opdaget under implementeringen da backend nægtede at starte mod Jans rigtige database (`IndexKeySpecsConflict`, da Mongo ikke tillader at redefinere et eksisterende navngivet index med andre indstillinger). `movie_repository.ensure_indexes` migrerer nu selv: dropper det gamle ikke-sparse index og genopretter det sparse, uden manuel indgriben. Live-verificeret mod den rigtige database (to ønskeliste-film oprettet uden kollision, ryddet op igen bagefter).
+- `movie_repository.find_many` filtrerer nu på `is_wishlist` — `{"$ne": True}` for hovedbiblioteket (ikke en `False`-lighedstest), så alle film oprettet før denne version (som slet ikke har feltet) fortsat vises korrekt der; kun eksplicit `is_wishlist: true` filtrerer til ønskelisten. Ny index på `is_wishlist`.
+- Nyt `?wishlist=true` query-param på `GET /api/movies`.
+- `Library.jsx` genbruges for begge visninger via en ny `wishlist`-prop (skjuler serienummer-badge/-felt, ændrer overskrift og tom-tilstand-tekst). Ny "Ønsker"-fane i `App.jsx`.
+- `ScanMovie.jsx` fik et "Tilføj til ønskeliste i stedet for biblioteket"-afkrydsningsfelt i gem-formularen.
+- Nye tests i `test_wishlist.py`: ønskeliste-film har intet serienummer, bibliotek/ønskeliste-visninger er adskilte, flere ønskeliste-film kan oprettes uden kollision.
+- `ARCHITECTURE.md` opdateret (REST-kontrakt, MongoDB-skema, ny note om ønskeliste og index-migrationen). `FEATURES.md` #28 markeret done.
+
 ## [0.17.0 build 0019] — 2026-08-01 — Fler-niveau sortering + gemte sorterings-presets
 
 - **Breaking (internt) API-kontrakt-ændring**: `GET /api/movies`s `?sort=`/`?direction=` (to separate, single-felt, `Literal`-valideret) er erstattet af ét `?sort=` med op til 3 kommaseparerede `felt:retning`-tokens (fx `format:asc,audio_types:asc,title:desc`). Ukendt felt/retning droppes/defaulter i stedet for at give 422 — se `movie_service.parse_sort_param` (ny) og `ARCHITECTURE.md`.

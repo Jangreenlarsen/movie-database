@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.28.0 (build 0033) — 2026-08-01
+
+- Kan nu markere film som "set" med en dato — vises som badge på filmkortet, kan filtreres og sorteres på. Praktisk til at holde styr på hvad I allerede har set.
+
 ## v0.27.0 (build 0032) — 2026-08-01
 
 - Kan nu give hver film din egen rating (1-10) og skrive en personlig note, uafhængigt af TMDb's rating — rediger i filmens detaljevindue. Kan også sorteres efter.

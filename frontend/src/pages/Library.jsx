@@ -11,6 +11,7 @@ const SORT_OPTIONS = [
   { value: "year", label: "År" },
   { value: "rating", label: "Rating" },
   { value: "personal_rating", label: "Din rating" },
+  { value: "watched_at", label: "Set-dato" },
   { value: "runtime", label: "Spilletid" },
   { value: "format", label: "Format" },
   { value: "audio_types", label: "Lyd-type" },
@@ -72,6 +73,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
   const [selectedFormats, setSelectedFormats] = useState([]);
   const [selectedAudioTypes, setSelectedAudioTypes] = useState([]);
   const [selectedMediaTypes, setSelectedMediaTypes] = useState([]);
+  const [watchedFilter, setWatchedFilter] = useState(null); // null | true | false
   const [sortLevels, setSortLevels] = useState(() => initialSortLevels(user.settings));
   const [presets, setPresets] = useState(user.settings.sort_presets ?? []);
   const [presetNameInput, setPresetNameInput] = useState("");
@@ -134,6 +136,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
       mediaTypes: selectedMediaTypes,
       sort: sortLevels,
       wishlist,
+      watched: watchedFilter,
     });
   }
 
@@ -146,7 +149,15 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
       })
       .catch(() => setStatus("error"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, selectedTags, selectedFormats, selectedAudioTypes, selectedMediaTypes, sortLevels]);
+  }, [
+    query,
+    selectedTags,
+    selectedFormats,
+    selectedAudioTypes,
+    selectedMediaTypes,
+    sortLevels,
+    watchedFilter,
+  ]);
 
   function refresh() {
     fetchMovies().then(setMovies).catch(() => {});
@@ -224,7 +235,8 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
     selectedTags.length > 0 ||
     selectedFormats.length > 0 ||
     selectedAudioTypes.length > 0 ||
-    selectedMediaTypes.length > 0;
+    selectedMediaTypes.length > 0 ||
+    watchedFilter != null;
 
   return (
     <section>
@@ -260,7 +272,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
           </button>
 
           <button type="button" className="btn" onClick={() => setShowFilterPanel((v) => !v)}>
-            Filtrér {hasActiveFilters ? `(${selectedTags.length + selectedFormats.length + selectedAudioTypes.length + selectedMediaTypes.length}) ` : ""}▾
+            Filtrér {hasActiveFilters ? `(${selectedTags.length + selectedFormats.length + selectedAudioTypes.length + selectedMediaTypes.length + (watchedFilter != null ? 1 : 0)}) ` : ""}▾
           </button>
 
           <button type="button" className="btn" onClick={() => setShowFieldPanel((v) => !v)}>
@@ -454,6 +466,22 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
                 </div>
               </div>
             )}
+            <div className="filter-group">
+              <span className="filter-group-label">Set-status</span>
+              <div className="chip-row">
+                <Chip
+                  label="Set"
+                  active={watchedFilter === true}
+                  onClick={() => setWatchedFilter((prev) => (prev === true ? null : true))}
+                />
+                <Chip
+                  label="Ikke set"
+                  active={watchedFilter === false}
+                  onClick={() => setWatchedFilter((prev) => (prev === false ? null : false))}
+                />
+              </div>
+            </div>
+
             {hasActiveFilters && (
               <button
                 type="button"
@@ -464,6 +492,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
                   setSelectedFormats([]);
                   setSelectedAudioTypes([]);
                   setSelectedMediaTypes([]);
+                  setWatchedFilter(null);
                 }}
               >
                 Ryd filtre
@@ -518,6 +547,11 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
                 )}
                 {visibleFields.rating && movie.rating != null && (
                   <div className="movie-rating-badge">★ {movie.rating.toFixed(1)}</div>
+                )}
+                {movie.watched && (
+                  <div className="movie-watched-badge" title="Set">
+                    ✓ Set
+                  </div>
                 )}
               </div>
               <div className="movie-info">
@@ -586,6 +620,10 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
     movie.personal_rating != null ? String(movie.personal_rating) : ""
   );
   const [personalNote, setPersonalNote] = useState(movie.personal_note ?? "");
+  const [watched, setWatched] = useState(movie.watched);
+  const [watchedAt, setWatchedAt] = useState(
+    movie.watched_at ? movie.watched_at.slice(0, 10) : ""
+  );
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [moving, setMoving] = useState(false);
@@ -610,6 +648,8 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
       owner !== (movie.owner ?? "") ||
       personalRating !== (movie.personal_rating != null ? String(movie.personal_rating) : "") ||
       personalNote !== (movie.personal_note ?? "") ||
+      watched !== movie.watched ||
+      watchedAt !== (movie.watched_at ? movie.watched_at.slice(0, 10) : "") ||
       serialChanged
     );
   }, [
@@ -622,9 +662,21 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
     owner,
     personalRating,
     personalNote,
+    watched,
+    watchedAt,
     canEditSerial,
     movie,
   ]);
+
+  function toggleWatched() {
+    setWatched((prev) => {
+      const next = !prev;
+      if (next && !watchedAt) {
+        setWatchedAt(new Date().toISOString().slice(0, 10));
+      }
+      return next;
+    });
+  }
 
   async function save() {
     setSaving(true);
@@ -639,6 +691,8 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
         owner: owner.trim() || null,
         personal_rating: personalRating ? Number(personalRating) : null,
         personal_note: personalNote.trim() || null,
+        watched,
+        watched_at: watched && watchedAt ? watchedAt : null,
       };
       const nextSerial = Number(serialNumberInput);
       if (canEditSerial && nextSerial > 0 && nextSerial !== movie.serial_number) {
@@ -697,6 +751,13 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
               {movie.runtime != null && <> · {movie.runtime} min</>}
               {movie.rating != null && <> · ★ {movie.rating.toFixed(1)}</>}
               {movie.personal_rating != null && <> · Din: {movie.personal_rating}/10</>}
+              {movie.watched && (
+                <>
+                  {" "}
+                  · ✓ Set
+                  {movie.watched_at && ` d. ${new Date(movie.watched_at).toLocaleDateString("da-DK")}`}
+                </>
+              )}
             </p>
             {movie.genres.length > 0 && <p className="muted">{movie.genres.join(", ")}</p>}
             {(movie.imdb_url || movie.trailer_url || movie.tmdb_id) && (
@@ -783,6 +844,22 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
           {movie.registered_by && (
             <p className="muted">Registreret af: {movie.registered_by}</p>
           )}
+
+          <div>
+            <div className="modal-section-label">Set-status</div>
+            <label className="watched-toggle">
+              <input type="checkbox" checked={watched} onChange={toggleWatched} />
+              Set
+            </label>
+            {watched && (
+              <input
+                type="date"
+                value={watchedAt}
+                onChange={(e) => setWatchedAt(e.target.value)}
+                style={{ marginLeft: 10 }}
+              />
+            )}
+          </div>
 
           <div>
             <div className="modal-section-label">Din rating (1-10)</div>

@@ -53,6 +53,8 @@ def _to_model(document: dict) -> Movie:
         is_wishlist=document.get("is_wishlist", False),
         personal_rating=document.get("personal_rating"),
         personal_note=document.get("personal_note"),
+        watched=document.get("watched", False),
+        watched_at=document.get("watched_at"),
         created_at=document["created_at"],
         updated_at=document["updated_at"],
     )
@@ -151,6 +153,7 @@ async def list_movies(
     media_types: list[str] | None = None,
     sort: str | None = None,
     is_wishlist: bool = False,
+    watched: bool | None = None,
 ) -> list[Movie]:
     normalized_tags = [tag_service.normalize(tag) for tag in (tags or []) if tag.strip()]
     sort_spec = parse_sort_param(sort)
@@ -163,6 +166,7 @@ async def list_movies(
         media_types or None,
         sort_spec or None,
         is_wishlist,
+        watched,
     )
     return [_to_model(doc) for doc in documents]
 

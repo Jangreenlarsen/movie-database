@@ -27,6 +27,7 @@ SORT_FIELDS = {
     "location": "location",
     "owner": "owner",
     "registered_by": "registered_by",
+    "watched_at": "watched_at",
 }
 DEFAULT_SORT_FIELD = "created_at"
 MAX_SORT_LEVELS = 3
@@ -110,6 +111,8 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     await collection.create_index("is_wishlist")
     await collection.create_index("rating")
     await collection.create_index("personal_rating")
+    await collection.create_index("watched")
+    await collection.create_index("watched_at")
     await collection.create_index("year")
     await collection.create_index("created_at")
     await collection.create_index("runtime")
@@ -246,6 +249,7 @@ async def find_many(
     media_types: list[str] | None = None,
     sort_spec: list[tuple[str, int]] | None = None,
     is_wishlist: bool = False,
+    watched: bool | None = None,
 ) -> list[dict]:
     """`sort_spec` is a list of up to `MAX_SORT_LEVELS` (already-whitelisted
     mongo field name, direction) tuples for compound multi-level sorting
@@ -267,6 +271,12 @@ async def find_many(
         filter_["audio_types"] = {"$in": audio_types}
     if media_types:
         filter_["media_type"] = {"$in": media_types}
+    if watched is not None:
+        # Same "missing field != False" pitfall as is_wishlist above — movies
+        # created before this feature (or simply never marked) have no
+        # `watched` key at all, so `False` must match "not True", not a
+        # literal equality check that would silently exclude them.
+        filter_["watched"] = True if watched else {"$ne": True}
 
     cursor = db[COLLECTION].find(filter_)
     cursor = cursor.sort(sort_spec) if sort_spec else cursor.sort(DEFAULT_SORT_FIELD, -1)

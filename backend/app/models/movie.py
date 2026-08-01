@@ -90,6 +90,8 @@ class MovieUpdate(BaseModel):
     serial_number: int | None = Field(default=None, gt=0)
     personal_rating: int | None = Field(default=None, ge=1, le=10)
     personal_note: str | None = None
+    watched: bool | None = None
+    watched_at: datetime | None = None
 
 
 class Movie(BaseModel):
@@ -117,6 +119,8 @@ class Movie(BaseModel):
     is_wishlist: bool = False
     personal_rating: int | None = None
     personal_note: str | None = None
+    watched: bool = False
+    watched_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 

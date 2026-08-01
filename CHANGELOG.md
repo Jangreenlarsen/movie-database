@@ -2,6 +2,13 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.28.0 build 0033] — 2026-08-01 — "Set"-status + set-dato (feature #40)
+
+- `Movie`/`MovieUpdate`: nye `watched` (bool) og `watched_at` (dato) felter. Filtrerbar (`?watched=true|false`) og sorterbar (`watched_at`) i biblioteket.
+- `movie_repository.find_many`: samme "manglende felt ≠ False"-fælde som `is_wishlist` (CLAUDE.md regel 16) — fanget af egen regressionstest før merge. `watched=false`-filteret bruger derfor `{"$ne": True}`, ikke en direkte `False`-lighedstest, så film oprettet før denne feature (uden feltet overhovedet) korrekt tælles som "ikke set".
+- `Library.jsx`: ny "Set-status"-filtergruppe (Set/Ikke set chips), ny "✓ Set"-badge på filmkort (poster, nederst til højre — samme mønster som rating-badgen), og et checkbox+dato-felt i detaljevinduet. Set-dato defaulter til i dag når man markerer som set, men kan ændres frit (til at eftertaste ældre film).
+- Nye tests i `test_watched_status.py`: default, sæt/fjern, filtrering (inkl. regression for tomheds-fælden), sortering.
+
 ## [0.27.0 build 0032] — 2026-08-01 — Personlig rating + note pr. film (feature #39)
 
 - `Movie`/`MovieUpdate`: nye `personal_rating` (1-10, valideret) og `personal_note` (fritekst) — adskilt fra TMDb's offentlige `rating`. `null` rydder feltet (ingen sparse-index-hensyn her, i modsætning til `barcode`/`serial_number`).

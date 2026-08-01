@@ -201,6 +201,28 @@
   border-radius: 999px;
 }
 
+.watched-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.movie-watched-badge {
+  position: absolute;
+  z-index: 2;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(30, 130, 76, 0.85);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+}
+
 .movie-info {
   padding: 10px 12px 12px;
   display: flex;

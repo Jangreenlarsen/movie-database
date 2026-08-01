@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.32.0 (build 0037) — 2026-08-01
+
+- Gemte visninger husker nu søgetekst og alle filtre (tags/format/lyd/medietype/set-status), ikke kun sorteringen — så en gemt visning genskaber præcis den samme liste du havde, ikke bare rækkefølgen.
+
 ## v0.31.0 (build 0036) — 2026-08-01
 
 - Ny "Statistik"-fane: antal film, samlet spilletid, hvor mange du har set, samt fordeling på genre/årti/format og hvilke instruktører/skuespillere der går igen i din samling.

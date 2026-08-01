@@ -120,7 +120,20 @@ async def test_multi_level_sort_and_presets_roundtrip(client):
     presets = [{"name": "Efter format", "levels": levels}]
     response = await client.patch("/api/users/me/settings", json={"sort_presets": presets})
     assert response.status_code == 200
-    assert response.json()["settings"]["sort_presets"] == presets
+    # A preset sent without the feature #44 filter fields round-trips with
+    # them filled in as defaults (empty/None) — not absent.
+    assert response.json()["settings"]["sort_presets"] == [
+        {
+            "name": "Efter format",
+            "levels": levels,
+            "query": None,
+            "tags": [],
+            "formats": [],
+            "audio_types": [],
+            "media_types": [],
+            "watched": None,
+        }
+    ]
 
     # sort_levels must survive a later update that only touches sort_presets.
     me = await client.get("/api/users/me")
@@ -149,4 +162,47 @@ async def test_settings_updates_do_not_clobber_unrelated_keys(client):
     settings = response.json()["settings"]
     assert settings["visible_fields"]["format"] is True
     assert settings["sort_levels"] == [{"field": "title", "direction": "asc"}]
-    assert settings["sort_presets"] == [{"name": "By title", "levels": [{"field": "title", "direction": "asc"}]}]
+    assert settings["sort_presets"] == [
+        {
+            "name": "By title",
+            "levels": [{"field": "title", "direction": "asc"}],
+            "query": None,
+            "tags": [],
+            "formats": [],
+            "audio_types": [],
+            "media_types": [],
+            "watched": None,
+        }
+    ]
+
+
+async def test_preset_can_capture_full_filter_state(client):
+    """Regression test for FEATURES.md #44 — a saved "view" is more than
+    just sort order."""
+    preset = {
+        "name": "Ikke sete actionfilm",
+        "levels": [{"field": "title", "direction": "asc"}],
+        "query": "matrix",
+        "tags": ["favorit"],
+        "formats": ["BD"],
+        "audio_types": ["Atmos"],
+        "media_types": ["Fysisk"],
+        "watched": False,
+    }
+    response = await client.patch("/api/users/me/settings", json={"sort_presets": [preset]})
+    assert response.status_code == 200
+    assert response.json()["settings"]["sort_presets"] == [preset]
+
+
+async def test_preset_without_filter_fields_defaults_gracefully(client):
+    """A preset saved before feature #44 (sort-only) must still validate."""
+    old_style_preset = {"name": "Gammel preset", "levels": [{"field": "year", "direction": "desc"}]}
+    response = await client.patch(
+        "/api/users/me/settings", json={"sort_presets": [old_style_preset]}
+    )
+    assert response.status_code == 200
+    saved = response.json()["settings"]["sort_presets"][0]
+    assert saved["name"] == "Gammel preset"
+    assert saved["query"] is None
+    assert saved["tags"] == []
+    assert saved["watched"] is None

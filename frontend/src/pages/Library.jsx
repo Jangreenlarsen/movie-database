@@ -218,12 +218,33 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
     if (!preset) return;
     setSortLevels(preset.levels);
     persistSortLevels(preset.levels);
+    // Presets saved before feature #44 only have `levels` — the ?? []/null
+    // fallbacks make applying an old, sort-only preset a no-op for the rest
+    // of the filter state instead of wiping out what the user had selected.
+    setQuery(preset.query ?? "");
+    setSelectedTags(preset.tags ?? []);
+    setSelectedFormats(preset.formats ?? []);
+    setSelectedAudioTypes(preset.audio_types ?? []);
+    setSelectedMediaTypes(preset.media_types ?? []);
+    setWatchedFilter(preset.watched ?? null);
   }
 
   function saveCurrentAsPreset() {
     const name = presetNameInput.trim();
     if (!name) return;
-    const next = [...presets.filter((p) => p.name !== name), { name, levels: sortLevels }];
+    const next = [
+      ...presets.filter((p) => p.name !== name),
+      {
+        name,
+        levels: sortLevels,
+        query: query || null,
+        tags: selectedTags,
+        formats: selectedFormats,
+        audio_types: selectedAudioTypes,
+        media_types: selectedMediaTypes,
+        watched: watchedFilter,
+      },
+    ];
     setPresets(next);
     persistSortPresets(next);
     setPresetNameInput("");
@@ -339,9 +360,9 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
             </div>
 
             <div className="filter-group sort-preset-row">
-              <span className="filter-group-label">Presets</span>
+              <span className="filter-group-label">Gemte visninger</span>
               <select value="" onChange={(e) => e.target.value && applyPreset(e.target.value)}>
-                <option value="">Vælg gemt preset...</option>
+                <option value="">Vælg gemt visning...</option>
                 {presets.map((preset) => (
                   <option key={preset.name} value={preset.name}>
                     {preset.name}
@@ -349,7 +370,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
                 ))}
               </select>
               <input
-                placeholder="Navngiv preset..."
+                placeholder="Navngiv visning..."
                 value={presetNameInput}
                 onChange={(e) => setPresetNameInput(e.target.value)}
                 style={{ maxWidth: 160 }}
@@ -360,9 +381,12 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
                 onClick={saveCurrentAsPreset}
                 disabled={!presetNameInput.trim()}
               >
-                Gem som preset
+                Gem nuværende visning
               </button>
             </div>
+            <p className="muted" style={{ margin: 0 }}>
+              En gemt visning husker søgetekst, alle filtre og sortering — ikke kun rækkefølgen.
+            </p>
 
             {presets.length > 0 && (
               <div className="sort-preset-list">

@@ -2,6 +2,13 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.32.0 build 0037] — 2026-08-01 — Gemte fulde filter-sæt / "visninger" (feature #44)
+
+- `SortPreset` (`models/user.py`) udvidet med valgfrie `query`/`tags`/`formats`/`audio_types`/`media_types`/`watched` ud over det oprindelige `levels` — en gemt visning fanger nu hele toolbar-tilstanden, ikke kun sorteringen. Alle nye felter er defaulterede, så presets gemt før denne feature fortsat validerer og anvender blot ingen ekstra filtrering.
+- Ingen ændring i backend-service/repository-laget — `sort_presets` var allerede en generisk, hel-array `$set` via `PATCH /api/users/me/settings`.
+- `Library.jsx`: "Gem nuværende visning"/"Vælg gemt visning" gemmer og genanvender nu søgetekst, tag/format/lyd/medietype-filtre og set-status sammen med sorteringen.
+- To eksisterende tests i `test_auth.py` opdateret til den nu-rigere preset-form (defaulterede felter i response). To nye regressionstests: fuld filter-tilstand round-tripper, gammel sort-only preset defaulter gracefuldt.
+
 ## [0.31.0 build 0036] — 2026-08-01 — Statistik-side (feature #43)
 
 - Ny `GET /api/movies/stats` (`movie_repository.find_all_library_movies` + `movie_service.get_collection_stats`): antal film, samlet spilletid, set/ikke-set, genre-/årti-/format-fordeling og top 10 instruktører/skuespillere. Ønskeliste ekskluderet. Beregnet i Python (`Counter`) over ét uncapped `find()`, ikke en Mongo aggregation-pipeline — matcher kodebasens stil og undgår uverificerede pipeline-stadier i mongomock.

@@ -63,3 +63,181 @@ sudo caddy validate --config /etc/caddy/Caddyfile
 ## Databasen
 
 Produktionsdatabasen startede **tom** (bevidst valg — ingen data migreret fra dev-maskinens lokale MongoDB). Første bruger der registrerer sig på `https://10.1.130.10` bliver automatisk admin (se ARCHITECTURE.md's note om bootstrap).
+
+---
+
+## Sådan blev serveren sat op (installations-log, 2026-08-01)
+
+Trin-for-trin hvad der faktisk blev gjort for at gå fra en frisk Debian 13-installation til kørende produktion. Nyttig hvis serveren skal geninstalleres, eller en tilsvarende opsætning skal laves et andet sted.
+
+### 1. SSH-adgang uden gentagen adgangskode
+
+Serveren blev leveret med bruger `jgl` + adgangskode. For ikke at skulle sende adgangskoden i klartekst ved hvert kommando-kald:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/moviedb_deploy -N "" -C "moviedb-deploy"
+```
+
+Den nye offentlige nøgle blev installeret på serveren via **ét** password-baseret login (Windows' `ssh` kan ikke lave et ikke-interaktivt password-login selv, så PuTTYs `plink -pw` blev brugt til lige præcis dette ene bootstrap-trin):
+
+```bash
+plink -ssh -pw "<adgangskode>" jgl@10.1.130.10 \
+  "mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo '<offentlig nøgle>' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+```
+
+Herefter blev al efterfølgende adgang gjort med `ssh -i ~/.ssh/moviedb_deploy jgl@10.1.130.10` — ingen adgangskode involveret mere.
+
+### 2. Sudo-adgang
+
+`jgl` havde hverken `sudo` installeret eller adgang til det. `su` (med root's adgangskode, sendt via stdin — `su` kan læse derfra selvom den normalt foretrækker en TTY) blev brugt til at rette dette **én gang**:
+
+- Apt havde **kun** en cdrom-kilde i `/etc/apt/sources.list` (ingen netværks-mirror) — blev overskrevet med rigtige `deb.debian.org`/`security.debian.org`-linjer for trixie, ellers fejlede al pakkeinstallation.
+- `apt-get install sudo`, `usermod -aG sudo jgl`, og en `/etc/sudoers.d/jgl-deploy`-fil med `jgl ALL=(ALL) NOPASSWD:ALL` (valideret med `visudo -c` før den blev taget i brug).
+
+Herefter blev root's adgangskode aldrig brugt igen — alt kørte via `sudo` som `jgl`.
+
+### 3. Basis-pakker
+
+```bash
+sudo apt-get install -y git python3 python3-venv python3-pip curl gnupg ca-certificates ufw build-essential
+```
+
+### 4. MongoDB 8.0
+
+Debian 13 (trixie) er for ny til at have sin egen officielle MongoDB-repo endnu, så bookworm-repoen blev brugt (virker fint, kun apt-metadata, ingen OS-specifik binær-afhængighed der driller):
+
+```bash
+curl -fsSL https://pgp.mongodb.com/server-8.0.asc | sudo gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg] https://repo.mongodb.org/apt/debian bookworm/mongodb-org/8.0 main" | sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+sudo apt-get update && sudo apt-get install -y mongodb-org
+sudo systemctl enable --now mongod
+```
+
+Verificeret at `/etc/mongod.conf` fortsat binder til `127.0.0.1` (default) — ikke ændret, MongoDB skal aldrig være nåbar udefra.
+
+### 5. Node.js 22 (til at bygge frontend)
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+### 6. Caddy 2 (reverse proxy + TLS)
+
+```bash
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt-get update && sudo apt-get install -y caddy
+```
+
+### 7. Kode fra GitHub (repoet er privat)
+
+Et almindeligt `git clone` (HTTPS) fejlede — intet login. I stedet for at lægge en personlig GitHub-adgangstoken på serveren blev der lavet en **dedikeret, read-only deploy key**, kun gyldig for dette ene repo:
+
+```bash
+# På serveren:
+ssh-keygen -t ed25519 -f ~/.ssh/github_deploy -N "" -C "moviedb-prod-server"
+
+# Lokalt (gh CLI allerede logget ind som Jan):
+gh repo deploy-key add - --title "moviedb-prod-server (read-only)" --repo Jangreenlarsen/movie-database <<< "<serverens offentlige nøgle>"
+```
+
+```bash
+# På serveren: ~/.ssh/config
+Host github.com
+    IdentityFile ~/.ssh/github_deploy
+    IdentitiesOnly yes
+```
+
+```bash
+sudo mkdir -p /opt/moviedb && sudo chown jgl:jgl /opt/moviedb
+git clone git@github.com:Jangreenlarsen/movie-database.git /opt/moviedb
+cd /opt/moviedb && git checkout main
+```
+
+### 8. Backend
+
+```bash
+cd /opt/moviedb/backend
+python3 -m venv .venv
+.venv/bin/pip install --upgrade pip
+.venv/bin/pip install -r requirements.txt
+```
+
+`.env` blev skrevet direkte på serveren, med `JWT_SECRET_KEY` genereret **på serveren** (aldrig transporteret over SSH eller vist noget sted):
+
+```bash
+JWT_SECRET=$(.venv/bin/python -c "import secrets; print(secrets.token_urlsafe(48))")
+```
+
+Se `## .env (produktion)` ovenfor for hvilke andre felter der blev sat. Filen fik `chmod 600`.
+
+Testet manuelt først (5 sekunders kørsel, aflyst igen) for at fange evt. opstartsfejl *før* systemd-servicen blev lavet:
+
+```bash
+timeout 5 .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Derefter en systemd-service (`/etc/systemd/system/moviedb-backend.service`) der binder uvicorn til `127.0.0.1:8000` som bruger `jgl`, med et par hærdnings-flag (`NoNewPrivileges`, `ProtectSystem=strict`) og `Restart=on-failure`:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now moviedb-backend
+```
+
+### 9. Frontend
+
+```bash
+cd /opt/moviedb/frontend
+npm install
+npm run build
+```
+
+Bygger til `dist/` — appens API-klient bruger som standard en relativ `/api`-sti, så den virker automatisk sammen med Caddys same-origin reverse proxy uden ekstra konfiguration (intet `VITE_API_BASE_URL` nødvendigt).
+
+Verificeret at hele stien til `dist/` var læsbar for `caddy`-systembrugeren (`namei -l`) — ellers ville Caddy give 403 på alle statiske filer.
+
+### 10. Caddy-konfiguration
+
+`/etc/caddy/Caddyfile`:
+
+```caddyfile
+10.1.130.10 {
+    tls internal
+
+    handle /api/* {
+        reverse_proxy 127.0.0.1:8000
+    }
+
+    handle {
+        root * /opt/moviedb/frontend/dist
+        file_server
+        try_files {path} /index.html
+    }
+}
+```
+
+Valideret før brug (`sudo caddy validate --config /etc/caddy/Caddyfile`), derefter `sudo systemctl enable --now caddy`.
+
+### 11. Firewall
+
+Port 22 blev tilladt **først** for ikke at lukke sig selv ude, derefter 443/80, og til sidst default-deny på resten:
+
+```bash
+sudo ufw allow 22/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow 80/tcp
+sudo ufw default deny incoming
+sudo ufw --force enable
+```
+
+SSH-adgang blev straks re-verificeret efter enable, før noget andet blev gjort.
+
+### 12. Slut-til-slut test
+
+- `curl -sk https://10.1.130.10/api/health` → `{"status":"ok","mongo":true,...}` (gennem hele kæden: Caddy → uvicorn → MongoDB).
+- `curl -sk https://10.1.130.10/` → frontend-HTML'en serveres korrekt.
+- `curl http://10.1.130.10/` → 308-redirect til HTTPS (Caddys automatiske redirect virker).
+- `journalctl -u moviedb-backend` gennemgået — ingen fejl, og vigtigst: **ingen advarsel om usikker JWT-hemmelighed** (bekræfter at den genererede `.env`-værdi rent faktisk blev brugt, jf. CLAUDE.md regel 16's sikkerhedskonfigurations-tjek).
+- Reel registrering + login testet med en midlertidig bruger (bekræftede at cookie-baseret auth virker korrekt over HTTPS med `COOKIE_SECURE=true`) — brugeren blev **slettet igen bagefter** (`mongosh moviedb --eval 'db.users.deleteOne(...)'`) så databasen forblev tom og Jans egen første registrering bliver den rigtige bootstrap-admin.
+- Alle tre services (`mongod`, `moviedb-backend`, `caddy`) bekræftet `enabled` for opstart ved reboot.

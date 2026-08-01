@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from app.core.errors import TmdbUnavailableError
+from app.core.errors import TmdbRateLimitedError, TmdbUnavailableError
 from app.integrations import tmdb_client
 
 
@@ -52,3 +52,27 @@ def test_trailer_url_picks_first_official_youtube_trailer():
 def test_trailer_url_returns_none_when_no_trailer_present():
     assert tmdb_client._trailer_url([]) is None
     assert tmdb_client._trailer_url([{"site": "YouTube", "type": "Teaser", "key": "x"}]) is None
+
+
+def test_trailer_url_skips_entries_missing_a_key():
+    """A trailer entry without a `key` must not produce a broken
+    "...watch?v=None" URL — it's skipped in favor of the next candidate."""
+    videos = [
+        {"site": "YouTube", "type": "Trailer", "key": None},
+        {"site": "YouTube", "type": "Trailer", "key": ""},
+        {"site": "YouTube", "type": "Trailer", "key": "real-key"},
+    ]
+    assert tmdb_client._trailer_url(videos) == "https://www.youtube.com/watch?v=real-key"
+
+
+async def test_get_movie_details_raises_rate_limited_on_429(monkeypatch):
+    async def fake_get(self, url, headers=None, params=None):
+        return httpx.Response(
+            429, request=httpx.Request("GET", url), json={"status_message": "rate limited"}
+        )
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+    monkeypatch.setattr(tmdb_client.settings, "tmdb_api_token", "dummy-token")
+
+    with pytest.raises(TmdbRateLimitedError):
+        await tmdb_client.get_movie_details(603)

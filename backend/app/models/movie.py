@@ -122,6 +122,7 @@ class TmdbSyncResult(BaseModel):
     synced: int
     failed: int
     failed_titles: list[str] = Field(default_factory=list)
+    stopped_early: bool = False
 
 
 class DeletedMovie(BaseModel):

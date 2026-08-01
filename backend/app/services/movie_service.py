@@ -1,13 +1,16 @@
+import asyncio
 from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
+from app.core.config import settings
 from app.core.errors import (
     DuplicateBarcodeError,
     MovieNotFoundError,
     NotAuthorizedError,
     TmdbNotFoundError,
+    TmdbRateLimitedError,
     TmdbUnavailableError,
 )
 from app.integrations import tmdb_client
@@ -277,14 +280,41 @@ async def sync_all_from_tmdb(db: AsyncIOMotorDatabase) -> TmdbSyncResult:
     are never touched. A single movie's TMDb lookup failing (removed from
     TMDb, TMDb briefly down) does not abort the rest of the batch — it is
     counted as failed and the sync continues, matching the "catch-all for
-    unexpected external-API failures" lesson in CLAUDE.md regel 16."""
+    unexpected external-API failures" lesson in CLAUDE.md regel 16.
+
+    Two batch-specific failure modes are handled specially rather than
+    falling into the same per-movie "failed" bucket as a single missing
+    title, since they aren't really about any individual movie:
+    - No `TMDB_API_TOKEN` configured: every movie would fail for the exact
+      same reason, so this is detected up front instead of making N
+      identical failing requests.
+    - TMDb rate-limits us (429) partway through: continuing would almost
+      certainly fail every remaining movie too (MOVIE_API_REFERENCE.md asks
+      integrations to be gentle with TMDb), so the batch stops immediately
+      instead of hammering an already-throttled API."""
     documents = await movie_repository.find_all_with_tmdb_id(db)
+
+    if not settings.tmdb_api_token:
+        titles = [doc["title"] for doc in documents]
+        return TmdbSyncResult(
+            total=len(documents),
+            synced=0,
+            failed=len(titles),
+            failed_titles=titles,
+            stopped_early=True,
+        )
+
     synced = 0
     failed_titles: list[str] = []
+    stopped_early = False
 
-    for document in documents:
+    for index, document in enumerate(documents):
         try:
             details = await tmdb_client.get_movie_details(document["tmdb_id"])
+        except TmdbRateLimitedError:
+            failed_titles.extend(doc["title"] for doc in documents[index:])
+            stopped_early = True
+            break
         except (TmdbNotFoundError, TmdbUnavailableError):
             failed_titles.append(document["title"])
             continue
@@ -304,12 +334,14 @@ async def sync_all_from_tmdb(db: AsyncIOMotorDatabase) -> TmdbSyncResult:
         }
         await movie_repository.update(db, str(document["_id"]), fields)
         synced += 1
+        await asyncio.sleep(0.05)  # be gentle with TMDb across a large batch
 
     return TmdbSyncResult(
         total=len(documents),
         synced=synced,
         failed=len(failed_titles),
         failed_titles=failed_titles,
+        stopped_early=stopped_early,
     )
 
 

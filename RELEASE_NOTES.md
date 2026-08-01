@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.22.1 (build 0026) — 2026-08-01
+
+- Fulgt op på den kode-gennemgang du bad om tidligere: TMDb-synkroniseringen håndterer nu manglende API-nøgle og TMDb-rate-limits pænt (én klar besked i stedet for en lang liste af "mislykkede" film), og en sjælden fejlkilde i trailer-links er rettet.
+
 ## v0.22.0 (build 0025) — 2026-08-01
 
 - Ny "Medietype"-mulighed (Fysisk/Digital) du kan sætte på hver film — filtrerbar og sorterbar som format og lyd-type.

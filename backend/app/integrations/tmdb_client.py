@@ -1,7 +1,7 @@
 import httpx
 
 from app.core.config import settings
-from app.core.errors import TmdbNotFoundError, TmdbUnavailableError
+from app.core.errors import TmdbNotFoundError, TmdbRateLimitedError, TmdbUnavailableError
 
 BASE_URL = "https://api.themoviedb.org/3"
 IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
@@ -40,10 +40,12 @@ def _imdb_url(imdb_id: str | None) -> str | None:
 def _trailer_url(videos: list[dict]) -> str | None:
     """First official YouTube trailer, if any — TMDb lists teasers/clips/
     featurettes in the same `videos.results` array, so both site and type
-    are checked, not just the first entry."""
+    are checked, not just the first entry. A video entry missing its `key`
+    is skipped rather than turned into a broken "...watch?v=None" URL."""
     for video in videos:
-        if video.get("site") == "YouTube" and video.get("type") == "Trailer":
-            return f"https://www.youtube.com/watch?v={video.get('key')}"
+        key = video.get("key")
+        if key and video.get("site") == "YouTube" and video.get("type") == "Trailer":
+            return f"https://www.youtube.com/watch?v={key}"
     return None
 
 
@@ -102,6 +104,8 @@ async def get_movie_details(tmdb_id: int) -> dict:
         raise TmdbNotFoundError(tmdb_id)
     if detail_response.status_code == 401:
         raise TmdbUnavailableError("TMDb afviste API-tokenet (401) — tjek TMDB_API_TOKEN")
+    if detail_response.status_code == 429:
+        raise TmdbRateLimitedError()
     _raise_for_status(detail_response)
 
     detail = detail_response.json()

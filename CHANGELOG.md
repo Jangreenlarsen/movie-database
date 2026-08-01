@@ -2,6 +2,15 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.22.1 build 0026] — 2026-08-01 — Opfølgende kode-gennemgang af sessionens hurtigt-byggede features
+
+Jan bad tidligere i sessionen om en dyb to-fase gennemgang; den blev udskudt af en lang stribe nye funktionsønsker og gennemføres nu, med fokus på det der blev bygget hurtigt undervejs (ønske→bibliotek-flytning, TMDb-synkronisering, IMDb/trailer-links, medietype, label-migreringer, sortering).
+
+- **Fase 1 (fund)**: `tmdb_client.get_movie_details` manglede eksplicit 429-håndtering (modsat `search_movies`); `sync_all_from_tmdb` tjekkede hverken manglende `TMDB_API_TOKEN` eller rate-limit før/under løkken, så begge situationer ville rapportere *hver film* som en uafhængig fejl i stedet for én klar årsag; `_trailer_url` brugte `video["key"]` uden at tjekke om feltet var sat.
+- **Fase 2 (rettelser + systemisk lektion)**: Ny `TmdbRateLimitedError`, eksplicit 429-håndtering i `get_movie_details`. `sync_all_from_tmdb` tjekker nu API-nøglen først og stopper batchen med det samme ved rate-limit (nyt `stopped_early`-felt på `TmdbSyncResult`) i stedet for at blive ved med at forsøge resten. `_trailer_url` springer video-entries uden `key` over. `Settings.jsx`s TMDb-sync-sektion viser nu en klar besked ved `stopped_early` i stedet for en lang liste af "mislykkede" film.
+- **CLAUDE.md regel 16** udvidet med to nye lektioner: "samtidige delvise opdateringer" (generaliseret fra BUGS.md #13's fix) og "bulk-operationer mod eksterne API'er" (fra denne gennemgangs fund) — begge skal Claude anvende proaktivt fremover, ikke kun når Jan beder om en gennemgang.
+- `BUGS.md` #15, #16, #17 registreret og fikset. Nye tests i `test_tmdb_client.py`, `test_tmdb_sync.py`.
+
 ## [0.22.0 build 0025] — 2026-08-01 — Medietype-felt, kortere format/lyd-labels, udvidet sortering
 
 - Nyt `MediaType`-felt (`Fysisk`/`Digital`) på `Movie`/`MovieCreate`/`MovieUpdate` — filtrerbart (`?media_types=`), sorterbart, redigerbart, og vises på filmkort via "Vis felter" som de andre attributter. Nyt indeks på `media_type`.

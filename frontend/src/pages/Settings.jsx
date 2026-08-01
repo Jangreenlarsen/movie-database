@@ -283,9 +283,26 @@ function TmdbSyncSection() {
       )}
 
       {status === "done" && result && (
-        <div className="banner banner-info" style={{ marginTop: 12 }}>
-          {result.synced} af {result.total} film opdateret.
-          {result.failed > 0 && ` ${result.failed} kunne ikke hentes: ${result.failed_titles.join(", ")}.`}
+        <div
+          className={`banner ${result.stopped_early ? "banner-error" : "banner-info"}`}
+          style={{ marginTop: 12 }}
+        >
+          {result.stopped_early ? (
+            result.synced === 0 && result.total === result.failed && result.failed > 0 ? (
+              <>Synkronisering afbrudt — tjek at backend har en gyldig TMDB_API_TOKEN.</>
+            ) : (
+              <>
+                {result.synced} af {result.total} film opdateret, men stoppet tidligt fordi TMDb
+                ramte et rate-limit. Prøv igen om lidt for at opdatere resten.
+              </>
+            )
+          ) : (
+            <>
+              {result.synced} af {result.total} film opdateret.
+              {result.failed > 0 &&
+                ` ${result.failed} kunne ikke hentes: ${result.failed_titles.join(", ")}.`}
+            </>
+          )}
         </div>
       )}
     </div>

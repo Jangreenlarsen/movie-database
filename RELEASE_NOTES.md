@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.35.0 (build 0042) — 2026-08-02
+
+- Første skridt mod TV-serie-understøttelse: teknisk fundament på plads (egen ressource, sæson/episode-sporing). Endnu ingen synlig knap/fane i appen — det kommer i en efterfølgende opdatering.
+
 ## v0.34.1 (build 0041) — 2026-08-02
 
 - Fix: forbedret oprensning af titler fra stregkode-opslag før TMDb-søgning — flere "special edition"/"complete series"/rå "DVD"/"Blu-ray"-tilføjelser i produktnavnet fjernes nu, hvilket burde give flere match for rigtige film.

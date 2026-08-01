@@ -140,6 +140,127 @@ async def get_movie_details(tmdb_id: int) -> dict:
     }
 
 
+def _to_tv_candidate(item: dict) -> dict:
+    # Mapped to the same shape as _to_candidate (title/year/poster_url/rating)
+    # so the frontend can reuse one candidate-picker component for both
+    # movie and TV search results (feature #49) — `name` -> `title` is a
+    # deliberate boundary translation, not a claim that TV shows have a
+    # "title" field internally (the stored TvShow model uses `name`).
+    return {
+        "tmdb_id": item["id"],
+        "title": item.get("name"),
+        "year": _year_from_release_date(item.get("first_air_date")),
+        "poster_url": _poster_url(item.get("poster_path")),
+        "rating": _rating(item.get("vote_average")),
+    }
+
+
+async def search_tv(query: str) -> list[dict]:
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f"{BASE_URL}/search/tv", headers=_headers(), params={"query": query}
+            )
+    except httpx.HTTPError as exc:
+        raise TmdbUnavailableError(f"TMDb er ikke tilgængelig: {exc}") from exc
+
+    if response.status_code == 401:
+        raise TmdbUnavailableError("TMDb afviste API-tokenet (401) — tjek TMDB_API_TOKEN")
+    if response.status_code == 429:
+        raise TmdbUnavailableError("TMDb rate-limit ramt (429), prøv igen om lidt")
+    _raise_for_status(response)
+
+    results = response.json().get("results", [])
+    return [_to_tv_candidate(item) for item in results[:8]]
+
+
+async def get_tv_show_details(tv_id: int) -> dict:
+    """Series-level metadata plus a *light* season list (number/name/episode
+    count/air date/poster, straight from /tv/{id}'s own seasons[]) — no
+    per-episode data. See ARCHITECTURE.md's "Lazy sæson/episode-load" note:
+    fetching every season's full episode list here would be one extra TMDb
+    call per season, wasted for seasons the user doesn't own."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            detail_response = await client.get(
+                f"{BASE_URL}/tv/{tv_id}",
+                headers=_headers(),
+                params={"append_to_response": "credits,external_ids"},
+            )
+    except httpx.HTTPError as exc:
+        raise TmdbUnavailableError(f"TMDb er ikke tilgængelig: {exc}") from exc
+
+    if detail_response.status_code == 404:
+        raise TmdbNotFoundError(tv_id)
+    if detail_response.status_code == 401:
+        raise TmdbUnavailableError("TMDb afviste API-tokenet (401) — tjek TMDB_API_TOKEN")
+    if detail_response.status_code == 429:
+        raise TmdbRateLimitedError()
+    _raise_for_status(detail_response)
+
+    detail = detail_response.json()
+    credits = detail.get("credits", {})
+    external_ids = detail.get("external_ids", {})
+
+    return {
+        "tmdb_id": detail["id"],
+        "name": detail.get("name"),
+        "year": _year_from_release_date(detail.get("first_air_date")),
+        "end_year": _year_from_release_date(detail.get("last_air_date")),
+        "status": detail.get("status"),
+        "poster_url": _poster_url(detail.get("poster_path")),
+        "overview": detail.get("overview"),
+        "genres": [genre["name"] for genre in detail.get("genres", [])],
+        "cast": [member["name"] for member in credits.get("cast", [])[:10]],
+        "creators": [creator["name"] for creator in detail.get("created_by", [])],
+        "rating": _rating(detail.get("vote_average")),
+        "number_of_seasons": detail.get("number_of_seasons"),
+        "number_of_episodes": detail.get("number_of_episodes"),
+        "imdb_id": external_ids.get("imdb_id"),
+        "imdb_url": _imdb_url(external_ids.get("imdb_id")),
+        "seasons": [
+            {
+                "season_number": season["season_number"],
+                "name": season.get("name"),
+                "episode_count": season.get("episode_count") or 0,
+                "air_date": season.get("air_date"),
+                "poster_url": _poster_url(season.get("poster_path")),
+            }
+            for season in detail.get("seasons", [])
+        ],
+    }
+
+
+async def get_season_details(tv_id: int, season_number: int) -> list[dict]:
+    """Full episode list for one season of one show — fetched lazily, only
+    when that season is first marked as owned (feature #48)."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f"{BASE_URL}/tv/{tv_id}/season/{season_number}", headers=_headers()
+            )
+    except httpx.HTTPError as exc:
+        raise TmdbUnavailableError(f"TMDb er ikke tilgængelig: {exc}") from exc
+
+    if response.status_code == 404:
+        raise TmdbNotFoundError(tv_id)
+    if response.status_code == 401:
+        raise TmdbUnavailableError("TMDb afviste API-tokenet (401) — tjek TMDB_API_TOKEN")
+    if response.status_code == 429:
+        raise TmdbRateLimitedError()
+    _raise_for_status(response)
+
+    data = response.json()
+    return [
+        {
+            "episode_number": episode["episode_number"],
+            "name": episode.get("name"),
+            "air_date": episode.get("air_date"),
+        }
+        for episode in data.get("episodes", [])
+    ]
+
+
 async def get_collection(collection_id: int) -> dict:
     """Full list of a TMDb "collection" (franchise/box-set)'s films — used to
     show "you own N of M" (FEATURES.md #42). Distinct from get_movie_details:

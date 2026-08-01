@@ -4,13 +4,14 @@ from mongomock_motor import AsyncMongoMockClient
 
 from app.db import get_database
 from app.main import app
-from app.repositories import movie_repository, tag_repository, user_repository
+from app.repositories import movie_repository, tag_repository, tv_show_repository, user_repository
 
 
 @pytest_asyncio.fixture
 async def db():
     test_db = AsyncMongoMockClient()["test_moviedb"]
     await movie_repository.ensure_indexes(test_db)
+    await tv_show_repository.ensure_indexes(test_db)
     await tag_repository.ensure_indexes(test_db)
     await user_repository.ensure_indexes(test_db)
     return test_db

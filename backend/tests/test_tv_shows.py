@@ -1,0 +1,339 @@
+from app.integrations import tmdb_client
+
+
+def _fake_tv_details(
+    tmdb_id,
+    name="Breaking Bad",
+    seasons=None,
+    imdb_id="tt0903747",
+):
+    if seasons is None:
+        seasons = [
+            {
+                "season_number": 1,
+                "name": "Season 1",
+                "episode_count": 7,
+                "air_date": "2008-01-20",
+                "poster_url": None,
+            },
+            {
+                "season_number": 2,
+                "name": "Season 2",
+                "episode_count": 13,
+                "air_date": "2009-03-08",
+                "poster_url": None,
+            },
+        ]
+    return {
+        "tmdb_id": tmdb_id,
+        "name": name,
+        "year": 2008,
+        "end_year": 2013,
+        "status": "Ended",
+        "poster_url": "http://img/bb.jpg",
+        "overview": "A chemistry teacher turns to crime.",
+        "genres": ["Drama", "Crime"],
+        "cast": ["Bryan Cranston"],
+        "creators": ["Vince Gilligan"],
+        "rating": 8.9,
+        "number_of_seasons": len(seasons),
+        "number_of_episodes": sum(s["episode_count"] for s in seasons),
+        "imdb_id": imdb_id,
+        "imdb_url": f"https://www.imdb.com/title/{imdb_id}/",
+        "seasons": seasons,
+    }
+
+
+def _fake_episodes(season_number, count):
+    return [
+        {"episode_number": n, "name": f"Episode {n}", "air_date": "2008-01-20"}
+        for n in range(1, count + 1)
+    ]
+
+
+async def test_create_tv_show_manually(client):
+    response = await client.post("/api/tv-shows", json={"name": "My Show"})
+    assert response.status_code == 201
+    show = response.json()
+    assert show["name"] == "My Show"
+    assert show["serial_number"] == 1
+    assert show["seasons"] == []
+
+
+async def test_create_tv_show_requires_tmdb_id_or_name(client):
+    response = await client.post("/api/tv-shows", json={})
+    assert response.status_code == 422
+
+
+async def test_create_tv_show_from_tmdb_fetches_metadata_and_light_seasons(client, monkeypatch):
+    async def fake_get_tv_show_details(tv_id):
+        assert tv_id == 1396
+        return _fake_tv_details(1396)
+
+    monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
+
+    response = await client.post("/api/tv-shows", json={"tmdb_id": 1396, "tags": ["Favorite"]})
+    assert response.status_code == 201
+    show = response.json()
+    assert show["name"] == "Breaking Bad"
+    assert show["creators"] == ["Vince Gilligan"]
+    assert show["number_of_seasons"] == 2
+    assert show["rating"] == 8.9
+    assert len(show["seasons"]) == 2
+    # Light season list only — no episodes fetched yet (lazy-load).
+    assert show["seasons"][0]["episode_count"] == 7
+    assert show["seasons"][0]["episodes"] == []
+    assert show["seasons"][0]["owned"] is False
+    assert show["tags"] == ["Favorite"]
+
+
+async def test_tv_show_serial_numbers_are_independent_from_movies(client):
+    await client.post("/api/movies", json={"title": "A Movie"})
+    await client.post("/api/movies", json={"title": "Another Movie"})
+
+    show = await client.post("/api/tv-shows", json={"name": "A Show"})
+    assert show.json()["serial_number"] == 1
+
+
+async def test_wishlist_tv_show_has_no_serial_number(client):
+    response = await client.post(
+        "/api/tv-shows", json={"name": "Wanted Show", "is_wishlist": True}
+    )
+    assert response.json()["serial_number"] is None
+    assert response.json()["is_wishlist"] is True
+
+
+async def test_get_missing_tv_show_returns_404(client):
+    response = await client.get("/api/tv-shows/000000000000000000000000")
+    assert response.status_code == 404
+
+
+async def test_update_tv_show_tags_and_location(client):
+    created = await client.post("/api/tv-shows", json={"name": "Editable Show"})
+    show_id = created.json()["id"]
+
+    response = await client.patch(
+        f"/api/tv-shows/{show_id}", json={"tags": ["Cozy"], "location": "Stuen"}
+    )
+    assert response.status_code == 200
+    assert response.json()["tags"] == ["Cozy"]
+    assert response.json()["location"] == "Stuen"
+
+
+async def test_delete_tv_show_logs_and_allows_manual_serial_reuse(client):
+    created = await client.post("/api/tv-shows", json={"name": "Doomed Show"})
+    show_id = created.json()["id"]
+    assert created.json()["serial_number"] == 1
+
+    delete_response = await client.delete(f"/api/tv-shows/{show_id}")
+    assert delete_response.status_code == 204
+
+    deleted_list = await client.get("/api/tv-shows/deleted")
+    assert len(deleted_list.json()) == 1
+    assert deleted_list.json()[0]["name"] == "Doomed Show"
+
+    # The auto-incrementing counter itself doesn't rewind on delete...
+    recreated = await client.post("/api/tv-shows", json={"name": "New Show"})
+    assert recreated.json()["serial_number"] == 2
+
+    # ...but #1 is no longer taken, so it can be manually reassigned.
+    reassigned = await client.patch(
+        f"/api/tv-shows/{recreated.json()['id']}", json={"serial_number": 1}
+    )
+    assert reassigned.json()["serial_number"] == 1
+
+
+async def test_move_wishlist_tv_show_to_library_assigns_serial(client):
+    created = await client.post(
+        "/api/tv-shows", json={"name": "Wishlisted Show", "is_wishlist": True}
+    )
+    show_id = created.json()["id"]
+
+    response = await client.patch(f"/api/tv-shows/{show_id}", json={"is_wishlist": False})
+    assert response.status_code == 200
+    assert response.json()["serial_number"] == 1
+
+
+async def test_check_duplicate_finds_existing_show(client, monkeypatch):
+    async def fake_get_tv_show_details(tv_id):
+        return _fake_tv_details(tv_id, name="Some Show")
+
+    monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
+    created = await client.post("/api/tv-shows", json={"tmdb_id": 42})
+
+    response = await client.get("/api/tv-shows/check-duplicate", params={"tmdb_id": 42})
+    matches = response.json()
+    assert len(matches) == 1
+    assert matches[0]["name"] == "Some Show"
+    assert matches[0]["serial_number"] == created.json()["serial_number"]
+
+
+async def test_search_filter_and_sort(client):
+    await client.post("/api/tv-shows", json={"name": "Alpha Show", "format": "BD"})
+    await client.post("/api/tv-shows", json={"name": "Beta Show", "format": "DVD"})
+
+    filtered = await client.get("/api/tv-shows", params={"format": "BD"})
+    assert [s["name"] for s in filtered.json()] == ["Alpha Show"]
+
+    sorted_asc = await client.get("/api/tv-shows", params={"sort": "name:asc"})
+    assert [s["name"] for s in sorted_asc.json()] == ["Alpha Show", "Beta Show"]
+
+
+async def test_personal_rating_and_note(client):
+    created = await client.post("/api/tv-shows", json={"name": "Rateable Show"})
+    show_id = created.json()["id"]
+
+    response = await client.patch(
+        f"/api/tv-shows/{show_id}", json={"personal_rating": 9, "personal_note": "So good"}
+    )
+    assert response.json()["personal_rating"] == 9
+    assert response.json()["personal_note"] == "So good"
+
+
+async def test_top_level_watched_toggle(client):
+    created = await client.post("/api/tv-shows", json={"name": "Finished Show"})
+    show_id = created.json()["id"]
+
+    response = await client.patch(
+        f"/api/tv-shows/{show_id}", json={"watched": True, "watched_at": "2026-08-01"}
+    )
+    assert response.json()["watched"] is True
+
+    filtered = await client.get("/api/tv-shows", params={"watched": "true"})
+    assert len(filtered.json()) == 1
+
+
+async def test_marking_season_owned_lazily_fetches_episodes(client, monkeypatch):
+    async def fake_get_tv_show_details(tv_id):
+        return _fake_tv_details(tv_id)
+
+    async def fake_get_season_details(tv_id, season_number):
+        assert season_number == 1
+        return _fake_episodes(1, 7)
+
+    monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
+    monkeypatch.setattr(tmdb_client, "get_season_details", fake_get_season_details)
+
+    created = await client.post("/api/tv-shows", json={"tmdb_id": 1396})
+    show_id = created.json()["id"]
+    assert created.json()["seasons"][0]["episodes"] == []
+
+    response = await client.patch(
+        f"/api/tv-shows/{show_id}/seasons/1", json={"owned": True}
+    )
+    assert response.status_code == 200
+    season_1 = next(s for s in response.json()["seasons"] if s["season_number"] == 1)
+    assert season_1["owned"] is True
+    assert len(season_1["episodes"]) == 7
+    assert season_1["episodes"][0]["name"] == "Episode 1"
+    assert season_1["episodes"][0]["watched"] is False
+
+    # Season 2 untouched.
+    season_2 = next(s for s in response.json()["seasons"] if s["season_number"] == 2)
+    assert season_2["owned"] is False
+    assert season_2["episodes"] == []
+
+
+async def test_marking_season_unowned_does_not_clear_cached_episodes(client, monkeypatch):
+    async def fake_get_tv_show_details(tv_id):
+        return _fake_tv_details(tv_id)
+
+    async def fake_get_season_details(tv_id, season_number):
+        return _fake_episodes(season_number, 7)
+
+    monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
+    monkeypatch.setattr(tmdb_client, "get_season_details", fake_get_season_details)
+
+    created = await client.post("/api/tv-shows", json={"tmdb_id": 1396})
+    show_id = created.json()["id"]
+    await client.patch(f"/api/tv-shows/{show_id}/seasons/1", json={"owned": True})
+
+    response = await client.patch(f"/api/tv-shows/{show_id}/seasons/1", json={"owned": False})
+    season_1 = next(s for s in response.json()["seasons"] if s["season_number"] == 1)
+    assert season_1["owned"] is False
+    assert len(season_1["episodes"]) == 7  # still cached
+
+
+async def test_marking_season_owned_twice_does_not_refetch(client, monkeypatch):
+    call_count = {"n": 0}
+
+    async def fake_get_tv_show_details(tv_id):
+        return _fake_tv_details(tv_id)
+
+    async def fake_get_season_details(tv_id, season_number):
+        call_count["n"] += 1
+        return _fake_episodes(season_number, 7)
+
+    monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
+    monkeypatch.setattr(tmdb_client, "get_season_details", fake_get_season_details)
+
+    created = await client.post("/api/tv-shows", json={"tmdb_id": 1396})
+    show_id = created.json()["id"]
+
+    await client.patch(f"/api/tv-shows/{show_id}/seasons/1", json={"owned": True})
+    await client.patch(f"/api/tv-shows/{show_id}/seasons/1", json={"owned": False})
+    await client.patch(f"/api/tv-shows/{show_id}/seasons/1", json={"owned": True})
+
+    assert call_count["n"] == 1
+
+
+async def test_set_episode_watched(client, monkeypatch):
+    async def fake_get_tv_show_details(tv_id):
+        return _fake_tv_details(tv_id)
+
+    async def fake_get_season_details(tv_id, season_number):
+        return _fake_episodes(season_number, 7)
+
+    monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
+    monkeypatch.setattr(tmdb_client, "get_season_details", fake_get_season_details)
+
+    created = await client.post("/api/tv-shows", json={"tmdb_id": 1396})
+    show_id = created.json()["id"]
+    await client.patch(f"/api/tv-shows/{show_id}/seasons/1", json={"owned": True})
+
+    response = await client.patch(
+        f"/api/tv-shows/{show_id}/seasons/1/episodes/3",
+        json={"watched": True, "watched_at": "2026-08-02"},
+    )
+    assert response.status_code == 200
+    season_1 = next(s for s in response.json()["seasons"] if s["season_number"] == 1)
+    ep3 = next(e for e in season_1["episodes"] if e["episode_number"] == 3)
+    assert ep3["watched"] is True
+    assert ep3["watched_at"].startswith("2026-08-02")
+
+    # Other episodes in the same season are untouched.
+    ep1 = next(e for e in season_1["episodes"] if e["episode_number"] == 1)
+    assert ep1["watched"] is False
+
+
+async def test_set_episode_watched_on_unknown_season_returns_404(client):
+    created = await client.post("/api/tv-shows", json={"name": "No Seasons Show"})
+    show_id = created.json()["id"]
+
+    response = await client.patch(
+        f"/api/tv-shows/{show_id}/seasons/1/episodes/1", json={"watched": True}
+    )
+    assert response.status_code == 404
+
+
+async def test_tmdb_search_endpoint(client, monkeypatch):
+    async def fake_search_tv(query):
+        assert query == "Breaking"
+        return [{"tmdb_id": 1396, "title": "Breaking Bad", "year": 2008, "poster_url": None}]
+
+    monkeypatch.setattr(tmdb_client, "search_tv", fake_search_tv)
+
+    response = await client.get("/api/tv-shows/tmdb-search", params={"query": "Breaking"})
+    assert response.status_code == 200
+    assert response.json()[0]["title"] == "Breaking Bad"
+
+
+async def test_attribute_options_reuses_movie_enums(client):
+    response = await client.get("/api/tv-shows/attribute-options")
+    assert response.status_code == 200
+    assert "BD" in response.json()["formats"]
+
+
+async def test_tv_shows_require_authentication(raw_client):
+    response = await raw_client.get("/api/tv-shows")
+    assert response.status_code == 401

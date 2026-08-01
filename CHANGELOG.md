@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.35.0 build 0042] — 2026-08-02 — TV-serier: ny selvstændig ressource, backend (feature #47/#48)
+
+Jan bad om fuld TV-serie-understøttelse (2026-08-02): egen ressource (ikke bare et filter på filmbiblioteket), med dyb sæson/episode-sporing. Dette er backend-delen — frontend, stregkode-scan-integration og branding følger i separate commits.
+
+- Ny `/api/tv-shows`-ressource: egen `tv_shows`-collection, egen `deleted_tv_shows`-log, egen fortløbende `serial_number`-tæller (adskilt fra filmenes). Samme CRUD-/søgnings-/filter-/sorterings-/dublet-advarsels-/soft-delete-mønster som film, genbruger `MovieFormat`/`AudioType`/`MediaType`-enums.
+- Nye `tmdb_client.search_tv`/`get_tv_show_details`/`get_season_details` — TV har en helt anden TMDb-respons-form end film (`name`/`first_air_date`/`created_by`/`seasons`/`status`, intet `belongs_to_collection`-ækvivalent).
+- **Sæson-ejerskab + episode-set-status** (feature #48): `PATCH /api/tv-shows/{id}/seasons/{n}` sætter `owned`, og henter/cacher lazily sæsonens fulde episode-liste fra TMDb *første* gang den markeres ejet (ikke alle sæsoner på én gang ved oprettelse — kunne være dyrt for serier med mange sæsoner). `PATCH .../seasons/{n}/episodes/{m}` sætter `watched`+dato pr. episode. Begge er atomiske positional-`$`-opdateringer af én sæsons episode-liste ad gangen — bevidst IKKE MongoDB `arrayFilters` (uverificeret mongomock-understøttelse, se BUGS.md-lignende forsigtighed i movie_repository).
+- To niveauer af "set"-status: et top-niveau `watched` på selve serien (identisk med film) + separat pr.-episode `watched` — ikke automatisk koblet sammen.
+- Faktisk IMDb-rating (feature #46) og skriv-kun API-nøgle-mønsteret genbruges uændret.
+- `TmdbNotFoundError`/`DuplicateBarcodeError`-beskeder generaliseret (var hardkodet til "movie") til at dække begge ressourcer.
+- 21 nye tests i `test_tv_shows.py`: CRUD, uafhængig serienummer-tæller, dublet-tjek, søgning/filter/sortering, personlig rating/note, set-status, lazy sæson-fetch (inkl. at gentagne owned-toggles ikke genhenter), episode-watched, tmdb-search, auth-gating.
+
 ## [0.34.1 build 0041] — 2026-08-02 — Fix: bedre titel-oprensning før TMDb-søgning (BUGS.md #20)
 
 - `text_cleanup.clean_bracketed_title` strippede kun *indrammede* suffixer ("(DVD)", "[Blu-ray]") — udvidet til også at fjerne almindelig fritekst-boilerplate ("Special Edition", "Complete Series/Collection/Trilogy", "Season(s) N-M", regionskoder, bare "DVD"/"Blu-ray"/"VHS"/"UHD" uden parentes), som ellers kunne få en ægte films TMDb-søgning til at give 0 resultater.

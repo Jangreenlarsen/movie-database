@@ -1,0 +1,130 @@
+from fastapi import APIRouter, Depends, Query
+from motor.motor_asyncio import AsyncIOMotorDatabase
+
+from app.api.deps import get_current_user
+from app.db import get_database
+from app.integrations import tmdb_client
+from app.models.movie import AudioType, MediaType, MovieFormat
+from app.models.scan import MovieCandidate
+from app.models.tv_show import (
+    DeletedTvShow,
+    DuplicateTvShowMatch,
+    EpisodeWatchedUpdate,
+    SeasonOwnedUpdate,
+    TvShow,
+    TvShowCreate,
+    TvShowUpdate,
+)
+from app.services import tv_show_service
+
+router = APIRouter(
+    prefix="/api/tv-shows", tags=["tv-shows"], dependencies=[Depends(get_current_user)]
+)
+
+
+@router.get("", response_model=list[TvShow])
+async def list_tv_shows(
+    q: str | None = Query(default=None),
+    tags: str | None = Query(default=None),
+    format: str | None = Query(default=None, alias="format"),
+    audio_types: str | None = Query(default=None),
+    media_types: str | None = Query(default=None),
+    sort: str | None = Query(default=None),
+    wishlist: bool = Query(default=False),
+    watched: bool | None = Query(default=None),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    tag_list = tags.split(",") if tags else None
+    format_list = format.split(",") if format else None
+    audio_type_list = audio_types.split(",") if audio_types else None
+    media_type_list = media_types.split(",") if media_types else None
+    return await tv_show_service.list_tv_shows(
+        db, q, tag_list, format_list, audio_type_list, media_type_list, sort, wishlist, watched
+    )
+
+
+@router.post("", response_model=TvShow, status_code=201)
+async def create_tv_show(
+    payload: TvShowCreate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    return await tv_show_service.create_tv_show(db, payload, current_user["username"])
+
+
+# NOTE: must be registered before GET /{tv_show_id} — see movies.py for the
+# same convention.
+@router.get("/tmdb-search", response_model=list[MovieCandidate])
+async def tmdb_search(query: str = Query(...)):
+    candidates = await tmdb_client.search_tv(query)
+    return [MovieCandidate(**candidate) for candidate in candidates]
+
+
+@router.get("/check-duplicate", response_model=list[DuplicateTvShowMatch])
+async def check_duplicate(
+    tmdb_id: int = Query(...), db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    return await tv_show_service.check_tmdb_duplicates(db, tmdb_id)
+
+
+@router.get("/attribute-options")
+async def attribute_options() -> dict:
+    return {
+        "formats": [f.value for f in MovieFormat],
+        "audio_types": [a.value for a in AudioType],
+        "media_types": [m.value for m in MediaType],
+    }
+
+
+@router.get("/deleted", response_model=list[DeletedTvShow])
+async def list_deleted_tv_shows(db: AsyncIOMotorDatabase = Depends(get_database)):
+    return await tv_show_service.list_deleted_tv_shows(db)
+
+
+@router.get("/{tv_show_id}", response_model=TvShow)
+async def get_tv_show(tv_show_id: str, db: AsyncIOMotorDatabase = Depends(get_database)):
+    return await tv_show_service.get_tv_show(db, tv_show_id)
+
+
+@router.patch("/{tv_show_id}", response_model=TvShow)
+async def update_tv_show(
+    tv_show_id: str,
+    payload: TvShowUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    return await tv_show_service.update_tv_show(db, tv_show_id, payload, current_user)
+
+
+@router.delete("/{tv_show_id}", status_code=204)
+async def delete_tv_show(
+    tv_show_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    await tv_show_service.delete_tv_show(db, tv_show_id, current_user["username"])
+
+
+@router.patch("/{tv_show_id}/seasons/{season_number}", response_model=TvShow)
+async def set_season_owned(
+    tv_show_id: str,
+    season_number: int,
+    payload: SeasonOwnedUpdate,
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    return await tv_show_service.set_season_owned(db, tv_show_id, season_number, payload.owned)
+
+
+@router.patch(
+    "/{tv_show_id}/seasons/{season_number}/episodes/{episode_number}", response_model=TvShow
+)
+async def set_episode_watched(
+    tv_show_id: str,
+    season_number: int,
+    episode_number: int,
+    payload: EpisodeWatchedUpdate,
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    return await tv_show_service.set_episode_watched(
+        db, tv_show_id, season_number, episode_number, payload.watched, payload.watched_at
+    )

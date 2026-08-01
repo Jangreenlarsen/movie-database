@@ -221,6 +221,15 @@ async def find_by_tmdb_id(db: AsyncIOMotorDatabase, tmdb_id: int) -> list[dict]:
     return await cursor.to_list(length=100)
 
 
+async def find_all_library_movies(db: AsyncIOMotorDatabase) -> list[dict]:
+    """All non-wishlist movies, uncapped by the normal 500-item page size —
+    used for the statistics page (FEATURES.md #43), which must cover the
+    whole collection, not just a page of it. Same "$ne: True" pattern as
+    find_many's default is_wishlist filter."""
+    cursor = db[COLLECTION].find({"is_wishlist": {"$ne": True}})
+    return await cursor.to_list(length=10_000)
+
+
 async def find_by_tmdb_ids(db: AsyncIOMotorDatabase, tmdb_ids: list[int]) -> list[dict]:
     """Batch lookup for feature #42 (collection ownership) — a single query
     instead of one per collection part."""

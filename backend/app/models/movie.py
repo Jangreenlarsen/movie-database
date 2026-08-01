@@ -147,6 +147,23 @@ class CollectionInfo(BaseModel):
     parts: list[CollectionPart]
 
 
+class NamedCount(BaseModel):
+    name: str
+    count: int
+
+
+class CollectionStats(BaseModel):
+    total_movies: int
+    total_runtime_minutes: int
+    watched_count: int
+    unwatched_count: int
+    genre_breakdown: list[NamedCount]
+    decade_breakdown: list[NamedCount]
+    format_breakdown: list[NamedCount]
+    top_directors: list[NamedCount]
+    top_actors: list[NamedCount]
+
+
 class TmdbSyncResult(BaseModel):
     total: int
     synced: int

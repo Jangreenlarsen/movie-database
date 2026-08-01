@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.31.0 (build 0036) — 2026-08-01
+
+- Ny "Statistik"-fane: antal film, samlet spilletid, hvor mange du har set, samt fordeling på genre/årti/format og hvilke instruktører/skuespillere der går igen i din samling.
+
 ## v0.30.0 (build 0035) — 2026-08-01
 
 - Film der er del af en filmserie/franchise (fx en trilogi) viser nu det i detaljevinduet, sammen med hvor mange af filmene i serien du allerede ejer — og en "+ Tilføj"-knap til at hente de manglende.

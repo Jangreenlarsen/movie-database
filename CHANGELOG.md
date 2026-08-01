@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.31.0 build 0036] — 2026-08-01 — Statistik-side (feature #43)
+
+- Ny `GET /api/movies/stats` (`movie_repository.find_all_library_movies` + `movie_service.get_collection_stats`): antal film, samlet spilletid, set/ikke-set, genre-/årti-/format-fordeling og top 10 instruktører/skuespillere. Ønskeliste ekskluderet. Beregnet i Python (`Counter`) over ét uncapped `find()`, ikke en Mongo aggregation-pipeline — matcher kodebasens stil og undgår uverificerede pipeline-stadier i mongomock.
+- Ny "Statistik"-fane/side (`Statistics.jsx`): opsummeringskort (antal, spilletid, set/ikke-set) + bar-liste-sektioner for genre/årti/format/instruktører/skuespillere, uden ny chart-afhængighed (rene CSS-bredde-bars).
+- Nye tests i `test_stats.py`: tomt bibliotek, ønskeliste ekskluderet, spilletid/set-status, genre/format-fordeling, årti-gruppering, top instruktører/skuespillere, film uden år/spilletid bryder ikke beregningen.
+
 ## [0.30.0 build 0035] — 2026-08-01 — Set/franchise-gruppering (feature #42)
 
 - Nye `collection_id`/`collection_name` (TMDb's `belongs_to_collection`) — TMDb-sourced, ikke klient-sættelig (samme mønster som `rating`), hentet ved oprettelse og opdateret ved synkronisering.

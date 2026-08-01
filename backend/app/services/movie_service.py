@@ -1,4 +1,5 @@
 import asyncio
+from collections import Counter
 from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -17,11 +18,13 @@ from app.integrations import tmdb_client
 from app.models.movie import (
     CollectionInfo,
     CollectionPart,
+    CollectionStats,
     DeletedMovie,
     DuplicateMatch,
     Movie,
     MovieCreate,
     MovieUpdate,
+    NamedCount,
     TmdbSyncResult,
 )
 from app.models.settings import SerialNumberConfig, SerialNumberConfigUpdate
@@ -206,6 +209,60 @@ async def get_collection_info(db: AsyncIOMotorDatabase, collection_id: int) -> C
         )
     return CollectionInfo(
         id=collection["id"], name=collection["name"], poster_url=collection["poster_url"], parts=parts
+    )
+
+
+async def get_collection_stats(db: AsyncIOMotorDatabase) -> CollectionStats:
+    """Aggregated statistics over the whole library (wishlist excluded) —
+    computed in Python over a single find() rather than a Mongo aggregation
+    pipeline, matching this codebase's existing style and sidestepping any
+    mongomock aggregation-pipeline gaps in the test suite (see BUGS.md's
+    notes on mongomock's sparse-index/arrayFilters inconsistencies — the
+    same caution applies to untested pipeline stages)."""
+    documents = await movie_repository.find_all_library_movies(db)
+
+    total_movies = len(documents)
+    watched_count = sum(1 for doc in documents if doc.get("watched"))
+
+    genre_counter: Counter[str] = Counter()
+    decade_counter: Counter[int] = Counter()
+    format_counter: Counter[str] = Counter()
+    director_counter: Counter[str] = Counter()
+    actor_counter: Counter[str] = Counter()
+
+    for doc in documents:
+        genre_counter.update(doc.get("genres", []))
+        actor_counter.update(doc.get("cast", []))
+        if doc.get("year"):
+            decade_counter[(doc["year"] // 10) * 10] += 1
+        if doc.get("format"):
+            format_counter[doc["format"]] += 1
+        if doc.get("director"):
+            director_counter[doc["director"]] += 1
+
+    return CollectionStats(
+        total_movies=total_movies,
+        total_runtime_minutes=sum(doc.get("runtime") or 0 for doc in documents),
+        watched_count=watched_count,
+        unwatched_count=total_movies - watched_count,
+        genre_breakdown=[
+            NamedCount(name=name, count=count)
+            for name, count in sorted(genre_counter.items(), key=lambda item: -item[1])
+        ],
+        decade_breakdown=[
+            NamedCount(name=f"{decade}'erne", count=count)
+            for decade, count in sorted(decade_counter.items())
+        ],
+        format_breakdown=[
+            NamedCount(name=name, count=count)
+            for name, count in sorted(format_counter.items(), key=lambda item: -item[1])
+        ],
+        top_directors=[
+            NamedCount(name=name, count=count) for name, count in director_counter.most_common(10)
+        ],
+        top_actors=[
+            NamedCount(name=name, count=count) for name, count in actor_counter.most_common(10)
+        ],
     )
 
 

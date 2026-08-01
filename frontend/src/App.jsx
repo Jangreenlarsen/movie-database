@@ -3,6 +3,7 @@ import Library from "./pages/Library";
 import ScanMovie from "./pages/ScanMovie";
 import Settings from "./pages/Settings";
 import PrintList from "./pages/PrintList";
+import Statistics from "./pages/Statistics";
 import Login from "./pages/Login";
 import { api } from "./api/client";
 import "./App.css";
@@ -72,6 +73,12 @@ function App() {
               Print
             </button>
             <button
+              className={tab === "stats" ? "active" : ""}
+              onClick={() => setTab("stats")}
+            >
+              Statistik
+            </button>
+            <button
               className={tab === "settings" ? "active" : ""}
               onClick={() => setTab("settings")}
             >
@@ -92,6 +99,7 @@ function App() {
         {tab === "scan" && <ScanMovie user={user} />}
         {tab === "wishlist" && <Library user={user} onSettingsChanged={setUser} wishlist />}
         {tab === "print" && <PrintList />}
+        {tab === "stats" && <Statistics />}
         {tab === "settings" && <Settings user={user} />}
       </main>
 

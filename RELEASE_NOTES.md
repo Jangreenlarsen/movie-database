@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.14.0 (build 0016) — 2026-08-01
+
+- Ny fane "Print": en kompakt, print-venlig liste over hele filmsamlingen (serienr., titel, år, format, lokation), én linje pr. film. Tryk "🖨️ Print" for at udskrive.
+
 ## v0.13.0 (build 0015) — 2026-08-01
 
 - Når du scanner/registrerer en film kan du nu angive **lokation** (fx "Stue, reol 2") og **ejer** (forudfyldt med dig selv, men kan ændres) — og appen husker automatisk hvem der registrerede filmen.

@@ -1,0 +1,52 @@
+.print-search {
+  margin-bottom: 16px;
+}
+
+.print-search input {
+  width: 100%;
+  max-width: 320px;
+}
+
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.print-table th,
+.print-table td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.print-table th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+@media print {
+  .no-print,
+  .app-header,
+  .app-footer {
+    display: none !important;
+  }
+
+  .app-main {
+    padding: 0;
+    max-width: 100%;
+  }
+
+  .print-table {
+    font-size: 11pt;
+  }
+
+  .print-table th,
+  .print-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid #ccc;
+    color: #000;
+  }
+}

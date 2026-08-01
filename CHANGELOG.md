@@ -2,6 +2,13 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.14.0 build 0016] — 2026-08-01 — Print-venlig liste-side
+
+- Ny frontend-side `frontend/src/pages/PrintList.jsx` + `PrintList.css`, ny fane "Print" i navigationen.
+- Henter alle film via det eksisterende `GET /api/movies` (sorteret på `serial_number` stigende), viser dem i en kompakt tabel (Serienr./Titel/År/Format/Lokation), én film pr. linje. Simpel fritekst-søgning for at afgrænse listen før udskrift.
+- `@media print`-regler skjuler navigation/knapper/footer og lader kun tabellen fylde siden ved faktisk udskrivning (`window.print()`).
+- Ingen backend-ændringer — genbruger eksisterende `/api/movies`-kontrakt. `FEATURES.md` #31 markeret done.
+
 ## [0.13.0 build 0015] — 2026-08-01 — Lokation/ejer/registrant + adgangsstyring på serienummer
 
 - `Movie`/`MovieCreate`/`MovieUpdate` (`models/movie.py`) udvidet med `location` (fritekst), `owner` (brugernavn) og `registered_by` (brugernavn, kun læsbar — sættes aldrig af klienten).

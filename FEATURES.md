@@ -34,4 +34,4 @@ Status: `planned` → `in-progress` → `done`. Tilføj entry *før* implementer
 | 28| Ønskeliste-side ("Ønsker"): samme søge-/filtrerings-/sorteringsfunktioner som biblioteksvisningen, men uden serienummer | planned | -       |
 | 29| Soft-delete af film: ved sletning logges film (serienr, titel, hvornår, hvem) i en separat slettet-film-liste i stedet for kun at forsvinde. Serienummeret frigøres derved automatisk til genbrug | planned | -       |
 | 30| Discogs som fallback-kilde ved stregkode-opslag (`/api/scan/lookup`) når UPCitemdb ikke finder et match — bedre dækning for europæiske EAN-koder | planned | -       |
-| 31| Print-venlig liste-visning af biblioteket: kompakt tabel (serienr/titel/år/format/lokation), én film pr. linje, optimeret til udskrift | planned | -       |
+| 31| Print-venlig liste-visning af biblioteket: kompakt tabel (serienr/titel/år/format/lokation), én film pr. linje, optimeret til udskrift | done | 0.14.0       |

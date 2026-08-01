@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Library from "./pages/Library";
 import ScanMovie from "./pages/ScanMovie";
 import Settings from "./pages/Settings";
+import PrintList from "./pages/PrintList";
 import Login from "./pages/Login";
 import { api } from "./api/client";
 import "./App.css";
@@ -59,6 +60,12 @@ function App() {
               Scan film
             </button>
             <button
+              className={tab === "print" ? "active" : ""}
+              onClick={() => setTab("print")}
+            >
+              Print
+            </button>
+            <button
               className={tab === "settings" ? "active" : ""}
               onClick={() => setTab("settings")}
             >
@@ -77,6 +84,7 @@ function App() {
       <main className="app-main">
         {tab === "library" && <Library user={user} onSettingsChanged={setUser} />}
         {tab === "scan" && <ScanMovie user={user} />}
+        {tab === "print" && <PrintList />}
         {tab === "settings" && <Settings user={user} />}
       </main>
 

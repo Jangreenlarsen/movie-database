@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
-from app.core.errors import DuplicateBarcodeError, MovieNotFoundError
+from app.core.errors import DuplicateBarcodeError, MovieNotFoundError, NotAuthorizedError
 from app.integrations import tmdb_client
 from app.models.movie import Movie, MovieCreate, MovieUpdate
 from app.models.settings import SerialNumberConfig, SerialNumberConfigUpdate
@@ -28,12 +28,15 @@ def _to_model(document: dict) -> Movie:
         audio_types=document.get("audio_types", []),
         rating=document.get("rating"),
         runtime=document.get("runtime"),
+        location=document.get("location"),
+        owner=document.get("owner"),
+        registered_by=document.get("registered_by"),
         created_at=document["created_at"],
         updated_at=document["updated_at"],
     )
 
 
-async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate) -> Movie:
+async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registered_by: str) -> Movie:
     canonical_tags = await tag_service.resolve_tags(db, payload.tags)
     now = datetime.now(timezone.utc)
 
@@ -72,6 +75,9 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate) -> Movie:
         "tags_normalized": [tag_service.normalize(tag) for tag in canonical_tags],
         "format": payload.format.value if payload.format else None,
         "audio_types": [audio_type.value for audio_type in payload.audio_types],
+        "location": payload.location,
+        "owner": payload.owner or registered_by,
+        "registered_by": registered_by,
         "created_at": now,
         "updated_at": now,
     }
@@ -133,7 +139,21 @@ async def _reassign_serial_number(
     await movie_repository.set_serial_number(db, movie_id, new_serial)
 
 
-async def update_movie(db: AsyncIOMotorDatabase, movie_id: str, payload: MovieUpdate) -> Movie:
+def _assert_can_edit_serial_number(current_user: dict, movie_doc: dict) -> None:
+    """Only an admin or the user who originally registered this specific movie
+    may renumber it — enforced here (backend), not just hidden/disabled in the
+    UI, per CLAUDE.md regel 16 (adgangskontrol-lockout/håndhævelse)."""
+    is_admin = current_user.get("role") == "admin"
+    is_registrant = movie_doc.get("registered_by") == current_user.get("username")
+    if not (is_admin or is_registrant):
+        raise NotAuthorizedError(
+            "Kun en admin eller den bruger der registrerede filmen kan ændre serienummeret"
+        )
+
+
+async def update_movie(
+    db: AsyncIOMotorDatabase, movie_id: str, payload: MovieUpdate, current_user: dict
+) -> Movie:
     fields = payload.model_dump(exclude_unset=True, mode="json")
 
     if "tags" in fields:
@@ -146,6 +166,7 @@ async def update_movie(db: AsyncIOMotorDatabase, movie_id: str, payload: MovieUp
         current_doc = await movie_repository.find_by_id(db, movie_id)
         if current_doc is None:
             raise MovieNotFoundError(movie_id)
+        _assert_can_edit_serial_number(current_user, current_doc)
         await _reassign_serial_number(db, movie_id, current_doc, requested_serial)
 
     fields["updated_at"] = datetime.now(timezone.utc)

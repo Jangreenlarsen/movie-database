@@ -32,8 +32,12 @@ async def list_movies(
 
 
 @router.post("", response_model=Movie, status_code=201)
-async def create_movie(payload: MovieCreate, db: AsyncIOMotorDatabase = Depends(get_database)):
-    return await movie_service.create_movie(db, payload)
+async def create_movie(
+    payload: MovieCreate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    return await movie_service.create_movie(db, payload, current_user["username"])
 
 
 # NOTE: must be registered before GET /{movie_id} — otherwise these literal
@@ -59,9 +63,12 @@ async def get_movie(movie_id: str, db: AsyncIOMotorDatabase = Depends(get_databa
 
 @router.patch("/{movie_id}", response_model=Movie)
 async def update_movie(
-    movie_id: str, payload: MovieUpdate, db: AsyncIOMotorDatabase = Depends(get_database)
+    movie_id: str,
+    payload: MovieUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
 ):
-    return await movie_service.update_movie(db, movie_id, payload)
+    return await movie_service.update_movie(db, movie_id, payload, current_user)
 
 
 @router.delete("/{movie_id}", status_code=204)

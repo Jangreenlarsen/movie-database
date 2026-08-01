@@ -28,8 +28,8 @@ Status: `planned` → `in-progress` → `done`. Tilføj entry *før* implementer
 | 22| Versionsvisning i frontend (læst fra `version.json` via `/api/health`)  | done | 0.12.0       |
 | 23| Filmkort: `runtime`-tag (minutter, fra TMDb) + 2-kolonne kompakt visning af felter (år/format/lyd/runtime) i stedet for én kolonne | done | 0.12.0       |
 | 24| Klik-til-vis (som "Vis felter") for både sortering og tag/format/lyd-filterpanelet i biblioteksvisningen — begge er i dag altid synlige | done | 0.12.0       |
-| 25| Lokation, automatisk "registreret af"-felt og "ejer" pr. film, indtastet ved scan/registrering | planned | -       |
-| 26| Films `serial_number` kan kun ændres af en admin eller den bruger der oprindeligt registrerede filmen (afhænger af #25) | planned | -       |
+| 25| Lokation, automatisk "registreret af"-felt og "ejer" pr. film, indtastet ved scan/registrering | done | 0.13.0       |
+| 26| Films `serial_number` kan kun ændres af en admin eller den bruger der oprindeligt registrerede filmen (afhænger af #25) | done | 0.13.0       |
 | 27| Fler-niveau sortering (se #17) udvides: en valgt kombination af sorteringsniveauer kan gemmes som navngivet preset og hurtigt genvælges via dropdown i biblioteksvisningen | planned | -       |
 | 28| Ønskeliste-side ("Ønsker"): samme søge-/filtrerings-/sorteringsfunktioner som biblioteksvisningen, men uden serienummer | planned | -       |
 | 29| Soft-delete af film: ved sletning logges film (serienr, titel, hvornår, hvem) i en separat slettet-film-liste i stedet for kun at forsvinde. Serienummeret frigøres derved automatisk til genbrug | planned | -       |

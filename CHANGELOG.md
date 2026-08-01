@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.13.0 build 0015] — 2026-08-01 — Lokation/ejer/registrant + adgangsstyring på serienummer
+
+- `Movie`/`MovieCreate`/`MovieUpdate` (`models/movie.py`) udvidet med `location` (fritekst), `owner` (brugernavn) og `registered_by` (brugernavn, kun læsbar — sættes aldrig af klienten).
+- `POST /api/movies` sætter nu `registered_by` til den indloggede bruger (fra JWT-cookien, ikke fra request-body) og lader `owner` defaulte til samme hvis ikke angivet. `movies.py`s `create_movie`/`update_movie`-handlers henter nu `current_user` via `Depends(get_current_user)` og videresender til service-laget.
+- Ny `movie_service._assert_can_edit_serial_number`: `PATCH /api/movies/{id}` afviser (403 `NotAuthorizedError`) ændring af `serial_number` medmindre requesten kommer fra en admin eller fra den bruger der står i filmens `registered_by` — håndhævet i backend, ikke kun ved at deaktivere feltet i UI'et (jf. CLAUDE.md regel 16).
+- `ScanMovie.jsx`: nye felter "Lokation" og "Ejer" (ejer forudfyldes med den indloggede brugers navn, men kan ændres) i gem-formularen.
+- `Library.jsx`s `MovieDetailModal`: nye redigerbare felter Lokation/Ejer, en read-only "Registreret af"-linje, og serienummer-feltet deaktiveres (med forklarende tekst) hvis den nuværende bruger hverken er admin eller filmens registrant.
+- Nye regressionstests i `test_movie_permissions.py`: registrant/ejer-defaults, standard-bruger kan ændre serienummer på egne registrerede film men ikke andres, admin kan altid.
+- `ARCHITECTURE.md` opdateret (REST-kontrakt, MongoDB-skema, ny note om registrant/ejer/lokation). `FEATURES.md` #25, #26 markeret done.
+
 ## [0.12.0 build 0014] — 2026-08-01 — Versionsvisning, runtime-tag, klik-til-vis sortering/filtre
 
 - Tilføjet `backend/app/core/version_info.py`: læser `version.json` (repo-roden) én gang ved opstart. `GET /api/health` returnerer nu også `version`/`build`. Ny test `test_health.py`.

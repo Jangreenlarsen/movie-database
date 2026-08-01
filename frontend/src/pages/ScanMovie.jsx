@@ -8,7 +8,7 @@ function toggleValue(list, value) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
-export default function ScanMovie() {
+export default function ScanMovie({ user }) {
   const [barcode, setBarcode] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [scanStatus, setScanStatus] = useState("idle");
@@ -19,6 +19,8 @@ export default function ScanMovie() {
   const [tagsInput, setTagsInput] = useState("");
   const [format, setFormat] = useState("");
   const [audioTypes, setAudioTypes] = useState([]);
+  const [location, setLocation] = useState("");
+  const [owner, setOwner] = useState(user?.username ?? "");
   const [attributeOptions, setAttributeOptions] = useState({ formats: [], audio_types: [] });
   const [saveStatus, setSaveStatus] = useState("idle");
   const [saveError, setSaveError] = useState(null);
@@ -71,6 +73,8 @@ export default function ScanMovie() {
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
         format: format || null,
         audio_types: audioTypes,
+        location: location.trim() || null,
+        owner: owner.trim() || null,
       });
       setSaveStatus("saved");
       setSelectedCandidate(null);
@@ -78,6 +82,8 @@ export default function ScanMovie() {
       setTagsInput("");
       setFormat("");
       setAudioTypes([]);
+      setLocation("");
+      setOwner(user?.username ?? "");
       setBarcode(null);
     } catch (err) {
       setSaveStatus("error");
@@ -206,6 +212,32 @@ export default function ScanMovie() {
                 />
               ))}
             </div>
+          </div>
+
+          <div>
+            <label className="field-label" htmlFor="location-input">
+              Lokation
+            </label>
+            <input
+              id="location-input"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Stue, reol 2..."
+              style={{ width: "100%" }}
+            />
+          </div>
+
+          <div>
+            <label className="field-label" htmlFor="owner-input">
+              Ejer
+            </label>
+            <input
+              id="owner-input"
+              value={owner}
+              onChange={(e) => setOwner(e.target.value)}
+              placeholder="Hvem ejer filmen..."
+              style={{ width: "100%" }}
+            />
           </div>
 
           {saveStatus === "error" && (

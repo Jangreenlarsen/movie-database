@@ -356,6 +356,7 @@ export default function Library({ user, onSettingsChanged }) {
       {activeMovie && (
         <MovieDetailModal
           movie={activeMovie}
+          user={user}
           allTags={allTags}
           attributeOptions={attributeOptions}
           serialPaddingWidth={serialPaddingWidth}
@@ -370,28 +371,36 @@ export default function Library({ user, onSettingsChanged }) {
   );
 }
 
-function MovieDetailModal({ movie, attributeOptions, serialPaddingWidth, onClose, onChanged }) {
+function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, onClose, onChanged }) {
   const [tagsInput, setTagsInput] = useState(movie.tags.join(", "));
   const [format, setFormat] = useState(movie.format ?? "");
   const [audioTypes, setAudioTypes] = useState(movie.audio_types);
   const [serialNumberInput, setSerialNumberInput] = useState(String(movie.serial_number));
+  const [location, setLocation] = useState(movie.location ?? "");
+  const [owner, setOwner] = useState(movie.owner ?? "");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
+
+  const canEditSerial = user.role === "admin" || user.username === movie.registered_by;
 
   const dirty = useMemo(() => {
     const tagsChanged =
       tagsInput.split(",").map((t) => t.trim()).filter(Boolean).join(",") !==
       movie.tags.join(",");
     const serialChanged =
-      Number(serialNumberInput) > 0 && Number(serialNumberInput) !== movie.serial_number;
+      canEditSerial &&
+      Number(serialNumberInput) > 0 &&
+      Number(serialNumberInput) !== movie.serial_number;
     return (
       tagsChanged ||
       format !== (movie.format ?? "") ||
       audioTypes.join(",") !== movie.audio_types.join(",") ||
+      location !== (movie.location ?? "") ||
+      owner !== (movie.owner ?? "") ||
       serialChanged
     );
-  }, [tagsInput, format, audioTypes, serialNumberInput, movie]);
+  }, [tagsInput, format, audioTypes, serialNumberInput, location, owner, canEditSerial, movie]);
 
   async function save() {
     setSaving(true);
@@ -401,9 +410,11 @@ function MovieDetailModal({ movie, attributeOptions, serialPaddingWidth, onClose
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
         format: format || null,
         audio_types: audioTypes,
+        location: location.trim() || null,
+        owner: owner.trim() || null,
       };
       const nextSerial = Number(serialNumberInput);
-      if (nextSerial > 0 && nextSerial !== movie.serial_number) {
+      if (canEditSerial && nextSerial > 0 && nextSerial !== movie.serial_number) {
         payload.serial_number = nextSerial;
       }
       await api.updateMovie(movie.id, payload);
@@ -463,20 +474,46 @@ function MovieDetailModal({ movie, attributeOptions, serialPaddingWidth, onClose
             <input
               type="number"
               min="1"
+              disabled={!canEditSerial}
               value={serialNumberInput}
               onChange={(e) => setSerialNumberInput(e.target.value)}
               style={{ width: 100 }}
             />
-            <p className="muted" style={{ marginTop: 4 }}>
-              Er nummeret allerede i brug af en anden film, bytter de to film
-              automatisk plads.
-            </p>
+            {canEditSerial ? (
+              <p className="muted" style={{ marginTop: 4 }}>
+                Er nummeret allerede i brug af en anden film, bytter de to film
+                automatisk plads.
+              </p>
+            ) : (
+              <p className="muted" style={{ marginTop: 4 }}>
+                Kun en admin eller {movie.registered_by ?? "den der registrerede filmen"} kan ændre
+                serienummeret.
+              </p>
+            )}
           </div>
 
           <div>
             <div className="modal-section-label">Tags</div>
             <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} />
           </div>
+
+          <div>
+            <div className="modal-section-label">Lokation</div>
+            <input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Stue, reol 2..."
+            />
+          </div>
+
+          <div>
+            <div className="modal-section-label">Ejer</div>
+            <input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="Hvem ejer filmen..." />
+          </div>
+
+          {movie.registered_by && (
+            <p className="muted">Registreret af: {movie.registered_by}</p>
+          )}
 
           <div>
             <div className="modal-section-label">Format</div>

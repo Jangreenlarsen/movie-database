@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.13.0 (build 0015) — 2026-08-01
+
+- Når du scanner/registrerer en film kan du nu angive **lokation** (fx "Stue, reol 2") og **ejer** (forudfyldt med dig selv, men kan ændres) — og appen husker automatisk hvem der registrerede filmen.
+- Serienummeret på en film kan fremover kun ændres af en administrator, eller af den person der oprindeligt registrerede den pågældende film. Andre brugere kan stadig se serienummeret, bare ikke ændre det.
+
 ## v0.12.0 (build 0014) — 2026-08-01
 
 - Du kan nu se hvilken version af appen der kører nederst på siden.

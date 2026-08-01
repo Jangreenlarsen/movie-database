@@ -6,6 +6,10 @@ from app.repositories import system_settings_repository
 
 KEYS = system_settings_repository.OVERRIDABLE_KEYS
 
+# Rendered as a masked ApiKeyStatus (configured/source only) in GET responses
+# — every overridable key except plex_server_url, which isn't a secret.
+SECRET_KEYS = tuple(key for key in KEYS if key != "plex_server_url")
+
 
 async def apply_overrides_on_startup(db: AsyncIOMotorDatabase) -> None:
     """Called once from the app lifespan, after the .env-derived `settings`
@@ -20,7 +24,7 @@ async def apply_overrides_on_startup(db: AsyncIOMotorDatabase) -> None:
 async def get_status(db: AsyncIOMotorDatabase) -> SystemSettingsStatus:
     overrides = await system_settings_repository.get_overrides(db)
     statuses = {}
-    for key in KEYS:
+    for key in SECRET_KEYS:
         value = getattr(settings, key)
         if key in overrides:
             source = "custom"
@@ -29,7 +33,7 @@ async def get_status(db: AsyncIOMotorDatabase) -> SystemSettingsStatus:
         else:
             source = "unset"
         statuses[key] = ApiKeyStatus(configured=bool(value), source=source)
-    return SystemSettingsStatus(**statuses)
+    return SystemSettingsStatus(**statuses, plex_server_url=settings.plex_server_url)
 
 
 async def update_settings(

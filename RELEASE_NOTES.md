@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.33.0 (build 0038) — 2026-08-01
+
+- Ny Plex-integration: filmens detaljevindue kan nu tjekke om filmen er tilgængelig på din egen Plex-server, med et direkte "Afspil i Plex"-link hvis den er. Kræver at Plex-server-URL og -token sættes under Indstillinger → System-indstillinger (admin). **Bemærk**: endnu ikke afprøvet mod en rigtig Plex-server — sig til hvis noget ikke matcher korrekt, så kan det justeres.
+
 ## v0.32.0 (build 0037) — 2026-08-01
 
 - Gemte visninger husker nu søgetekst og alle filtre (tags/format/lyd/medietype/set-status), ikke kun sorteringen — så en gemt visning genskaber præcis den samme liste du havde, ikke bare rækkefølgen.

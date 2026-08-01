@@ -2,6 +2,15 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.33.0 build 0038] — 2026-08-01 — Plex-integration (feature #45)
+
+- Nyt `app/integrations/plex_client.py`: slår en film op mod brugerens egen Plex-server via `/identity` (machineIdentifier) + `/search?query=` (kandidater). Matcher først på TMDb-id via kandidaternes `Guid[].id`, ellers på præcist titel+år. Fejler aldrig synligt — manglende konfiguration/utilgængelig server/intet match giver alle `{"available": false}`.
+- Nyt `plex_service.check_availability` + `GET /api/movies/{movie_id}/plex` (`{available, play_url}`), kaldt on-demand fra detaljevinduet (ikke automatisk pr. kort i biblioteket).
+- `system_settings`-mekanismen (feature #36) udvidet med `plex_token` (samme skriv-kun mønster som TMDb/UPC/Discogs) og `plex_server_url` — den ene bevidste undtagelse, da en LAN-adresse ikke er en hemmelighed, og derfor returneres med sin faktiske værdi. Ny `PlainSettingRow`-komponent i Settings.jsx til dette.
+- Matching-logikken udtrukket til en ren `plex_client._match_movie()`-funktion (samme mønster som `tmdb_client._director()`), så den er direkte testbar uden HTTP-mocking.
+- **Ikke live-verificeret** mod en rigtig Plex-server (ingen adgang under udvikling) — Plex's GUID-format kan variere afhængig af metadata-agent-version; verificér title+år-fallback'et virker som forventet ved første rigtige brug, se MOVIE_API_REFERENCE.md.
+- CLAUDE.md regel 6 udvidet til at nævne Plex. Nye tests i `test_plex.py` (9) + `test_system_settings.py` (2 nye): matching-logik, service-lag, admin-only endpoint degraderer pænt uden konfiguration.
+
 ## [0.32.0 build 0037] — 2026-08-01 — Gemte fulde filter-sæt / "visninger" (feature #44)
 
 - `SortPreset` (`models/user.py`) udvidet med valgfrie `query`/`tags`/`formats`/`audio_types`/`media_types`/`watched` ud over det oprindelige `levels` — en gemt visning fanger nu hele toolbar-tilstanden, ikke kun sorteringen. Alle nye felter er defaulterede, så presets gemt før denne feature fortsat validerer og anvender blot ingen ekstra filtrering.

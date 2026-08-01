@@ -77,6 +77,7 @@ export const api = {
     request(`/movies/check-duplicate?${new URLSearchParams({ tmdb_id: tmdbId })}`),
   getCollection: (collectionId) => request(`/movies/collections/${collectionId}`),
   getStats: () => request("/movies/stats"),
+  getPlexAvailability: (movieId) => request(`/movies/${movieId}/plex`),
   getSerialNumberConfig: () => request("/settings/serial-number"),
   updateSerialNumberConfig: (payload) =>
     request("/settings/serial-number", { method: "PATCH", body: JSON.stringify(payload) }),

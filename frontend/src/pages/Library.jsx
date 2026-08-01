@@ -877,6 +877,8 @@ function MovieDetailModal({
             <CollectionSection movie={movie} onChanged={onChanged} />
           )}
 
+          <PlexSection movie={movie} />
+
           {!movie.is_wishlist && (
             <div>
               <div className="modal-section-label">Serienummer</div>
@@ -1019,6 +1021,36 @@ function MovieDetailModal({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PlexSection({ movie }) {
+  const [status, setStatus] = useState("idle"); // idle | checking | found | not-found | error
+
+  function check() {
+    setStatus("checking");
+    api
+      .getPlexAvailability(movie.id)
+      .then((data) => setStatus(data.available ? { found: data.play_url } : "not-found"))
+      .catch(() => setStatus("error"));
+  }
+
+  return (
+    <div>
+      {status === "idle" && (
+        <button type="button" className="btn" onClick={check}>
+          Tjek Plex
+        </button>
+      )}
+      {status === "checking" && <p className="muted">Tjekker Plex...</p>}
+      {status === "not-found" && <p className="muted">Ikke fundet i Plex.</p>}
+      {status === "error" && <p className="muted">Kunne ikke tjekke Plex lige nu.</p>}
+      {status?.found && (
+        <a href={status.found} target="_blank" rel="noreferrer" className="btn btn-primary">
+          ▶ Afspil i Plex
+        </a>
+      )}
     </div>
   );
 }

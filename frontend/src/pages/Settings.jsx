@@ -332,9 +332,10 @@ function SystemSettingsSection() {
     <div className="card settings-section">
       <h2>System-indstillinger</h2>
       <p className="muted">
-        Eksterne API-nøgler. Kan i stedet sættes via <code>.env</code> på serveren — en nøgle
-        sat her overstyrer den, med det samme, uden genstart. Nøgler vises aldrig igen efter
-        de er gemt, kun om en nøgle er sat og hvorfra.
+        Eksterne API-nøgler og Plex-integration. Kan i stedet sættes via <code>.env</code> på
+        serveren — en værdi sat her overstyrer den, med det samme, uden genstart. Nøgler vises
+        aldrig igen efter de er gemt, kun om en nøgle er sat og hvorfra. Plex-server-URL'en er
+        undtagelsen — den er ikke en hemmelighed, og vises derfor med sin faktiske værdi.
       </p>
 
       {loadStatus === "loading" && <p className="muted">Indlæser...</p>}
@@ -362,9 +363,65 @@ function SystemSettingsSection() {
             status={statusData.discogs_token}
             onSaved={load}
           />
+          <PlainSettingRow
+            label="Plex-server-URL"
+            field="plex_server_url"
+            hint="Ikke en hemmelighed — vises som den er, fx http://192.168.1.50:32400"
+            currentValue={statusData.plex_server_url}
+            onSaved={load}
+          />
+          <ApiKeyRow
+            label="Plex-token"
+            field="plex_token"
+            status={statusData.plex_token}
+            onSaved={load}
+          />
         </>
       )}
     </div>
+  );
+}
+
+function PlainSettingRow({ label, field, hint, currentValue, onSaved }) {
+  const [value, setValue] = useState(currentValue ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    setValue(currentValue ?? "");
+  }, [currentValue]);
+
+  async function submit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      await api.updateSystemSettings({ [field]: value });
+      setSaved(true);
+      onSaved();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form className="serial-config-form" style={{ marginBottom: 16 }} onSubmit={submit}>
+      <label>
+        {label} — <span className="muted">{hint}</span>
+        <input value={value} onChange={(e) => setValue(e.target.value)} style={{ width: "100%" }} />
+      </label>
+
+      {error && <div className="banner banner-error">{error}</div>}
+      {saved && <div className="banner banner-info">Gemt!</div>}
+
+      <button type="submit" className="btn btn-primary" disabled={saving}>
+        {saving ? "Gemmer..." : "Gem"}
+      </button>
+    </form>
   );
 }
 

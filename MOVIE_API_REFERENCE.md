@@ -65,6 +65,16 @@ Implementeret i `backend/app/integrations/discogs_client.py`. Bruges kun når UP
 - **Response**: `results[]`, hvert element har bl.a. `title` (format: `"Artist - Titel"`, hvor "Artist" for film ofte er "Various", et studienavn, eller komponisten — fjernes med `_strip_artist_prefix` før TMDb-søgning) og selve `barcode[]`-listen (til evt. fremtidig krydstjek).
 - **Fejlhåndtering**: samme filosofi som UPCitemdb — enhver fejl (netværk, ikke-200, tomt `results[]`) logges og returnerer `None`, aldrig en kastet exception (nice-to-have forudfyld, ikke kritisk sti).
 
+### Plex (afspilnings-integration, feature #45)
+
+Implementeret i `backend/app/integrations/plex_client.py`. **Ikke** en metadata-kilde som TMDb/UPC/Discogs — bruges udelukkende til at tjekke om en film brugeren allerede har katalogiseret *også* er tilgængelig i deres egen, selv-hostede Plex-server, og i så fald linke direkte til at afspille den der. Kataloget er stadig ikke en medieserver (bevidst fravalgt, se BUGS.md/session-noter) — dette er en tynd bro til en Plex-installation brugeren allerede kører.
+
+- **Base URL**: brugerens egen Plex-server (`PLEX_SERVER_URL` i `.env`, eller admin-sat i UI'et under Indstillinger → System-indstillinger — **ikke** en hemmelighed, vises med sin faktiske værdi i modsætning til de øvrige nøgler, se ARCHITECTURE.md). Typisk en LAN-adresse, fx `http://192.168.1.50:32400`.
+- **Auth**: `X-Plex-Token`-header (`PLEX_TOKEN`, findes via Plex's "Finding an authentication token" i deres support-docs — ikke det samme som en Plex-konto-adgangskode). Behandles som de øvrige API-nøgler: skriv-kun, aldrig eksponeret til frontend.
+- **Opslag**: `GET /identity` (henter `machineIdentifier`, bruges i afspilnings-deep-linket) og `GET /search?query=<titel>` (kandidat-liste). Matcher først på TMDb-id via kandidaternes `Guid[].id` (format `tmdb://<id>` — kun til stede for visse agent-versioner), ellers på præcist titel+år.
+- **Afspilnings-link**: `{server}/web/index.html#!/server/{machineIdentifier}/details?key=%2Flibrary%2Fmetadata%2F{ratingKey}` — Plex-serverens egen indbyggede web-UI, ikke `app.plex.tv` (undgår internet-/plex.tv-konto-afhængighed, matcher "selv-hostet på hjemmenetværk"-modellen resten af appen bruger).
+- **Fejlhåndtering**: samme filosofi som UPC/Discogs — manglende konfiguration, en utilgængelig server, eller intet match returnerer alle `None`/`{"available": false}`, aldrig en kastet exception. **Ikke live-verificeret** mod en rigtig Plex-server endnu (ingen adgang under udvikling) — Plex's præcise GUID-format kan variere afhængig af hvilken metadata-agent brugerens bibliotek bruger; verificér title+år-fallback'et virker som forventet ved første rigtige brug.
+
 ---
 
 ## Stregkode-formater i praksis

@@ -2,6 +2,68 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.33.0 build 0038] — 2026-08-01 — Plex-integration (feature #45)
+
+- Nyt `app/integrations/plex_client.py`: slår en film op mod brugerens egen Plex-server via `/identity` (machineIdentifier) + `/search?query=` (kandidater). Matcher først på TMDb-id via kandidaternes `Guid[].id`, ellers på præcist titel+år. Fejler aldrig synligt — manglende konfiguration/utilgængelig server/intet match giver alle `{"available": false}`.
+- Nyt `plex_service.check_availability` + `GET /api/movies/{movie_id}/plex` (`{available, play_url}`), kaldt on-demand fra detaljevinduet (ikke automatisk pr. kort i biblioteket).
+- `system_settings`-mekanismen (feature #36) udvidet med `plex_token` (samme skriv-kun mønster som TMDb/UPC/Discogs) og `plex_server_url` — den ene bevidste undtagelse, da en LAN-adresse ikke er en hemmelighed, og derfor returneres med sin faktiske værdi. Ny `PlainSettingRow`-komponent i Settings.jsx til dette.
+- Matching-logikken udtrukket til en ren `plex_client._match_movie()`-funktion (samme mønster som `tmdb_client._director()`), så den er direkte testbar uden HTTP-mocking.
+- **Ikke live-verificeret** mod en rigtig Plex-server (ingen adgang under udvikling) — Plex's GUID-format kan variere afhængig af metadata-agent-version; verificér title+år-fallback'et virker som forventet ved første rigtige brug, se MOVIE_API_REFERENCE.md.
+- CLAUDE.md regel 6 udvidet til at nævne Plex. Nye tests i `test_plex.py` (9) + `test_system_settings.py` (2 nye): matching-logik, service-lag, admin-only endpoint degraderer pænt uden konfiguration.
+
+## [0.32.0 build 0037] — 2026-08-01 — Gemte fulde filter-sæt / "visninger" (feature #44)
+
+- `SortPreset` (`models/user.py`) udvidet med valgfrie `query`/`tags`/`formats`/`audio_types`/`media_types`/`watched` ud over det oprindelige `levels` — en gemt visning fanger nu hele toolbar-tilstanden, ikke kun sorteringen. Alle nye felter er defaulterede, så presets gemt før denne feature fortsat validerer og anvender blot ingen ekstra filtrering.
+- Ingen ændring i backend-service/repository-laget — `sort_presets` var allerede en generisk, hel-array `$set` via `PATCH /api/users/me/settings`.
+- `Library.jsx`: "Gem nuværende visning"/"Vælg gemt visning" gemmer og genanvender nu søgetekst, tag/format/lyd/medietype-filtre og set-status sammen med sorteringen.
+- To eksisterende tests i `test_auth.py` opdateret til den nu-rigere preset-form (defaulterede felter i response). To nye regressionstests: fuld filter-tilstand round-tripper, gammel sort-only preset defaulter gracefuldt.
+
+## [0.31.0 build 0036] — 2026-08-01 — Statistik-side (feature #43)
+
+- Ny `GET /api/movies/stats` (`movie_repository.find_all_library_movies` + `movie_service.get_collection_stats`): antal film, samlet spilletid, set/ikke-set, genre-/årti-/format-fordeling og top 10 instruktører/skuespillere. Ønskeliste ekskluderet. Beregnet i Python (`Counter`) over ét uncapped `find()`, ikke en Mongo aggregation-pipeline — matcher kodebasens stil og undgår uverificerede pipeline-stadier i mongomock.
+- Ny "Statistik"-fane/side (`Statistics.jsx`): opsummeringskort (antal, spilletid, set/ikke-set) + bar-liste-sektioner for genre/årti/format/instruktører/skuespillere, uden ny chart-afhængighed (rene CSS-bredde-bars).
+- Nye tests i `test_stats.py`: tomt bibliotek, ønskeliste ekskluderet, spilletid/set-status, genre/format-fordeling, årti-gruppering, top instruktører/skuespillere, film uden år/spilletid bryder ikke beregningen.
+
+## [0.30.0 build 0035] — 2026-08-01 — Set/franchise-gruppering (feature #42)
+
+- Nye `collection_id`/`collection_name` (TMDb's `belongs_to_collection`) — TMDb-sourced, ikke klient-sættelig (samme mønster som `rating`), hentet ved oprettelse og opdateret ved synkronisering.
+- Ny `tmdb_client.get_collection()` mod TMDb's `/collection/{id}` — fuld liste af en samlings film.
+- Ny `GET /api/movies/collections/{collection_id}`: krydsreferer TMDb's samlingsliste mod egne film via ét batch-opslag (`movie_repository.find_by_tmdb_ids`, `$in`) i stedet for ét pr. del — hver del markeret `owned`/`owned_movie_id`/`owned_is_wishlist`.
+- `Library.jsx`: "Del af samlingen: X (ejer N af M) ▾" i detaljevinduet, udvides til en liste med ejer-status pr. del og en "+ Tilføj"-knap for manglende (opretter direkte via `tmdb_id`, samme minimalistiske ét-klik-mønster som "Flyt til bibliotek").
+- Nye tests i `test_collections.py`: uden samling, gemmer samlingsdata, ejer/mangler/ønskeliste-markering, synkronisering opdaterer samlingsfelter.
+
+## [0.29.0 build 0034] — 2026-08-01 — Skuespiller/instruktør-browsing (feature #41)
+
+- Nyt `director`-felt (TMDb's `credits.crew`, første `job == "Director"`-kredit, `tmdb_client._director`) — hentet ved oprettelse og opdateret ved TMDb-synkronisering, ligesom `cast`. Sættelig manuelt for film oprettet uden `tmdb_id`.
+- `GET /api/movies` understøtter nu `?cast=`/`?director=` (præcist felt-match, egne indexes) — filtrerer biblioteket til andre film i samlingen med samme person.
+- `Library.jsx`: skuespiller- og instruktør-navne i detaljevinduet er nu klikbare — lukker vinduet og filtrerer biblioteket, vist som en fjernbar "Viser film med ..."-banner over resultaterne.
+- Nye tests i `test_person_browsing.py`: `_director`-ekstraktion (fundet/ikke fundet), manuel sætning, filtrering på cast/director.
+- Eksisterende TMDb-relaterede test-fixtures (`test_movies.py`, `test_scan.py`, `test_tmdb_sync.py`, `test_duplicate_check.py`) opdateret med `director`-nøglen, som resten af feltlisten allerede krævede eksplicit (bracket-access, ikke `.get()`).
+
+## [0.28.0 build 0033] — 2026-08-01 — "Set"-status + set-dato (feature #40)
+
+- `Movie`/`MovieUpdate`: nye `watched` (bool) og `watched_at` (dato) felter. Filtrerbar (`?watched=true|false`) og sorterbar (`watched_at`) i biblioteket.
+- `movie_repository.find_many`: samme "manglende felt ≠ False"-fælde som `is_wishlist` (CLAUDE.md regel 16) — fanget af egen regressionstest før merge. `watched=false`-filteret bruger derfor `{"$ne": True}`, ikke en direkte `False`-lighedstest, så film oprettet før denne feature (uden feltet overhovedet) korrekt tælles som "ikke set".
+- `Library.jsx`: ny "Set-status"-filtergruppe (Set/Ikke set chips), ny "✓ Set"-badge på filmkort (poster, nederst til højre — samme mønster som rating-badgen), og et checkbox+dato-felt i detaljevinduet. Set-dato defaulter til i dag når man markerer som set, men kan ændres frit (til at eftertaste ældre film).
+- Nye tests i `test_watched_status.py`: default, sæt/fjern, filtrering (inkl. regression for tomheds-fælden), sortering.
+
+## [0.27.0 build 0032] — 2026-08-01 — Personlig rating + note pr. film (feature #39)
+
+- `Movie`/`MovieUpdate`: nye `personal_rating` (1-10, valideret) og `personal_note` (fritekst) — adskilt fra TMDb's offentlige `rating`. `null` rydder feltet (ingen sparse-index-hensyn her, i modsætning til `barcode`/`serial_number`).
+- `personal_rating` tilføjet til `movie_repository.SORT_FIELDS` + eget index — sorterbar i biblioteksvisningen ("Din rating").
+- `Library.jsx`s detaljevindue: nyt "Din rating"-tal-felt (1-10) og "Din note"-tekstfelt, vist i modal-headeren når sat ("Din: 8/10").
+- Nye tests i `test_personal_rating.py`: default-værdi, sæt/ryd, range-validering (422 uden for 1-10), sortering.
+
+## [0.26.0 build 0031] — 2026-08-01 — Dublet-advarsel ved oprettelse (feature #38)
+
+- Ny `GET /api/movies/check-duplicate?tmdb_id=` (`movie_repository.find_by_tmdb_id`, `movie_service.check_tmdb_duplicates`) — returnerer alle eksisterende film (bibliotek og/eller ønskeliste) med samme `tmdb_id`. Registreret før `/{movie_id}`, som de andre specifikke rute-litteraler.
+- `MovieLookupForm.jsx`: kaldes automatisk når en TMDb-kandidat vælges. Viser en blød advarsel ("findes allerede i biblioteket (#12)" / "på ønskelisten") uden at blokere gem — flere fysiske kopier er en legitim use case.
+- Nye tests i `test_duplicate_check.py`: intet match, match i bibliotek, match i ønskeliste, og at oprettelse af en reel dublet ikke blokeres.
+
+## [0.25.0 build 0030] — 2026-08-01 — Manuel indtastning af stregkode (feature #37)
+
+- `MovieLookupForm.jsx`: nyt tekstfelt + "Slå op"-knap under kamera-scanneren i både "Scan film" og ønskelistens "+ Tilføj ønske"-panel. Kalder samme `handleDetected`-flow (→ `/api/scan/lookup`) som en kamera-scan — ingen backend-ændring nødvendig, stregkoden var allerede bare en streng.
+
 ## [0.24.0 build 0029] — 2026-08-01 — Admin-konfigurerbare API-nøgler i Indstillinger (feature #36)
 
 - Ny "System-indstillinger"-sektion (admin-only) på Indstillinger-siden: TMDb API-token, UPC API-nøgle og Discogs-token kan nu sættes/opdateres direkte i UI'et, uden SSH/redeploy.

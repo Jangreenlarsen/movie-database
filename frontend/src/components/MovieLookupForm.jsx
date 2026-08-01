@@ -18,6 +18,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   const [barcode, setBarcode] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [scanStatus, setScanStatus] = useState("idle");
+  const [manualBarcode, setManualBarcode] = useState("");
   const [manualQuery, setManualQuery] = useState("");
   const [manualStatus, setManualStatus] = useState("idle");
 
@@ -35,6 +36,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   });
   const [saveStatus, setSaveStatus] = useState("idle");
   const [saveError, setSaveError] = useState(null);
+  const [duplicates, setDuplicates] = useState([]);
 
   useEffect(() => {
     api.attributeOptions().then(setAttributeOptions).catch(() => {});
@@ -51,6 +53,13 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
     } catch {
       setScanStatus("error");
     }
+  }
+
+  async function submitManualBarcode(event) {
+    event.preventDefault();
+    const code = manualBarcode.trim();
+    if (!code) return;
+    await handleDetected(code);
   }
 
   async function searchManually(event) {
@@ -72,6 +81,8 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   function selectCandidate(candidate) {
     setSelectedCandidate(candidate);
     setSaveStatus("idle");
+    setDuplicates([]);
+    api.checkDuplicate(candidate.tmdb_id).then(setDuplicates).catch(() => {});
   }
 
   async function saveMovie() {
@@ -99,6 +110,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
       setLocation("");
       setOwner(user?.username ?? "");
       setBarcode(null);
+      setDuplicates([]);
       onSaved?.();
     } catch (err) {
       setSaveStatus("error");
@@ -112,6 +124,19 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
         <h2>Scan film</h2>
         <p className="muted">Scan stregkoden på cover'et med kameraet.</p>
         <BarcodeScanner onDetected={handleDetected} />
+
+        <form className="manual-search-form" onSubmit={submitManualBarcode} style={{ marginTop: 10 }}>
+          <input
+            value={manualBarcode}
+            onChange={(e) => setManualBarcode(e.target.value)}
+            placeholder="...eller indtast stregkoden manuelt (UPC/EAN)"
+            inputMode="numeric"
+          />
+          <button type="submit" className="btn btn-primary" disabled={!manualBarcode.trim()}>
+            Slå op
+          </button>
+        </form>
+
         {barcode && <p className="muted" style={{ marginTop: 10 }}>Scannet stregkode: {barcode}</p>}
         {scanStatus === "looking-up" && <p className="muted">Slår op...</p>}
         {scanStatus === "error" && (
@@ -192,6 +217,20 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
               <p className="muted">{selectedCandidate.year}</p>
             </div>
           </div>
+
+          {duplicates.length > 0 && (
+            <div className="banner banner-error">
+              Findes allerede: denne film er allerede{" "}
+              {duplicates
+                .map((d) =>
+                  d.is_wishlist
+                    ? "på ønskelisten"
+                    : `i biblioteket${d.serial_number ? ` (#${d.serial_number})` : ""}`
+                )
+                .join(" og ")}
+              . Du kan stadig tilføje den igen — fx hvis du ejer flere kopier.
+            </div>
+          )}
 
           <div>
             <label className="field-label" htmlFor="tags-input">

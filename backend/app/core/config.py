@@ -13,6 +13,13 @@ class Settings(BaseSettings):
     upc_api_key: str = ""
     discogs_token: str = ""
 
+    # Plex-integration (feature #45) — server_url er ikke en hemmelighed
+    # (bare en LAN-adresse) og eksponeres derfor med sin faktiske værdi via
+    # GET /api/settings/system, i modsætning til token'et og de tre nøgler
+    # ovenfor, som altid kun rapporterer configured/source.
+    plex_server_url: str = ""
+    plex_token: str = ""
+
     log_level: str = "INFO"
     cors_origins: str = "http://localhost:5173"
 
@@ -47,4 +54,6 @@ ENV_DEFAULT_API_KEYS: dict[str, str] = {
     "tmdb_api_token": settings.tmdb_api_token,
     "upc_api_key": settings.upc_api_key,
     "discogs_token": settings.discogs_token,
+    "plex_server_url": settings.plex_server_url,
+    "plex_token": settings.plex_token,
 }

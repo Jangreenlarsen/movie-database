@@ -1,4 +1,5 @@
 import asyncio
+from collections import Counter
 from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -14,7 +15,18 @@ from app.core.errors import (
     TmdbUnavailableError,
 )
 from app.integrations import tmdb_client
-from app.models.movie import DeletedMovie, Movie, MovieCreate, MovieUpdate, TmdbSyncResult
+from app.models.movie import (
+    CollectionInfo,
+    CollectionPart,
+    CollectionStats,
+    DeletedMovie,
+    DuplicateMatch,
+    Movie,
+    MovieCreate,
+    MovieUpdate,
+    NamedCount,
+    TmdbSyncResult,
+)
 from app.models.settings import SerialNumberConfig, SerialNumberConfigUpdate
 from app.repositories import movie_repository
 from app.services import tag_service
@@ -32,6 +44,7 @@ def _to_model(document: dict) -> Movie:
         overview=document.get("overview"),
         genres=document.get("genres", []),
         cast=document.get("cast", []),
+        director=document.get("director"),
         tags=document.get("tags", []),
         format=document.get("format"),
         audio_types=document.get("audio_types", []),
@@ -44,6 +57,12 @@ def _to_model(document: dict) -> Movie:
         owner=document.get("owner"),
         registered_by=document.get("registered_by"),
         is_wishlist=document.get("is_wishlist", False),
+        personal_rating=document.get("personal_rating"),
+        personal_note=document.get("personal_note"),
+        watched=document.get("watched", False),
+        watched_at=document.get("watched_at"),
+        collection_id=document.get("collection_id"),
+        collection_name=document.get("collection_name"),
         created_at=document["created_at"],
         updated_at=document["updated_at"],
     )
@@ -63,10 +82,13 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registere
             "overview": details["overview"],
             "genres": details["genres"],
             "cast": details["cast"],
+            "director": details["director"],
             "rating": details["rating"],
             "runtime": details["runtime"],
             "imdb_url": details["imdb_url"],
             "trailer_url": details["trailer_url"],
+            "collection_id": details["collection_id"],
+            "collection_name": details["collection_name"],
         }
     else:
         movie_fields = {
@@ -77,6 +99,7 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registere
             "overview": payload.overview,
             "genres": payload.genres,
             "cast": payload.cast,
+            "director": payload.director,
             "rating": None,
             "runtime": payload.runtime,
             "imdb_url": payload.imdb_url,
@@ -142,6 +165,9 @@ async def list_movies(
     media_types: list[str] | None = None,
     sort: str | None = None,
     is_wishlist: bool = False,
+    watched: bool | None = None,
+    cast: str | None = None,
+    director: str | None = None,
 ) -> list[Movie]:
     normalized_tags = [tag_service.normalize(tag) for tag in (tags or []) if tag.strip()]
     sort_spec = parse_sort_param(sort)
@@ -154,8 +180,103 @@ async def list_movies(
         media_types or None,
         sort_spec or None,
         is_wishlist,
+        watched,
+        cast,
+        director,
     )
     return [_to_model(doc) for doc in documents]
+
+
+async def get_collection_info(db: AsyncIOMotorDatabase, collection_id: int) -> CollectionInfo:
+    collection = await tmdb_client.get_collection(collection_id)
+    tmdb_ids = [part["tmdb_id"] for part in collection["parts"]]
+    owned_docs = await movie_repository.find_by_tmdb_ids(db, tmdb_ids)
+    owned_by_tmdb_id = {doc["tmdb_id"]: doc for doc in owned_docs}
+
+    parts = []
+    for part in collection["parts"]:
+        owned_doc = owned_by_tmdb_id.get(part["tmdb_id"])
+        parts.append(
+            CollectionPart(
+                tmdb_id=part["tmdb_id"],
+                title=part["title"],
+                year=part["year"],
+                poster_url=part["poster_url"],
+                owned=owned_doc is not None,
+                owned_movie_id=str(owned_doc["_id"]) if owned_doc else None,
+                owned_is_wishlist=owned_doc.get("is_wishlist", False) if owned_doc else False,
+            )
+        )
+    return CollectionInfo(
+        id=collection["id"], name=collection["name"], poster_url=collection["poster_url"], parts=parts
+    )
+
+
+async def get_collection_stats(db: AsyncIOMotorDatabase) -> CollectionStats:
+    """Aggregated statistics over the whole library (wishlist excluded) —
+    computed in Python over a single find() rather than a Mongo aggregation
+    pipeline, matching this codebase's existing style and sidestepping any
+    mongomock aggregation-pipeline gaps in the test suite (see BUGS.md's
+    notes on mongomock's sparse-index/arrayFilters inconsistencies — the
+    same caution applies to untested pipeline stages)."""
+    documents = await movie_repository.find_all_library_movies(db)
+
+    total_movies = len(documents)
+    watched_count = sum(1 for doc in documents if doc.get("watched"))
+
+    genre_counter: Counter[str] = Counter()
+    decade_counter: Counter[int] = Counter()
+    format_counter: Counter[str] = Counter()
+    director_counter: Counter[str] = Counter()
+    actor_counter: Counter[str] = Counter()
+
+    for doc in documents:
+        genre_counter.update(doc.get("genres", []))
+        actor_counter.update(doc.get("cast", []))
+        if doc.get("year"):
+            decade_counter[(doc["year"] // 10) * 10] += 1
+        if doc.get("format"):
+            format_counter[doc["format"]] += 1
+        if doc.get("director"):
+            director_counter[doc["director"]] += 1
+
+    return CollectionStats(
+        total_movies=total_movies,
+        total_runtime_minutes=sum(doc.get("runtime") or 0 for doc in documents),
+        watched_count=watched_count,
+        unwatched_count=total_movies - watched_count,
+        genre_breakdown=[
+            NamedCount(name=name, count=count)
+            for name, count in sorted(genre_counter.items(), key=lambda item: -item[1])
+        ],
+        decade_breakdown=[
+            NamedCount(name=f"{decade}'erne", count=count)
+            for decade, count in sorted(decade_counter.items())
+        ],
+        format_breakdown=[
+            NamedCount(name=name, count=count)
+            for name, count in sorted(format_counter.items(), key=lambda item: -item[1])
+        ],
+        top_directors=[
+            NamedCount(name=name, count=count) for name, count in director_counter.most_common(10)
+        ],
+        top_actors=[
+            NamedCount(name=name, count=count) for name, count in actor_counter.most_common(10)
+        ],
+    )
+
+
+async def check_tmdb_duplicates(db: AsyncIOMotorDatabase, tmdb_id: int) -> list[DuplicateMatch]:
+    documents = await movie_repository.find_by_tmdb_id(db, tmdb_id)
+    return [
+        DuplicateMatch(
+            id=str(doc["_id"]),
+            title=doc["title"],
+            serial_number=doc.get("serial_number"),
+            is_wishlist=doc.get("is_wishlist", False),
+        )
+        for doc in documents
+    ]
 
 
 async def get_movie(db: AsyncIOMotorDatabase, movie_id: str) -> Movie:
@@ -274,7 +395,8 @@ async def list_deleted_movies(db: AsyncIOMotorDatabase) -> list[DeletedMovie]:
 
 async def sync_all_from_tmdb(db: AsyncIOMotorDatabase) -> TmdbSyncResult:
     """Re-fetches every TMDb-sourced movie's cached metadata (title, year,
-    poster, overview, genres, cast, rating, runtime, IMDb/trailer links) from
+    poster, overview, genres, cast, director, rating, runtime, IMDb/trailer
+    links) from
     TMDb as it stands right now — see FEATURES.md #33. User-entered fields (tags, format,
     audio_types, location, owner, serial_number, registered_by, barcode)
     are never touched. A single movie's TMDb lookup failing (removed from
@@ -326,10 +448,13 @@ async def sync_all_from_tmdb(db: AsyncIOMotorDatabase) -> TmdbSyncResult:
             "overview": details["overview"],
             "genres": details["genres"],
             "cast": details["cast"],
+            "director": details["director"],
             "rating": details["rating"],
             "runtime": details["runtime"],
             "imdb_url": details["imdb_url"],
             "trailer_url": details["trailer_url"],
+            "collection_id": details["collection_id"],
+            "collection_name": details["collection_name"],
             "updated_at": datetime.now(timezone.utc),
         }
         await movie_repository.update(db, str(document["_id"]), fields)

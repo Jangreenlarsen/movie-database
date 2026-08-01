@@ -4,8 +4,18 @@ COLLECTION = "system_settings"
 DOC_ID = "system"
 
 # Keys that may be overridden via the admin UI. Kept in sync with
-# `models.settings.SystemSettingsUpdate`.
-OVERRIDABLE_KEYS = ("tmdb_api_token", "upc_api_key", "discogs_token")
+# `models.settings.SystemSettingsUpdate`. Storage/persistence is identical
+# for all of them regardless of whether the service layer treats a given
+# key as a masked secret or a plainly-visible value (feature #45's
+# plex_server_url) — that distinction only matters when deciding what to
+# expose in a GET response, not how the override itself is stored.
+OVERRIDABLE_KEYS = (
+    "tmdb_api_token",
+    "upc_api_key",
+    "discogs_token",
+    "plex_server_url",
+    "plex_token",
+)
 
 
 async def get_overrides(db: AsyncIOMotorDatabase) -> dict:

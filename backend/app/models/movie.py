@@ -56,6 +56,7 @@ class MovieCreate(BaseModel):
     overview: str | None = None
     genres: list[str] = Field(default_factory=list)
     cast: list[str] = Field(default_factory=list)
+    director: str | None = None
     runtime: int | None = None
     imdb_url: str | None = None
     trailer_url: str | None = None
@@ -77,6 +78,7 @@ class MovieUpdate(BaseModel):
     overview: str | None = None
     genres: list[str] | None = None
     cast: list[str] | None = None
+    director: str | None = None
     tags: list[str] | None = None
     format: MovieFormat | None = None
     audio_types: list[AudioType] | None = None
@@ -88,6 +90,10 @@ class MovieUpdate(BaseModel):
     owner: str | None = None
     is_wishlist: bool | None = None
     serial_number: int | None = Field(default=None, gt=0)
+    personal_rating: int | None = Field(default=None, ge=1, le=10)
+    personal_note: str | None = None
+    watched: bool | None = None
+    watched_at: datetime | None = None
 
 
 class Movie(BaseModel):
@@ -101,6 +107,7 @@ class Movie(BaseModel):
     overview: str | None = None
     genres: list[str] = Field(default_factory=list)
     cast: list[str] = Field(default_factory=list)
+    director: str | None = None
     tags: list[str] = Field(default_factory=list)
     format: str | None = None
     audio_types: list[str] = Field(default_factory=list)
@@ -113,8 +120,48 @@ class Movie(BaseModel):
     owner: str | None = None
     registered_by: str | None = None
     is_wishlist: bool = False
+    personal_rating: int | None = None
+    personal_note: str | None = None
+    watched: bool = False
+    watched_at: datetime | None = None
+    collection_id: int | None = None
+    collection_name: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class CollectionPart(BaseModel):
+    tmdb_id: int
+    title: str | None = None
+    year: int | None = None
+    poster_url: str | None = None
+    owned: bool
+    owned_movie_id: str | None = None
+    owned_is_wishlist: bool = False
+
+
+class CollectionInfo(BaseModel):
+    id: int
+    name: str | None = None
+    poster_url: str | None = None
+    parts: list[CollectionPart]
+
+
+class NamedCount(BaseModel):
+    name: str
+    count: int
+
+
+class CollectionStats(BaseModel):
+    total_movies: int
+    total_runtime_minutes: int
+    watched_count: int
+    unwatched_count: int
+    genre_breakdown: list[NamedCount]
+    decade_breakdown: list[NamedCount]
+    format_breakdown: list[NamedCount]
+    top_directors: list[NamedCount]
+    top_actors: list[NamedCount]
 
 
 class TmdbSyncResult(BaseModel):
@@ -123,6 +170,13 @@ class TmdbSyncResult(BaseModel):
     failed: int
     failed_titles: list[str] = Field(default_factory=list)
     stopped_early: bool = False
+
+
+class DuplicateMatch(BaseModel):
+    id: str
+    title: str
+    serial_number: int | None = None
+    is_wishlist: bool = False
 
 
 class DeletedMovie(BaseModel):

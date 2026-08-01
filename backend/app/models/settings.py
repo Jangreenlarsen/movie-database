@@ -29,6 +29,10 @@ class SystemSettingsStatus(BaseModel):
     tmdb_api_token: ApiKeyStatus
     upc_api_key: ApiKeyStatus
     discogs_token: ApiKeyStatus
+    plex_token: ApiKeyStatus
+    # Ikke en hemmelighed (bare en LAN-serveradresse) — returneres derfor med
+    # sin faktiske værdi, i modsætning til de fire ovenfor (feature #45).
+    plex_server_url: str
 
 
 class SystemSettingsUpdate(BaseModel):
@@ -39,3 +43,5 @@ class SystemSettingsUpdate(BaseModel):
     tmdb_api_token: str | None = Field(default=None, max_length=500)
     upc_api_key: str | None = Field(default=None, max_length=500)
     discogs_token: str | None = Field(default=None, max_length=500)
+    plex_token: str | None = Field(default=None, max_length=500)
+    plex_server_url: str | None = Field(default=None, max_length=500)

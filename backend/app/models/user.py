@@ -37,8 +37,19 @@ class SortLevel(BaseModel):
 
 
 class SortPreset(BaseModel):
+    """A named, saveable "view" — sort levels plus the rest of the library's
+    filter state (feature #44). The filter fields are all optional/defaulted
+    so presets saved before this feature (sort-only) keep validating and
+    simply apply no extra filtering when re-selected."""
+
     name: str
     levels: list[SortLevel]
+    query: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    formats: list[str] = Field(default_factory=list)
+    audio_types: list[str] = Field(default_factory=list)
+    media_types: list[str] = Field(default_factory=list)
+    watched: bool | None = None
 
 
 class UserSettings(BaseModel):

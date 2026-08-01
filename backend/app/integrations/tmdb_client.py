@@ -37,6 +37,13 @@ def _imdb_url(imdb_id: str | None) -> str | None:
     return f"https://www.imdb.com/title/{imdb_id}/" if imdb_id else None
 
 
+def _director(crew: list[dict]) -> str | None:
+    for member in crew:
+        if member.get("job") == "Director":
+            return member.get("name")
+    return None
+
+
 def _trailer_url(videos: list[dict]) -> str | None:
     """First official YouTube trailer, if any — TMDb lists teasers/clips/
     featurettes in the same `videos.results` array, so both site and type
@@ -112,6 +119,7 @@ async def get_movie_details(tmdb_id: int) -> dict:
     credits = detail.get("credits", {})
     videos = detail.get("videos", {}).get("results", [])
     external_ids = detail.get("external_ids", {})
+    collection = detail.get("belongs_to_collection")
 
     return {
         "tmdb_id": detail["id"],
@@ -121,8 +129,46 @@ async def get_movie_details(tmdb_id: int) -> dict:
         "overview": detail.get("overview"),
         "genres": [genre["name"] for genre in detail.get("genres", [])],
         "cast": [member["name"] for member in credits.get("cast", [])[:10]],
+        "director": _director(credits.get("crew", [])),
         "rating": _rating(detail.get("vote_average")),
         "runtime": detail.get("runtime"),
         "imdb_url": _imdb_url(external_ids.get("imdb_id")),
         "trailer_url": _trailer_url(videos),
+        "collection_id": collection["id"] if collection else None,
+        "collection_name": collection["name"] if collection else None,
+    }
+
+
+async def get_collection(collection_id: int) -> dict:
+    """Full list of a TMDb "collection" (franchise/box-set)'s films — used to
+    show "you own N of M" (FEATURES.md #42). Distinct from get_movie_details:
+    this is keyed by TMDb's own collection id, not a movie id."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f"{BASE_URL}/collection/{collection_id}", headers=_headers()
+            )
+    except httpx.HTTPError as exc:
+        raise TmdbUnavailableError(f"TMDb er ikke tilgængelig: {exc}") from exc
+
+    if response.status_code == 401:
+        raise TmdbUnavailableError("TMDb afviste API-tokenet (401) — tjek TMDB_API_TOKEN")
+    if response.status_code == 429:
+        raise TmdbRateLimitedError()
+    _raise_for_status(response)
+
+    data = response.json()
+    return {
+        "id": data["id"],
+        "name": data.get("name"),
+        "poster_url": _poster_url(data.get("poster_path")),
+        "parts": [
+            {
+                "tmdb_id": part["id"],
+                "title": part.get("title"),
+                "year": _year_from_release_date(part.get("release_date")),
+                "poster_url": _poster_url(part.get("poster_path")),
+            }
+            for part in data.get("parts", [])
+        ],
     }

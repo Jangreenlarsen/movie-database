@@ -10,6 +10,8 @@ const SORT_OPTIONS = [
   { value: "title", label: "Titel" },
   { value: "year", label: "År" },
   { value: "rating", label: "Rating" },
+  { value: "personal_rating", label: "Din rating" },
+  { value: "watched_at", label: "Set-dato" },
   { value: "runtime", label: "Spilletid" },
   { value: "format", label: "Format" },
   { value: "audio_types", label: "Lyd-type" },
@@ -71,6 +73,8 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
   const [selectedFormats, setSelectedFormats] = useState([]);
   const [selectedAudioTypes, setSelectedAudioTypes] = useState([]);
   const [selectedMediaTypes, setSelectedMediaTypes] = useState([]);
+  const [watchedFilter, setWatchedFilter] = useState(null); // null | true | false
+  const [personFilter, setPersonFilter] = useState(null); // null | { type: "cast" | "director", name }
   const [sortLevels, setSortLevels] = useState(() => initialSortLevels(user.settings));
   const [presets, setPresets] = useState(user.settings.sort_presets ?? []);
   const [presetNameInput, setPresetNameInput] = useState("");
@@ -133,6 +137,9 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
       mediaTypes: selectedMediaTypes,
       sort: sortLevels,
       wishlist,
+      watched: watchedFilter,
+      cast: personFilter?.type === "cast" ? personFilter.name : undefined,
+      director: personFilter?.type === "director" ? personFilter.name : undefined,
     });
   }
 
@@ -145,7 +152,16 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
       })
       .catch(() => setStatus("error"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, selectedTags, selectedFormats, selectedAudioTypes, selectedMediaTypes, sortLevels]);
+  }, [
+    query,
+    selectedTags,
+    selectedFormats,
+    selectedAudioTypes,
+    selectedMediaTypes,
+    sortLevels,
+    watchedFilter,
+    personFilter,
+  ]);
 
   function refresh() {
     fetchMovies().then(setMovies).catch(() => {});
@@ -202,12 +218,33 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
     if (!preset) return;
     setSortLevels(preset.levels);
     persistSortLevels(preset.levels);
+    // Presets saved before feature #44 only have `levels` — the ?? []/null
+    // fallbacks make applying an old, sort-only preset a no-op for the rest
+    // of the filter state instead of wiping out what the user had selected.
+    setQuery(preset.query ?? "");
+    setSelectedTags(preset.tags ?? []);
+    setSelectedFormats(preset.formats ?? []);
+    setSelectedAudioTypes(preset.audio_types ?? []);
+    setSelectedMediaTypes(preset.media_types ?? []);
+    setWatchedFilter(preset.watched ?? null);
   }
 
   function saveCurrentAsPreset() {
     const name = presetNameInput.trim();
     if (!name) return;
-    const next = [...presets.filter((p) => p.name !== name), { name, levels: sortLevels }];
+    const next = [
+      ...presets.filter((p) => p.name !== name),
+      {
+        name,
+        levels: sortLevels,
+        query: query || null,
+        tags: selectedTags,
+        formats: selectedFormats,
+        audio_types: selectedAudioTypes,
+        media_types: selectedMediaTypes,
+        watched: watchedFilter,
+      },
+    ];
     setPresets(next);
     persistSortPresets(next);
     setPresetNameInput("");
@@ -223,7 +260,9 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
     selectedTags.length > 0 ||
     selectedFormats.length > 0 ||
     selectedAudioTypes.length > 0 ||
-    selectedMediaTypes.length > 0;
+    selectedMediaTypes.length > 0 ||
+    watchedFilter != null ||
+    personFilter != null;
 
   return (
     <section>
@@ -259,7 +298,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
           </button>
 
           <button type="button" className="btn" onClick={() => setShowFilterPanel((v) => !v)}>
-            Filtrér {hasActiveFilters ? `(${selectedTags.length + selectedFormats.length + selectedAudioTypes.length + selectedMediaTypes.length}) ` : ""}▾
+            Filtrér {hasActiveFilters ? `(${selectedTags.length + selectedFormats.length + selectedAudioTypes.length + selectedMediaTypes.length + (watchedFilter != null ? 1 : 0)}) ` : ""}▾
           </button>
 
           <button type="button" className="btn" onClick={() => setShowFieldPanel((v) => !v)}>
@@ -321,9 +360,9 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
             </div>
 
             <div className="filter-group sort-preset-row">
-              <span className="filter-group-label">Presets</span>
+              <span className="filter-group-label">Gemte visninger</span>
               <select value="" onChange={(e) => e.target.value && applyPreset(e.target.value)}>
-                <option value="">Vælg gemt preset...</option>
+                <option value="">Vælg gemt visning...</option>
                 {presets.map((preset) => (
                   <option key={preset.name} value={preset.name}>
                     {preset.name}
@@ -331,7 +370,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
                 ))}
               </select>
               <input
-                placeholder="Navngiv preset..."
+                placeholder="Navngiv visning..."
                 value={presetNameInput}
                 onChange={(e) => setPresetNameInput(e.target.value)}
                 style={{ maxWidth: 160 }}
@@ -342,9 +381,12 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
                 onClick={saveCurrentAsPreset}
                 disabled={!presetNameInput.trim()}
               >
-                Gem som preset
+                Gem nuværende visning
               </button>
             </div>
+            <p className="muted" style={{ margin: 0 }}>
+              En gemt visning husker søgetekst, alle filtre og sortering — ikke kun rækkefølgen.
+            </p>
 
             {presets.length > 0 && (
               <div className="sort-preset-list">
@@ -453,6 +495,22 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
                 </div>
               </div>
             )}
+            <div className="filter-group">
+              <span className="filter-group-label">Set-status</span>
+              <div className="chip-row">
+                <Chip
+                  label="Set"
+                  active={watchedFilter === true}
+                  onClick={() => setWatchedFilter((prev) => (prev === true ? null : true))}
+                />
+                <Chip
+                  label="Ikke set"
+                  active={watchedFilter === false}
+                  onClick={() => setWatchedFilter((prev) => (prev === false ? null : false))}
+                />
+              </div>
+            </div>
+
             {hasActiveFilters && (
               <button
                 type="button"
@@ -463,6 +521,8 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
                   setSelectedFormats([]);
                   setSelectedAudioTypes([]);
                   setSelectedMediaTypes([]);
+                  setWatchedFilter(null);
+                  setPersonFilter(null);
                 }}
               >
                 Ryd filtre
@@ -471,6 +531,16 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
           </div>
         )}
       </div>
+
+      {personFilter && (
+        <div className="banner banner-info person-filter-banner">
+          Viser film med {personFilter.type === "director" ? "instruktør" : "skuespiller"}{" "}
+          <strong>{personFilter.name}</strong>
+          <button type="button" className="btn" onClick={() => setPersonFilter(null)}>
+            Ryd ✕
+          </button>
+        </div>
+      )}
 
       {status === "loading" && (
         <div className="skeleton-grid">
@@ -517,6 +587,11 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
                 )}
                 {visibleFields.rating && movie.rating != null && (
                   <div className="movie-rating-badge">★ {movie.rating.toFixed(1)}</div>
+                )}
+                {movie.watched && (
+                  <div className="movie-watched-badge" title="Set">
+                    ✓ Set
+                  </div>
                 )}
               </div>
               <div className="movie-info">
@@ -565,13 +640,25 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
             refresh();
             api.listTags().then(setAllTags).catch(() => {});
           }}
+          onFilterByPerson={(type, name) => {
+            setPersonFilter({ type, name });
+            setActiveMovie(null);
+          }}
         />
       )}
     </section>
   );
 }
 
-function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, onClose, onChanged }) {
+function MovieDetailModal({
+  movie,
+  user,
+  attributeOptions,
+  serialPaddingWidth,
+  onClose,
+  onChanged,
+  onFilterByPerson,
+}) {
   const [tagsInput, setTagsInput] = useState(movie.tags.join(", "));
   const [format, setFormat] = useState(movie.format ?? "");
   const [audioTypes, setAudioTypes] = useState(movie.audio_types);
@@ -581,6 +668,14 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
   );
   const [location, setLocation] = useState(movie.location ?? "");
   const [owner, setOwner] = useState(movie.owner ?? "");
+  const [personalRating, setPersonalRating] = useState(
+    movie.personal_rating != null ? String(movie.personal_rating) : ""
+  );
+  const [personalNote, setPersonalNote] = useState(movie.personal_note ?? "");
+  const [watched, setWatched] = useState(movie.watched);
+  const [watchedAt, setWatchedAt] = useState(
+    movie.watched_at ? movie.watched_at.slice(0, 10) : ""
+  );
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [moving, setMoving] = useState(false);
@@ -603,6 +698,10 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
       mediaType !== (movie.media_type ?? "") ||
       location !== (movie.location ?? "") ||
       owner !== (movie.owner ?? "") ||
+      personalRating !== (movie.personal_rating != null ? String(movie.personal_rating) : "") ||
+      personalNote !== (movie.personal_note ?? "") ||
+      watched !== movie.watched ||
+      watchedAt !== (movie.watched_at ? movie.watched_at.slice(0, 10) : "") ||
       serialChanged
     );
   }, [
@@ -613,9 +712,23 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
     serialNumberInput,
     location,
     owner,
+    personalRating,
+    personalNote,
+    watched,
+    watchedAt,
     canEditSerial,
     movie,
   ]);
+
+  function toggleWatched() {
+    setWatched((prev) => {
+      const next = !prev;
+      if (next && !watchedAt) {
+        setWatchedAt(new Date().toISOString().slice(0, 10));
+      }
+      return next;
+    });
+  }
 
   async function save() {
     setSaving(true);
@@ -628,6 +741,10 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
         media_type: mediaType || null,
         location: location.trim() || null,
         owner: owner.trim() || null,
+        personal_rating: personalRating ? Number(personalRating) : null,
+        personal_note: personalNote.trim() || null,
+        watched,
+        watched_at: watched && watchedAt ? watchedAt : null,
       };
       const nextSerial = Number(serialNumberInput);
       if (canEditSerial && nextSerial > 0 && nextSerial !== movie.serial_number) {
@@ -685,6 +802,14 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
               )}
               {movie.runtime != null && <> · {movie.runtime} min</>}
               {movie.rating != null && <> · ★ {movie.rating.toFixed(1)}</>}
+              {movie.personal_rating != null && <> · Din: {movie.personal_rating}/10</>}
+              {movie.watched && (
+                <>
+                  {" "}
+                  · ✓ Set
+                  {movie.watched_at && ` d. ${new Date(movie.watched_at).toLocaleDateString("da-DK")}`}
+                </>
+              )}
             </p>
             {movie.genres.length > 0 && <p className="muted">{movie.genres.join(", ")}</p>}
             {(movie.imdb_url || movie.trailer_url || movie.tmdb_id) && (
@@ -718,11 +843,41 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
 
         <div className="modal-body">
           {movie.overview && <p>{movie.overview}</p>}
-          {movie.cast.length > 0 && (
+          {movie.director && (
             <p className="muted">
-              <strong>Medvirkende:</strong> {movie.cast.join(", ")}
+              <strong>Instruktør:</strong>{" "}
+              <button
+                type="button"
+                className="person-link"
+                onClick={() => onFilterByPerson("director", movie.director)}
+              >
+                {movie.director}
+              </button>
             </p>
           )}
+          {movie.cast.length > 0 && (
+            <p className="muted">
+              <strong>Medvirkende:</strong>{" "}
+              {movie.cast.map((name, i) => (
+                <span key={name}>
+                  <button
+                    type="button"
+                    className="person-link"
+                    onClick={() => onFilterByPerson("cast", name)}
+                  >
+                    {name}
+                  </button>
+                  {i < movie.cast.length - 1 ? ", " : ""}
+                </span>
+              ))}
+            </p>
+          )}
+
+          {movie.collection_id && (
+            <CollectionSection movie={movie} onChanged={onChanged} />
+          )}
+
+          <PlexSection movie={movie} />
 
           {!movie.is_wishlist && (
             <div>
@@ -771,6 +926,45 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
           {movie.registered_by && (
             <p className="muted">Registreret af: {movie.registered_by}</p>
           )}
+
+          <div>
+            <div className="modal-section-label">Set-status</div>
+            <label className="watched-toggle">
+              <input type="checkbox" checked={watched} onChange={toggleWatched} />
+              Set
+            </label>
+            {watched && (
+              <input
+                type="date"
+                value={watchedAt}
+                onChange={(e) => setWatchedAt(e.target.value)}
+                style={{ marginLeft: 10 }}
+              />
+            )}
+          </div>
+
+          <div>
+            <div className="modal-section-label">Din rating (1-10)</div>
+            <input
+              type="number"
+              min="1"
+              max="10"
+              value={personalRating}
+              onChange={(e) => setPersonalRating(e.target.value)}
+              style={{ width: 80 }}
+            />
+          </div>
+
+          <div>
+            <div className="modal-section-label">Din note</div>
+            <textarea
+              value={personalNote}
+              onChange={(e) => setPersonalNote(e.target.value)}
+              placeholder="Egne tanker om filmen..."
+              rows={3}
+              style={{ width: "100%", resize: "vertical" }}
+            />
+          </div>
 
           <div>
             <div className="modal-section-label">Format</div>
@@ -827,6 +1021,116 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PlexSection({ movie }) {
+  const [status, setStatus] = useState("idle"); // idle | checking | found | not-found | error
+
+  function check() {
+    setStatus("checking");
+    api
+      .getPlexAvailability(movie.id)
+      .then((data) => setStatus(data.available ? { found: data.play_url } : "not-found"))
+      .catch(() => setStatus("error"));
+  }
+
+  return (
+    <div>
+      {status === "idle" && (
+        <button type="button" className="btn" onClick={check}>
+          Tjek Plex
+        </button>
+      )}
+      {status === "checking" && <p className="muted">Tjekker Plex...</p>}
+      {status === "not-found" && <p className="muted">Ikke fundet i Plex.</p>}
+      {status === "error" && <p className="muted">Kunne ikke tjekke Plex lige nu.</p>}
+      {status?.found && (
+        <a href={status.found} target="_blank" rel="noreferrer" className="btn btn-primary">
+          ▶ Afspil i Plex
+        </a>
+      )}
+    </div>
+  );
+}
+
+function CollectionSection({ movie, onChanged }) {
+  const [expanded, setExpanded] = useState(false);
+  const [collection, setCollection] = useState(null);
+  const [status, setStatus] = useState("idle");
+  const [addingId, setAddingId] = useState(null);
+
+  function load() {
+    setStatus("loading");
+    api
+      .getCollection(movie.collection_id)
+      .then((data) => {
+        setCollection(data);
+        setStatus("ready");
+      })
+      .catch(() => setStatus("error"));
+  }
+
+  function toggle() {
+    setExpanded((prev) => {
+      const next = !prev;
+      if (next && !collection) load();
+      return next;
+    });
+  }
+
+  async function addPart(part) {
+    setAddingId(part.tmdb_id);
+    try {
+      await api.createMovie({ tmdb_id: part.tmdb_id });
+      load();
+      onChanged();
+    } catch {
+      // fejlen vises ikke separat her — brugeren kan se delen stadig mangler
+      // og prøve igen; hovedfilmens egen gem-flow har sin egen fejlvisning.
+    } finally {
+      setAddingId(null);
+    }
+  }
+
+  const ownedCount = collection?.parts.filter((p) => p.owned && !p.owned_is_wishlist).length ?? null;
+
+  return (
+    <div>
+      <button type="button" className="person-link" onClick={toggle}>
+        Del af samlingen: {movie.collection_name}
+        {ownedCount != null && ` (ejer ${ownedCount} af ${collection.parts.length})`} {expanded ? "▴" : "▾"}
+      </button>
+
+      {expanded && (
+        <div className="collection-parts">
+          {status === "loading" && <p className="muted">Indlæser...</p>}
+          {status === "error" && (
+            <div className="banner banner-error">Kunne ikke hente samlingen fra TMDb.</div>
+          )}
+          {status === "ready" &&
+            collection.parts.map((part) => (
+              <div key={part.tmdb_id} className="collection-part-row">
+                <span>
+                  {part.title} {part.year ? `(${part.year})` : ""}
+                </span>
+                {part.owned ? (
+                  <span className="muted">{part.owned_is_wishlist ? "På ønskelisten" : "✓ Ejer"}</span>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => addPart(part)}
+                    disabled={addingId === part.tmdb_id}
+                  >
+                    {addingId === part.tmdb_id ? "Tilføjer..." : "+ Tilføj"}
+                  </button>
+                )}
+              </div>
+            ))}
+        </div>
+      )}
     </div>
   );
 }

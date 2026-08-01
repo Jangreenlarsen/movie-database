@@ -41,7 +41,9 @@ export const api = {
   listUsers: () => request("/users"),
   updateUserRole: (userId, role) =>
     request(`/users/${userId}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
-  listMovies: ({ q, tags, format, audioTypes, mediaTypes, sort, wishlist } = {}) => {
+  listMovies: (
+    { q, tags, format, audioTypes, mediaTypes, sort, wishlist, watched, cast, director } = {}
+  ) => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (tags?.length) params.set("tags", tags.join(","));
@@ -55,6 +57,9 @@ export const api = {
       : sort;
     if (sortParam) params.set("sort", sortParam);
     if (wishlist) params.set("wishlist", "true");
+    if (watched != null) params.set("watched", String(watched));
+    if (cast) params.set("cast", cast);
+    if (director) params.set("director", director);
     const query = params.toString();
     return request(`/movies${query ? `?${query}` : ""}`);
   },
@@ -68,6 +73,11 @@ export const api = {
   syncMoviesFromTmdb: () => request("/movies/sync-tmdb", { method: "POST" }),
   listTags: () => request("/tags"),
   attributeOptions: () => request("/movies/attribute-options"),
+  checkDuplicate: (tmdbId) =>
+    request(`/movies/check-duplicate?${new URLSearchParams({ tmdb_id: tmdbId })}`),
+  getCollection: (collectionId) => request(`/movies/collections/${collectionId}`),
+  getStats: () => request("/movies/stats"),
+  getPlexAvailability: (movieId) => request(`/movies/${movieId}/plex`),
   getSerialNumberConfig: () => request("/settings/serial-number"),
   updateSerialNumberConfig: (payload) =>
     request("/settings/serial-number", { method: "PATCH", body: JSON.stringify(payload) }),

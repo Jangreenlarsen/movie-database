@@ -80,3 +80,27 @@ async def test_override_persists_across_requests(client, monkeypatch):
     response = await client.get("/api/settings/system")
 
     assert response.json()["tmdb_api_token"] == {"configured": True, "source": "custom"}
+
+
+async def test_plex_token_behaves_like_the_other_secrets(client, monkeypatch):
+    monkeypatch.setattr(settings, "plex_token", "")
+
+    response = await client.patch("/api/settings/system", json={"plex_token": "plex-secret-abc"})
+    assert response.json()["plex_token"] == {"configured": True, "source": "custom"}
+    assert "plex-secret-abc" not in response.text
+    assert settings.plex_token == "plex-secret-abc"
+
+
+async def test_plex_server_url_is_returned_with_its_actual_value(client, monkeypatch):
+    """Unlike every other field on this endpoint, plex_server_url is not a
+    secret — it should round-trip as plain text, not a masked status."""
+    monkeypatch.setattr(settings, "plex_server_url", "")
+
+    response = await client.patch(
+        "/api/settings/system", json={"plex_server_url": "http://192.168.1.50:32400"}
+    )
+    assert response.status_code == 200
+    assert response.json()["plex_server_url"] == "http://192.168.1.50:32400"
+
+    get_response = await client.get("/api/settings/system")
+    assert get_response.json()["plex_server_url"] == "http://192.168.1.50:32400"

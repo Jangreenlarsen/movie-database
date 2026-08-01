@@ -19,6 +19,7 @@ SORT_FIELDS = {
     "serial_number": "serial_number",
     "created_at": "created_at",
     "rating": "rating",
+    "personal_rating": "personal_rating",
     "runtime": "runtime",
     "format": "format",
     "audio_types": "audio_types",
@@ -26,6 +27,7 @@ SORT_FIELDS = {
     "location": "location",
     "owner": "owner",
     "registered_by": "registered_by",
+    "watched_at": "watched_at",
 }
 DEFAULT_SORT_FIELD = "created_at"
 MAX_SORT_LEVELS = 3
@@ -108,6 +110,12 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
 
     await collection.create_index("is_wishlist")
     await collection.create_index("rating")
+    await collection.create_index("personal_rating")
+    await collection.create_index("watched")
+    await collection.create_index("watched_at")
+    await collection.create_index("cast")
+    await collection.create_index("director")
+    await collection.create_index("collection_id")
     await collection.create_index("year")
     await collection.create_index("created_at")
     await collection.create_index("runtime")
@@ -205,6 +213,32 @@ async def find_by_serial_number(db: AsyncIOMotorDatabase, serial_number: int) ->
     return await db[COLLECTION].find_one({"serial_number": serial_number})
 
 
+async def find_by_tmdb_id(db: AsyncIOMotorDatabase, tmdb_id: int) -> list[dict]:
+    """All existing documents (library and/or wishlist) for a given TMDb id —
+    used for the pre-save duplicate warning (FEATURES.md #38). More than one
+    match is possible and legitimate (e.g. two physical copies)."""
+    cursor = db[COLLECTION].find({"tmdb_id": tmdb_id})
+    return await cursor.to_list(length=100)
+
+
+async def find_all_library_movies(db: AsyncIOMotorDatabase) -> list[dict]:
+    """All non-wishlist movies, uncapped by the normal 500-item page size —
+    used for the statistics page (FEATURES.md #43), which must cover the
+    whole collection, not just a page of it. Same "$ne: True" pattern as
+    find_many's default is_wishlist filter."""
+    cursor = db[COLLECTION].find({"is_wishlist": {"$ne": True}})
+    return await cursor.to_list(length=10_000)
+
+
+async def find_by_tmdb_ids(db: AsyncIOMotorDatabase, tmdb_ids: list[int]) -> list[dict]:
+    """Batch lookup for feature #42 (collection ownership) — a single query
+    instead of one per collection part."""
+    if not tmdb_ids:
+        return []
+    cursor = db[COLLECTION].find({"tmdb_id": {"$in": tmdb_ids}})
+    return await cursor.to_list(length=len(tmdb_ids))
+
+
 async def find_all_with_tmdb_id(db: AsyncIOMotorDatabase) -> list[dict]:
     """Movies whose metadata was originally sourced from TMDb — the only
     ones a bulk re-sync (FEATURES.md #33) can refresh anything for."""
@@ -236,6 +270,9 @@ async def find_many(
     media_types: list[str] | None = None,
     sort_spec: list[tuple[str, int]] | None = None,
     is_wishlist: bool = False,
+    watched: bool | None = None,
+    cast: str | None = None,
+    director: str | None = None,
 ) -> list[dict]:
     """`sort_spec` is a list of up to `MAX_SORT_LEVELS` (already-whitelisted
     mongo field name, direction) tuples for compound multi-level sorting
@@ -257,6 +294,16 @@ async def find_many(
         filter_["audio_types"] = {"$in": audio_types}
     if media_types:
         filter_["media_type"] = {"$in": media_types}
+    if watched is not None:
+        # Same "missing field != False" pitfall as is_wishlist above — movies
+        # created before this feature (or simply never marked) have no
+        # `watched` key at all, so `False` must match "not True", not a
+        # literal equality check that would silently exclude them.
+        filter_["watched"] = True if watched else {"$ne": True}
+    if cast:
+        filter_["cast"] = cast
+    if director:
+        filter_["director"] = director
 
     cursor = db[COLLECTION].find(filter_)
     cursor = cursor.sort(sort_spec) if sort_spec else cursor.sort(DEFAULT_SORT_FIELD, -1)

@@ -4,16 +4,27 @@ class MovieNotFoundError(Exception):
         super().__init__(f"Movie not found: {movie_id}")
 
 
+class TvShowNotFoundError(Exception):
+    def __init__(self, tv_show_id: str):
+        self.tv_show_id = tv_show_id
+        super().__init__(f"TV show not found: {tv_show_id}")
+
+
 class DuplicateBarcodeError(Exception):
     def __init__(self, barcode: str):
         self.barcode = barcode
-        super().__init__(f"A movie with barcode '{barcode}' already exists")
+        super().__init__(f"An item with barcode '{barcode}' already exists")
 
 
 class TmdbNotFoundError(Exception):
+    """Covers both /movie/{id} and /tv/{id} 404s — reused by
+    tmdb_client.get_movie_details, get_tv_show_details and
+    get_season_details (feature #47), so the message stays media-agnostic
+    rather than hardcoding "movie"."""
+
     def __init__(self, tmdb_id: int):
         self.tmdb_id = tmdb_id
-        super().__init__(f"TMDb movie not found: {tmdb_id}")
+        super().__init__(f"TMDb-ressource ikke fundet: {tmdb_id}")
 
 
 class TmdbUnavailableError(Exception):

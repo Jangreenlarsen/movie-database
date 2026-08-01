@@ -38,6 +38,15 @@ async def lookup_by_barcode(barcode: str) -> dict:
     if not guessed_title:
         return {"guessed_title": None, "candidates": []}
 
-    raw_candidates = await tmdb_client.search_movies(guessed_title)
-    candidates = [MovieCandidate(**candidate) for candidate in raw_candidates]
+    # Searches both TMDb databases (feature #49) — a scanned barcode's
+    # product could be either. Movies are listed first (the original,
+    # still-primary use case), TV results after; each candidate carries its
+    # own `media_kind` so the frontend can save to the right resource. See
+    # BUGS.md #20: a real scanned barcode ("The Americans" boxset) turned
+    # out to be a TV series, which the movie-only search could never match.
+    raw_movie_candidates = await tmdb_client.search_movies(guessed_title)
+    raw_tv_candidates = await tmdb_client.search_tv(guessed_title)
+    candidates = [
+        MovieCandidate(**candidate, media_kind="movie") for candidate in raw_movie_candidates
+    ] + [MovieCandidate(**candidate, media_kind="tv") for candidate in raw_tv_candidates]
     return {"guessed_title": guessed_title, "candidates": candidates}

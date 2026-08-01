@@ -38,9 +38,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'Movie Database',
-        short_name: 'Movies',
-        description: 'Personligt film-bibliotek med stregkode-scanning og tags',
+        name: 'Film & TV-database',
+        short_name: 'Film & TV',
+        description: 'Personligt film- og TV-serie-bibliotek med stregkode-scanning og tags',
         start_url: '/',
         display: 'standalone',
         background_color: '#0f0f0f',

@@ -6,20 +6,20 @@ Dette er Claudes system-prompt for dette projekt. Den læses altid først og fø
 
 ## Projektbeskrivelse
 
-En **film-database webapp** til at katalogisere en fysisk/digital filmsamling, bygget med **React (Vite, PWA)** frontend, **Python/FastAPI** backend og **MongoDB** database.
+En **film- & TV-database webapp** til at katalogisere en fysisk/digital film- og TV-serie-samling, bygget med **React (Vite, PWA)** frontend, **Python/FastAPI** backend og **MongoDB** database. Film og TV-serier er to bevidst adskilte ressourcer (egne MongoDB-collections, egen fane hver — Jans eksplicitte ønske 2026-08-02, se FEATURES.md #47), ikke ét fælles "medie"-begreb — de deler kun det de reelt har til fælles (tags, format/lyd/medietype, lokation/ejer/serienummer, personlig rating/note, admin-nøgle-mønsteret), ikke datamodel eller CRUD-lag.
 
-Brugeren opbygger sit filmbibliotek ved enten at oprette film manuelt, eller ved at **scanne stregkoden (UPC/EAN) på DVD/Blu-ray-covers** med iPhonens kamera direkte i browseren (ingen native app nødvendig — kræver HTTPS for kamera-adgang). Den scannede kode slås op i en UPC-opslagstjeneste for at forudfylde en titel, hvorefter rig metadata (poster, plot, skuespillere, genre, udgivelsesår m.m.) hentes fra **TMDb (The Movie Database)** til brugerens bekræftelse, før filmen gemmes.
+Brugeren opbygger sit bibliotek ved enten at oprette film/serier manuelt, eller ved at **scanne stregkoden (UPC/EAN) på DVD/Blu-ray-covers** med iPhonens kamera direkte i browseren (ingen native app nødvendig — kræver HTTPS for kamera-adgang). Den scannede kode slås op i en UPC-opslagstjeneste for at forudfylde en titel, hvorefter rig metadata hentes fra **TMDb (The Movie Database)** — fra *begge* TMDb's film- og TV-databaser samtidig, da et scannet cover lige så vel kan være en TV-serie-boks (se BUGS.md #20) — til brugerens bekræftelse, før filmen/serien gemmes. TV-serier får derudover sæson-niveau ejerskabs-markering og episode-niveau set-status, hentet lazily fra TMDb pr. sæson (se ARCHITECTURE.md).
 
-Hver film kan tildeles frie, **brugerdefinerede tags** (fx "Julefilm", "Set med Anna", "4K", "Skal ses igen"). Tags er — sammen med fritekstsøgning på titel/skuespiller/genre — den primære søge- og filtreringsmekanisme i hoved-appens biblioteksvisning.
+Hver film/serie kan tildeles frie, **brugerdefinerede tags** (fx "Julefilm", "Set med Anna", "4K", "Skal ses igen"). Tags er — sammen med fritekstsøgning på titel/skuespiller/genre — den primære søge- og filtreringsmekanisme i biblioteksvisningerne.
 
-**Primær use case**: Hurtigt katalogisere en fysisk filmsamling ved at scanne covers med telefonen, og bagefter genfinde film via fritekst-søgning eller tags fra enhver enhed på netværket.
+**Primær use case**: Hurtigt katalogisere en fysisk film-/TV-samling ved at scanne covers med telefonen, og bagefter genfinde dem via fritekst-søgning eller tags fra enhver enhed på netværket.
 
 **Reference-stack**:
 - **Frontend**: React + Vite, PWA (installérbar på iPhone hjemmeskærm via "Føj til hjemmeskærm", HTTPS krævet for kamera-adgang)
 - **Backend**: Python 3.x + FastAPI (async), Pydantic-modeller
-- **Database**: MongoDB (film-dokumenter, tags, cache af ekstern metadata)
+- **Database**: MongoDB (film-/TV-serie-dokumenter i hver sin collection, tags, cache af ekstern metadata)
 - **Stregkode-scanning**: klient-side JS i browseren via `getUserMedia` + en barcode-detection-lib (fx `@zxing/browser`)
-- **Eksterne API'er**: TMDb (film-metadata + posters), en UPC-opslagstjeneste (stregkode → produkt/titel-gæt)
+- **Eksterne API'er**: TMDb (film- og TV-metadata + posters), en UPC-opslagstjeneste (stregkode → produkt/titel-gæt)
 - **Deployment**: Docker Compose (backend + frontend + MongoDB), selv-hostet på hjemmenetværk
 
 ---
@@ -153,7 +153,7 @@ Scan cover (UPC/EAN) → UPC-opslag (titel-gæt) → TMDb-søgning på gættet t
 │   ├── app/
 │   │   ├── main.py            # app-init, router-registrering
 │   │   ├── core/              # config (Pydantic Settings), logging
-│   │   ├── api/                # REST-routers pr. ressource (movies, tags, scan, search)
+│   │   ├── api/                # REST-routers pr. ressource (movies, tv_shows, tags, scan, search)
 │   │   ├── services/           # forretningslogik
 │   │   ├── integrations/       # tmdb_client.py, upc_client.py
 │   │   ├── repositories/       # MongoDB data-access (Motor)
@@ -165,7 +165,7 @@ Scan cover (UPC/EAN) → UPC-opslag (titel-gæt) → TMDb-søgning på gættet t
     ├── src/
     │   ├── api/                 # backend API-client (fetch-wrapper)
     │   ├── components/          # genanvendelige UI-komponenter
-    │   ├── pages/                # Library, MovieDetail, ScanMovie
+    │   ├── pages/                # Library, TvShows, ScanMovie, Statistics
     │   └── scanner/              # kamera + stregkode-detection
     ├── public/
     │   └── manifest.json         # PWA manifest
@@ -187,12 +187,12 @@ Scan cover (UPC/EAN) → UPC-opslag (titel-gæt) → TMDb-søgning på gættet t
                     │ HTTPS REST (JSON)
 ┌──────────────────┼──────────────────────────┐
 │            API-lag (FastAPI routers)         │
-│   /api/movies  /api/tags  /api/scan  /api/search │
+│ /api/movies /api/tv-shows /api/tags /api/scan │
 └──────────────────┬──────────────────────────┘
                     │
 ┌──────────────────┼──────────────────────────┐
 │         Service-lag (forretningslogik)       │
-│   movie_service  tag_service  scan_service   │
+│ movie_service  tv_show_service  scan_service │
 └──────┬────────────────────────────┬──────────┘
        │                            │
 ┌──────┼──────────┐        ┌────────┼─────────────┐

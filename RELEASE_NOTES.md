@@ -1,5 +1,19 @@
 # Release Notes
 
+## v0.36.0 (build 0044) — 2026-08-02
+
+- **Ny "TV-serier"-fane!** Katalogisér TV-serier helt som film — scan et cover eller søg manuelt, sæt tags/format/lokation. Nyt: markér hvilke sæsoner du ejer, og hvilke episoder du har set, med dato. Scan og manuel søgning finder nu automatisk både film og TV-serier og foreslår det rigtige sted at gemme.
+- Appen hedder nu "Film & TV-bibliotek" i stedet for "Filmbibliotek", og "Bibliotek"-fanen er omdøbt til "Film" for at gøre plads til den nye TV-fane.
+- **Bemærk**: TV-serier har endnu ikke alle filmbibliotekets ekstra-funktioner (fler-niveau sortering/gemte visninger, skuespiller-browsing, Plex, statistik) — det kan komme senere.
+
+## v0.35.1 (build 0043) — 2026-08-02
+
+- Endnu et skridt mod TV-serie-understøttelse (teknisk, ikke synligt i UI'et endnu): stregkode-scanning kan nu genkende TV-serier, ikke kun film.
+
+## v0.35.0 (build 0042) — 2026-08-02
+
+- Første skridt mod TV-serie-understøttelse: teknisk fundament på plads (egen ressource, sæson/episode-sporing). Endnu ingen synlig knap/fane i appen — det kommer i en efterfølgende opdatering.
+
 ## v0.34.1 (build 0041) — 2026-08-02
 
 - Fix: forbedret oprensning af titler fra stregkode-opslag før TMDb-søgning — flere "special edition"/"complete series"/rå "DVD"/"Blu-ray"-tilføjelser i produktnavnet fjernes nu, hvilket burde give flere match for rigtige film.

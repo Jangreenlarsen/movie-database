@@ -2,6 +2,37 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.36.0 build 0044] — 2026-08-02 — TV-serier: frontend + scan-routing + branding (feature #47/#48/#49/#50)
+
+Fuldfører TV-serie-understøttelsen (backend var feature #47/#48/#49's forrige to commits) — nu synlig og brugbar i UI'et.
+
+- Ny `frontend/src/pages/TvShows.jsx`: "TV-serier"-fane, søgning/tag/format/lyd/medietype/set-status-filtrering, ét-niveaus sortering (bevidst uden den fulde fler-niveau-sortering/preset-maskine fra film — se "ikke porteret" nedenfor), detaljevindue med tags/format/lokation/ejer/personlig rating/note/set-status samt en sæson-liste (`SeasonRow`) med "ejer"-checkbox pr. sæson og udvidelig episode-liste med "set"-checkbox pr. episode.
+- `MovieLookupForm.jsx` udvidet: manuel søgning kalder nu både `/api/movies/tmdb-search` og `/api/tv-shows/tmdb-search` parallelt (samme mønster som stregkode-scannet allerede fik i forrige commit); hver kandidat har et "Film"/"TV-serie"-badge; dublet-tjek og gem-handling routes til den rigtige ressource ud fra kandidatens `media_kind`. Genbruges uændret af både "Scan"-siden og ønskelistens tilføj-panel — nu for begge typer.
+- **Live-verificeret mod rigtig lokal MongoDB + rigtig TMDb** (ikke kun mocked tests): oprettede den ægte "Breaking Bad" via `tmdb_id`, bekræftede korrekt sæson-liste (inkl. "Specials"-sæson 0), markerede sæson 1 ejet (udløste et ægte lazy TMDb-kald, fik 7 rigtige episodetitler inkl. "Pilot"), markerede episode 1 set, bekræftede kun episode 1 (ikke 2-7) blev påvirket. Ryddet op efter test.
+- **Ikke porteret til TV i denne omgang** (bevidst afgrænset scope): fler-niveau sortering/gemte visninger (#17/#27/#44), skuespiller/instruktør-browsing (#41), franchise-gruppering (#42), Plex-integration (#45), statistik-siden (#43). Kun film har disse indtil videre.
+- **Branding** (feature #50): app-titel "Filmbibliotek" → "Film & TV-bibliotek" (header, login-skærm, PWA-manifest, `<title>`), "Bibliotek"-fanen omdøbt til "Film", "Scan film" → "Scan" (dækker nu begge typer). `CLAUDE.md`s projektbeskrivelse, arkitektur-diagram og projektstruktur-liste opdateret til at nævne TV-serier som egen ressource.
+- Ingen nye backend-tests i denne commit (frontend-only + live-manuel backend-verifikation) — de 215 eksisterende backend-tests fra de to forrige TV-commits dækker uændret.
+
+## [0.35.1 build 0043] — 2026-08-02 — Stregkode-scan søger nu både film og TV, backend (feature #49)
+
+- `scan_service.lookup_by_barcode` søger nu `tmdb_client.search_movies` **og** `search_tv` for det gættede produktnavn, i stedet for kun film. Kandidater fra begge lister samles i ét svar (film først, derefter TV), hver tagget med nyt `media_kind: "movie"|"tv"`-felt på `MovieCandidate`.
+- `GET /api/tv-shows/tmdb-search` sætter nu korrekt `media_kind="tv"` (fanget under implementeringen — ville ellers stille og roligt have arvet "movie"-default'en fra den delte `MovieCandidate`-model).
+- Direkte adressering af BUGS.md #20's konkrete eksempel: et scannet TV-boxset ("The Americans") vil nu faktisk dukke op som en valgbar kandidat, tagget som TV-serie, i stedet for at give "intet match".
+- Eksisterende scan-lookup-tests opdateret til eksplicit at mocke `search_tv` (var utilsigtet afhængige af en rigtig `TMDB_API_TOKEN` i lokal `.env` for stiltiende at lykkes mod den ægte API — ikke hermetisk). Ny test verificerer sammenfletningen af film- og TV-kandidater.
+- **Kun backend** — frontend bruger endnu ikke `media_kind` til at route gem-handlingen til det rigtige bibliotek. Det følger i næste commit sammen med TV-serier-fanen.
+
+## [0.35.0 build 0042] — 2026-08-02 — TV-serier: ny selvstændig ressource, backend (feature #47/#48)
+
+Jan bad om fuld TV-serie-understøttelse (2026-08-02): egen ressource (ikke bare et filter på filmbiblioteket), med dyb sæson/episode-sporing. Dette er backend-delen — frontend, stregkode-scan-integration og branding følger i separate commits.
+
+- Ny `/api/tv-shows`-ressource: egen `tv_shows`-collection, egen `deleted_tv_shows`-log, egen fortløbende `serial_number`-tæller (adskilt fra filmenes). Samme CRUD-/søgnings-/filter-/sorterings-/dublet-advarsels-/soft-delete-mønster som film, genbruger `MovieFormat`/`AudioType`/`MediaType`-enums.
+- Nye `tmdb_client.search_tv`/`get_tv_show_details`/`get_season_details` — TV har en helt anden TMDb-respons-form end film (`name`/`first_air_date`/`created_by`/`seasons`/`status`, intet `belongs_to_collection`-ækvivalent).
+- **Sæson-ejerskab + episode-set-status** (feature #48): `PATCH /api/tv-shows/{id}/seasons/{n}` sætter `owned`, og henter/cacher lazily sæsonens fulde episode-liste fra TMDb *første* gang den markeres ejet (ikke alle sæsoner på én gang ved oprettelse — kunne være dyrt for serier med mange sæsoner). `PATCH .../seasons/{n}/episodes/{m}` sætter `watched`+dato pr. episode. Begge er atomiske positional-`$`-opdateringer af én sæsons episode-liste ad gangen — bevidst IKKE MongoDB `arrayFilters` (uverificeret mongomock-understøttelse, se BUGS.md-lignende forsigtighed i movie_repository).
+- To niveauer af "set"-status: et top-niveau `watched` på selve serien (identisk med film) + separat pr.-episode `watched` — ikke automatisk koblet sammen.
+- Faktisk IMDb-rating (feature #46) og skriv-kun API-nøgle-mønsteret genbruges uændret.
+- `TmdbNotFoundError`/`DuplicateBarcodeError`-beskeder generaliseret (var hardkodet til "movie") til at dække begge ressourcer.
+- 21 nye tests i `test_tv_shows.py`: CRUD, uafhængig serienummer-tæller, dublet-tjek, søgning/filter/sortering, personlig rating/note, set-status, lazy sæson-fetch (inkl. at gentagne owned-toggles ikke genhenter), episode-watched, tmdb-search, auth-gating.
+
 ## [0.34.1 build 0041] — 2026-08-02 — Fix: bedre titel-oprensning før TMDb-søgning (BUGS.md #20)
 
 - `text_cleanup.clean_bracketed_title` strippede kun *indrammede* suffixer ("(DVD)", "[Blu-ray]") — udvidet til også at fjerne almindelig fritekst-boilerplate ("Special Edition", "Complete Series/Collection/Trilogy", "Season(s) N-M", regionskoder, bare "DVD"/"Blu-ray"/"VHS"/"UHD" uden parentes), som ellers kunne få en ægte films TMDb-søgning til at give 0 resultater.

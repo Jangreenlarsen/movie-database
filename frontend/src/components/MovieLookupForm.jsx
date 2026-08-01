@@ -37,6 +37,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   const [saveStatus, setSaveStatus] = useState("idle");
   const [saveError, setSaveError] = useState(null);
   const [duplicates, setDuplicates] = useState([]);
+  const [lastSavedKind, setLastSavedKind] = useState("movie");
 
   useEffect(() => {
     api.attributeOptions().then(setAttributeOptions).catch(() => {});
@@ -69,8 +70,16 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
     setBarcode(null);
     setManualStatus("searching");
     try {
-      const results = await api.tmdbSearch(manualQuery.trim());
-      setCandidates(results);
+      // Søger både film og TV-serier (feature #49/#50) — samme princip som
+      // stregkode-opslaget, som allerede returnerer begge typer samlet.
+      const [movieResults, tvResults] = await Promise.all([
+        api.tmdbSearch(manualQuery.trim()),
+        api.tvTmdbSearch(manualQuery.trim()).catch(() => []),
+      ]);
+      setCandidates([
+        ...movieResults.map((c) => ({ ...c, media_kind: "movie" })),
+        ...tvResults,
+      ]);
       setScanStatus("ready");
       setManualStatus("ready");
     } catch {
@@ -82,14 +91,18 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
     setSelectedCandidate(candidate);
     setSaveStatus("idle");
     setDuplicates([]);
-    api.checkDuplicate(candidate.tmdb_id).then(setDuplicates).catch(() => {});
+    const checkDuplicate =
+      candidate.media_kind === "tv" ? api.checkTvDuplicate : api.checkDuplicate;
+    checkDuplicate(candidate.tmdb_id).then(setDuplicates).catch(() => {});
   }
 
   async function saveMovie() {
     setSaveStatus("saving");
     setSaveError(null);
+    const isTv = selectedCandidate.media_kind === "tv";
     try {
-      await api.createMovie({
+      const create = isTv ? api.createTvShow : api.createMovie;
+      await create({
         tmdb_id: selectedCandidate.tmdb_id,
         barcode,
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
@@ -101,6 +114,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
         is_wishlist: wishlist,
       });
       setSaveStatus("saved");
+      setLastSavedKind(selectedCandidate.media_kind ?? "movie");
       setSelectedCandidate(null);
       setCandidates([]);
       setTagsInput("");
@@ -121,8 +135,10 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   return (
     <section className="scan-layout">
       <div className="card scan-card">
-        <h2>Scan film</h2>
-        <p className="muted">Scan stregkoden på cover'et med kameraet.</p>
+        <h2>Scan</h2>
+        <p className="muted">
+          Scan stregkoden på cover'et med kameraet — finder både film og TV-serier.
+        </p>
         <BarcodeScanner onDetected={handleDetected} />
 
         <form className="manual-search-form" onSubmit={submitManualBarcode} style={{ marginTop: 10 }}>
@@ -155,7 +171,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
           <input
             value={manualQuery}
             onChange={(e) => setManualQuery(e.target.value)}
-            placeholder="Filmtitel..."
+            placeholder="Film- eller serietitel..."
           />
           <button type="submit" className="btn btn-primary">
             Søg
@@ -168,18 +184,18 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
           </div>
         )}
         {manualStatus === "ready" && candidates.length === 0 && (
-          <div className="banner banner-info" style={{ marginTop: 10 }}>Ingen film matchede din søgning.</div>
+          <div className="banner banner-info" style={{ marginTop: 10 }}>Intet matchede din søgning.</div>
         )}
       </div>
 
       {candidates.length > 0 && (
         <div>
-          <h2 style={{ marginBottom: 10 }}>Vælg den rigtige film</h2>
+          <h2 style={{ marginBottom: 10 }}>Vælg den rigtige film eller serie</h2>
           <ul className="candidate-grid">
             {candidates.map((candidate) => (
               <li
-                key={candidate.tmdb_id}
-                className={`candidate-card${selectedCandidate?.tmdb_id === candidate.tmdb_id ? " selected" : ""}`}
+                key={`${candidate.media_kind}-${candidate.tmdb_id}`}
+                className={`candidate-card${selectedCandidate?.tmdb_id === candidate.tmdb_id && selectedCandidate?.media_kind === candidate.media_kind ? " selected" : ""}`}
                 onClick={() => selectCandidate(candidate)}
               >
                 <div className="candidate-poster">
@@ -188,6 +204,9 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
                   ) : (
                     "🎬"
                   )}
+                  <span className="candidate-media-kind">
+                    {candidate.media_kind === "tv" ? "TV-serie" : "Film"}
+                  </span>
                 </div>
                 <div className="candidate-info">
                   <div className="candidate-title">{candidate.title}</div>
@@ -220,7 +239,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
 
           {duplicates.length > 0 && (
             <div className="banner banner-error">
-              Findes allerede: denne film er allerede{" "}
+              Findes allerede: {selectedCandidate.media_kind === "tv" ? "denne serie" : "denne film"} er allerede{" "}
               {duplicates
                 .map((d) =>
                   d.is_wishlist
@@ -305,7 +324,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
                   id="owner-input"
                   value={owner}
                   onChange={(e) => setOwner(e.target.value)}
-                  placeholder="Hvem ejer filmen..."
+                  placeholder="Hvem ejer den..."
                   style={{ width: "100%" }}
                 />
               </div>
@@ -314,7 +333,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
 
           {saveStatus === "error" && (
             <div className="banner banner-error">
-              {saveError ?? "Kunne ikke gemme filmen. Prøv igen."}
+              {saveError ?? "Kunne ikke gemme. Prøv igen."}
             </div>
           )}
 
@@ -328,7 +347,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
               onClick={saveMovie}
               disabled={saveStatus === "saving"}
             >
-              {saveStatus === "saving" ? "Gemmer..." : wishlist ? "Tilføj til ønskeliste" : "Gem film"}
+              {saveStatus === "saving" ? "Gemmer..." : wishlist ? "Tilføj til ønskeliste" : "Gem"}
             </button>
           </div>
         </div>
@@ -336,7 +355,8 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
 
       {saveStatus === "saved" && (
         <div className="banner banner-info">
-          {wishlist ? "Film tilføjet til ønskeliste!" : "Film gemt i biblioteket!"}
+          {lastSavedKind === "tv" ? "TV-serie" : "Film"}{" "}
+          {wishlist ? "tilføjet til ønskeliste!" : "gemt i biblioteket!"}
         </div>
       )}
     </section>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Library from "./pages/Library";
 import ScanMovie from "./pages/ScanMovie";
+import TvShows from "./pages/TvShows";
 import Settings from "./pages/Settings";
 import PrintList from "./pages/PrintList";
 import Statistics from "./pages/Statistics";
@@ -45,20 +46,26 @@ function App() {
             <span className="brand-mark" aria-hidden="true">
               🎬
             </span>
-            Filmbibliotek
+            Film &amp; TV-bibliotek
           </div>
           <nav className="tabs">
             <button
               className={tab === "library" ? "active" : ""}
               onClick={() => setTab("library")}
             >
-              Bibliotek
+              Film
+            </button>
+            <button
+              className={tab === "tv" ? "active" : ""}
+              onClick={() => setTab("tv")}
+            >
+              TV-serier
             </button>
             <button
               className={tab === "scan" ? "active" : ""}
               onClick={() => setTab("scan")}
             >
-              Scan film
+              Scan
             </button>
             <button
               className={tab === "wishlist" ? "active" : ""}
@@ -96,6 +103,7 @@ function App() {
 
       <main className="app-main">
         {tab === "library" && <Library user={user} onSettingsChanged={setUser} />}
+        {tab === "tv" && <TvShows user={user} />}
         {tab === "scan" && <ScanMovie user={user} />}
         {tab === "wishlist" && <Library user={user} onSettingsChanged={setUser} wishlist />}
         {tab === "print" && <PrintList />}

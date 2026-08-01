@@ -33,7 +33,7 @@ export default function Login({ onAuthenticated }) {
           <span className="brand-mark" aria-hidden="true">
             🎬
           </span>
-          Filmbibliotek
+          Film &amp; TV-bibliotek
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>

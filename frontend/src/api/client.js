@@ -76,4 +76,7 @@ export const api = {
   tmdbSearch: (query) =>
     request(`/movies/tmdb-search?${new URLSearchParams({ query })}`),
   triggerDeploy: () => request("/system/deploy", { method: "POST" }),
+  getSystemSettings: () => request("/settings/system"),
+  updateSystemSettings: (payload) =>
+    request("/settings/system", { method: "PATCH", body: JSON.stringify(payload) }),
 };

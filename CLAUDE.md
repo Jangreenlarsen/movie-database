@@ -51,7 +51,7 @@ Hver film kan tildeles frie, **brugerdefinerede tags** (fx "Julefilm", "Set med 
    - Service-laget kalder repository-laget (MongoDB) og integrations-laget (TMDb/UPC) — aldrig omvendt.
    - Kun integrations-laget må foretage HTTP-kald til eksterne API'er.
 
-6. **Eksterne API-nøgler (UFRAVIGELIG)**: TMDb API-nøgle og UPC-opslagsnøgle ligger udelukkende i backendens `.env` (git-ignoreret). De må ALDRIG committes, logges i klartekst eller eksponeres til frontend. Frontend kalder udelukkende egne backend-endpoints — aldrig TMDb/UPC direkte.
+6. **Eksterne API-nøgler (UFRAVIGELIG)**: TMDb-, UPC- og Discogs-nøgler har to legitime opbevaringssteder: backendens `.env` (git-ignoreret, bootstrap-fallback) og — siden feature #36 — en admin-only overstyring i MongoDB (`system_settings`-collection), sat via Indstillinger-siden i UI'et. Uanset kilde gælder: de må ALDRIG committes, logges i klartekst eller sendes tilbage til frontend — hverken i en `GET`- eller `PATCH`-response. Enhver endpoint der eksponerer nøgle-status til frontend må **kun** returnere om en nøgle er sat og hvorfra (`env`/`custom`/`unset`), aldrig selve værdien; sætning af en ny værdi er en skriv-kun handling (payload ind, aldrig ud igen). Frontend kalder udelukkende egne backend-endpoints — aldrig TMDb/UPC/Discogs direkte.
 
 7. **Tags**: Tags er fritekst, normaliseres (trim + lowercase) ved gem og sammenligning for dedup, men vises i den formatering brugeren indtastede første gang. Der vedligeholdes en samlet tag-collection til autocomplete. Bibliotekets søgning skal understøtte kombination af fritekst (titel/skuespiller/genre) og tag-filtrering (en eller flere tags samtidig).
 

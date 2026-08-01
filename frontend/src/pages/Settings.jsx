@@ -15,6 +15,7 @@ export default function Settings({ user }) {
       <SerialNumberSection isAdmin={isAdmin} />
       <DeletedMoviesSection />
       {isAdmin && <TmdbSyncSection />}
+      {isAdmin && <SystemSettingsSection />}
       {isAdmin && <DeploySection />}
       {isAdmin && <UsersSection currentUserId={user.id} />}
     </section>
@@ -307,6 +308,129 @@ function TmdbSyncSection() {
         </div>
       )}
     </div>
+  );
+}
+
+function SystemSettingsSection() {
+  const [statusData, setStatusData] = useState(null);
+  const [loadStatus, setLoadStatus] = useState("loading");
+
+  function load() {
+    setLoadStatus("loading");
+    api
+      .getSystemSettings()
+      .then((data) => {
+        setStatusData(data);
+        setLoadStatus("ready");
+      })
+      .catch(() => setLoadStatus("error"));
+  }
+
+  useEffect(load, []);
+
+  return (
+    <div className="card settings-section">
+      <h2>System-indstillinger</h2>
+      <p className="muted">
+        Eksterne API-nøgler. Kan i stedet sættes via <code>.env</code> på serveren — en nøgle
+        sat her overstyrer den, med det samme, uden genstart. Nøgler vises aldrig igen efter
+        de er gemt, kun om en nøgle er sat og hvorfra.
+      </p>
+
+      {loadStatus === "loading" && <p className="muted">Indlæser...</p>}
+      {loadStatus === "error" && (
+        <div className="banner banner-error">Kunne ikke hente status.</div>
+      )}
+
+      {loadStatus === "ready" && statusData && (
+        <>
+          <ApiKeyRow
+            label="TMDb API-token"
+            field="tmdb_api_token"
+            status={statusData.tmdb_api_token}
+            onSaved={load}
+          />
+          <ApiKeyRow
+            label="UPC API-nøgle"
+            field="upc_api_key"
+            status={statusData.upc_api_key}
+            onSaved={load}
+          />
+          <ApiKeyRow
+            label="Discogs-token"
+            field="discogs_token"
+            status={statusData.discogs_token}
+            onSaved={load}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+function ApiKeyRow({ label, field, status, onSaved }) {
+  const [value, setValue] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function submit(newValue) {
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      await api.updateSystemSettings({ [field]: newValue });
+      setValue("");
+      setSaved(true);
+      onSaved();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const sourceLabel =
+    status.source === "custom"
+      ? "Sat her i UI'et"
+      : status.source === "env"
+        ? "Sat via .env på serveren"
+        : "Ikke sat";
+
+  return (
+    <form
+      className="serial-config-form"
+      style={{ marginBottom: 16 }}
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (value) submit(value);
+      }}
+    >
+      <label>
+        {label} — <span className="muted">{sourceLabel}</span>
+        <input
+          type="password"
+          autoComplete="off"
+          placeholder={status.configured ? "•••••••• (indtast for at ændre)" : "Indtast nøgle"}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      </label>
+
+      {error && <div className="banner banner-error">{error}</div>}
+      {saved && <div className="banner banner-info">Gemt!</div>}
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <button type="submit" className="btn btn-primary" disabled={saving || !value}>
+          {saving ? "Gemmer..." : "Gem"}
+        </button>
+        {status.source === "custom" && (
+          <button type="button" className="btn" onClick={() => submit("")} disabled={saving}>
+            Ryd (brug .env igen)
+          </button>
+        )}
+      </div>
+    </form>
   );
 }
 

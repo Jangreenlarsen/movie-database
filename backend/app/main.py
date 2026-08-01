@@ -22,6 +22,7 @@ from app.core.errors import (
 )
 from app.db import close_client, get_client, get_database
 from app.repositories import movie_repository, tag_repository, user_repository
+from app.services import system_settings_service
 
 logging.basicConfig(level=settings.log_level)
 logger = logging.getLogger("moviedb")
@@ -38,6 +39,7 @@ async def lifespan(app: FastAPI):
 
     get_client()
     db = get_database()
+    await system_settings_service.apply_overrides_on_startup(db)
     await movie_repository.ensure_indexes(db)
     await tag_repository.ensure_indexes(db)
     await user_repository.ensure_indexes(db)

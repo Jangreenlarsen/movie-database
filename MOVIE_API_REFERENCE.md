@@ -8,7 +8,7 @@ Konsulteres ved al integration med eksterne film-/stregkode-API'er (jf. CLAUDE.m
 
 - **Base URL**: `https://api.themoviedb.org/3`
 - **Auth**: Bearer-token (API Read Access Token, v4-auth) i `Authorization: Bearer <token>` header. Alternativt API-nøgle som query-param (`?api_key=`) på v3-endpoints — brug Bearer-metoden, den er nyere og anbefalet.
-- **Nøgle opbevares**: `backend/.env` som `TMDB_API_TOKEN`. Hentes gratis på https://www.themoviedb.org/settings/api (kræver konto).
+- **Nøgle opbevares**: `backend/.env` som `TMDB_API_TOKEN`, eller (feature #36) admin-sat direkte i UI'et under Indstillinger → System-indstillinger — den overstyrer `.env` med det samme, uden genstart. Hentes gratis på https://www.themoviedb.org/settings/api (kræver konto).
 - **Rate limit**: Ingen hård grænse dokumenteret pr. sekund længere (tidligere ~40 req/10s), men vær nænsom og cache resultater i MongoDB.
 
 ### Relevante endpoints
@@ -59,7 +59,7 @@ Implementeret i `backend/app/integrations/upc_client.py` mod **UPCitemdb**'s gra
 Implementeret i `backend/app/integrations/discogs_client.py`. Bruges kun når UPCitemdb ikke finder noget — UPCitemdb's trial-tier er stærkt USA-detail-centreret og misser ofte europæiske EAN-13 stregkoder på film; Discogs' community-katalogiserede database (oprindeligt musik, men dækker også DVD/Blu-ray/VHS-udgivelser med stregkoder) har typisk bedre international dækning. **Live-verificeret 2026-08-01** mod den rigtige API (fx `?barcode=085391773726` → traf "Don Davis - The Matrix").
 
 - **Base URL**: `https://api.discogs.com/database/search`
-- **Auth**: Valgfrit personal access token (`DISCOGS_TOKEN` i `.env`, oprettes på https://www.discogs.com/settings/developers) som `token=`-query-param — hæver rate-limit fra 25 til 60 req/min. Virker også helt uden token.
+- **Auth**: Valgfrit personal access token (`DISCOGS_TOKEN` i `.env`, eller admin-sat i UI'et under Indstillinger → System-indstillinger, feature #36 — oprettes på https://www.discogs.com/settings/developers) som `token=`-query-param — hæver rate-limit fra 25 til 60 req/min. Virker også helt uden token.
 - **Påkrævet header**: `User-Agent` med en beskrivende værdi (Discogs afviser/rate-limiter hårdere uden) — sat til `MovieDatabaseApp/1.0`.
 - **Request**: `GET ?barcode=<stregkode, kun cifre>`
 - **Response**: `results[]`, hvert element har bl.a. `title` (format: `"Artist - Titel"`, hvor "Artist" for film ofte er "Various", et studienavn, eller komponisten — fjernes med `_strip_artist_prefix` før TMDb-søgning) og selve `barcode[]`-listen (til evt. fremtidig krydstjek).

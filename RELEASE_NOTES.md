@@ -1,5 +1,13 @@
 # Release Notes
 
+## v0.34.1 (build 0041) — 2026-08-02
+
+- Fix: forbedret oprensning af titler fra stregkode-opslag før TMDb-søgning — flere "special edition"/"complete series"/rå "DVD"/"Blu-ray"-tilføjelser i produktnavnet fjernes nu, hvilket burde give flere match for rigtige film.
+
+## v0.34.0 (build 0040) — 2026-08-02
+
+- Ny funktion: filmens rating viser nu den faktiske IMDb-rating (kræver egen gratis OMDb-nøgle under Indstillinger → System-indstillinger) i stedet for TMDb's egen rating. Uden nøgle sat virker alt som før.
+
 ## v0.33.1 (build 0039) — 2026-08-02
 
 - Fix: kamera-scanning af stregkoder skulle nu finde markant flere matches. Scanneren forsøgte tidligere at læse alle mulige stregkode-typer (også dem der aldrig forekommer på film) i stedet for kun de to relevante — det kunne i sjældne tilfælde få den til at læse et forkert tal på et cover med flere stregkoder/meget grafik.

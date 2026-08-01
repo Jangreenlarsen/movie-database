@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.34.1 build 0041] — 2026-08-02 — Fix: bedre titel-oprensning før TMDb-søgning (BUGS.md #20)
+
+- `text_cleanup.clean_bracketed_title` strippede kun *indrammede* suffixer ("(DVD)", "[Blu-ray]") — udvidet til også at fjerne almindelig fritekst-boilerplate ("Special Edition", "Complete Series/Collection/Trilogy", "Season(s) N-M", regionskoder, bare "DVD"/"Blu-ray"/"VHS"/"UHD" uden parentes), som ellers kunne få en ægte films TMDb-søgning til at give 0 resultater.
+- Undersøgt live mod produktion (`journalctl` + direkte `tmdb_client.search_movies`-test): stregkoden `5039036089630` er en TV-serie-boks ("The Americans") — matcher aldrig en film-søgning, uanset oprensning, da appen bevidst kun søger TMDb's film-database. Ikke en fejl i sig selv, men afslørede den reelle oprensnings-svaghed ovenfor.
+- Nye tests i `test_text_cleanup.py` (7 — ingen fandtes for denne funktion før).
+
 ## [0.34.0 build 0040] — 2026-08-02 — Faktisk IMDb-rating i stedet for TMDb's (feature #46)
 
 - Ny `app/integrations/omdb_client.py`: henter den reelle IMDb-rating via OMDb (`GET ?i=<imdb_id>&apikey=`), nøglet på TMDb's `imdb_id` (nu også eksponeret direkte i `tmdb_client.get_movie_details`'s returdict). Fejler aldrig synligt — manglende nøgle/imdb_id/match/fejl giver alle `None`.

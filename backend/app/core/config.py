@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 60 * 24 * 30  # 30 dage
     cookie_secure: bool = False
 
+    # OTA-opdatering (feature #20) — kun meningsfuldt i produktion, se DEPLOYMENT.md.
+    # Scriptet ligger bevidst uden for git-working-tree'en (/opt/moviedb), så
+    # `git pull` aldrig overskriver den fil der er ved at blive eksekveret.
+    deploy_script_path: str = "/opt/moviedb-deploy.sh"
+    deploy_log_path: str = "/opt/moviedb-deploy.log"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

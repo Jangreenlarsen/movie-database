@@ -34,7 +34,30 @@ Ligger i `/opt/moviedb/backend/.env` (git-ignoreret, `chmod 600`, ejes af `jgl`)
 
 ## Opdatere produktion til en ny version
 
-Når en release er merget til `main` og pushet:
+### Via "Opdatér fra GitHub"-knappen (feature #20, anbefalet)
+
+Indstillinger-siden har en **admin-only** "Opdatér fra GitHub"-knap. Den kalder `POST /api/system/deploy`, som starter `/opt/moviedb-deploy.sh` i baggrunden (`git pull` + geninstaller afhængigheder + genstart `moviedb-backend` + genindlæs `caddy`) og svarer med det samme — siden poller derefter `/api/health`s `build`-felt indtil den nye version er oppe (typisk under et minut). Se ARCHITECTURE.md's note om OTA-opdatering for de tekniske detaljer.
+
+**Opsætning på serveren** (kun nødvendigt én gang, eller hvis `scripts/deploy.sh` ændres i repoet):
+
+```bash
+sudo cp /opt/moviedb/scripts/deploy.sh /opt/moviedb-deploy.sh
+sudo chmod +x /opt/moviedb-deploy.sh
+sudo chown jgl:jgl /opt/moviedb-deploy.sh
+sudo touch /opt/moviedb-deploy.log && sudo chown jgl:jgl /opt/moviedb-deploy.log
+```
+
+Scriptet selv kører som `jgl` (ingen sudo for `git`/`npm`/`pip`) — kun de to `systemctl`-kommandoer det til sidst kalder kræver root, via en **snæver** navngiven sudoers-regel (ikke bred `ALL`-adgang):
+
+```bash
+echo 'jgl ALL=(root) NOPASSWD: /usr/bin/systemctl restart moviedb-backend, /usr/bin/systemctl reload caddy' | sudo tee /etc/sudoers.d/jgl-deploy-ota
+sudo chmod 440 /etc/sudoers.d/jgl-deploy-ota
+sudo visudo -c
+```
+
+(Dette **erstatter** den bredere `jgl ALL=(ALL) NOPASSWD:ALL`-regel fra `/etc/sudoers.d/jgl-deploy` der blev sat op under den oprindelige installation — den var kun nødvendig mens serveren blev sat op fra bunden. Fjern den gamle fil, eller lad den blive hvis du fortsat vil have bred sudo-adgang til manuel drift via SSH.)
+
+### Manuelt (uden knappen, fx hvis backend slet ikke kan starte)
 
 ```bash
 ssh -i ~/.ssh/moviedb_deploy jgl@10.1.130.10

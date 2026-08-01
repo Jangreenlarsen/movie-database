@@ -632,6 +632,29 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
               {movie.rating != null && <> · ★ {movie.rating.toFixed(1)}</>}
             </p>
             {movie.genres.length > 0 && <p className="muted">{movie.genres.join(", ")}</p>}
+            {(movie.imdb_url || movie.trailer_url || movie.tmdb_id) && (
+              <p className="external-links">
+                {movie.imdb_url && (
+                  <a href={movie.imdb_url} target="_blank" rel="noreferrer">
+                    IMDb
+                  </a>
+                )}
+                {movie.trailer_url && (
+                  <a href={movie.trailer_url} target="_blank" rel="noreferrer">
+                    Trailer
+                  </a>
+                )}
+                {movie.tmdb_id && (
+                  <a
+                    href={`https://www.themoviedb.org/movie/${movie.tmdb_id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    TMDb
+                  </a>
+                )}
+              </p>
+            )}
           </div>
           <button type="button" className="btn modal-close" onClick={onClose}>
             ✕

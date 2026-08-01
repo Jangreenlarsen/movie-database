@@ -31,3 +31,24 @@ def test_raise_for_status_allows_2xx():
         request=httpx.Request("GET", "https://api.themoviedb.org/3/movie/1"),
     )
     tmdb_client._raise_for_status(response)  # should not raise
+
+
+def test_imdb_url_builds_link_from_id():
+    assert tmdb_client._imdb_url("tt0133093") == "https://www.imdb.com/title/tt0133093/"
+    assert tmdb_client._imdb_url(None) is None
+    assert tmdb_client._imdb_url("") is None
+
+
+def test_trailer_url_picks_first_official_youtube_trailer():
+    videos = [
+        {"site": "YouTube", "type": "Featurette", "key": "not-a-trailer"},
+        {"site": "Vimeo", "type": "Trailer", "key": "wrong-site"},
+        {"site": "YouTube", "type": "Trailer", "key": "vKQi3bBA1y8"},
+        {"site": "YouTube", "type": "Trailer", "key": "second-trailer"},
+    ]
+    assert tmdb_client._trailer_url(videos) == "https://www.youtube.com/watch?v=vKQi3bBA1y8"
+
+
+def test_trailer_url_returns_none_when_no_trailer_present():
+    assert tmdb_client._trailer_url([]) is None
+    assert tmdb_client._trailer_url([{"site": "YouTube", "type": "Teaser", "key": "x"}]) is None

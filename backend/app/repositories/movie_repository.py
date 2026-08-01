@@ -139,6 +139,13 @@ async def find_by_serial_number(db: AsyncIOMotorDatabase, serial_number: int) ->
     return await db[COLLECTION].find_one({"serial_number": serial_number})
 
 
+async def find_all_with_tmdb_id(db: AsyncIOMotorDatabase) -> list[dict]:
+    """Movies whose metadata was originally sourced from TMDb — the only
+    ones a bulk re-sync (FEATURES.md #33) can refresh anything for."""
+    cursor = db[COLLECTION].find({"tmdb_id": {"$ne": None}})
+    return await cursor.to_list(length=10_000)
+
+
 async def set_serial_number(db: AsyncIOMotorDatabase, movie_id: str, serial_number: int) -> None:
     await db[COLLECTION].update_one(
         {"_id": ObjectId(movie_id)}, {"$set": {"serial_number": serial_number}}

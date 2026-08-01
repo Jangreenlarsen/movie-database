@@ -36,3 +36,5 @@ Status: `planned` → `in-progress` → `done`. Tilføj entry *før* implementer
 | 30| Discogs som fallback-kilde ved stregkode-opslag (`/api/scan/lookup`) når UPCitemdb ikke finder et match — bedre dækning for europæiske EAN-koder | done | 0.16.0       |
 | 31| Print-venlig liste-visning af biblioteket: kompakt tabel (serienr/titel/år/format/lokation), én film pr. linje, optimeret til udskrift | done | 0.14.0       |
 | 32| "Flyt til bibliotek"-knap på ønskeliste-film: konverterer filmen fra ønske til biblioteket og tildeler et rigtigt serienummer (samme ubegrænsede tildeling som ved oprettelse) | done | 0.20.0       |
+| 33| "Opdatér alle film fra TMDb"-knap på Indstillinger-siden (admin): genindlæser cachet TMDb-metadata (titel/år/poster/plot/genrer/medvirkende/rating/spilletid/IMDb-/trailer-link) for alle film med et `tmdb_id`, uden at røre brugerens egne felter (tags/format/lokation/ejer/serienummer) | done | 0.21.0       |
+| 34| IMDb-link og YouTube-trailer-link på filmens detaljevisning, hentet fra TMDb (`external_ids`/`videos`) ved oprettelse og synkronisering. Samt et direkte link til filmens TMDb-side | done | 0.21.0       |

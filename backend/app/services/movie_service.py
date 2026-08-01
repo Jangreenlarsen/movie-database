@@ -3,9 +3,15 @@ from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
-from app.core.errors import DuplicateBarcodeError, MovieNotFoundError, NotAuthorizedError
+from app.core.errors import (
+    DuplicateBarcodeError,
+    MovieNotFoundError,
+    NotAuthorizedError,
+    TmdbNotFoundError,
+    TmdbUnavailableError,
+)
 from app.integrations import tmdb_client
-from app.models.movie import DeletedMovie, Movie, MovieCreate, MovieUpdate
+from app.models.movie import DeletedMovie, Movie, MovieCreate, MovieUpdate, TmdbSyncResult
 from app.models.settings import SerialNumberConfig, SerialNumberConfigUpdate
 from app.repositories import movie_repository
 from app.services import tag_service
@@ -28,6 +34,8 @@ def _to_model(document: dict) -> Movie:
         audio_types=document.get("audio_types", []),
         rating=document.get("rating"),
         runtime=document.get("runtime"),
+        imdb_url=document.get("imdb_url"),
+        trailer_url=document.get("trailer_url"),
         location=document.get("location"),
         owner=document.get("owner"),
         registered_by=document.get("registered_by"),
@@ -53,6 +61,8 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registere
             "cast": details["cast"],
             "rating": details["rating"],
             "runtime": details["runtime"],
+            "imdb_url": details["imdb_url"],
+            "trailer_url": details["trailer_url"],
         }
     else:
         movie_fields = {
@@ -65,6 +75,8 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registere
             "cast": payload.cast,
             "rating": None,
             "runtime": payload.runtime,
+            "imdb_url": payload.imdb_url,
+            "trailer_url": payload.trailer_url,
         }
 
     document = {
@@ -251,6 +263,50 @@ async def list_deleted_movies(db: AsyncIOMotorDatabase) -> list[DeletedMovie]:
         )
         for doc in documents
     ]
+
+
+async def sync_all_from_tmdb(db: AsyncIOMotorDatabase) -> TmdbSyncResult:
+    """Re-fetches every TMDb-sourced movie's cached metadata (title, year,
+    poster, overview, genres, cast, rating, runtime, IMDb/trailer links) from
+    TMDb as it stands right now — see FEATURES.md #33. User-entered fields (tags, format,
+    audio_types, location, owner, serial_number, registered_by, barcode)
+    are never touched. A single movie's TMDb lookup failing (removed from
+    TMDb, TMDb briefly down) does not abort the rest of the batch — it is
+    counted as failed and the sync continues, matching the "catch-all for
+    unexpected external-API failures" lesson in CLAUDE.md regel 16."""
+    documents = await movie_repository.find_all_with_tmdb_id(db)
+    synced = 0
+    failed_titles: list[str] = []
+
+    for document in documents:
+        try:
+            details = await tmdb_client.get_movie_details(document["tmdb_id"])
+        except (TmdbNotFoundError, TmdbUnavailableError):
+            failed_titles.append(document["title"])
+            continue
+
+        fields = {
+            "title": details["title"],
+            "year": details["year"],
+            "poster_url": details["poster_url"],
+            "overview": details["overview"],
+            "genres": details["genres"],
+            "cast": details["cast"],
+            "rating": details["rating"],
+            "runtime": details["runtime"],
+            "imdb_url": details["imdb_url"],
+            "trailer_url": details["trailer_url"],
+            "updated_at": datetime.now(timezone.utc),
+        }
+        await movie_repository.update(db, str(document["_id"]), fields)
+        synced += 1
+
+    return TmdbSyncResult(
+        total=len(documents),
+        synced=synced,
+        failed=len(failed_titles),
+        failed_titles=failed_titles,
+    )
 
 
 async def get_serial_number_config(db: AsyncIOMotorDatabase) -> SerialNumberConfig:

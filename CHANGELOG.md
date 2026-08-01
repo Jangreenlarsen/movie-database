@@ -2,6 +2,15 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.21.0 build 0024] — 2026-08-01 — TMDb-synkronisering + IMDb/trailer-links
+
+- `tmdb_client.get_movie_details` slår nu `credits`, `videos` og `external_ids` op i **ét** samlet TMDb-kald (`append_to_response=credits,videos,external_ids`) i stedet for to separate kald (detail + credits) — færre HTTP-requests, og giver samtidig adgang til IMDb-id og trailere.
+- Nye felter `imdb_url` (bygget fra `external_ids.imdb_id`) og `trailer_url` (første officielle YouTube-"Trailer" fra `videos.results`, `null` hvis ingen) på `Movie`/`MovieCreate`/`MovieUpdate`. Filmens detaljevindue viser nu IMDb-/Trailer-/TMDb-links når de findes.
+- Ny `POST /api/movies/sync-tmdb` (admin, registreret før `/{movie_id}`): genindlæser TMDb-metadata (titel/år/poster/plot/genrer/cast/rating/spilletid/imdb/trailer) for alle film med et `tmdb_id`, uden at røre brugerens egne felter. Fejler ét films opslag, fortsætter resten af kørslen (talt i `failed`/`failed_titles`). Ny "TMDb-synkronisering"-sektion på Indstillinger-siden.
+- Live-verificeret mod de rigtige TMDb/MongoDB (The Matrix → korrekt IMDb-/trailer-link).
+- Nye tests: `test_tmdb_client.py` (_imdb_url/_trailer_url enheds-tests), `test_tmdb_sync.py` (bevarer brugerfelter, springer manuelt oprettede film over, fortsætter forbi enkelt-film-fejl, kræver admin).
+- `ARCHITECTURE.md` opdateret. `FEATURES.md` #33, #34 tilføjet, markeret done.
+
 ## [0.20.0 build 0023] — 2026-08-01 — "Flyt til bibliotek"-knap på ønskeliste-film
 
 - `MovieUpdate` fik `is_wishlist: bool | None`. `movie_service.update_movie` opdager overgangen: `is_wishlist: true → false` tildeler et nyt `serial_number` via `next_serial_number` (ubegrænset, som ved oprettelse — ikke gated af `_assert_can_edit_serial_number`, da det er en førstegangs-tildeling, ikke en ændring). `is_wishlist: false → true` fjerner nummeret igen (nyt `movie_repository.clear_serial_number`, `$unset` — samme "udelad frem for null"-mønster som `barcode`/BUGS.md #1/#10) og *er* gated af samme adgangsregel som at redigere et eksisterende serienummer.

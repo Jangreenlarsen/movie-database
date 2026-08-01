@@ -41,6 +41,8 @@ class MovieCreate(BaseModel):
     genres: list[str] = Field(default_factory=list)
     cast: list[str] = Field(default_factory=list)
     runtime: int | None = None
+    imdb_url: str | None = None
+    trailer_url: str | None = None
     location: str | None = None
     owner: str | None = None
     is_wishlist: bool = False
@@ -63,6 +65,8 @@ class MovieUpdate(BaseModel):
     format: MovieFormat | None = None
     audio_types: list[AudioType] | None = None
     runtime: int | None = None
+    imdb_url: str | None = None
+    trailer_url: str | None = None
     location: str | None = None
     owner: str | None = None
     is_wishlist: bool | None = None
@@ -85,12 +89,21 @@ class Movie(BaseModel):
     audio_types: list[str] = Field(default_factory=list)
     rating: float | None = None
     runtime: int | None = None
+    imdb_url: str | None = None
+    trailer_url: str | None = None
     location: str | None = None
     owner: str | None = None
     registered_by: str | None = None
     is_wishlist: bool = False
     created_at: datetime
     updated_at: datetime
+
+
+class TmdbSyncResult(BaseModel):
+    total: int
+    synced: int
+    failed: int
+    failed_titles: list[str] = Field(default_factory=list)
 
 
 class DeletedMovie(BaseModel):

@@ -316,6 +316,23 @@
   border-bottom: 1px solid var(--border);
 }
 
+.external-links {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.external-links a {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent-strong);
+  text-decoration: none;
+}
+
+.external-links a:hover {
+  text-decoration: underline;
+}
+
 .modal-poster {
   width: 100px;
   aspect-ratio: 2 / 3;

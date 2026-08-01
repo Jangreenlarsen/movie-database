@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.21.0 (build 0024) — 2026-08-01
+
+- Filmens detaljevindue viser nu links til IMDb, en YouTube-trailer (når TMDb har en) og filmens TMDb-side.
+- Ny knap på Indstillinger under "TMDb-synkronisering": henter frisk metadata fra TMDb for alle dine film på én gang — praktisk hvis en poster, et plot eller en rating er blevet rettet på TMDb siden du tilføjede filmen. Dine egne oplysninger (tags, format, lokation osv.) røres ikke.
+
 ## v0.20.0 (build 0023) — 2026-08-01
 
 - Fik du fat i en film der stod på din ønskeliste? Åbn den og tryk "Flyt til bibliotek" — den får automatisk et rigtigt serienummer og flyttes over i filmbiblioteket.

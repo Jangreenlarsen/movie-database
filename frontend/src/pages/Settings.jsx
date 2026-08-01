@@ -14,6 +14,7 @@ export default function Settings({ user }) {
       <AccountSection user={user} />
       <SerialNumberSection isAdmin={isAdmin} />
       <DeletedMoviesSection />
+      {isAdmin && <TmdbSyncSection />}
       {isAdmin && <UsersSection currentUserId={user.id} />}
     </section>
   );
@@ -237,6 +238,55 @@ function DeletedMoviesSection() {
             </li>
           ))}
         </ul>
+      )}
+    </div>
+  );
+}
+
+function TmdbSyncSection() {
+  const [status, setStatus] = useState("idle");
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+
+  async function sync() {
+    setStatus("syncing");
+    setError(null);
+    setResult(null);
+    try {
+      const data = await api.syncMoviesFromTmdb();
+      setResult(data);
+      setStatus("done");
+    } catch (err) {
+      setError(err.message);
+      setStatus("error");
+    }
+  }
+
+  return (
+    <div className="card settings-section">
+      <h2>TMDb-synkronisering</h2>
+      <p className="muted">
+        Henter frisk metadata (titel, år, poster, plot, genrer, medvirkende, rating,
+        spilletid) fra TMDb for alle film der er oprettet via TMDb, og opdaterer det
+        lokalt gemte. Dine egne oplysninger (tags, format, lyd-type, lokation, ejer,
+        serienummer) rører den ikke. Kan tage et øjeblik afhængig af antal film.
+      </p>
+
+      <button type="button" className="btn btn-primary" onClick={sync} disabled={status === "syncing"}>
+        {status === "syncing" ? "Synkroniserer..." : "Opdatér alle film fra TMDb"}
+      </button>
+
+      {status === "error" && (
+        <div className="banner banner-error" style={{ marginTop: 12 }}>
+          {error}
+        </div>
+      )}
+
+      {status === "done" && result && (
+        <div className="banner banner-info" style={{ marginTop: 12 }}>
+          {result.synced} af {result.total} film opdateret.
+          {result.failed > 0 && ` ${result.failed} kunne ikke hentes: ${result.failed_titles.join(", ")}.`}
+        </div>
       )}
     </div>
   );

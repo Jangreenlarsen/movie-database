@@ -64,6 +64,7 @@ export const api = {
     request(`/movies/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteMovie: (id) => request(`/movies/${id}`, { method: "DELETE" }),
   listDeletedMovies: () => request("/movies/deleted"),
+  syncMoviesFromTmdb: () => request("/movies/sync-tmdb", { method: "POST" }),
   listTags: () => request("/tags"),
   attributeOptions: () => request("/movies/attribute-options"),
   getSerialNumberConfig: () => request("/settings/serial-number"),

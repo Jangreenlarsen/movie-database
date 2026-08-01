@@ -79,4 +79,6 @@ Implementeret i `backend/app/integrations/plex_client.py`. **Ikke** en metadata-
 
 ## Stregkode-formater i praksis
 
-- DVD/Blu-ray-covers i EU/DK bruger typisk **EAN-13**. Amerikanske udgivelser bruger ofte **UPC-A** (12 cifre) — EAN-13 er et superset (UPC-A = EAN-13 med et foranstillet 0), så samme lookup-flow håndterer begge hvis stregkode-detection-biblioteket understøtter begge formater (se TECH_REFERENCE.md).
+- DVD/Blu-ray-covers i EU/DK bruger typisk **EAN-13**. Amerikanske udgivelser bruger ofte **UPC-A** (12 cifre) — EAN-13 er et superset (UPC-A = EAN-13 med et foranstillet 0). To ting sikrer i praksis at begge håndteres korrekt (BUGS.md #19):
+  1. **Kamera-scanneren** (`BarcodeScanner.jsx`) begrænser `@zxing/browser`s `BrowserMultiFormatReader` eksplicit til kun `EAN_13`/`UPC_A` via `DecodeHintType.POSSIBLE_FORMATS`. Uden denne begrænsning prøver zxing *alle* symbologier den understøtter (QR, Code128, ITF, Codabar, ...) på hver frame — på et cover med flere stregkoder/grafik kunne den låse fast på støj og stille og roligt returnere et forkert tal for en helt anden symbologi, hvilket så fejlagtigt fremstod som "intet match" i UPC/Discogs.
+  2. **`scan_service._alternate_upc_ean_form`** prøver automatisk den anden længde (12↔13 cifre, foranstillet/fjernet nul) hvis det først-scannede tal ikke giver noget match — dækker tilfælde hvor en lookup-tjeneste kun har koden indekseret under den ene af de to former.

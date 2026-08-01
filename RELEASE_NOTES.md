@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.33.1 (build 0039) — 2026-08-02
+
+- Fix: kamera-scanning af stregkoder skulle nu finde markant flere matches. Scanneren forsøgte tidligere at læse alle mulige stregkode-typer (også dem der aldrig forekommer på film) i stedet for kun de to relevante — det kunne i sjældne tilfælde få den til at læse et forkert tal på et cover med flere stregkoder/meget grafik.
+
 ## v0.33.0 (build 0038) — 2026-08-01
 
 - Ny Plex-integration: filmens detaljevindue kan nu tjekke om filmen er tilgængelig på din egen Plex-server, med et direkte "Afspil i Plex"-link hvis den er. Kræver at Plex-server-URL og -token sættes under Indstillinger → System-indstillinger (admin). **Bemærk**: endnu ikke afprøvet mod en rigtig Plex-server — sig til hvis noget ikke matcher korrekt, så kan det justeres.

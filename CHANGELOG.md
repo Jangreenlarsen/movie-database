@@ -2,6 +2,13 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.33.1 build 0039] — 2026-08-02 — Fix: kamera-scan fandt ofte intet match (BUGS.md #19)
+
+- `BarcodeScanner.jsx`: `BrowserMultiFormatReader` begrænses nu eksplicit til `EAN_13`/`UPC_A` via `DecodeHintType.POSSIBLE_FORMATS`, i stedet for at forsøge alle stregkode-symbologier zxing understøtter på hver frame. Uden begrænsningen kunne scanneren på et cover med flere stregkoder/meget grafik låse fast på støj og stille returnere et forkert tal for en anden symbologi — hvilket fejlagtigt fremstod som "intet match", selvom brugerens øjne/manuel indtastning af samme tal virkede fint. `@zxing/library` tilføjet som direkte dependency (var kun transitiv peer-dependency).
+- Ny `scan_service._alternate_upc_ean_form()`: prøver automatisk UPC-A (12 cifre) ↔ EAN-13 (13 cifre, foranstillet 0) hvis første opslag ikke giver match — dækker tilfælde hvor en lookup-tjeneste kun har koden indekseret under den ene form. Samt `.strip()` af scan-input.
+- `MOVIE_API_REFERENCE.md` opdateret — den tidligere dokumenterede antagelse om format-håndtering var reelt aldrig implementeret.
+- Nye tests i `test_scan.py` (7): format-konvertering begge veje, ingen konvertering for ægte 13-cifrede EAN'er, fallback finder match, stadig intet match efter fallback, whitespace trimmes.
+
 ## [0.33.0 build 0038] — 2026-08-01 — Plex-integration (feature #45)
 
 - Nyt `app/integrations/plex_client.py`: slår en film op mod brugerens egen Plex-server via `/identity` (machineIdentifier) + `/search?query=` (kandidater). Matcher først på TMDb-id via kandidaternes `Guid[].id`, ellers på præcist titel+år. Fejler aldrig synligt — manglende konfiguration/utilgængelig server/intet match giver alle `{"available": false}`.

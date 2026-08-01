@@ -13,7 +13,7 @@ Status: `planned` → `in-progress` → `done`. Tilføj entry *før* implementer
 | 7 | Film-detaljevisning (poster, plot, cast, genre, tags, format, lyd)      | done | 0.5.0       |
 | 8 | Redigér/slet film (modal i biblioteksvisning: tags/format/audio_types + slet) | done | 0.5.0       |
 | 9 | PWA-installation på iPhone (manifest + service worker + ikoner)        | planned | -       |
-| 10| Docker Compose-deployment (backend + frontend + MongoDB)                | planned | -       |
+| 10| Docker Compose-deployment (backend + frontend + MongoDB)                | droppet til fordel for native deployment (se DEPLOYMENT.md) | -       |
 | 11| Strukturerede valgfrie attributter (lyd-type multi-select, film-format single-select fra fast liste) + auto-tildelt fortløbende serienummer pr. film. Filtrerbare i biblioteksvisningen (`/api/movies?format=&audio_types=`) | done | 0.4.0       |
 | 12| Moderne visuelt redesign af frontend (design-tokens, poster-grid, filter-chips, detalje-modal, scan-viewfinder)  | done | 0.5.0       |
 | 13| TMDb rating pr. film (vote_average, auto-hentet ved TMDb-oprettelse). Sortering i biblioteksvisning (titel/år/tilføjet/rating, stigende/faldende). Bruger-konfigurerbar visning af hvilke felter der vises på filmkort (år/tags/format/lyd/rating), gemt i browserens localStorage | done | 0.6.0       |

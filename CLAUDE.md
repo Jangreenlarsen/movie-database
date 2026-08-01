@@ -90,6 +90,8 @@ Hver film kan tildeles frie, **brugerdefinerede tags** (fx "Julefilm", "Set med 
     - **Bulk-operationer mod eksterne API'er**: når en handling itererer over mange elementer og kalder en ekstern API for hvert (fx en "synkroniser alt"-funktion), skal fejl der rammer *hele batchen* (manglende/ugyldig API-nøgle, rate-limit) håndteres adskilt fra fejl der kun rammer ét element. Tjek forudsætninger (API-nøgle sat) *før* løkken startes i stedet for at lade hvert element fejle for samme grundårsag, og stop batchen med det samme ved et rate-limit-svar i stedet for at blive ved med at forsøge resten mod en allerede-blokeret API (jf. BUGS.md #15/#16).
     - Ved større funktioner (auth, permissions, betalinger, data-integritet) skal Claude proaktivt overveje disse punkter under implementering, ikke først vente på at Jan beder om en fejl-gennemgang.
 
+17. **Produktions-deployment**: [DEPLOYMENT.md](DEPLOYMENT.md) indeholder den bindende reference for hvordan produktion faktisk kører (native services på en dedikeret Debian-server — MongoDB, backend via systemd/uvicorn, Caddy som reverse proxy/TLS — *ikke* `docker-compose.yml`, som er et uverificeret scaffold). Konsultér og hold opdateret ved enhver ændring der påvirker hvordan appen deployes, opdateres eller driftes (nye systemd-services, nye miljøvariabler, ændret portbrug osv.).
+
 ---
 
 ## Workflow for enhver opgave
@@ -142,7 +144,8 @@ Scan cover (UPC/EAN) → UPC-opslag (titel-gæt) → TMDb-søgning på gættet t
 ├── BUGS.md                    # bugs (open / fixed)
 ├── CHANGELOG.md               # alle kodeændringer, nyeste øverst
 ├── RELEASE_NOTES.md           # brugervenlige release-noter
-├── docker-compose.yml         # backend + frontend + MongoDB
+├── DEPLOYMENT.md              # produktions-drift (native Debian-server, ikke Docker — se regel 17)
+├── docker-compose.yml         # uverificeret scaffold, IKKE brugt i produktion (se DEPLOYMENT.md)
 ├── .claude/
 │   └── settings.local.json    # Claude-rettigheder
 ├── backend/                   # FastAPI-app

@@ -2,6 +2,17 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.36.0 build 0044] — 2026-08-02 — TV-serier: frontend + scan-routing + branding (feature #47/#48/#49/#50)
+
+Fuldfører TV-serie-understøttelsen (backend var feature #47/#48/#49's forrige to commits) — nu synlig og brugbar i UI'et.
+
+- Ny `frontend/src/pages/TvShows.jsx`: "TV-serier"-fane, søgning/tag/format/lyd/medietype/set-status-filtrering, ét-niveaus sortering (bevidst uden den fulde fler-niveau-sortering/preset-maskine fra film — se "ikke porteret" nedenfor), detaljevindue med tags/format/lokation/ejer/personlig rating/note/set-status samt en sæson-liste (`SeasonRow`) med "ejer"-checkbox pr. sæson og udvidelig episode-liste med "set"-checkbox pr. episode.
+- `MovieLookupForm.jsx` udvidet: manuel søgning kalder nu både `/api/movies/tmdb-search` og `/api/tv-shows/tmdb-search` parallelt (samme mønster som stregkode-scannet allerede fik i forrige commit); hver kandidat har et "Film"/"TV-serie"-badge; dublet-tjek og gem-handling routes til den rigtige ressource ud fra kandidatens `media_kind`. Genbruges uændret af både "Scan"-siden og ønskelistens tilføj-panel — nu for begge typer.
+- **Live-verificeret mod rigtig lokal MongoDB + rigtig TMDb** (ikke kun mocked tests): oprettede den ægte "Breaking Bad" via `tmdb_id`, bekræftede korrekt sæson-liste (inkl. "Specials"-sæson 0), markerede sæson 1 ejet (udløste et ægte lazy TMDb-kald, fik 7 rigtige episodetitler inkl. "Pilot"), markerede episode 1 set, bekræftede kun episode 1 (ikke 2-7) blev påvirket. Ryddet op efter test.
+- **Ikke porteret til TV i denne omgang** (bevidst afgrænset scope): fler-niveau sortering/gemte visninger (#17/#27/#44), skuespiller/instruktør-browsing (#41), franchise-gruppering (#42), Plex-integration (#45), statistik-siden (#43). Kun film har disse indtil videre.
+- **Branding** (feature #50): app-titel "Filmbibliotek" → "Film & TV-bibliotek" (header, login-skærm, PWA-manifest, `<title>`), "Bibliotek"-fanen omdøbt til "Film", "Scan film" → "Scan" (dækker nu begge typer). `CLAUDE.md`s projektbeskrivelse, arkitektur-diagram og projektstruktur-liste opdateret til at nævne TV-serier som egen ressource.
+- Ingen nye backend-tests i denne commit (frontend-only + live-manuel backend-verifikation) — de 215 eksisterende backend-tests fra de to forrige TV-commits dækker uændret.
+
 ## [0.35.1 build 0043] — 2026-08-02 — Stregkode-scan søger nu både film og TV, backend (feature #49)
 
 - `scan_service.lookup_by_barcode` søger nu `tmdb_client.search_movies` **og** `search_tv` for det gættede produktnavn, i stedet for kun film. Kandidater fra begge lister samles i ét svar (film først, derefter TV), hver tagget med nyt `media_kind: "movie"|"tv"`-felt på `MovieCandidate`.

@@ -89,4 +89,41 @@ export const api = {
   getSystemSettings: () => request("/settings/system"),
   updateSystemSettings: (payload) =>
     request("/settings/system", { method: "PATCH", body: JSON.stringify(payload) }),
+
+  // TV-serier (feature #47) — egen ressource, samme kontrakt-form som film.
+  listTvShows: ({ q, tags, format, audioTypes, mediaTypes, sort, wishlist, watched } = {}) => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (tags?.length) params.set("tags", tags.join(","));
+    if (format?.length) params.set("format", format.join(","));
+    if (audioTypes?.length) params.set("audio_types", audioTypes.join(","));
+    if (mediaTypes?.length) params.set("media_types", mediaTypes.join(","));
+    if (sort) params.set("sort", sort);
+    if (wishlist) params.set("wishlist", "true");
+    if (watched != null) params.set("watched", String(watched));
+    const query = params.toString();
+    return request(`/tv-shows${query ? `?${query}` : ""}`);
+  },
+  getTvShow: (id) => request(`/tv-shows/${id}`),
+  createTvShow: (payload) =>
+    request("/tv-shows", { method: "POST", body: JSON.stringify(payload) }),
+  updateTvShow: (id, payload) =>
+    request(`/tv-shows/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  deleteTvShow: (id) => request(`/tv-shows/${id}`, { method: "DELETE" }),
+  listDeletedTvShows: () => request("/tv-shows/deleted"),
+  tvAttributeOptions: () => request("/tv-shows/attribute-options"),
+  checkTvDuplicate: (tmdbId) =>
+    request(`/tv-shows/check-duplicate?${new URLSearchParams({ tmdb_id: tmdbId })}`),
+  tvTmdbSearch: (query) =>
+    request(`/tv-shows/tmdb-search?${new URLSearchParams({ query })}`),
+  setSeasonOwned: (tvShowId, seasonNumber, owned) =>
+    request(`/tv-shows/${tvShowId}/seasons/${seasonNumber}`, {
+      method: "PATCH",
+      body: JSON.stringify({ owned }),
+    }),
+  setEpisodeWatched: (tvShowId, seasonNumber, episodeNumber, watched, watchedAt) =>
+    request(`/tv-shows/${tvShowId}/seasons/${seasonNumber}/episodes/${episodeNumber}`, {
+      method: "PATCH",
+      body: JSON.stringify({ watched, watched_at: watchedAt }),
+    }),
 };

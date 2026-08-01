@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.35.1 build 0043] — 2026-08-02 — Stregkode-scan søger nu både film og TV, backend (feature #49)
+
+- `scan_service.lookup_by_barcode` søger nu `tmdb_client.search_movies` **og** `search_tv` for det gættede produktnavn, i stedet for kun film. Kandidater fra begge lister samles i ét svar (film først, derefter TV), hver tagget med nyt `media_kind: "movie"|"tv"`-felt på `MovieCandidate`.
+- `GET /api/tv-shows/tmdb-search` sætter nu korrekt `media_kind="tv"` (fanget under implementeringen — ville ellers stille og roligt have arvet "movie"-default'en fra den delte `MovieCandidate`-model).
+- Direkte adressering af BUGS.md #20's konkrete eksempel: et scannet TV-boxset ("The Americans") vil nu faktisk dukke op som en valgbar kandidat, tagget som TV-serie, i stedet for at give "intet match".
+- Eksisterende scan-lookup-tests opdateret til eksplicit at mocke `search_tv` (var utilsigtet afhængige af en rigtig `TMDB_API_TOKEN` i lokal `.env` for stiltiende at lykkes mod den ægte API — ikke hermetisk). Ny test verificerer sammenfletningen af film- og TV-kandidater.
+- **Kun backend** — frontend bruger endnu ikke `media_kind` til at route gem-handlingen til det rigtige bibliotek. Det følger i næste commit sammen med TV-serier-fanen.
+
 ## [0.35.0 build 0042] — 2026-08-02 — TV-serier: ny selvstændig ressource, backend (feature #47/#48)
 
 Jan bad om fuld TV-serie-understøttelse (2026-08-02): egen ressource (ikke bare et filter på filmbiblioteket), med dyb sæson/episode-sporing. Dette er backend-delen — frontend, stregkode-scan-integration og branding følger i separate commits.

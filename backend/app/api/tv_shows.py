@@ -57,7 +57,7 @@ async def create_tv_show(
 @router.get("/tmdb-search", response_model=list[MovieCandidate])
 async def tmdb_search(query: str = Query(...)):
     candidates = await tmdb_client.search_tv(query)
-    return [MovieCandidate(**candidate) for candidate in candidates]
+    return [MovieCandidate(**candidate, media_kind="tv") for candidate in candidates]
 
 
 @router.get("/check-duplicate", response_model=list[DuplicateTvShowMatch])

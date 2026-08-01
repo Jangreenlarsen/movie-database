@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.35.1 (build 0043) — 2026-08-02
+
+- Endnu et skridt mod TV-serie-understøttelse (teknisk, ikke synligt i UI'et endnu): stregkode-scanning kan nu genkende TV-serier, ikke kun film.
+
 ## v0.35.0 (build 0042) — 2026-08-02
 
 - Første skridt mod TV-serie-understøttelse: teknisk fundament på plads (egen ressource, sæson/episode-sporing). Endnu ingen synlig knap/fane i appen — det kommer i en efterfølgende opdatering.

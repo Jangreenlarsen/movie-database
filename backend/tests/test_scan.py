@@ -3,6 +3,12 @@ from app.integrations import discogs_client, tmdb_client, upc_client
 from app.services import scan_service
 
 
+async def _no_tv_matches(query):
+    """Default TV-search stub for scan-lookup tests that only care about
+    the movie side — feature #49 makes lookup_by_barcode search both."""
+    return []
+
+
 async def test_scan_lookup_returns_candidates(client, monkeypatch):
     async def fake_lookup_title(barcode):
         assert barcode == "012569059406"
@@ -16,12 +22,14 @@ async def test_scan_lookup_returns_candidates(client, monkeypatch):
 
     monkeypatch.setattr(upc_client, "lookup_title", fake_lookup_title)
     monkeypatch.setattr(tmdb_client, "search_movies", fake_search_movies)
+    monkeypatch.setattr(tmdb_client, "search_tv", _no_tv_matches)
 
     response = await client.post("/api/scan/lookup", json={"barcode": "012569059406"})
     assert response.status_code == 200
     data = response.json()
     assert data["guessed_title"] == "The Matrix (DVD)"
     assert data["candidates"][0]["tmdb_id"] == 603
+    assert data["candidates"][0]["media_kind"] == "movie"
 
 
 async def test_scan_lookup_no_upc_match_returns_empty_candidates(client, monkeypatch):
@@ -59,6 +67,7 @@ async def test_scan_lookup_falls_back_to_discogs_when_upc_has_no_match(client, m
     monkeypatch.setattr(upc_client, "lookup_title", fake_upc_lookup_title)
     monkeypatch.setattr(discogs_client, "lookup_title", fake_discogs_lookup_title)
     monkeypatch.setattr(tmdb_client, "search_movies", fake_search_movies)
+    monkeypatch.setattr(tmdb_client, "search_tv", _no_tv_matches)
 
     response = await client.post("/api/scan/lookup", json={"barcode": "5051890012345"})
     assert response.status_code == 200
@@ -104,6 +113,7 @@ async def test_scan_lookup_retries_with_alternate_upc_ean_form(client, monkeypat
     monkeypatch.setattr(upc_client, "lookup_title", fake_upc_lookup_title)
     monkeypatch.setattr(discogs_client, "lookup_title", fake_discogs_lookup_title)
     monkeypatch.setattr(tmdb_client, "search_movies", fake_search_movies)
+    monkeypatch.setattr(tmdb_client, "search_tv", _no_tv_matches)
 
     response = await client.post("/api/scan/lookup", json={"barcode": "0012569059406"})
     assert response.status_code == 200
@@ -134,10 +144,39 @@ async def test_scan_lookup_trims_whitespace(client, monkeypatch):
 
     monkeypatch.setattr(upc_client, "lookup_title", fake_lookup_title)
     monkeypatch.setattr(tmdb_client, "search_movies", fake_search_movies)
+    monkeypatch.setattr(tmdb_client, "search_tv", _no_tv_matches)
 
     response = await client.post("/api/scan/lookup", json={"barcode": "  012569059406\n"})
     assert response.status_code == 200
     assert response.json()["guessed_title"] == "The Matrix (DVD)"
+
+
+async def test_scan_lookup_merges_movie_and_tv_candidates(client, monkeypatch):
+    """Regression test for BUGS.md #20/FEATURES.md #49 — a scanned barcode
+    whose product is a TV show must actually surface as a candidate,
+    tagged so the frontend can save it to the right resource."""
+
+    async def fake_lookup_title(barcode):
+        return "The Americans"
+
+    async def fake_search_movies(query):
+        return [{"tmdb_id": 24909, "title": "The Young Americans", "year": 1993, "poster_url": None}]
+
+    async def fake_search_tv(query):
+        return [{"tmdb_id": 1409, "title": "The Americans", "year": 2013, "poster_url": None}]
+
+    monkeypatch.setattr(upc_client, "lookup_title", fake_lookup_title)
+    monkeypatch.setattr(tmdb_client, "search_movies", fake_search_movies)
+    monkeypatch.setattr(tmdb_client, "search_tv", fake_search_tv)
+
+    response = await client.post("/api/scan/lookup", json={"barcode": "5039036089630"})
+    assert response.status_code == 200
+    candidates = response.json()["candidates"]
+    assert len(candidates) == 2
+    assert candidates[0]["media_kind"] == "movie"
+    assert candidates[0]["title"] == "The Young Americans"
+    assert candidates[1]["media_kind"] == "tv"
+    assert candidates[1]["title"] == "The Americans"
 
 
 async def test_create_movie_from_tmdb_id_fetches_metadata(client, monkeypatch):

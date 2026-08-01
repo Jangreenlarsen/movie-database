@@ -326,6 +326,7 @@ async def test_tmdb_search_endpoint(client, monkeypatch):
     response = await client.get("/api/tv-shows/tmdb-search", params={"query": "Breaking"})
     assert response.status_code == 200
     assert response.json()[0]["title"] == "Breaking Bad"
+    assert response.json()[0]["media_kind"] == "tv"
 
 
 async def test_attribute_options_reuses_movie_enums(client):

@@ -42,7 +42,7 @@ Konsulteres ved al integration med eksterne film-/stregkode-API'er (jf. CLAUDE.m
 
 ## UPC-opslagstjeneste (stregkode → produkt/titel)
 
-Implementeret i `backend/app/integrations/upc_client.py` mod **UPCitemdb**'s gratis trial-tier (live-verificeret). Skift udbyder ved at ændre denne fil alene — service-laget kender kun til `lookup_title(barcode) -> str | None`.
+Implementeret i `backend/app/integrations/upc_client.py` mod **UPCitemdb**'s gratis trial-tier (live-verificeret) som primær kilde, med **Discogs** som fallback (se nedenfor) når UPCitemdb ikke finder et match. `scan_service.lookup_by_barcode` prøver dem i rækkefølge — begge integrationer eksponerer samme `lookup_title(barcode) -> str | None`-kontrakt, så en tredje kilde kan tilføjes samme sted uden at ændre service- eller API-laget.
 
 ### UPCitemdb
 - **Base URL**: `https://api.upcitemdb.com/prod/trial/lookup`
@@ -51,8 +51,19 @@ Implementeret i `backend/app/integrations/upc_client.py` mod **UPCitemdb**'s gra
 - **Response**: `items[]` med bl.a. `title`, `brand`, `images[]`. Titel bruges som gæt til efterfølgende TMDb-søgning — brand/model-navne på DVD-covers er ofte ikke rene filmtitler, så forvent at skulle rense/forkorte strengen (fx fjern "(DVD)", "[Blu-ray]", årstal i parentes) før TMDb-søgning.
 
 ### Fejlhåndtering
-- `code: "INVALID_UPC"` eller tomt `items[]` → intet gæt, frontend falder tilbage til manuel TMDb-søgning (se `/api/movies/tmdb-search` i ARCHITECTURE.md).
+- `code: "INVALID_UPC"` eller tomt `items[]` → intet gæt, falder videre til Discogs (se nedenfor), og derefter til manuel TMDb-søgning (se `/api/movies/tmdb-search` i ARCHITECTURE.md).
 - Rate-limit ramt → log som warning, returnér "intet gæt" til frontend i stedet for at fejle hele scan-flowet (UPC-opslag er et *nice-to-have* forudfyld, ikke en kritisk sti).
+
+### Discogs (fallback, feature #30)
+
+Implementeret i `backend/app/integrations/discogs_client.py`. Bruges kun når UPCitemdb ikke finder noget — UPCitemdb's trial-tier er stærkt USA-detail-centreret og misser ofte europæiske EAN-13 stregkoder på film; Discogs' community-katalogiserede database (oprindeligt musik, men dækker også DVD/Blu-ray/VHS-udgivelser med stregkoder) har typisk bedre international dækning. **Live-verificeret 2026-08-01** mod den rigtige API (fx `?barcode=085391773726` → traf "Don Davis - The Matrix").
+
+- **Base URL**: `https://api.discogs.com/database/search`
+- **Auth**: Valgfrit personal access token (`DISCOGS_TOKEN` i `.env`, oprettes på https://www.discogs.com/settings/developers) som `token=`-query-param — hæver rate-limit fra 25 til 60 req/min. Virker også helt uden token.
+- **Påkrævet header**: `User-Agent` med en beskrivende værdi (Discogs afviser/rate-limiter hårdere uden) — sat til `MovieDatabaseApp/1.0`.
+- **Request**: `GET ?barcode=<stregkode, kun cifre>`
+- **Response**: `results[]`, hvert element har bl.a. `title` (format: `"Artist - Titel"`, hvor "Artist" for film ofte er "Various", et studienavn, eller komponisten — fjernes med `_strip_artist_prefix` før TMDb-søgning) og selve `barcode[]`-listen (til evt. fremtidig krydstjek).
+- **Fejlhåndtering**: samme filosofi som UPCitemdb — enhver fejl (netværk, ikke-200, tomt `results[]`) logges og returnerer `None`, aldrig en kastet exception (nice-to-have forudfyld, ikke kritisk sti).
 
 ---
 

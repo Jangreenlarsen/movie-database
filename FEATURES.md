@@ -33,5 +33,5 @@ Status: `planned` → `in-progress` → `done`. Tilføj entry *før* implementer
 | 27| Fler-niveau sortering (se #17) udvides: en valgt kombination af sorteringsniveauer kan gemmes som navngivet preset og hurtigt genvælges via dropdown i biblioteksvisningen | planned | -       |
 | 28| Ønskeliste-side ("Ønsker"): samme søge-/filtrerings-/sorteringsfunktioner som biblioteksvisningen, men uden serienummer | planned | -       |
 | 29| Soft-delete af film: ved sletning logges film (serienr, titel, hvornår, hvem) i en separat slettet-film-liste i stedet for kun at forsvinde. Serienummeret frigøres derved automatisk til genbrug | done | 0.15.0       |
-| 30| Discogs som fallback-kilde ved stregkode-opslag (`/api/scan/lookup`) når UPCitemdb ikke finder et match — bedre dækning for europæiske EAN-koder | planned | -       |
+| 30| Discogs som fallback-kilde ved stregkode-opslag (`/api/scan/lookup`) når UPCitemdb ikke finder et match — bedre dækning for europæiske EAN-koder | done | 0.16.0       |
 | 31| Print-venlig liste-visning af biblioteket: kompakt tabel (serienr/titel/år/format/lokation), én film pr. linje, optimeret til udskrift | done | 0.14.0       |

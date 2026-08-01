@@ -32,7 +32,7 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 | GET    | `/api/movies/deleted`          | Liste over slettede film (serienr, titel, år, format, tidspunkt, hvem). Registreret før `/{movie_id}`. | done |
 | GET    | `/api/movies/attribute-options`| Liste gyldige `format`- og `audio_types`-værdier (enum-kilde til frontend-dropdowns). Registreret før `/{movie_id}`. | done |
 | GET    | `/api/tags`                    | Liste alle tags (til autocomplete)                            | done |
-| POST   | `/api/scan/lookup`             | Input: scannet UPC/EAN. Output: UPC-gæt + TMDb-kandidater. 502 hvis TMDb er utilgængelig/token mangler. | done |
+| POST   | `/api/scan/lookup`             | Input: scannet UPC/EAN. Output: titel-gæt + TMDb-kandidater. Prøver UPCitemdb først, herefter Discogs som fallback hvis intet match (se MOVIE_API_REFERENCE.md). 502 hvis TMDb er utilgængelig/token mangler. | done |
 | GET    | `/api/movies/tmdb-search`      | Direkte TMDb-titel-søgning (fallback når scan ikke matcher). Registreret før `/{movie_id}`. | done |
 | GET    | `/api/health`                  | Health check (backend + MongoDB-forbindelse), samt `version`/`build` fra `version.json` (se `app/core/version_info.py`) | done |
 | POST   | `/api/auth/register`           | Opret bruger ({username, password}). 409 hvis brugernavn er taget. Sætter auth-cookie. | done |
@@ -79,6 +79,7 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 2. Frontend → POST /api/scan/lookup { barcode }
 3. Backend (scan_service):
    a. integrations/upc_client → slår barcode op → titel-gæt (eller ingen match)
+   a2. Intet match fra UPCitemdb? integrations/discogs_client prøves som fallback (bedre dækning for europæiske EAN-koder)
    b. integrations/tmdb_client → søger TMDb på titel-gæt → kandidat-liste
    c. returnerer kandidater (poster, år, tmdb_id) til frontend
 4. Frontend: bruger vælger korrekt kandidat (eller søger manuelt via /api/movies/tmdb-search)

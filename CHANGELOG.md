@@ -2,6 +2,15 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.16.0 build 0018] — 2026-08-01 — Discogs som fallback ved stregkode-opslag
+
+- Undersøgt FEATURES.md #30 / brugerens rapport om at "stregkode-scanning ikke virker": ikke en fejl i koden — UPCitemdb's trial-tier svarer korrekt (live-verificeret), men er stærkt USA-detail-centreret og misser ofte europæiske EAN-13 stregkoder på film, hvilket viste sig som "intet match" i UI'et.
+- Ny `backend/app/integrations/discogs_client.py`: `lookup_title(barcode)` mod Discogs' `database/search?barcode=`, samme "aldrig kast en exception"-kontrakt som `upc_client`. Live-verificeret mod den rigtige API. Virker uden token (25 req/min) eller med et valgfrit `DISCOGS_TOKEN` (60 req/min).
+- `scan_service.lookup_by_barcode` prøver nu Discogs som fallback når UPCitemdb ikke finder noget, før der falses tilbage til "intet gæt" (→ frontend beder om manuel søgning).
+- Udtrukket delt `clean_bracketed_title`-helper (`integrations/text_cleanup.py`) fra `upc_client`, genbruges af `discogs_client`. Discogs-titler renses desuden for det ledende "Artist - "-præfiks (`_strip_artist_prefix`) som Discogs sætter på stort set alle udgivelser.
+- Nye tests: `test_discogs_client.py` (title-cleaning, tomt resultat, netværksfejl → `None`), `test_scan.py::test_scan_lookup_falls_back_to_discogs_when_upc_has_no_match`.
+- `MOVIE_API_REFERENCE.md`, `ARCHITECTURE.md`, `.env.example` opdateret. `FEATURES.md` #30 markeret done.
+
 ## [0.15.0 build 0017] — 2026-08-01 — Soft-delete af film + slettet-liste
 
 - Ny collection `deleted_movies` (`movie_repository.archive_deleted`/`list_deleted`, index på `deleted_at`).

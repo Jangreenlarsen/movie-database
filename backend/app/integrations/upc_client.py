@@ -1,18 +1,12 @@
 import logging
-import re
 
 import httpx
 
+from app.integrations.text_cleanup import clean_bracketed_title
+
 BASE_URL = "https://api.upcitemdb.com/prod/trial/lookup"
 
-_BRACKETED_SUFFIX = re.compile(r"[\[(][^\])]*[\])]")
-
 logger = logging.getLogger("moviedb")
-
-
-def _clean_title(raw_title: str) -> str:
-    cleaned = _BRACKETED_SUFFIX.sub(" ", raw_title)
-    return " ".join(cleaned.split()).strip()
 
 
 async def lookup_title(barcode: str) -> str | None:
@@ -37,4 +31,4 @@ async def lookup_title(barcode: str) -> str | None:
     if not raw_title:
         return None
 
-    return _clean_title(raw_title)
+    return clean_bracketed_title(raw_title)

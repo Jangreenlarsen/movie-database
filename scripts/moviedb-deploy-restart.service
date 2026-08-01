@@ -1,0 +1,10 @@
+[Unit]
+Description=Restart moviedb-backend + reload caddy (triggered by OTA deploy script, feature #20)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl restart moviedb-backend
+ExecStart=/usr/bin/systemctl reload caddy
+ExecStartPost=/usr/bin/rm -f /opt/moviedb/.deploy-restart-trigger
+StandardOutput=append:/opt/moviedb-deploy.log
+StandardError=append:/opt/moviedb-deploy.log

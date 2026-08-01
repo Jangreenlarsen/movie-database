@@ -2,6 +2,15 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.23.1 build 0028] — 2026-08-01 — Fix: "Opdatér fra GitHub" fejlede med 500 i produktion (BUGS.md #18)
+
+- Rodårsag var todelt og skjult under udviklingen fordi den manuelle verifikation kørte som et almindeligt SSH-shell i stedet for gennem den faktiske sandboxede `moviedb-backend`-systemd-service: (1) `ProtectSystem=strict` gjorde det meste af filsystemet read-only, men `ReadWritePaths` dækkede kun `backend/`, ikke deploy-loggen, resten af git-repoet eller `npm run build`'s brug af `/tmp`; (2) `NoNewPrivileges=true` gør `sudo` permanent ubrugeligt for servicen og alle dens child-processer — deploy-scriptets `sudo systemctl restart/reload` kunne aldrig lykkes, uanset sudoers-opsætning.
+- `moviedb-backend.service`: `ReadWritePaths` udvidet til `/opt/moviedb /opt/moviedb-deploy.log`, ny `PrivateTmp=true` (giver servicen sit eget skrivbare `/tmp` — en hærdningsforbedring i sig selv).
+- `scripts/deploy.sh`: `sudo systemctl ...`-kaldene fjernet. Scriptet rører nu i stedet en trigger-fil (`.deploy-restart-trigger` i repo-roden, git-ignoreret), som to nye systemd-units — `scripts/moviedb-deploy-restart.path` (watcher) og `scripts/moviedb-deploy-restart.service` (root, oneshot: genstarter `moviedb-backend` + genindlæser `caddy`) — reagerer på. Ingen `sudo`/setuid involveret, så `NoNewPrivileges=true` kan bevares fuldt ud.
+- Den nu overflødige (og aldrig-funktionsdygtige) snævre sudoers-regel `/etc/sudoers.d/jgl-deploy-ota` er fjernet fra serveren.
+- Live-verificeret ved at køre hele kæden inde i den faktiske sandboxede mount-namespace via `nsenter` på den kørende proces' PID (ikke et almindeligt shell) — bekræftet reel genstart af `moviedb-backend` (nyt `ActiveEnterTimestamp`) og `Result=success` på restart-servicen.
+- `CLAUDE.md` regel 16 udvidet med et nyt punkt: test skal foregå i den faktiske runtime-kontekst (sandkasse/service-isolation), ikke kun logikken i et privilegeret shell. `DEPLOYMENT.md`, `ARCHITECTURE.md`, `BUGS.md`, `.gitignore` opdateret.
+
 ## [0.23.0 build 0027] — 2026-08-01 — OTA-feature live-verificeret på produktionsserveren (dokumentation, ingen versionsbump)
 
 - Server-side opsætning fuldført: `/opt/moviedb-deploy.sh` installeret (executable, ejet af `jgl`), gammel bred `jgl ALL=(ALL) NOPASSWD:ALL`-sudoers-regel fjernet og erstattet af snæver `/etc/sudoers.d/jgl-deploy-ota` (kun `systemctl restart moviedb-backend` + `systemctl reload caddy`) — bekræftet med `sudo -n` at hverken mere eller mindre end de to kommandoer er tilladt uden password.

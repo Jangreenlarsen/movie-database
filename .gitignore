@@ -19,3 +19,6 @@ frontend/.cert/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Produktion: OTA-deploy restart-trigger (se scripts/moviedb-deploy-restart.path)
+.deploy-restart-trigger

@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for moviedb OTA-deploy restart trigger (feature #20)
+
+[Path]
+PathExists=/opt/moviedb/.deploy-restart-trigger
+Unit=moviedb-deploy-restart.service
+
+[Install]
+WantedBy=multi-user.target

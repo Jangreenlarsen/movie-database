@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.23.1 (build 0028) — 2026-08-01
+
+- Fix: "Opdatér fra GitHub"-knappen gav en fejl (500) ved det første rigtige forsøg — en genstart-mekanisme på serveren var ikke sat helt korrekt op. Rettet og grundigt efterprøvet; knappen skulle nu virke som forventet.
+
 ## v0.23.0 (build 0027) — 2026-08-01
 
 - Ny "Opdatér fra GitHub"-knap på Indstillinger (kun synlig/virker for admin): henter og installerer den nyeste version direkte fra serveren, uden at du skal logge ind via SSH selv. Kun relevant i produktion.

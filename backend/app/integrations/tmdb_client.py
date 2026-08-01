@@ -37,6 +37,13 @@ def _imdb_url(imdb_id: str | None) -> str | None:
     return f"https://www.imdb.com/title/{imdb_id}/" if imdb_id else None
 
 
+def _director(crew: list[dict]) -> str | None:
+    for member in crew:
+        if member.get("job") == "Director":
+            return member.get("name")
+    return None
+
+
 def _trailer_url(videos: list[dict]) -> str | None:
     """First official YouTube trailer, if any — TMDb lists teasers/clips/
     featurettes in the same `videos.results` array, so both site and type
@@ -121,6 +128,7 @@ async def get_movie_details(tmdb_id: int) -> dict:
         "overview": detail.get("overview"),
         "genres": [genre["name"] for genre in detail.get("genres", [])],
         "cast": [member["name"] for member in credits.get("cast", [])[:10]],
+        "director": _director(credits.get("crew", [])),
         "rating": _rating(detail.get("vote_average")),
         "runtime": detail.get("runtime"),
         "imdb_url": _imdb_url(external_ids.get("imdb_id")),

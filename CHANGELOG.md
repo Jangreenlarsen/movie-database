@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.29.0 build 0034] — 2026-08-01 — Skuespiller/instruktør-browsing (feature #41)
+
+- Nyt `director`-felt (TMDb's `credits.crew`, første `job == "Director"`-kredit, `tmdb_client._director`) — hentet ved oprettelse og opdateret ved TMDb-synkronisering, ligesom `cast`. Sættelig manuelt for film oprettet uden `tmdb_id`.
+- `GET /api/movies` understøtter nu `?cast=`/`?director=` (præcist felt-match, egne indexes) — filtrerer biblioteket til andre film i samlingen med samme person.
+- `Library.jsx`: skuespiller- og instruktør-navne i detaljevinduet er nu klikbare — lukker vinduet og filtrerer biblioteket, vist som en fjernbar "Viser film med ..."-banner over resultaterne.
+- Nye tests i `test_person_browsing.py`: `_director`-ekstraktion (fundet/ikke fundet), manuel sætning, filtrering på cast/director.
+- Eksisterende TMDb-relaterede test-fixtures (`test_movies.py`, `test_scan.py`, `test_tmdb_sync.py`, `test_duplicate_check.py`) opdateret med `director`-nøglen, som resten af feltlisten allerede krævede eksplicit (bracket-access, ikke `.get()`).
+
 ## [0.28.0 build 0033] — 2026-08-01 — "Set"-status + set-dato (feature #40)
 
 - `Movie`/`MovieUpdate`: nye `watched` (bool) og `watched_at` (dato) felter. Filtrerbar (`?watched=true|false`) og sorterbar (`watched_at`) i biblioteket.

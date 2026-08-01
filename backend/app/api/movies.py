@@ -38,6 +38,8 @@ async def list_movies(
         default=False, description="True lists the wishlist instead of the main library."
     ),
     watched: bool | None = Query(default=None),
+    cast: str | None = Query(default=None, description="Exact cast-member name match."),
+    director: str | None = Query(default=None, description="Exact director name match."),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     tag_list = tags.split(",") if tags else None
@@ -45,7 +47,17 @@ async def list_movies(
     audio_type_list = audio_types.split(",") if audio_types else None
     media_type_list = media_types.split(",") if media_types else None
     return await movie_service.list_movies(
-        db, q, tag_list, format_list, audio_type_list, media_type_list, sort, wishlist, watched
+        db,
+        q,
+        tag_list,
+        format_list,
+        audio_type_list,
+        media_type_list,
+        sort,
+        wishlist,
+        watched,
+        cast,
+        director,
     )
 
 

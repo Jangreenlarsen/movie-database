@@ -279,6 +279,7 @@ async def test_sort_by_rating(client, monkeypatch):
             "overview": None,
             "genres": [],
             "cast": [],
+            "director": None,
             "rating": ratings[tmdb_id],
             "runtime": None,
             "imdb_url": None,

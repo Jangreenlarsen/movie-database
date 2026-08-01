@@ -201,6 +201,26 @@
   border-radius: 999px;
 }
 
+.person-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--accent-strong);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.person-link:hover {
+  text-decoration: underline;
+}
+
+.person-filter-banner {
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
 .watched-toggle {
   display: inline-flex;
   align-items: center;

@@ -77,6 +77,7 @@ async def test_create_movie_from_tmdb_id_fetches_metadata(client, monkeypatch):
             "overview": "A hacker discovers reality is a simulation.",
             "genres": ["Action", "Science Fiction"],
             "cast": ["Keanu Reeves"],
+            "director": "Lana Wachowski",
             "rating": 8.2,
             "runtime": 136,
             "imdb_url": "https://www.imdb.com/title/tt0133093/",

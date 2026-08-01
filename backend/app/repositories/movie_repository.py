@@ -113,6 +113,8 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     await collection.create_index("personal_rating")
     await collection.create_index("watched")
     await collection.create_index("watched_at")
+    await collection.create_index("cast")
+    await collection.create_index("director")
     await collection.create_index("year")
     await collection.create_index("created_at")
     await collection.create_index("runtime")
@@ -250,6 +252,8 @@ async def find_many(
     sort_spec: list[tuple[str, int]] | None = None,
     is_wishlist: bool = False,
     watched: bool | None = None,
+    cast: str | None = None,
+    director: str | None = None,
 ) -> list[dict]:
     """`sort_spec` is a list of up to `MAX_SORT_LEVELS` (already-whitelisted
     mongo field name, direction) tuples for compound multi-level sorting
@@ -277,6 +281,10 @@ async def find_many(
         # `watched` key at all, so `False` must match "not True", not a
         # literal equality check that would silently exclude them.
         filter_["watched"] = True if watched else {"$ne": True}
+    if cast:
+        filter_["cast"] = cast
+    if director:
+        filter_["director"] = director
 
     cursor = db[COLLECTION].find(filter_)
     cursor = cursor.sort(sort_spec) if sort_spec else cursor.sort(DEFAULT_SORT_FIELD, -1)

@@ -44,7 +44,7 @@ Status: `planned` → `in-progress` → `done`. Tilføj entry *før* implementer
 | 38| Dublet-advarsel: ved valg af en TMDb-kandidat tjekkes om en film med samme `tmdb_id` allerede findes (bibliotek eller ønskeliste) — vises som en blød advarsel, blokerer ikke (flere fysiske kopier er en legitim use case) | done | 0.26.0       |
 | 39| Personlig rating (1-10) + fritekst-note pr. film — adskilt fra TMDb's offentlige `rating`, redigeres i filmens detaljevindue | done | 0.27.0       |
 | 40| "Set"-status (set/ikke set) + set-dato pr. film. Filtrerbar og sorterbar i biblioteksvisningen | done | 0.28.0       |
-| 41| Skuespiller/instruktør-browsing: klik en person i filmens detaljevindue for at filtrere biblioteket til andre film i samlingen med samme person. Kræver nyt `director`-felt (hentet fra TMDb's `credits.crew`, job=Director) | planned | -       |
+| 41| Skuespiller/instruktør-browsing: klik en person i filmens detaljevindue for at filtrere biblioteket til andre film i samlingen med samme person. Kræver nyt `director`-felt (hentet fra TMDb's `credits.crew`, job=Director) | done | 0.29.0       |
 | 42| Set/franchise-gruppering: viser TMDb's `belongs_to_collection` på filmens detaljevindue ("Del af samlingen: X") med hvor mange af samlingens film brugeren ejer, og link til at se/tilføje resten | planned | -       |
 | 43| Statistik-side: samlet antal film, samlet spilletid, fordeling på genre/årti/format, mest forekommende instruktør/skuespiller i samlingen | planned | -       |
 | 44| Gemte fulde filter-sæt ("visninger"): udvider de eksisterende sorterings-presets (#27) til også at gemme søgetekst/tags/format/lyd/medietype/set-status, ikke kun sorteringsniveauer | planned | -       |

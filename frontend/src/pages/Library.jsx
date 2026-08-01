@@ -74,6 +74,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
   const [selectedAudioTypes, setSelectedAudioTypes] = useState([]);
   const [selectedMediaTypes, setSelectedMediaTypes] = useState([]);
   const [watchedFilter, setWatchedFilter] = useState(null); // null | true | false
+  const [personFilter, setPersonFilter] = useState(null); // null | { type: "cast" | "director", name }
   const [sortLevels, setSortLevels] = useState(() => initialSortLevels(user.settings));
   const [presets, setPresets] = useState(user.settings.sort_presets ?? []);
   const [presetNameInput, setPresetNameInput] = useState("");
@@ -137,6 +138,8 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
       sort: sortLevels,
       wishlist,
       watched: watchedFilter,
+      cast: personFilter?.type === "cast" ? personFilter.name : undefined,
+      director: personFilter?.type === "director" ? personFilter.name : undefined,
     });
   }
 
@@ -157,6 +160,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
     selectedMediaTypes,
     sortLevels,
     watchedFilter,
+    personFilter,
   ]);
 
   function refresh() {
@@ -236,7 +240,8 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
     selectedFormats.length > 0 ||
     selectedAudioTypes.length > 0 ||
     selectedMediaTypes.length > 0 ||
-    watchedFilter != null;
+    watchedFilter != null ||
+    personFilter != null;
 
   return (
     <section>
@@ -493,6 +498,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
                   setSelectedAudioTypes([]);
                   setSelectedMediaTypes([]);
                   setWatchedFilter(null);
+                  setPersonFilter(null);
                 }}
               >
                 Ryd filtre
@@ -501,6 +507,16 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
           </div>
         )}
       </div>
+
+      {personFilter && (
+        <div className="banner banner-info person-filter-banner">
+          Viser film med {personFilter.type === "director" ? "instruktør" : "skuespiller"}{" "}
+          <strong>{personFilter.name}</strong>
+          <button type="button" className="btn" onClick={() => setPersonFilter(null)}>
+            Ryd ✕
+          </button>
+        </div>
+      )}
 
       {status === "loading" && (
         <div className="skeleton-grid">
@@ -600,13 +616,25 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
             refresh();
             api.listTags().then(setAllTags).catch(() => {});
           }}
+          onFilterByPerson={(type, name) => {
+            setPersonFilter({ type, name });
+            setActiveMovie(null);
+          }}
         />
       )}
     </section>
   );
 }
 
-function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, onClose, onChanged }) {
+function MovieDetailModal({
+  movie,
+  user,
+  attributeOptions,
+  serialPaddingWidth,
+  onClose,
+  onChanged,
+  onFilterByPerson,
+}) {
   const [tagsInput, setTagsInput] = useState(movie.tags.join(", "));
   const [format, setFormat] = useState(movie.format ?? "");
   const [audioTypes, setAudioTypes] = useState(movie.audio_types);
@@ -791,9 +819,33 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
 
         <div className="modal-body">
           {movie.overview && <p>{movie.overview}</p>}
+          {movie.director && (
+            <p className="muted">
+              <strong>Instruktør:</strong>{" "}
+              <button
+                type="button"
+                className="person-link"
+                onClick={() => onFilterByPerson("director", movie.director)}
+              >
+                {movie.director}
+              </button>
+            </p>
+          )}
           {movie.cast.length > 0 && (
             <p className="muted">
-              <strong>Medvirkende:</strong> {movie.cast.join(", ")}
+              <strong>Medvirkende:</strong>{" "}
+              {movie.cast.map((name, i) => (
+                <span key={name}>
+                  <button
+                    type="button"
+                    className="person-link"
+                    onClick={() => onFilterByPerson("cast", name)}
+                  >
+                    {name}
+                  </button>
+                  {i < movie.cast.length - 1 ? ", " : ""}
+                </span>
+              ))}
             </p>
           )}
 

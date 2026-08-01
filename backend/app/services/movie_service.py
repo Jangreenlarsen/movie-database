@@ -39,6 +39,7 @@ def _to_model(document: dict) -> Movie:
         overview=document.get("overview"),
         genres=document.get("genres", []),
         cast=document.get("cast", []),
+        director=document.get("director"),
         tags=document.get("tags", []),
         format=document.get("format"),
         audio_types=document.get("audio_types", []),
@@ -74,6 +75,7 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registere
             "overview": details["overview"],
             "genres": details["genres"],
             "cast": details["cast"],
+            "director": details["director"],
             "rating": details["rating"],
             "runtime": details["runtime"],
             "imdb_url": details["imdb_url"],
@@ -88,6 +90,7 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registere
             "overview": payload.overview,
             "genres": payload.genres,
             "cast": payload.cast,
+            "director": payload.director,
             "rating": None,
             "runtime": payload.runtime,
             "imdb_url": payload.imdb_url,
@@ -154,6 +157,8 @@ async def list_movies(
     sort: str | None = None,
     is_wishlist: bool = False,
     watched: bool | None = None,
+    cast: str | None = None,
+    director: str | None = None,
 ) -> list[Movie]:
     normalized_tags = [tag_service.normalize(tag) for tag in (tags or []) if tag.strip()]
     sort_spec = parse_sort_param(sort)
@@ -167,6 +172,8 @@ async def list_movies(
         sort_spec or None,
         is_wishlist,
         watched,
+        cast,
+        director,
     )
     return [_to_model(doc) for doc in documents]
 
@@ -300,7 +307,8 @@ async def list_deleted_movies(db: AsyncIOMotorDatabase) -> list[DeletedMovie]:
 
 async def sync_all_from_tmdb(db: AsyncIOMotorDatabase) -> TmdbSyncResult:
     """Re-fetches every TMDb-sourced movie's cached metadata (title, year,
-    poster, overview, genres, cast, rating, runtime, IMDb/trailer links) from
+    poster, overview, genres, cast, director, rating, runtime, IMDb/trailer
+    links) from
     TMDb as it stands right now — see FEATURES.md #33. User-entered fields (tags, format,
     audio_types, location, owner, serial_number, registered_by, barcode)
     are never touched. A single movie's TMDb lookup failing (removed from
@@ -352,6 +360,7 @@ async def sync_all_from_tmdb(db: AsyncIOMotorDatabase) -> TmdbSyncResult:
             "overview": details["overview"],
             "genres": details["genres"],
             "cast": details["cast"],
+            "director": details["director"],
             "rating": details["rating"],
             "runtime": details["runtime"],
             "imdb_url": details["imdb_url"],

@@ -10,6 +10,7 @@ def _fake_details(tmdb_id, title="Some Movie"):
         "overview": None,
         "genres": [],
         "cast": [],
+        "director": None,
         "rating": None,
         "runtime": None,
         "imdb_url": None,

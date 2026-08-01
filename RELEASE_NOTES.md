@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.29.0 (build 0034) — 2026-08-01
+
+- Skuespillere og instruktør i filmens detaljevindue er nu klikbare — klik for at se andre film i din samling med samme person.
+
 ## v0.28.0 (build 0033) — 2026-08-01
 
 - Kan nu markere film som "set" med en dato — vises som badge på filmkortet, kan filtreres og sorteres på. Praktisk til at holde styr på hvad I allerede har set.

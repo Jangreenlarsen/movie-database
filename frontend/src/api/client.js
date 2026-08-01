@@ -41,7 +41,9 @@ export const api = {
   listUsers: () => request("/users"),
   updateUserRole: (userId, role) =>
     request(`/users/${userId}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
-  listMovies: ({ q, tags, format, audioTypes, mediaTypes, sort, wishlist, watched } = {}) => {
+  listMovies: (
+    { q, tags, format, audioTypes, mediaTypes, sort, wishlist, watched, cast, director } = {}
+  ) => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (tags?.length) params.set("tags", tags.join(","));
@@ -56,6 +58,8 @@ export const api = {
     if (sortParam) params.set("sort", sortParam);
     if (wishlist) params.set("wishlist", "true");
     if (watched != null) params.set("watched", String(watched));
+    if (cast) params.set("cast", cast);
+    if (director) params.set("director", director);
     const query = params.toString();
     return request(`/movies${query ? `?${query}` : ""}`);
   },

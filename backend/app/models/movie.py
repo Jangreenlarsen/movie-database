@@ -56,6 +56,7 @@ class MovieCreate(BaseModel):
     overview: str | None = None
     genres: list[str] = Field(default_factory=list)
     cast: list[str] = Field(default_factory=list)
+    director: str | None = None
     runtime: int | None = None
     imdb_url: str | None = None
     trailer_url: str | None = None
@@ -77,6 +78,7 @@ class MovieUpdate(BaseModel):
     overview: str | None = None
     genres: list[str] | None = None
     cast: list[str] | None = None
+    director: str | None = None
     tags: list[str] | None = None
     format: MovieFormat | None = None
     audio_types: list[AudioType] | None = None
@@ -105,6 +107,7 @@ class Movie(BaseModel):
     overview: str | None = None
     genres: list[str] = Field(default_factory=list)
     cast: list[str] = Field(default_factory=list)
+    director: str | None = None
     tags: list[str] = Field(default_factory=list)
     format: str | None = None
     audio_types: list[str] = Field(default_factory=list)

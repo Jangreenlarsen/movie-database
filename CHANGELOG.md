@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.25.0 build 0030] — 2026-08-01 — Manuel indtastning af stregkode (feature #37)
+
+- `MovieLookupForm.jsx`: nyt tekstfelt + "Slå op"-knap under kamera-scanneren i både "Scan film" og ønskelistens "+ Tilføj ønske"-panel. Kalder samme `handleDetected`-flow (→ `/api/scan/lookup`) som en kamera-scan — ingen backend-ændring nødvendig, stregkoden var allerede bare en streng.
+
 ## [0.24.0 build 0029] — 2026-08-01 — Admin-konfigurerbare API-nøgler i Indstillinger (feature #36)
 
 - Ny "System-indstillinger"-sektion (admin-only) på Indstillinger-siden: TMDb API-token, UPC API-nøgle og Discogs-token kan nu sættes/opdateres direkte i UI'et, uden SSH/redeploy.

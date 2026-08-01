@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.25.0 (build 0030) — 2026-08-01
+
+- Kan nu indtaste en stregkode manuelt (i stedet for kun at scanne med kameraet) på både "Scan film"-siden og ønskelistens "+ Tilføj ønske"-panel — praktisk hvis kameraet driller eller en kode er svær at scanne.
+
 ## v0.24.0 (build 0029) — 2026-08-01
 
 - Ny "System-indstillinger" på Indstillinger-siden (kun admin): TMDb-, UPC- og Discogs-nøgler kan nu skrives ind og opdateres direkte i appen, i stedet for at kræve SSH-adgang til serveren. Af sikkerhedshensyn vises en gemt nøgle aldrig igen bagefter — kun om der er sat en, og hvorfra (server-opsætning eller her i UI'et).

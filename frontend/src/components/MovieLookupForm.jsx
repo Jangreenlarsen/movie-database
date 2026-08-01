@@ -18,6 +18,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   const [barcode, setBarcode] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [scanStatus, setScanStatus] = useState("idle");
+  const [manualBarcode, setManualBarcode] = useState("");
   const [manualQuery, setManualQuery] = useState("");
   const [manualStatus, setManualStatus] = useState("idle");
 
@@ -51,6 +52,13 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
     } catch {
       setScanStatus("error");
     }
+  }
+
+  async function submitManualBarcode(event) {
+    event.preventDefault();
+    const code = manualBarcode.trim();
+    if (!code) return;
+    await handleDetected(code);
   }
 
   async function searchManually(event) {
@@ -112,6 +120,19 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
         <h2>Scan film</h2>
         <p className="muted">Scan stregkoden på cover'et med kameraet.</p>
         <BarcodeScanner onDetected={handleDetected} />
+
+        <form className="manual-search-form" onSubmit={submitManualBarcode} style={{ marginTop: 10 }}>
+          <input
+            value={manualBarcode}
+            onChange={(e) => setManualBarcode(e.target.value)}
+            placeholder="...eller indtast stregkoden manuelt (UPC/EAN)"
+            inputMode="numeric"
+          />
+          <button type="submit" className="btn btn-primary" disabled={!manualBarcode.trim()}>
+            Slå op
+          </button>
+        </form>
+
         {barcode && <p className="muted" style={{ marginTop: 10 }}>Scannet stregkode: {barcode}</p>}
         {scanStatus === "looking-up" && <p className="muted">Slår op...</p>}
         {scanStatus === "error" && (

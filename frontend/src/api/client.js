@@ -75,4 +75,5 @@ export const api = {
     request("/scan/lookup", { method: "POST", body: JSON.stringify({ barcode }) }),
   tmdbSearch: (query) =>
     request(`/movies/tmdb-search?${new URLSearchParams({ query })}`),
+  triggerDeploy: () => request("/system/deploy", { method: "POST" }),
 };

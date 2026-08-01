@@ -60,3 +60,11 @@ class UserNotFoundError(Exception):
 class LastAdminError(Exception):
     def __init__(self):
         super().__init__("Cannot remove the last remaining admin")
+
+
+class DeployScriptNotFoundError(Exception):
+    def __init__(self, path: str):
+        self.path = path
+        super().__init__(
+            f"Deploy-script ikke fundet eller ikke eksekverbart: {path} — se DEPLOYMENT.md"
+        )

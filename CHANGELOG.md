@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.23.0 build 0027] — 2026-08-01 — OTA-opdatering fra GitHub (feature #20)
+
+- Ny `POST /api/system/deploy` (**admin-only**, `app/api/system.py`) starter et detached baggrunds-subprocess (`deploy_service.trigger_deploy`) der kører et deploy-script og returnerer med det samme (202) uden at vente på det er færdigt.
+- Nyt `scripts/deploy.sh` (repo-reference): `git pull` + `pip install` + `npm install && npm run build` + genstart `moviedb-backend`/genindlæs `caddy`. Den faktiske eksekverbare kopi ligger **uden for** git-working-tree'en på serveren (`/opt/moviedb-deploy.sh`) med vilje — ellers ville `git pull` kunne overskrive scriptet mens bash er midt i at læse/eksekvere det.
+- Scriptet kører som den almindelige service-bruger uden sudo for `git`/`npm`/`pip`; kun de to præcise `systemctl restart moviedb-backend`/`systemctl reload caddy`-kommandoer er givet en **snæver** navngivet NOPASSWD-sudo-regel — ikke bred adgang. Se DEPLOYMENT.md for opsætning (inkl. erstatning af den brede opsætnings-tids-sudoers-regel).
+- Ny `DeployScriptNotFoundError` → 500 hvis scriptet mangler/ikke er sat op endnu, i stedet for en uhåndteret `FileNotFoundError`.
+- Nyt `Settings.jsx`-afsnit "Opdatér fra GitHub" (admin-only): udløser opdateringen og poller `/api/health`s `build`-felt indtil den nye version er oppe (typisk under et minut), med tydelig fejl-/timeout-besked hvis noget går galt.
+- Nye tests i `test_deploy.py`: admin-gating, korrekt Popen-kald (detached), 500 ved manglende script.
+- `ARCHITECTURE.md`, `DEPLOYMENT.md`, `.env.example` opdateret. `FEATURES.md` #20 markeret `in-progress` → afventer server-side opsætning og live-verifikation før `done`.
+
 ## [0.22.1 build 0026] — 2026-08-01 — Opfølgende kode-gennemgang af sessionens hurtigt-byggede features
 
 Jan bad tidligere i sessionen om en dyb to-fase gennemgang; den blev udskudt af en lang stribe nye funktionsønsker og gennemføres nu, med fokus på det der blev bygget hurtigt undervejs (ønske→bibliotek-flytning, TMDb-synkronisering, IMDb/trailer-links, medietype, label-migreringer, sortering).

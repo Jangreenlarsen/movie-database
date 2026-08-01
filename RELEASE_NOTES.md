@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.23.0 (build 0027) — 2026-08-01
+
+- Ny "Opdatér fra GitHub"-knap på Indstillinger (kun synlig/virker for admin): henter og installerer den nyeste version direkte fra serveren, uden at du skal logge ind via SSH selv. Kun relevant i produktion.
+
 ## v0.22.1 (build 0026) — 2026-08-01
 
 - Fulgt op på den kode-gennemgang du bad om tidligere: TMDb-synkroniseringen håndterer nu manglende API-nøgle og TMDb-rate-limits pænt (én klar besked i stedet for en lang liste af "mislykkede" film), og en sjælden fejlkilde i trailer-links er rettet.

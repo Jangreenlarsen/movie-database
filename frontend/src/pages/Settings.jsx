@@ -15,6 +15,7 @@ export default function Settings({ user }) {
       <SerialNumberSection isAdmin={isAdmin} />
       <DeletedMoviesSection />
       {isAdmin && <TmdbSyncSection />}
+      {isAdmin && <DeploySection />}
       {isAdmin && <UsersSection currentUserId={user.id} />}
     </section>
   );
@@ -303,6 +304,90 @@ function TmdbSyncSection() {
                 ` ${result.failed} kunne ikke hentes: ${result.failed_titles.join(", ")}.`}
             </>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeploySection() {
+  const [currentBuild, setCurrentBuild] = useState(null);
+  const [status, setStatus] = useState("idle");
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    api
+      .health()
+      .then((data) => setCurrentBuild(data.build))
+      .catch(() => {});
+  }, []);
+
+  async function deploy() {
+    setStatus("deploying");
+    setError(null);
+    const startedFromBuild = currentBuild;
+
+    try {
+      await api.triggerDeploy();
+    } catch (err) {
+      setError(err.message);
+      setStatus("error");
+      return;
+    }
+
+    const deadline = Date.now() + 120_000;
+    const poll = setInterval(async () => {
+      if (Date.now() > deadline) {
+        clearInterval(poll);
+        setStatus("timeout");
+        return;
+      }
+      try {
+        const data = await api.health();
+        if (data.build !== startedFromBuild) {
+          clearInterval(poll);
+          setCurrentBuild(data.build);
+          setStatus("done");
+        }
+      } catch {
+        // Backend er nede et øjeblik mens den genstarter — bliv ved med at prøve.
+      }
+    }, 3000);
+  }
+
+  return (
+    <div className="card settings-section">
+      <h2>Opdatér fra GitHub</h2>
+      <p className="muted">
+        Henter seneste version fra GitHub (main-branchen), geninstallerer afhængigheder og
+        genstarter serveren automatisk. Kun tilgængelig i produktion (se DEPLOYMENT.md). Tager
+        typisk et minuts tid — siden er kortvarigt utilgængelig mens backend genstarter.
+        {currentBuild && <> Kører nu build {currentBuild}.</>}
+      </p>
+
+      <button
+        type="button"
+        className="btn btn-primary"
+        onClick={deploy}
+        disabled={status === "deploying"}
+      >
+        {status === "deploying" ? "Opdaterer..." : "Opdatér fra GitHub"}
+      </button>
+
+      {status === "error" && (
+        <div className="banner banner-error" style={{ marginTop: 12 }}>
+          {error}
+        </div>
+      )}
+      {status === "timeout" && (
+        <div className="banner banner-error" style={{ marginTop: 12 }}>
+          Kunne ikke bekræfte at opdateringen er fuldført endnu — tjek serveren manuelt (se
+          DEPLOYMENT.md's fejlsøgnings-afsnit) eller genindlæs siden om lidt.
+        </div>
+      )}
+      {status === "done" && (
+        <div className="banner banner-info" style={{ marginTop: 12 }}>
+          Opdateret! Kører nu build {currentBuild}.
         </div>
       )}
     </div>

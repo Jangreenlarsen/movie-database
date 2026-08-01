@@ -13,7 +13,7 @@ Status: `planned` → `in-progress` → `done`. Tilføj entry *før* implementer
 | 7 | Film-detaljevisning (poster, plot, cast, genre, tags, format, lyd)      | done | 0.5.0       |
 | 8 | Redigér/slet film (modal i biblioteksvisning: tags/format/audio_types + slet) | done | 0.5.0       |
 | 9 | PWA-installation på iPhone (manifest + service worker + ikoner)        | planned | -       |
-| 10| Docker Compose-deployment (backend + frontend + MongoDB)                | planned | -       |
+| 10| Docker Compose-deployment (backend + frontend + MongoDB)                | droppet til fordel for native deployment (se DEPLOYMENT.md) | -       |
 | 11| Strukturerede valgfrie attributter (lyd-type multi-select, film-format single-select fra fast liste) + auto-tildelt fortløbende serienummer pr. film. Filtrerbare i biblioteksvisningen (`/api/movies?format=&audio_types=`) | done | 0.4.0       |
 | 12| Moderne visuelt redesign af frontend (design-tokens, poster-grid, filter-chips, detalje-modal, scan-viewfinder)  | done | 0.5.0       |
 | 13| TMDb rating pr. film (vote_average, auto-hentet ved TMDb-oprettelse). Sortering i biblioteksvisning (titel/år/tilføjet/rating, stigende/faldende). Bruger-konfigurerbar visning af hvilke felter der vises på filmkort (år/tags/format/lyd/rating), gemt i browserens localStorage | done | 0.6.0       |
@@ -23,7 +23,7 @@ Status: `planned` → `in-progress` → `done`. Tilføj entry *før* implementer
 | 17| Fler-niveau sortering i biblioteksvisning (op til 3 niveauer, fx: 1. format, 2. lyd-type, 3. titel), hvert niveau med egen retning | done | 0.17.0       |
 | 18| Automatisk "Tilføjet af {brugernavn}"-tag på film ved oprettelse (uanset om det sker via scan, manuel TMDb-søgning eller ren manuel indtastning) | planned | -       |
 | 19| Bruger-roller (admin/standard). Første registrerede bruger bliver automatisk admin. Admin kan liste alle brugere og forfremme/degradere roller. Serienummer-generator-opsætning kræver admin (skrivning — læsning er åben for alle). Adgangskode-ændring på Settings-siden. | done | 0.10.0       |
-| 20| OTA-opdateringsfunktion fra GitHub-repo, inkl. tjek/installation af manglende afhængigheder (pip/npm) ved opdatering (kræver afklaring af deployment-model — se ARCHITECTURE.md/TECH_REFERENCE.md, feature #10 Docker Compose er stadig ikke verificeret) | planned | -       |
+| 20| OTA-opdateringsfunktion fra GitHub-repo, inkl. tjek/installation af manglende afhængigheder (pip/npm) ved opdatering. Deployment-model afklaret (se DEPLOYMENT.md — native Debian-server, ikke Docker): "Opdatér fra GitHub"-knap på Indstillinger-siden, **kun for admin**, kalder `POST /api/system/deploy` som kører `git pull` + geninstallerer afhængigheder + genstarter services i baggrunden på serveren | in-progress | -       |
 | 21| Adgang fra telefon over LAN (HTTPS dev-server + firewall-regel) + mobilvenligt responsivt design | done | 0.11.0       |
 | 22| Versionsvisning i frontend (læst fra `version.json` via `/api/health`)  | done | 0.12.0       |
 | 23| Filmkort: `runtime`-tag (minutter, fra TMDb) + 2-kolonne kompakt visning af felter (år/format/lyd/runtime) i stedet for én kolonne | done | 0.12.0       |

@@ -1,0 +1,4 @@
+# Shell scripts must always have LF line endings — they run on the Linux
+# production server, and a CRLF shebang line ("#!/bin/bash\r") fails with a
+# "bad interpreter" error there, regardless of local core.autocrlf settings.
+*.sh text eol=lf

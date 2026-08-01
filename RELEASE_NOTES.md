@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.18.1 (build 0021) — 2026-08-01
+
+- Rettet: gemte sorterings-presets kunne i sjældne tilfælde forsvinde igen kort efter du gemte dem (hvis du nåede at ændre noget andet i sorteringen lige efter). De gemmes nu pålideligt.
+
 ## v0.18.0 (build 0020) — 2026-08-01
 
 - Ny fane "Ønsker": en ønskeliste med samme søgning/filtrering/sortering som filmbiblioteket, men uden serienummer — til film du gerne vil have, men ikke ejer endnu.

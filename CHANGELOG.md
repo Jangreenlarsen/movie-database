@@ -2,6 +2,13 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.18.1 build 0021] — 2026-08-01 — Fix: gemte sorterings-presets kunne forsvinde igen (race condition)
+
+- `auth_service.update_settings` gjorde læs-hele-settings → flet ét felt → overskriv-hele-settings. `Library.jsx` sender flere `PATCH /api/users/me/settings`-kald i hurtig rækkefølge uden nogen kø (fx sorterings-niveau-justering straks efterfulgt af "Gem som preset") — to overlappende kald kunne race, så det ene kalds skrivning (bygget på en forældet læsning) tavst overskrev det andets, og et lige-gemt preset forsvandt fra databasen (så det ikke kunne vælges igen efter siden blev genindlæst/fanen genbesøgt). Rapporteret af Jan.
+- `auth_service.update_settings`/`user_repository.update_settings` opdaterer nu kun de faktisk sendte nøgler via punktum-sti `$set` (fx `{"settings.sort_presets": [...]}`) — atomisk pr. felt, ingen læs-flet-overskriv af hele underdokumentet længere, så to samtidige kald der rører forskellige nøgler aldrig kan miste hinandens skrivning uanset rækkefølge.
+- Ny regressionstest `test_settings_updates_do_not_clobber_unrelated_keys`.
+- `BUGS.md` #13 registreret og fikset.
+
 ## [0.18.0 build 0020] — 2026-08-01 — Ønskeliste
 
 - `Movie`/`MovieCreate` (`models/movie.py`) fik `is_wishlist: bool = False`. `Movie.serial_number` er nu `int | None` — ønskeliste-poster udelader feltet helt fra dokumentet (samme "udelad frem for null"-mønster som `barcode`, BUGS.md #1/#10), og `movie_service.create_movie` springer `next_serial_number()` helt over for dem.

@@ -25,9 +25,14 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   const [tagsInput, setTagsInput] = useState("");
   const [format, setFormat] = useState("");
   const [audioTypes, setAudioTypes] = useState([]);
+  const [mediaType, setMediaType] = useState("");
   const [location, setLocation] = useState("");
   const [owner, setOwner] = useState(user?.username ?? "");
-  const [attributeOptions, setAttributeOptions] = useState({ formats: [], audio_types: [] });
+  const [attributeOptions, setAttributeOptions] = useState({
+    formats: [],
+    audio_types: [],
+    media_types: [],
+  });
   const [saveStatus, setSaveStatus] = useState("idle");
   const [saveError, setSaveError] = useState(null);
 
@@ -79,6 +84,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
         format: format || null,
         audio_types: audioTypes,
+        media_type: mediaType || null,
         location: location.trim() || null,
         owner: owner.trim() || null,
         is_wishlist: wishlist,
@@ -89,6 +95,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
       setTagsInput("");
       setFormat("");
       setAudioTypes([]);
+      setMediaType("");
       setLocation("");
       setOwner(user?.username ?? "");
       setBarcode(null);
@@ -204,6 +211,20 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
             <div className="chip-row">
               {attributeOptions.formats.map((f) => (
                 <Chip key={f} label={f} active={format === f} onClick={() => setFormat(format === f ? "" : f)} />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span className="field-label">Medietype</span>
+            <div className="chip-row">
+              {attributeOptions.media_types.map((m) => (
+                <Chip
+                  key={m}
+                  label={m}
+                  active={mediaType === m}
+                  onClick={() => setMediaType(mediaType === m ? "" : m)}
+                />
               ))}
             </div>
           </div>

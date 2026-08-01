@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.22.0 build 0025] — 2026-08-01 — Medietype-felt, kortere format/lyd-labels, udvidet sortering
+
+- Nyt `MediaType`-felt (`Fysisk`/`Digital`) på `Movie`/`MovieCreate`/`MovieUpdate` — filtrerbart (`?media_types=`), sorterbart, redigerbart, og vises på filmkort via "Vis felter" som de andre attributter. Nyt indeks på `media_type`.
+- `MovieFormat` og `AudioType` fik kortere labels (Jans ønske): `format` VHS/DVD/**BD**/**UHD**/**Digital-UHD**/**Digital-HD**/**Digital-STD** (digital er nu opdelt i kvalitetsniveauer i stedet for ét fladt "Digital"); `audio_types` Stereo/Mono/**DD**/**DD5.1**/**DD7.1**/DTS/**DTS-HD-M**/**Atmos**/**D-true-HD**.
+- Nye `movie_repository._migrate_format_labels`/`_migrate_audio_type_labels` kører automatisk ved opstart (`ensure_indexes`) og omskriver *eksisterende* dokumenters gamle, længere labels til de nye — ellers ville de ikke længere validere ved næste redigering. Det gamle "Digital"-format har intet kvalitetsniveau og defaulter til "Digital-HD" ved migrering (tjek/ret manuelt om en anden kvalitet er korrekt). Live-verificeret mod Jans rigtige database — alle eksisterende film blev korrekt omskrevet, ingen data tabt.
+- **BUGS.md #14**: sorterings-dropdownens "Tilføjet" var i virkeligheden bundet til `serial_number` (ikke den faktiske oprettelsesdato), og der var ingen eksplicit "sorter efter serienummer"-mulighed. `created_at` er nu whitelistet som sin egen sorterings-mulighed ("Tilføjet"), adskilt fra `serial_number` ("Serienummer") — de kan afvige efter en manuel serienummer-ombytning. Sortering udvidet med `runtime`, `location`, `owner`, `registered_by` ("alle felter", som Jan bad om).
+- `ARCHITECTURE.md`, `FEATURES.md` #35 og `BUGS.md` #14 opdateret. Nye/opdaterede tests i `test_movies.py`, `test_label_migrations.py` (ny).
+
 ## [0.21.0 build 0024] — 2026-08-01 — TMDb-synkronisering + IMDb/trailer-links
 
 - `tmdb_client.get_movie_details` slår nu `credits`, `videos` og `external_ids` op i **ét** samlet TMDb-kald (`append_to_response=credits,videos,external_ids`) i stedet for to separate kald (detail + credits) — færre HTTP-requests, og giver samtidig adgang til IMDb-id og trailere.

@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.22.0 (build 0025) — 2026-08-01
+
+- Ny "Medietype"-mulighed (Fysisk/Digital) du kan sætte på hver film — filtrerbar og sorterbar som format og lyd-type.
+- Format- og lyd-type-navne er gjort kortere (fx "Blu-ray" hedder nu "BD", "Dolby Digital 5.1" hedder nu "DD5.1", "4K Ultra HD" hedder nu "UHD") — dine eksisterende film er automatisk opdateret til de nye navne. "Digital" er desuden delt op i tre kvalitetsniveauer (Digital-UHD/Digital-HD/Digital-STD) — dine gamle "Digital"-film er sat til "Digital-HD" som udgangspunkt; ret dem manuelt hvis en anden kvalitet passer bedre.
+- Sortering: "Serienummer" og "Tilføjet" er nu to rigtige, adskilte muligheder (før delte de fejlagtigt værdi). Du kan nu også sortere efter spilletid, lokation, ejer og hvem der registrerede filmen.
+
 ## v0.21.0 (build 0024) — 2026-08-01
 
 - Filmens detaljevindue viser nu links til IMDb, en YouTube-trailer (når TMDb har en) og filmens TMDb-side.

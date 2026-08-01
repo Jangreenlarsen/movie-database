@@ -5,12 +5,18 @@ import MovieLookupForm from "../components/MovieLookupForm";
 import "./Library.css";
 
 const SORT_OPTIONS = [
-  { value: "serial_number", label: "Tilføjet" },
+  { value: "serial_number", label: "Serienummer" },
+  { value: "created_at", label: "Tilføjet" },
   { value: "title", label: "Titel" },
   { value: "year", label: "År" },
   { value: "rating", label: "Rating" },
+  { value: "runtime", label: "Spilletid" },
   { value: "format", label: "Format" },
   { value: "audio_types", label: "Lyd-type" },
+  { value: "media_type", label: "Medietype" },
+  { value: "location", label: "Lokation" },
+  { value: "owner", label: "Ejer" },
+  { value: "registered_by", label: "Registreret af" },
 ];
 const MAX_SORT_LEVELS = 3;
 
@@ -24,6 +30,7 @@ const VISIBLE_FIELD_OPTIONS = [
   { key: "tags", label: "Tags" },
   { key: "format", label: "Format" },
   { key: "audioTypes", label: "Lyd-type" },
+  { key: "mediaType", label: "Medietype" },
   { key: "rating", label: "Rating" },
   { key: "runtime", label: "Spilletid" },
 ];
@@ -35,6 +42,7 @@ function visibleFieldsFromSettings(settings) {
     tags: vf.tags ?? true,
     format: vf.format ?? false,
     audioTypes: vf.audio_types ?? false,
+    mediaType: vf.media_type ?? false,
     rating: vf.rating ?? false,
     runtime: vf.runtime ?? false,
   };
@@ -62,13 +70,18 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedFormats, setSelectedFormats] = useState([]);
   const [selectedAudioTypes, setSelectedAudioTypes] = useState([]);
+  const [selectedMediaTypes, setSelectedMediaTypes] = useState([]);
   const [sortLevels, setSortLevels] = useState(() => initialSortLevels(user.settings));
   const [presets, setPresets] = useState(user.settings.sort_presets ?? []);
   const [presetNameInput, setPresetNameInput] = useState("");
   const [movies, setMovies] = useState([]);
   const [status, setStatus] = useState("loading");
   const [allTags, setAllTags] = useState([]);
-  const [attributeOptions, setAttributeOptions] = useState({ formats: [], audio_types: [] });
+  const [attributeOptions, setAttributeOptions] = useState({
+    formats: [],
+    audio_types: [],
+    media_types: [],
+  });
   const [activeMovie, setActiveMovie] = useState(null);
   const [visibleFields, setVisibleFields] = useState(() => visibleFieldsFromSettings(user.settings));
   const [showFieldPanel, setShowFieldPanel] = useState(false);
@@ -85,6 +98,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
           tags: nextVisible.tags,
           format: nextVisible.format,
           audio_types: nextVisible.audioTypes,
+          media_type: nextVisible.mediaType,
           rating: nextVisible.rating,
           runtime: nextVisible.runtime,
         },
@@ -116,6 +130,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
       tags: selectedTags,
       format: selectedFormats,
       audioTypes: selectedAudioTypes,
+      mediaTypes: selectedMediaTypes,
       sort: sortLevels,
       wishlist,
     });
@@ -130,7 +145,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
       })
       .catch(() => setStatus("error"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, selectedTags, selectedFormats, selectedAudioTypes, sortLevels]);
+  }, [query, selectedTags, selectedFormats, selectedAudioTypes, selectedMediaTypes, sortLevels]);
 
   function refresh() {
     fetchMovies().then(setMovies).catch(() => {});
@@ -205,7 +220,10 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
   }
 
   const hasActiveFilters =
-    selectedTags.length > 0 || selectedFormats.length > 0 || selectedAudioTypes.length > 0;
+    selectedTags.length > 0 ||
+    selectedFormats.length > 0 ||
+    selectedAudioTypes.length > 0 ||
+    selectedMediaTypes.length > 0;
 
   return (
     <section>
@@ -241,7 +259,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
           </button>
 
           <button type="button" className="btn" onClick={() => setShowFilterPanel((v) => !v)}>
-            Filtrér {hasActiveFilters ? `(${selectedTags.length + selectedFormats.length + selectedAudioTypes.length}) ` : ""}▾
+            Filtrér {hasActiveFilters ? `(${selectedTags.length + selectedFormats.length + selectedAudioTypes.length + selectedMediaTypes.length}) ` : ""}▾
           </button>
 
           <button type="button" className="btn" onClick={() => setShowFieldPanel((v) => !v)}>
@@ -366,7 +384,10 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
           </div>
         )}
 
-        {showFilterPanel && (allTags.length > 0 || attributeOptions.formats.length > 0) && (
+        {showFilterPanel &&
+          (allTags.length > 0 ||
+            attributeOptions.formats.length > 0 ||
+            attributeOptions.media_types.length > 0) && (
           <div className="filter-panel">
             {allTags.length > 0 && (
               <div className="filter-group">
@@ -415,6 +436,23 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
                 </div>
               </div>
             )}
+            {attributeOptions.media_types.length > 0 && (
+              <div className="filter-group">
+                <span className="filter-group-label">Medietype</span>
+                <div className="chip-row">
+                  {attributeOptions.media_types.map((mediaType) => (
+                    <Chip
+                      key={mediaType}
+                      label={mediaType}
+                      active={selectedMediaTypes.includes(mediaType)}
+                      onClick={() =>
+                        setSelectedMediaTypes((prev) => toggleValue(prev, mediaType))
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
             {hasActiveFilters && (
               <button
                 type="button"
@@ -424,6 +462,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
                   setSelectedTags([]);
                   setSelectedFormats([]);
                   setSelectedAudioTypes([]);
+                  setSelectedMediaTypes([]);
                 }}
               >
                 Ryd filtre
@@ -495,6 +534,9 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
                   {visibleFields.audioTypes && movie.audio_types.length > 0 && (
                     <span className="movie-meta-item">{movie.audio_types.join(", ")}</span>
                   )}
+                  {visibleFields.mediaType && movie.media_type && (
+                    <span className="movie-meta-item">{movie.media_type}</span>
+                  )}
                 </div>
                 {visibleFields.tags && movie.tags.length > 0 && (
                   <div className="movie-tags">
@@ -533,6 +575,7 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
   const [tagsInput, setTagsInput] = useState(movie.tags.join(", "));
   const [format, setFormat] = useState(movie.format ?? "");
   const [audioTypes, setAudioTypes] = useState(movie.audio_types);
+  const [mediaType, setMediaType] = useState(movie.media_type ?? "");
   const [serialNumberInput, setSerialNumberInput] = useState(
     movie.serial_number != null ? String(movie.serial_number) : ""
   );
@@ -557,11 +600,22 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
       tagsChanged ||
       format !== (movie.format ?? "") ||
       audioTypes.join(",") !== movie.audio_types.join(",") ||
+      mediaType !== (movie.media_type ?? "") ||
       location !== (movie.location ?? "") ||
       owner !== (movie.owner ?? "") ||
       serialChanged
     );
-  }, [tagsInput, format, audioTypes, serialNumberInput, location, owner, canEditSerial, movie]);
+  }, [
+    tagsInput,
+    format,
+    audioTypes,
+    mediaType,
+    serialNumberInput,
+    location,
+    owner,
+    canEditSerial,
+    movie,
+  ]);
 
   async function save() {
     setSaving(true);
@@ -571,6 +625,7 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
         format: format || null,
         audio_types: audioTypes,
+        media_type: mediaType || null,
         location: location.trim() || null,
         owner: owner.trim() || null,
       };
@@ -724,6 +779,18 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
               {attributeOptions.formats.map((f) => (
                 <option key={f} value={f}>
                   {f}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <div className="modal-section-label">Medietype</div>
+            <select value={mediaType} onChange={(e) => setMediaType(e.target.value)}>
+              <option value="">Ikke angivet</option>
+              {attributeOptions.media_types.map((m) => (
+                <option key={m} value={m}>
+                  {m}
                 </option>
               ))}
             </select>

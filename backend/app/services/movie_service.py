@@ -32,6 +32,7 @@ def _to_model(document: dict) -> Movie:
         tags=document.get("tags", []),
         format=document.get("format"),
         audio_types=document.get("audio_types", []),
+        media_type=document.get("media_type"),
         rating=document.get("rating"),
         runtime=document.get("runtime"),
         imdb_url=document.get("imdb_url"),
@@ -85,6 +86,7 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registere
         "tags_normalized": [tag_service.normalize(tag) for tag in canonical_tags],
         "format": payload.format.value if payload.format else None,
         "audio_types": [audio_type.value for audio_type in payload.audio_types],
+        "media_type": payload.media_type.value if payload.media_type else None,
         "location": payload.location,
         "owner": payload.owner or registered_by,
         "registered_by": registered_by,
@@ -134,6 +136,7 @@ async def list_movies(
     tags: list[str] | None,
     formats: list[str] | None = None,
     audio_types: list[str] | None = None,
+    media_types: list[str] | None = None,
     sort: str | None = None,
     is_wishlist: bool = False,
 ) -> list[Movie]:
@@ -145,6 +148,7 @@ async def list_movies(
         normalized_tags or None,
         formats or None,
         audio_types or None,
+        media_types or None,
         sort_spec or None,
         is_wishlist,
     )

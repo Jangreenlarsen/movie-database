@@ -17,21 +17,82 @@ SORT_FIELDS = {
     "title": "title",
     "year": "year",
     "serial_number": "serial_number",
+    "created_at": "created_at",
     "rating": "rating",
+    "runtime": "runtime",
     "format": "format",
     "audio_types": "audio_types",
+    "media_type": "media_type",
+    "location": "location",
+    "owner": "owner",
+    "registered_by": "registered_by",
 }
 DEFAULT_SORT_FIELD = "created_at"
 MAX_SORT_LEVELS = 3
 
+# Pre-v0.22.0 AudioType labels -> the new, shorter ones — see
+# `_migrate_audio_type_labels` and `models/movie.py::AudioType`.
+_AUDIO_TYPE_LABEL_MIGRATIONS = {
+    "Dolby Digital": "DD",
+    "Dolby Digital 5.1": "DD5.1",
+    "Dolby Digital 7.1": "DD7.1",
+    "DTS-HD Master Audio": "DTS-HD-M",
+    "Dolby Atmos": "Atmos",
+    "Dolby TrueHD": "D-true-HD",
+}
+
+
+async def _migrate_audio_type_labels(db: AsyncIOMotorDatabase) -> None:
+    """One-time rewrite of existing documents' `audio_types` values from the
+    old, longer labels to the new short ones, so they keep validating
+    against `AudioType` on the next edit and keep matching the (now
+    relabeled) filter chips. Done document-by-document in Python rather than
+    a single `arrayFilters` update, since mongomock's support for it is
+    inconsistent (see BUGS.md #1's note on mongomock's sparse-index gaps —
+    same category of testsuite-vs-real-Mongo mismatch)."""
+    collection = db[COLLECTION]
+    cursor = collection.find(
+        {"audio_types": {"$in": list(_AUDIO_TYPE_LABEL_MIGRATIONS)}}, {"audio_types": 1}
+    )
+    async for doc in cursor:
+        relabeled = [
+            _AUDIO_TYPE_LABEL_MIGRATIONS.get(label, label) for label in doc.get("audio_types", [])
+        ]
+        if relabeled != doc.get("audio_types", []):
+            await collection.update_one({"_id": doc["_id"]}, {"$set": {"audio_types": relabeled}})
+
+
+# Pre-v0.22.0 MovieFormat labels -> the new, shorter ones. "Digital" had no
+# quality tier before this version, so it can't be migrated exactly — it
+# defaults to "Digital-HD" (the most common digital-purchase quality); check
+# BUGS.md/CHANGELOG.md and correct any that should be UHD/STD instead.
+_FORMAT_LABEL_MIGRATIONS = {
+    "Blu-ray": "BD",
+    "4K Ultra HD": "UHD",
+    "Digital": "Digital-HD",
+}
+
+
+async def _migrate_format_labels(db: AsyncIOMotorDatabase) -> None:
+    """One-time rewrite of existing documents' `format` value from the old,
+    longer labels to the new short ones — same rationale as
+    `_migrate_audio_type_labels`, but `format` is a single field, not an
+    array, so a plain `update_many` per old value suffices."""
+    collection = db[COLLECTION]
+    for old_label, new_label in _FORMAT_LABEL_MIGRATIONS.items():
+        await collection.update_many({"format": old_label}, {"$set": {"format": new_label}})
+
 
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     collection = db[COLLECTION]
+    await _migrate_audio_type_labels(db)
+    await _migrate_format_labels(db)
     await collection.create_index([("title", "text"), ("overview", "text")])
     await collection.create_index("tags_normalized")
     await collection.create_index("barcode", unique=True, sparse=True)
     await collection.create_index("format")
     await collection.create_index("audio_types")
+    await collection.create_index("media_type")
 
     # Migrate the pre-v0.18.0 serial_number index (unique, NOT sparse) to
     # sparse — wishlist movies (FEATURES.md #28) omit serial_number entirely,
@@ -48,6 +109,11 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     await collection.create_index("is_wishlist")
     await collection.create_index("rating")
     await collection.create_index("year")
+    await collection.create_index("created_at")
+    await collection.create_index("runtime")
+    await collection.create_index("location")
+    await collection.create_index("owner")
+    await collection.create_index("registered_by")
     await db[DELETED_COLLECTION].create_index("deleted_at")
 
 
@@ -167,6 +233,7 @@ async def find_many(
     normalized_tags: list[str] | None,
     formats: list[str] | None = None,
     audio_types: list[str] | None = None,
+    media_types: list[str] | None = None,
     sort_spec: list[tuple[str, int]] | None = None,
     is_wishlist: bool = False,
 ) -> list[dict]:
@@ -188,6 +255,8 @@ async def find_many(
         filter_["format"] = {"$in": formats}
     if audio_types:
         filter_["audio_types"] = {"$in": audio_types}
+    if media_types:
+        filter_["media_type"] = {"$in": media_types}
 
     cursor = db[COLLECTION].find(filter_)
     cursor = cursor.sort(sort_spec) if sort_spec else cursor.sort(DEFAULT_SORT_FIELD, -1)

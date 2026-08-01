@@ -41,12 +41,13 @@ export const api = {
   listUsers: () => request("/users"),
   updateUserRole: (userId, role) =>
     request(`/users/${userId}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
-  listMovies: ({ q, tags, format, audioTypes, sort, wishlist } = {}) => {
+  listMovies: ({ q, tags, format, audioTypes, mediaTypes, sort, wishlist } = {}) => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (tags?.length) params.set("tags", tags.join(","));
     if (format?.length) params.set("format", format.join(","));
     if (audioTypes?.length) params.set("audio_types", audioTypes.join(","));
+    if (mediaTypes?.length) params.set("media_types", mediaTypes.join(","));
     // `sort` is either a ready-made "field:direction,..." string, or an
     // array of { field, direction } levels (up to 3, see Library.jsx).
     const sortParam = Array.isArray(sort)

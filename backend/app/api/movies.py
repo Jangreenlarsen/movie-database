@@ -7,6 +7,7 @@ from app.integrations import tmdb_client
 from app.models.movie import (
     AudioType,
     DeletedMovie,
+    MediaType,
     Movie,
     MovieCreate,
     MovieFormat,
@@ -25,6 +26,7 @@ async def list_movies(
     tags: str | None = Query(default=None),
     format: str | None = Query(default=None, alias="format"),
     audio_types: str | None = Query(default=None),
+    media_types: str | None = Query(default=None),
     sort: str | None = Query(
         default=None,
         description='Comma-separated "field:direction" tokens, up to 3, '
@@ -39,8 +41,9 @@ async def list_movies(
     tag_list = tags.split(",") if tags else None
     format_list = format.split(",") if format else None
     audio_type_list = audio_types.split(",") if audio_types else None
+    media_type_list = media_types.split(",") if media_types else None
     return await movie_service.list_movies(
-        db, q, tag_list, format_list, audio_type_list, sort, wishlist
+        db, q, tag_list, format_list, audio_type_list, media_type_list, sort, wishlist
     )
 
 
@@ -66,6 +69,7 @@ async def attribute_options() -> dict:
     return {
         "formats": [f.value for f in MovieFormat],
         "audio_types": [a.value for a in AudioType],
+        "media_types": [m.value for m in MediaType],
     }
 
 

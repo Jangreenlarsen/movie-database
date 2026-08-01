@@ -2,6 +2,23 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.11.1 build 0013] — 2026-08-01 — Fase 2: fejlret alle 10 fund fra kode-gennemgangen
+
+Retter BUGS.md #3-12 (registreret i fase 1 af kode-gennemgangen 2026-08-01, se CLAUDE.md regel 16). Kort per fund — fuld beskrivelse/løsning i BUGS.md:
+
+- **#3+#4 (auth_service.py)**: `PATCH /api/users/{id}/role` tjekker nu om brugeren findes (404 i stedet for 500-crash) og afviser at fjerne den sidste admin (ny `LastAdminError` → 409, håndhævet i backend).
+- **#5 (Settings.jsx)**: `UsersSection.toggleRole` viser nu en fejlbesked i stedet for at fejle lydløst.
+- **#6 (ScanMovie.jsx)**: `saveMovie()` viser nu den faktiske backend-fejl (fx dublet-stregkode-409) i stedet for kun en generisk besked.
+- **#7 (tag_service.py)**: `resolve_tags` fanger nu `DuplicateKeyError` fra et race-condition-scenarie ved et helt nyt tag og genindlæser i stedet for at crashe.
+- **#8+#9 (tmdb_client.py)**: `_rating()` bruger nu `is not None` (bevarer en ægte `0.0`); ny fælles `_raise_for_status()` mapper alle uventede TMDb-fejlstatusser til `TmdbUnavailableError` (502) i stedet for rå 500'ere.
+- **#10 (movie_service.py)**: `create_movie` trimmer og udelader nu blanke/whitespace-only stregkoder helt, samme behandling som `null`.
+- **#11 (config.py/main.py)**: ny `Settings.using_insecure_jwt_secret`-property; lifespan logger en tydelig advarsel ved opstart hvis den usikre default-JWT-hemmelighed stadig er i brug.
+- **#12 (models/user.py)**: ny validator afviser adgangskoder over bcrypts reelle 72-byte-grænse eksplicit, i stedet for at lade dem blive tavst afkortet.
+
+Ny fælles metode-regel (CLAUDE.md #16) anvendt gennemgående: null-tjek før brug, specifikke fejlbeskeder til brugeren, lockout-beskyttelse i backend, `is not None` for eksterne API-tal, hele klassen af "tomhed"-repræsentationer rettet, sikkerhedskonfiguration advarer ved opstart.
+
+Testdækket: 9 nye regressionstests (`test_roles.py` ×4, `test_movies.py` ×2, `test_tmdb_client.py` ×3 — ny fil). 66/66 grønne. Live-verificeret mod ægte MongoDB (blank-barcode, password-længde, JWT-advarsel fraværende med Jans rigtige `.env`).
+
 ## [0.11.0 build 0012] — 2026-08-01 — Telefon-adgang over LAN (HTTPS) + mobilvenligt design
 
 - `frontend/vite.config.js`: dev-serveren binder nu til `0.0.0.0` (`server.host: true`) og kører HTTPS med et selvsigneret cert fra `frontend/.cert/` (git-ignoreret, genereres lokalt med `openssl` — se TECH_REFERENCE.md). HTTPS er et hårdt krav fra browseren for at `getUserMedia` (kamera-scanning) må bruges fra andet end `localhost`.

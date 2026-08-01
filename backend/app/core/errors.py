@@ -40,3 +40,14 @@ class NotAuthenticatedError(Exception):
 class NotAuthorizedError(Exception):
     def __init__(self, message: str = "Admin rights required"):
         super().__init__(message)
+
+
+class UserNotFoundError(Exception):
+    def __init__(self, user_id: str):
+        self.user_id = user_id
+        super().__init__(f"User not found: {user_id}")
+
+
+class LastAdminError(Exception):
+    def __init__(self):
+        super().__init__("Cannot remove the last remaining admin")

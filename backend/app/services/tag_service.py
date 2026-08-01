@@ -1,4 +1,5 @@
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo.errors import DuplicateKeyError
 
 from app.repositories import tag_repository
 
@@ -25,8 +26,14 @@ async def resolve_tags(db: AsyncIOMotorDatabase, raw_tags: list[str]) -> list[st
         if existing:
             canonical_names.append(existing["name"])
         else:
-            created = await tag_repository.insert(db, trimmed, normalized)
-            canonical_names.append(created["name"])
+            try:
+                created = await tag_repository.insert(db, trimmed, normalized)
+                canonical_names.append(created["name"])
+            except DuplicateKeyError:
+                # Another concurrent request created this same brand-new tag
+                # between our find and our insert — use whatever casing won.
+                existing = await tag_repository.find_by_normalized(db, normalized)
+                canonical_names.append(existing["name"])
 
     return canonical_names
 

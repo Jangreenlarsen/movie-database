@@ -194,6 +194,7 @@ function UsersSection({ currentUserId }) {
   const [users, setUsers] = useState([]);
   const [status, setStatus] = useState("loading");
   const [updatingId, setUpdatingId] = useState(null);
+  const [error, setError] = useState(null);
 
   function load() {
     setStatus("loading");
@@ -211,9 +212,12 @@ function UsersSection({ currentUserId }) {
   async function toggleRole(targetUser) {
     const nextRole = targetUser.role === "admin" ? "standard" : "admin";
     setUpdatingId(targetUser.id);
+    setError(null);
     try {
       await api.updateUserRole(targetUser.id, nextRole);
       load();
+    } catch (err) {
+      setError(err.message);
     } finally {
       setUpdatingId(null);
     }
@@ -228,6 +232,7 @@ function UsersSection({ currentUserId }) {
       {status === "error" && (
         <div className="banner banner-error">Kunne ikke hente brugere.</div>
       )}
+      {error && <div className="banner banner-error">{error}</div>}
 
       {status === "ready" && (
         <ul className="user-list">

@@ -3,7 +3,12 @@ from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
-from app.core.errors import InvalidCredentialsError, UsernameTakenError
+from app.core.errors import (
+    InvalidCredentialsError,
+    LastAdminError,
+    UserNotFoundError,
+    UsernameTakenError,
+)
 from app.core.security import hash_password, verify_password
 from app.models.user import (
     PasswordChange,
@@ -84,5 +89,15 @@ async def list_users(db: AsyncIOMotorDatabase) -> list[User]:
 
 
 async def update_user_role(db: AsyncIOMotorDatabase, user_id: str, role: UserRole) -> User:
+    target = await user_repository.find_by_id(db, user_id)
+    if target is None:
+        raise UserNotFoundError(user_id)
+
+    is_demoting_admin = target.get("role") == UserRole.ADMIN.value and role != UserRole.ADMIN
+    if is_demoting_admin:
+        admin_count = await user_repository.count_by_role(db, UserRole.ADMIN.value)
+        if admin_count <= 1:
+            raise LastAdminError()
+
     updated = await user_repository.set_role(db, user_id, role.value)
     return to_user_model(updated)

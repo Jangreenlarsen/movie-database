@@ -30,7 +30,18 @@ def _poster_url(poster_path: str | None) -> str | None:
 
 
 def _rating(vote_average: float | None) -> float | None:
-    return round(vote_average, 1) if vote_average else None
+    return round(vote_average, 1) if vote_average is not None else None
+
+
+def _raise_for_status(response: httpx.Response) -> None:
+    """Any TMDb status we don't explicitly translate elsewhere still ends up
+    as a clean TmdbUnavailableError (502) instead of an unhandled 500."""
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        raise TmdbUnavailableError(
+            f"TMDb svarede med uventet status {response.status_code}"
+        ) from exc
 
 
 def _to_candidate(item: dict) -> dict:
@@ -56,7 +67,7 @@ async def search_movies(query: str) -> list[dict]:
         raise TmdbUnavailableError("TMDb afviste API-tokenet (401) — tjek TMDB_API_TOKEN")
     if response.status_code == 429:
         raise TmdbUnavailableError("TMDb rate-limit ramt (429), prøv igen om lidt")
-    response.raise_for_status()
+    _raise_for_status(response)
 
     results = response.json().get("results", [])
     return [_to_candidate(item) for item in results[:8]]
@@ -78,8 +89,8 @@ async def get_movie_details(tmdb_id: int) -> dict:
         raise TmdbNotFoundError(tmdb_id)
     if detail_response.status_code == 401:
         raise TmdbUnavailableError("TMDb afviste API-tokenet (401) — tjek TMDB_API_TOKEN")
-    detail_response.raise_for_status()
-    credits_response.raise_for_status()
+    _raise_for_status(detail_response)
+    _raise_for_status(credits_response)
 
     detail = detail_response.json()
     credits = credits_response.json()

@@ -1,5 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+INSECURE_DEFAULT_JWT_SECRET = "dev-only-insecure-secret-change-me"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -13,7 +15,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     cors_origins: str = "http://localhost:5173"
 
-    jwt_secret_key: str = "dev-only-insecure-secret-change-me"
+    jwt_secret_key: str = INSECURE_DEFAULT_JWT_SECRET
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 30  # 30 dage
     cookie_secure: bool = False
@@ -21,6 +23,10 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def using_insecure_jwt_secret(self) -> bool:
+        return self.jwt_secret_key == INSECURE_DEFAULT_JWT_SECRET
 
 
 settings = Settings()

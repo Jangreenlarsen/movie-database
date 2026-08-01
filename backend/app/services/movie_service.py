@@ -72,13 +72,14 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate) -> Movie:
         "created_at": now,
         "updated_at": now,
     }
-    if payload.barcode is not None:
-        document["barcode"] = payload.barcode
+    trimmed_barcode = payload.barcode.strip() if payload.barcode else ""
+    if trimmed_barcode:
+        document["barcode"] = trimmed_barcode
 
     try:
         created = await movie_repository.insert(db, document)
     except DuplicateKeyError as exc:
-        raise DuplicateBarcodeError(payload.barcode or "") from exc
+        raise DuplicateBarcodeError(trimmed_barcode) from exc
     return _to_model(created)
 
 

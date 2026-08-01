@@ -1,5 +1,13 @@
 # Release Notes
 
+## v0.11.1 (build 0013) — 2026-08-01
+
+Rettet 10 fejl fundet ved en systematisk kode-gennemgang (se BUGS.md #3-12). Ingen af dem var noget du havde oplevet endnu, men bl.a.:
+- Man kan ikke længere komme til at fjerne den sidste administrator ved et uheld.
+- Fejlbeskeder ved scan-gem og bruger-rolle-ændring viser nu den rigtige årsag i stedet for en generisk besked.
+- En sjælden race condition der kunne crashe et gem ved et helt nyt tag er rettet.
+- En film med TMDb-rating på præcis 0.0 vises nu korrekt i stedet for "ingen rating".
+
 ## v0.11.0 (build 0012) — 2026-08-01
 
 - Du kan nu åbne appen fra din telefon på samme netværk: **https://10.1.1.72:5173/**. Telefonens browser advarer om at certifikatet ikke er "betroet" (fordi det er selvsigneret) — vælg "Avanceret"/"Fortsæt alligevel", det er sikkert på jeres eget netværk.

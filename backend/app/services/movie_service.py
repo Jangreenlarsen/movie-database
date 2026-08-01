@@ -51,6 +51,8 @@ def _to_model(document: dict) -> Movie:
         owner=document.get("owner"),
         registered_by=document.get("registered_by"),
         is_wishlist=document.get("is_wishlist", False),
+        personal_rating=document.get("personal_rating"),
+        personal_note=document.get("personal_note"),
         created_at=document["created_at"],
         updated_at=document["updated_at"],
     )

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.27.0 (build 0032) — 2026-08-01
+
+- Kan nu give hver film din egen rating (1-10) og skrive en personlig note, uafhængigt af TMDb's rating — rediger i filmens detaljevindue. Kan også sorteres efter.
+
 ## v0.26.0 (build 0031) — 2026-08-01
 
 - Ny advarsel når du vælger en film der allerede findes i biblioteket eller på ønskelisten — praktisk hvis du er i tvivl om du allerede har scannet den. Du kan stadig tilføje den igen, fx hvis du ejer flere kopier.

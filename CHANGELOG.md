@@ -2,6 +2,13 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.27.0 build 0032] — 2026-08-01 — Personlig rating + note pr. film (feature #39)
+
+- `Movie`/`MovieUpdate`: nye `personal_rating` (1-10, valideret) og `personal_note` (fritekst) — adskilt fra TMDb's offentlige `rating`. `null` rydder feltet (ingen sparse-index-hensyn her, i modsætning til `barcode`/`serial_number`).
+- `personal_rating` tilføjet til `movie_repository.SORT_FIELDS` + eget index — sorterbar i biblioteksvisningen ("Din rating").
+- `Library.jsx`s detaljevindue: nyt "Din rating"-tal-felt (1-10) og "Din note"-tekstfelt, vist i modal-headeren når sat ("Din: 8/10").
+- Nye tests i `test_personal_rating.py`: default-værdi, sæt/ryd, range-validering (422 uden for 1-10), sortering.
+
 ## [0.26.0 build 0031] — 2026-08-01 — Dublet-advarsel ved oprettelse (feature #38)
 
 - Ny `GET /api/movies/check-duplicate?tmdb_id=` (`movie_repository.find_by_tmdb_id`, `movie_service.check_tmdb_duplicates`) — returnerer alle eksisterende film (bibliotek og/eller ønskeliste) med samme `tmdb_id`. Registreret før `/{movie_id}`, som de andre specifikke rute-litteraler.

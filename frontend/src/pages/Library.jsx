@@ -10,6 +10,7 @@ const SORT_OPTIONS = [
   { value: "title", label: "Titel" },
   { value: "year", label: "År" },
   { value: "rating", label: "Rating" },
+  { value: "personal_rating", label: "Din rating" },
   { value: "runtime", label: "Spilletid" },
   { value: "format", label: "Format" },
   { value: "audio_types", label: "Lyd-type" },
@@ -581,6 +582,10 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
   );
   const [location, setLocation] = useState(movie.location ?? "");
   const [owner, setOwner] = useState(movie.owner ?? "");
+  const [personalRating, setPersonalRating] = useState(
+    movie.personal_rating != null ? String(movie.personal_rating) : ""
+  );
+  const [personalNote, setPersonalNote] = useState(movie.personal_note ?? "");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [moving, setMoving] = useState(false);
@@ -603,6 +608,8 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
       mediaType !== (movie.media_type ?? "") ||
       location !== (movie.location ?? "") ||
       owner !== (movie.owner ?? "") ||
+      personalRating !== (movie.personal_rating != null ? String(movie.personal_rating) : "") ||
+      personalNote !== (movie.personal_note ?? "") ||
       serialChanged
     );
   }, [
@@ -613,6 +620,8 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
     serialNumberInput,
     location,
     owner,
+    personalRating,
+    personalNote,
     canEditSerial,
     movie,
   ]);
@@ -628,6 +637,8 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
         media_type: mediaType || null,
         location: location.trim() || null,
         owner: owner.trim() || null,
+        personal_rating: personalRating ? Number(personalRating) : null,
+        personal_note: personalNote.trim() || null,
       };
       const nextSerial = Number(serialNumberInput);
       if (canEditSerial && nextSerial > 0 && nextSerial !== movie.serial_number) {
@@ -685,6 +696,7 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
               )}
               {movie.runtime != null && <> · {movie.runtime} min</>}
               {movie.rating != null && <> · ★ {movie.rating.toFixed(1)}</>}
+              {movie.personal_rating != null && <> · Din: {movie.personal_rating}/10</>}
             </p>
             {movie.genres.length > 0 && <p className="muted">{movie.genres.join(", ")}</p>}
             {(movie.imdb_url || movie.trailer_url || movie.tmdb_id) && (
@@ -771,6 +783,29 @@ function MovieDetailModal({ movie, user, attributeOptions, serialPaddingWidth, o
           {movie.registered_by && (
             <p className="muted">Registreret af: {movie.registered_by}</p>
           )}
+
+          <div>
+            <div className="modal-section-label">Din rating (1-10)</div>
+            <input
+              type="number"
+              min="1"
+              max="10"
+              value={personalRating}
+              onChange={(e) => setPersonalRating(e.target.value)}
+              style={{ width: 80 }}
+            />
+          </div>
+
+          <div>
+            <div className="modal-section-label">Din note</div>
+            <textarea
+              value={personalNote}
+              onChange={(e) => setPersonalNote(e.target.value)}
+              placeholder="Egne tanker om filmen..."
+              rows={3}
+              style={{ width: "100%", resize: "vertical" }}
+            />
+          </div>
 
           <div>
             <div className="modal-section-label">Format</div>

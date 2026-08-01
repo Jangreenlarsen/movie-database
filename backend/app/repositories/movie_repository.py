@@ -19,6 +19,7 @@ SORT_FIELDS = {
     "serial_number": "serial_number",
     "created_at": "created_at",
     "rating": "rating",
+    "personal_rating": "personal_rating",
     "runtime": "runtime",
     "format": "format",
     "audio_types": "audio_types",
@@ -108,6 +109,7 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
 
     await collection.create_index("is_wishlist")
     await collection.create_index("rating")
+    await collection.create_index("personal_rating")
     await collection.create_index("year")
     await collection.create_index("created_at")
     await collection.create_index("runtime")

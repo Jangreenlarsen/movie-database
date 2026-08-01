@@ -226,6 +226,7 @@ async def test_sort_by_rating(client, monkeypatch):
             "genres": [],
             "cast": [],
             "rating": ratings[tmdb_id],
+            "runtime": None,
         }
 
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)

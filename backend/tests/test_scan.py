@@ -48,6 +48,7 @@ async def test_create_movie_from_tmdb_id_fetches_metadata(client, monkeypatch):
             "genres": ["Action", "Science Fiction"],
             "cast": ["Keanu Reeves"],
             "rating": 8.2,
+            "runtime": 136,
         }
 
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
@@ -61,6 +62,7 @@ async def test_create_movie_from_tmdb_id_fetches_metadata(client, monkeypatch):
     assert movie["genres"] == ["Action", "Science Fiction"]
     assert movie["tags"] == ["Favorite"]
     assert movie["rating"] == 8.2
+    assert movie["runtime"] == 136
 
 
 async def test_create_movie_requires_tmdb_id_or_title(client):

@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.12.0 (build 0014) — 2026-08-01
+
+- Du kan nu se hvilken version af appen der kører nederst på siden.
+- Filmkort kan nu vise spilletid (minutter), og de valgte felter (år/format/lyd/spilletid) fylder mindre — de vises nu i to kolonner i stedet for én lang liste.
+- Sortering og filtrering (tags/format/lyd) er nu skjult bag "Sortér ▾"/"Filtrér ▾"-knapper, samme måde som "Vis felter" allerede virkede — mindre rod i toolbaren, men alt er der stadig ét klik væk.
+
 ## v0.11.1 (build 0013) — 2026-08-01
 
 Rettet 10 fejl fundet ved en systematisk kode-gennemgang (se BUGS.md #3-12). Ingen af dem var noget du havde oplevet endnu, men bl.a.:

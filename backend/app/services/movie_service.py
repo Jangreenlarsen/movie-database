@@ -27,6 +27,7 @@ def _to_model(document: dict) -> Movie:
         format=document.get("format"),
         audio_types=document.get("audio_types", []),
         rating=document.get("rating"),
+        runtime=document.get("runtime"),
         created_at=document["created_at"],
         updated_at=document["updated_at"],
     )
@@ -47,6 +48,7 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate) -> Movie:
             "genres": details["genres"],
             "cast": details["cast"],
             "rating": details["rating"],
+            "runtime": details["runtime"],
         }
     else:
         movie_fields = {
@@ -58,6 +60,7 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate) -> Movie:
             "genres": payload.genres,
             "cast": payload.cast,
             "rating": None,
+            "runtime": payload.runtime,
         }
 
     serial_number = await movie_repository.next_serial_number(db)

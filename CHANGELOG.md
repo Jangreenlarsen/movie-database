@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.12.0 build 0014] — 2026-08-01 — Versionsvisning, runtime-tag, klik-til-vis sortering/filtre
+
+- Tilføjet `backend/app/core/version_info.py`: læser `version.json` (repo-roden) én gang ved opstart. `GET /api/health` returnerer nu også `version`/`build`. Ny test `test_health.py`.
+- `frontend/src/App.jsx`: henter `/api/health` ved opstart og viser version+build i en ny footer nederst på siden (feature #22).
+- TMDb-integrationen henter nu også `runtime` (minutter) fra `/movie/{id}` og gemmer det på filmen (`tmdb_client.py`, `movie_service.py`, `models/movie.py`). Manuel oprettelse/redigering kan også sætte `runtime` direkte.
+- Filmkort i biblioteket kan nu vise en "Spilletid"-værdi (`X min`) via "Vis felter" (feature #23). De viste felter (år/format/lyd/spilletid) er samlet i et nyt 2-kolonne grid (`.movie-meta-grid`) i stedet for én lang kolonne, så kortene fylder mindre i højden.
+- Sorterings-kontrollen og tag/format/lyd-filterpanelet i biblioteksvisningen er nu klik-til-vis (`Sortér ▾` / `Filtrér ▾`-knapper), samme mønster som det eksisterende "Vis felter ▾" (feature #24). Filtrér-knappen viser et antal når der er aktive filtre.
+- `UserSettings.visible_fields` og `DEFAULT_SETTINGS` udvidet med `runtime`.
+- `ARCHITECTURE.md`, `FEATURES.md` opdateret (#22, #23, #24 markeret done).
+
 ## [0.11.1 build 0013] — 2026-08-01 — Fase 2: fejlret alle 10 fund fra kode-gennemgangen
 
 Retter BUGS.md #3-12 (registreret i fase 1 af kode-gennemgangen 2026-08-01, se CLAUDE.md regel 16). Kort per fund — fuld beskrivelse/løsning i BUGS.md:

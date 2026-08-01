@@ -104,4 +104,5 @@ async def get_movie_details(tmdb_id: int) -> dict:
         "genres": [genre["name"] for genre in detail.get("genres", [])],
         "cast": [member["name"] for member in credits.get("cast", [])[:10]],
         "rating": _rating(detail.get("vote_average")),
+        "runtime": detail.get("runtime"),
     }

@@ -90,6 +90,12 @@
   padding: 24px 20px 64px;
 }
 
+.app-footer {
+  text-align: center;
+  padding: 10px 20px 18px;
+  font-size: 0.72rem;
+}
+
 .page-header {
   display: flex;
   align-items: baseline;

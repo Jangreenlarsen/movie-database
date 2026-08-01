@@ -33,7 +33,7 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 | GET    | `/api/tags`                    | Liste alle tags (til autocomplete)                            | done |
 | POST   | `/api/scan/lookup`             | Input: scannet UPC/EAN. Output: UPC-gæt + TMDb-kandidater. 502 hvis TMDb er utilgængelig/token mangler. | done |
 | GET    | `/api/movies/tmdb-search`      | Direkte TMDb-titel-søgning (fallback når scan ikke matcher). Registreret før `/{movie_id}`. | done |
-| GET    | `/api/health`                  | Health check (backend + MongoDB-forbindelse)                    | done |
+| GET    | `/api/health`                  | Health check (backend + MongoDB-forbindelse), samt `version`/`build` fra `version.json` (se `app/core/version_info.py`) | done |
 | POST   | `/api/auth/register`           | Opret bruger ({username, password}). 409 hvis brugernavn er taget. Sætter auth-cookie. | done |
 | POST   | `/api/auth/login`              | Login ({username, password}). 401 ved forkert login. Sætter auth-cookie.  | done |
 | POST   | `/api/auth/logout`              | Rydder auth-cookien.                                           | done |

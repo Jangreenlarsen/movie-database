@@ -25,3 +25,13 @@ Status: `planned` → `in-progress` → `done`. Tilføj entry *før* implementer
 | 19| Bruger-roller (admin/standard). Første registrerede bruger bliver automatisk admin. Admin kan liste alle brugere og forfremme/degradere roller. Serienummer-generator-opsætning kræver admin (skrivning — læsning er åben for alle). Adgangskode-ændring på Settings-siden. | done | 0.10.0       |
 | 20| OTA-opdateringsfunktion fra GitHub-repo, inkl. tjek/installation af manglende afhængigheder (pip/npm) ved opdatering (kræver afklaring af deployment-model — se ARCHITECTURE.md/TECH_REFERENCE.md, feature #10 Docker Compose er stadig ikke verificeret) | planned | -       |
 | 21| Adgang fra telefon over LAN (HTTPS dev-server + firewall-regel) + mobilvenligt responsivt design | done | 0.11.0       |
+| 22| Versionsvisning i frontend (læst fra `version.json` via `/api/health`)  | done | 0.12.0       |
+| 23| Filmkort: `runtime`-tag (minutter, fra TMDb) + 2-kolonne kompakt visning af felter (år/format/lyd/runtime) i stedet for én kolonne | done | 0.12.0       |
+| 24| Klik-til-vis (som "Vis felter") for både sortering og tag/format/lyd-filterpanelet i biblioteksvisningen — begge er i dag altid synlige | done | 0.12.0       |
+| 25| Lokation, automatisk "registreret af"-felt og "ejer" pr. film, indtastet ved scan/registrering | planned | -       |
+| 26| Films `serial_number` kan kun ændres af en admin eller den bruger der oprindeligt registrerede filmen (afhænger af #25) | planned | -       |
+| 27| Fler-niveau sortering (se #17) udvides: en valgt kombination af sorteringsniveauer kan gemmes som navngivet preset og hurtigt genvælges via dropdown i biblioteksvisningen | planned | -       |
+| 28| Ønskeliste-side ("Ønsker"): samme søge-/filtrerings-/sorteringsfunktioner som biblioteksvisningen, men uden serienummer | planned | -       |
+| 29| Soft-delete af film: ved sletning logges film (serienr, titel, hvornår, hvem) i en separat slettet-film-liste i stedet for kun at forsvinde. Serienummeret frigøres derved automatisk til genbrug | planned | -       |
+| 30| Discogs som fallback-kilde ved stregkode-opslag (`/api/scan/lookup`) når UPCitemdb ikke finder et match — bedre dækning for europæiske EAN-koder | planned | -       |
+| 31| Print-venlig liste-visning af biblioteket: kompakt tabel (serienr/titel/år/format/lokation), én film pr. linje, optimeret til udskrift | planned | -       |

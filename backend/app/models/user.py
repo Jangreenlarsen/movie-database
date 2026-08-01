@@ -27,6 +27,7 @@ class VisibleFields(BaseModel):
     format: bool = False
     audio_types: bool = False
     rating: bool = False
+    runtime: bool = False
 
 
 class UserSettings(BaseModel):

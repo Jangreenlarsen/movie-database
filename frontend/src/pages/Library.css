@@ -163,9 +163,18 @@
   -webkit-box-orient: vertical;
 }
 
-.movie-year {
-  font-size: 0.78rem;
+.movie-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px 8px;
+}
+
+.movie-meta-item {
+  font-size: 0.74rem;
   color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .movie-tags {

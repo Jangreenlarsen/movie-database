@@ -9,12 +9,17 @@ import "./App.css";
 function App() {
   const [tab, setTab] = useState("library");
   const [user, setUser] = useState(undefined); // undefined = checking, null = logged out
+  const [versionInfo, setVersionInfo] = useState(null);
 
   useEffect(() => {
     api
       .me()
       .then(setUser)
       .catch(() => setUser(null));
+    api
+      .health()
+      .then((data) => setVersionInfo({ version: data.version, build: data.build }))
+      .catch(() => {});
   }, []);
 
   async function handleLogout() {
@@ -71,9 +76,15 @@ function App() {
 
       <main className="app-main">
         {tab === "library" && <Library user={user} onSettingsChanged={setUser} />}
-        {tab === "scan" && <ScanMovie />}
+        {tab === "scan" && <ScanMovie user={user} />}
         {tab === "settings" && <Settings user={user} />}
       </main>
+
+      <footer className="app-footer">
+        <span className="muted">
+          {versionInfo ? `v${versionInfo.version} (build ${versionInfo.build})` : ""}
+        </span>
+      </footer>
     </div>
   );
 }

@@ -16,6 +16,7 @@ const VISIBLE_FIELD_OPTIONS = [
   { key: "format", label: "Format" },
   { key: "audioTypes", label: "Lyd-type" },
   { key: "rating", label: "Rating" },
+  { key: "runtime", label: "Spilletid" },
 ];
 
 function visibleFieldsFromSettings(settings) {
@@ -26,6 +27,7 @@ function visibleFieldsFromSettings(settings) {
     format: vf.format ?? false,
     audioTypes: vf.audio_types ?? false,
     rating: vf.rating ?? false,
+    runtime: vf.runtime ?? false,
   };
 }
 
@@ -60,6 +62,8 @@ export default function Library({ user, onSettingsChanged }) {
   const [activeMovie, setActiveMovie] = useState(null);
   const [visibleFields, setVisibleFields] = useState(() => visibleFieldsFromSettings(user.settings));
   const [showFieldPanel, setShowFieldPanel] = useState(false);
+  const [showSortPanel, setShowSortPanel] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
 
   function persistSettings({ sortField: nextSort, sortDirection: nextDirection, visibleFields: nextVisible }) {
@@ -73,6 +77,7 @@ export default function Library({ user, onSettingsChanged }) {
           format: nextVisible.format,
           audio_types: nextVisible.audioTypes,
           rating: nextVisible.rating,
+          runtime: nextVisible.runtime,
         },
       })
       .then(onSettingsChanged)
@@ -155,26 +160,41 @@ export default function Library({ user, onSettingsChanged }) {
             />
           </div>
 
-          <select value={sortField} onChange={(e) => updateSortField(e.target.value)}>
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                Sortér: {opt.label}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="btn"
-            title={sortDirection === "asc" ? "Stigende" : "Faldende"}
-            onClick={toggleSortDirection}
-          >
-            {sortDirection === "asc" ? "↑" : "↓"}
+          <button type="button" className="btn" onClick={() => setShowSortPanel((v) => !v)}>
+            Sortér ▾
+          </button>
+
+          <button type="button" className="btn" onClick={() => setShowFilterPanel((v) => !v)}>
+            Filtrér {hasActiveFilters ? `(${selectedTags.length + selectedFormats.length + selectedAudioTypes.length}) ` : ""}▾
           </button>
 
           <button type="button" className="btn" onClick={() => setShowFieldPanel((v) => !v)}>
             Vis felter ▾
           </button>
         </div>
+
+        {showSortPanel && (
+          <div className="filter-panel">
+            <div className="filter-group">
+              <span className="filter-group-label">Sortér efter</span>
+              <select value={sortField} onChange={(e) => updateSortField(e.target.value)}>
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="btn"
+                title={sortDirection === "asc" ? "Stigende" : "Faldende"}
+                onClick={toggleSortDirection}
+              >
+                {sortDirection === "asc" ? "↑ Stigende" : "↓ Faldende"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {showFieldPanel && (
           <div className="filter-panel">
@@ -194,7 +214,7 @@ export default function Library({ user, onSettingsChanged }) {
           </div>
         )}
 
-        {(allTags.length > 0 || attributeOptions.formats.length > 0) && (
+        {showFilterPanel && (allTags.length > 0 || attributeOptions.formats.length > 0) && (
           <div className="filter-panel">
             {allTags.length > 0 && (
               <div className="filter-group">
@@ -304,15 +324,20 @@ export default function Library({ user, onSettingsChanged }) {
               </div>
               <div className="movie-info">
                 <div className="movie-title">{movie.title}</div>
-                {visibleFields.year && movie.year && (
-                  <div className="movie-year">{movie.year}</div>
-                )}
-                {visibleFields.format && movie.format && (
-                  <div className="movie-year">{movie.format}</div>
-                )}
-                {visibleFields.audioTypes && movie.audio_types.length > 0 && (
-                  <div className="movie-year">{movie.audio_types.join(", ")}</div>
-                )}
+                <div className="movie-meta-grid">
+                  {visibleFields.year && movie.year && (
+                    <span className="movie-meta-item">{movie.year}</span>
+                  )}
+                  {visibleFields.runtime && movie.runtime && (
+                    <span className="movie-meta-item">{movie.runtime} min</span>
+                  )}
+                  {visibleFields.format && movie.format && (
+                    <span className="movie-meta-item">{movie.format}</span>
+                  )}
+                  {visibleFields.audioTypes && movie.audio_types.length > 0 && (
+                    <span className="movie-meta-item">{movie.audio_types.join(", ")}</span>
+                  )}
+                </div>
                 {visibleFields.tags && movie.tags.length > 0 && (
                   <div className="movie-tags">
                     {movie.tags.map((tag) => (
@@ -415,6 +440,7 @@ function MovieDetailModal({ movie, attributeOptions, serialPaddingWidth, onClose
             <p className="muted">
               {movie.year ?? "År ukendt"} · Serienr.{" "}
               {formatSerial(movie.serial_number, serialPaddingWidth)}
+              {movie.runtime != null && <> · {movie.runtime} min</>}
               {movie.rating != null && <> · ★ {movie.rating.toFixed(1)}</>}
             </p>
             {movie.genres.length > 0 && <p className="muted">{movie.genres.join(", ")}</p>}

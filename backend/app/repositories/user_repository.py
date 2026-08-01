@@ -12,6 +12,7 @@ DEFAULT_SETTINGS = {
         "format": False,
         "audio_types": False,
         "rating": False,
+        "runtime": False,
     },
 }
 

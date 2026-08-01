@@ -40,6 +40,7 @@ class MovieCreate(BaseModel):
     overview: str | None = None
     genres: list[str] = Field(default_factory=list)
     cast: list[str] = Field(default_factory=list)
+    runtime: int | None = None
 
     @model_validator(mode="after")
     def require_tmdb_id_or_title(self) -> "MovieCreate":
@@ -58,6 +59,7 @@ class MovieUpdate(BaseModel):
     tags: list[str] | None = None
     format: MovieFormat | None = None
     audio_types: list[AudioType] | None = None
+    runtime: int | None = None
     serial_number: int | None = Field(default=None, gt=0)
 
 
@@ -76,5 +78,6 @@ class Movie(BaseModel):
     format: str | None = None
     audio_types: list[str] = Field(default_factory=list)
     rating: float | None = None
+    runtime: int | None = None
     created_at: datetime
     updated_at: datetime

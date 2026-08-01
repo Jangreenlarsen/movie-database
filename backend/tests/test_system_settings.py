@@ -82,6 +82,15 @@ async def test_override_persists_across_requests(client, monkeypatch):
     assert response.json()["tmdb_api_token"] == {"configured": True, "source": "custom"}
 
 
+async def test_omdb_api_key_behaves_like_the_other_secrets(client, monkeypatch):
+    monkeypatch.setattr(settings, "omdb_api_key", "")
+
+    response = await client.patch("/api/settings/system", json={"omdb_api_key": "omdb-secret-abc"})
+    assert response.json()["omdb_api_key"] == {"configured": True, "source": "custom"}
+    assert "omdb-secret-abc" not in response.text
+    assert settings.omdb_api_key == "omdb-secret-abc"
+
+
 async def test_plex_token_behaves_like_the_other_secrets(client, monkeypatch):
     monkeypatch.setattr(settings, "plex_token", "")
 

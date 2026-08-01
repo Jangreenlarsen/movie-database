@@ -363,6 +363,12 @@ function SystemSettingsSection() {
             status={statusData.discogs_token}
             onSaved={load}
           />
+          <ApiKeyRow
+            label="OMDb API-nøgle"
+            field="omdb_api_key"
+            status={statusData.omdb_api_key}
+            onSaved={load}
+          />
           <PlainSettingRow
             label="Plex-server-URL"
             field="plex_server_url"

@@ -132,6 +132,7 @@ async def get_movie_details(tmdb_id: int) -> dict:
         "director": _director(credits.get("crew", [])),
         "rating": _rating(detail.get("vote_average")),
         "runtime": detail.get("runtime"),
+        "imdb_id": external_ids.get("imdb_id"),
         "imdb_url": _imdb_url(external_ids.get("imdb_id")),
         "trailer_url": _trailer_url(videos),
         "collection_id": collection["id"] if collection else None,

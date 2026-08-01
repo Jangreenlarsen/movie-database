@@ -79,6 +79,15 @@ Hver film kan tildeles frie, **brugerdefinerede tags** (fx "Julefilm", "Set med 
     - Hvis ja: merge `dev` → `main` med `--no-ff` og pushe `origin main`
     - Hvis nej: forblive på `dev` og informere om at `main` ikke er opdateret
 
+16. **Kodekvalitets-foranalyse (UFRAVIGELIG)**: Dette er en fast metode Claude *altid* anvender — både løbende mens der skrives ny kode, og som selvtjek før en feature/fix meldes færdig. Opstod af en systematisk to-fase-gennemgang (2026-08-01) der fandt gentagne instanser af de samme underliggende fejlmønstre; punkterne nedenfor er de generaliserede lektioner, ikke kun de konkrete bugs de blev fundet ud fra:
+    - **Null/fejl-propagering**: ethvert kald til en repository- eller service-funktion der kan returnere `None`/`null` eller kaste en fejl, skal have sit resultat tjekket af den kaldende kode *før* det bruges (fx `document.get(...)` på et resultat der kan være `None`). Antag aldrig succes.
+    - **Fejlbeskeder til brugeren**: frontend skal *altid* vise den specifikke fejlbesked fra backend (`err.message`), aldrig kun en generisk besked, når en specifik findes. Enhver `catch`-blok omkring et API-kald skal enten vise fejlen eller have en eksplicit, begrundet kommentar om hvorfor den bevidst undertrykkes.
+    - **Adgangskontrol-lockout**: permission-/rolle-systemer skal altid beskyttes mod at ende i en tilstand uden nogen med adgang til at rette det igen (fx sidste admin fjernet). Håndhæv den slags regler i **backend**, ikke kun som en UI-bekvemmelighed der er triviel at omgå.
+    - **Eksterne API'er og "tomhed"**: brug `is not None` — aldrig ren Python/JS-truthiness — for tal- eller valgfri-felter der lovligt kan være `0`/tomme (fx en rating på `0.0`). Håndtér altid et catch-all for uventede fejlstatusser fra eksterne API'er (ikke kun de statuskoder man tilfældigvis har tænkt på), så de mapper til en pæn fejl i stedet for en rå 500.
+    - **"Tomhed"-repræsentationer generelt**: når en bug rettes for én repræsentation af "tom" (fx `null`), tjek samtidig alle andre ækvivalente repræsentationer (tom streng, whitespace-only) for samme klasse fejl — ret hele klassen, ikke kun den rapporterede instans.
+    - **Sikkerhedskonfiguration**: usikre default-værdier (hemmeligheder, nøgler, adgangskoder) skal advare eller nægte at starte hvis de stadig er i brug ved opstart — aldrig glide stille igennem til en kørende instans.
+    - Ved større funktioner (auth, permissions, betalinger, data-integritet) skal Claude proaktivt overveje disse punkter under implementering, ikke først vente på at Jan beder om en fejl-gennemgang.
+
 ---
 
 ## Workflow for enhver opgave

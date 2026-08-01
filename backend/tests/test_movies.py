@@ -32,6 +32,35 @@ async def test_tag_reuses_canonical_casing_across_movies(client):
     assert tags_response.json() == ["Action"]
 
 
+async def test_new_tag_survives_concurrent_insert_race(client, monkeypatch):
+    """Regression test for BUGS.md #7. Simulates a concurrent request that
+    wins the race and inserts the same brand-new tag first, by making our
+    own insert raise the same DuplicateKeyError MongoDB's unique index
+    would — resolve_tags must recover by re-reading, not crash."""
+    from pymongo.errors import DuplicateKeyError
+
+    from app.repositories import tag_repository
+
+    original_insert = tag_repository.insert
+    call_count = {"n": 0}
+
+    async def flaky_insert(db, name, normalized):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            # Simulate a concurrent request already having inserted it.
+            await original_insert(db, name, normalized)
+            raise DuplicateKeyError("E11000 duplicate key")
+        return await original_insert(db, name, normalized)
+
+    monkeypatch.setattr(tag_repository, "insert", flaky_insert)
+
+    response = await client.post(
+        "/api/movies", json={"title": "Race Test", "tags": ["BrandNewTag"]}
+    )
+    assert response.status_code == 201
+    assert response.json()["tags"] == ["BrandNewTag"]
+
+
 async def test_filter_by_tag_is_case_insensitive(client):
     await client.post("/api/movies", json={"title": "Tagged", "tags": ["Christmas"]})
     await client.post("/api/movies", json={"title": "Untagged"})
@@ -81,6 +110,22 @@ async def test_movie_without_barcode_omits_field_entirely(client, db):
     movie_id = response.json()["id"]
 
     raw_doc = await db["movies"].find_one({"_id": ObjectId(movie_id)})
+    assert "barcode" not in raw_doc
+
+
+async def test_multiple_movies_with_blank_barcode_are_allowed(client, db):
+    """Regression test for BUGS.md #10 — an explicit blank/whitespace-only
+    barcode must be treated the same as omitting it entirely, not stored as
+    a literal empty string (which would collide on the unique index just
+    like the null case fixed above)."""
+    from bson import ObjectId
+
+    first = await client.post("/api/movies", json={"title": "Blank A", "barcode": ""})
+    second = await client.post("/api/movies", json={"title": "Blank B", "barcode": "   "})
+    assert first.status_code == 201
+    assert second.status_code == 201
+
+    raw_doc = await db["movies"].find_one({"_id": ObjectId(first.json()["id"])})
     assert "barcode" not in raw_doc
 
 

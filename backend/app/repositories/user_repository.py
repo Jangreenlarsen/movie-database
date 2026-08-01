@@ -46,6 +46,10 @@ async def count(db: AsyncIOMotorDatabase) -> int:
     return await db[COLLECTION].count_documents({})
 
 
+async def count_by_role(db: AsyncIOMotorDatabase, role: str) -> int:
+    return await db[COLLECTION].count_documents({"role": role})
+
+
 async def list_all(db: AsyncIOMotorDatabase) -> list[dict]:
     cursor = db[COLLECTION].find().sort("created_at", 1)
     return await cursor.to_list(length=1000)

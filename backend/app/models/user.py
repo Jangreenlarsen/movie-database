@@ -3,6 +3,18 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator
 
+# bcrypt only considers the first 72 bytes of a password — anything beyond
+# that is silently ignored, so two different long passwords sharing the same
+# first 72 bytes would hash identically. Enforce that limit explicitly
+# instead of letting bcrypt truncate without telling anyone.
+_BCRYPT_MAX_BYTES = 72
+
+
+def _validate_bcrypt_byte_length(value: str) -> str:
+    if len(value.encode("utf-8")) > _BCRYPT_MAX_BYTES:
+        raise ValueError(f"Adgangskode må maks fylde {_BCRYPT_MAX_BYTES} byte")
+    return value
+
 
 class UserRole(str, Enum):
     ADMIN = "admin"
@@ -40,6 +52,11 @@ class UserRegister(BaseModel):
             raise ValueError("Brugernavn må kun indeholde bogstaver, tal, - og _")
         return value
 
+    @field_validator("password")
+    @classmethod
+    def password_bcrypt_length(cls, value: str) -> str:
+        return _validate_bcrypt_byte_length(value)
+
 
 class UserLogin(BaseModel):
     username: str
@@ -49,6 +66,11 @@ class UserLogin(BaseModel):
 class PasswordChange(BaseModel):
     current_password: str
     new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def new_password_bcrypt_length(cls, value: str) -> str:
+        return _validate_bcrypt_byte_length(value)
 
 
 class UserRoleUpdate(BaseModel):

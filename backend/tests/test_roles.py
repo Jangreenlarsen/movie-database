@@ -102,3 +102,51 @@ async def test_standard_user_cannot_list_users(client):
         )
         response = await standard_client.get("/api/users")
         assert response.status_code == 403
+
+
+async def test_update_role_of_unknown_user_returns_404(client):
+    """Regression test for BUGS.md #3."""
+    response = await client.patch(
+        "/api/users/000000000000000000000000/role", json={"role": "admin"}
+    )
+    assert response.status_code == 404
+
+
+async def test_cannot_demote_the_last_admin(client):
+    """Regression test for BUGS.md #4. The `client` fixture's user is the
+    only admin in a fresh test database."""
+    me = await client.get("/api/users/me")
+    my_id = me.json()["id"]
+
+    response = await client.patch(f"/api/users/{my_id}/role", json={"role": "standard"})
+    assert response.status_code == 409
+
+    still_admin = await client.get("/api/users/me")
+    assert still_admin.json()["role"] == "admin"
+
+
+async def test_can_demote_an_admin_when_another_admin_remains(client):
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as second_client:
+        register_response = await second_client.post(
+            "/api/auth/register",
+            json={"username": "secondadmin", "password": "testpassword123"},
+        )
+        second_id = register_response.json()["id"]
+
+    promote = await client.patch(f"/api/users/{second_id}/role", json={"role": "admin"})
+    assert promote.status_code == 200
+
+    demote = await client.patch(f"/api/users/{second_id}/role", json={"role": "standard"})
+    assert demote.status_code == 200
+    assert demote.json()["role"] == "standard"
+
+
+async def test_password_over_72_bytes_rejected(raw_client):
+    """Regression test for BUGS.md #12 — bcrypt's real limit, not the
+    128-character Pydantic ceiling."""
+    response = await raw_client.post(
+        "/api/auth/register",
+        json={"username": "longpassworduser", "password": "x" * 73},
+    )
+    assert response.status_code == 422

@@ -21,6 +21,7 @@ export default function ScanMovie() {
   const [audioTypes, setAudioTypes] = useState([]);
   const [attributeOptions, setAttributeOptions] = useState({ formats: [], audio_types: [] });
   const [saveStatus, setSaveStatus] = useState("idle");
+  const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
     api.attributeOptions().then(setAttributeOptions).catch(() => {});
@@ -62,6 +63,7 @@ export default function ScanMovie() {
 
   async function saveMovie() {
     setSaveStatus("saving");
+    setSaveError(null);
     try {
       await api.createMovie({
         tmdb_id: selectedCandidate.tmdb_id,
@@ -79,6 +81,7 @@ export default function ScanMovie() {
       setBarcode(null);
     } catch (err) {
       setSaveStatus("error");
+      setSaveError(err.message);
     }
   }
 
@@ -206,7 +209,9 @@ export default function ScanMovie() {
           </div>
 
           {saveStatus === "error" && (
-            <div className="banner banner-error">Kunne ikke gemme filmen. Prøv igen.</div>
+            <div className="banner banner-error">
+              {saveError ?? "Kunne ikke gemme filmen. Prøv igen."}
+            </div>
           )}
 
           <div className="review-actions">

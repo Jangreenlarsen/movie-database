@@ -52,6 +52,60 @@ async def test_login_with_wrong_password_returns_401(raw_client):
     assert response.status_code == 401
 
 
+async def test_login_is_case_insensitive_on_username(raw_client):
+    """Regression test for BUGS.md #21 — iOS Safari auto-capitalizes the
+    first letter of a plain text input by default, silently turning
+    "jgl" into "Jgl" as the user types. Login must not treat that as a
+    different account."""
+    await raw_client.post(
+        "/api/auth/register", json={"username": "jgl", "password": "correcthorse1"}
+    )
+    await raw_client.post("/api/auth/logout")
+
+    response = await raw_client.post(
+        "/api/auth/login", json={"username": "Jgl", "password": "correcthorse1"}
+    )
+    assert response.status_code == 200
+    # The originally-registered casing is preserved for display, not
+    # silently replaced by whatever casing was used to log in.
+    assert response.json()["username"] == "jgl"
+
+
+async def test_register_rejects_case_variant_of_existing_username(raw_client):
+    await raw_client.post(
+        "/api/auth/register", json={"username": "frank", "password": "correcthorse1"}
+    )
+    duplicate = await raw_client.post(
+        "/api/auth/register", json={"username": "FRANK", "password": "anotherpass1"}
+    )
+    assert duplicate.status_code == 409
+
+
+async def test_migrates_users_missing_username_normalized(db):
+    """Regression test for BUGS.md #21 — a user document created before
+    this field existed (e.g. Jan's real production account) must still be
+    able to log in with any casing after the migration runs."""
+    from datetime import datetime, timezone
+
+    from app.repositories import user_repository
+
+    now = datetime.now(timezone.utc)
+    await db[user_repository.COLLECTION].insert_one(
+        {
+            "username": "grace",
+            "password_hash": "irrelevant-for-this-test",
+            "role": "standard",
+            "settings": user_repository.DEFAULT_SETTINGS,
+            "created_at": now,
+        }
+    )
+
+    await user_repository._migrate_username_normalized(db)
+
+    migrated = await db[user_repository.COLLECTION].find_one({"username": "grace"})
+    assert migrated["username_normalized"] == "grace"
+
+
 async def test_me_requires_authentication(raw_client):
     response = await raw_client.get("/api/users/me")
     assert response.status_code == 401

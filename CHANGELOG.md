@@ -2,6 +2,13 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.36.1 build 0045] — 2026-08-02 — Fix: login fra mobil fejlede pga. autokapitalisering (BUGS.md #21)
+
+- `Login.jsx`: brugernavn-feltet fik `autoCapitalize="off" autoCorrect="off" spellCheck={false}` — iOS Safari (og det installerede PWA-ikon) autokapitaliserede ellers første bogstav i feltet, så "jgl" blev til "Jgl" mens brugeren skrev, hvilket gav en ægte men forvirrende 401 mod det eksakt versalfølsomme login-opslag.
+- Login/registrering gjort versal-ufølsomt generelt (ud over selve UI-rettelsen): nyt `username_normalized`-felt på brugere, samme normalisér-til-sammenligning/bevar-original-visning-mønster som `tag_service`. Unikheds-indekset flyttet fra `username` til `username_normalized`, med automatisk migration af eksisterende brugere ved opstart.
+- Diagnosticeret live mod produktions-`journalctl`: ægte 401-svar fra to andre LAN-IP'er end PC'ens bekræftede at anmodningen nåede serveren og blev korrekt afvist ud fra det den modtog — udelukkede dermed net/certifikat-problemer og pegede direkte på et klient-side tekst-mangling-problem.
+- Nye tests i `test_auth.py` (3): login med anden versal end registreret, registrering afviser versal-variant af eksisterende brugernavn, migration af gammel bruger uden `username_normalized`.
+
 ## [0.36.0 build 0044] — 2026-08-02 — TV-serier: frontend + scan-routing + branding (feature #47/#48/#49/#50)
 
 Fuldfører TV-serie-understøttelsen (backend var feature #47/#48/#49's forrige to commits) — nu synlig og brugbar i UI'et.

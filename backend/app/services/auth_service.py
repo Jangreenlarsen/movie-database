@@ -33,6 +33,15 @@ def to_user_model(document: dict) -> User:
     )
 
 
+def _normalize_username(username: str) -> str:
+    """Case-insensitive identity key — "jgl"/"Jgl"/"JGL" are the same
+    account. Login/uniqueness compare on this; the originally-typed casing
+    is still stored and shown as-is (same "normalize for comparison, keep
+    original for display" pattern as tag_service.normalize/resolve_tags).
+    See BUGS.md #21."""
+    return username.lower()
+
+
 async def register(db: AsyncIOMotorDatabase, payload: UserRegister) -> User:
     # Bootstrapping: the very first account ever created has no one to grant
     # it admin rights, so it grants itself — every account after that starts
@@ -40,6 +49,7 @@ async def register(db: AsyncIOMotorDatabase, payload: UserRegister) -> User:
     is_first_user = await user_repository.count(db) == 0
     document = {
         "username": payload.username,
+        "username_normalized": _normalize_username(payload.username),
         "password_hash": hash_password(payload.password),
         "role": UserRole.ADMIN if is_first_user else UserRole.STANDARD,
         "settings": user_repository.DEFAULT_SETTINGS,
@@ -53,7 +63,9 @@ async def register(db: AsyncIOMotorDatabase, payload: UserRegister) -> User:
 
 
 async def authenticate(db: AsyncIOMotorDatabase, payload: UserLogin) -> User:
-    document = await user_repository.find_by_username(db, payload.username)
+    document = await user_repository.find_by_username_normalized(
+        db, _normalize_username(payload.username)
+    )
     if document is None or not verify_password(payload.password, document["password_hash"]):
         raise InvalidCredentialsError()
     return to_user_model(document)

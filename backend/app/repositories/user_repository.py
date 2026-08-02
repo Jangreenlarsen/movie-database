@@ -19,8 +19,31 @@ DEFAULT_SETTINGS = {
 }
 
 
+async def _migrate_username_normalized(db: AsyncIOMotorDatabase) -> None:
+    """Backfills `username_normalized` (lowercased, used for case-insensitive
+    login/uniqueness — see BUGS.md #21: iOS Safari auto-capitalizes the
+    first letter of a text input by default unless it opts out, which
+    silently broke login for any username with mixed/lower case) for any
+    user document created before this field existed."""
+    cursor = db[COLLECTION].find({"username_normalized": {"$exists": False}})
+    async for doc in cursor:
+        await db[COLLECTION].update_one(
+            {"_id": doc["_id"]}, {"$set": {"username_normalized": doc["username"].lower()}}
+        )
+
+
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
-    await db[COLLECTION].create_index("username", unique=True)
+    await _migrate_username_normalized(db)
+
+    # Uniqueness now lives on the normalized field (case-insensitive), not
+    # the raw one — Mongo won't redefine an existing same-named index under
+    # different options, so the old one is dropped first if present (same
+    # migration pattern as movie_repository's serial_number sparse-index
+    # switch).
+    existing_indexes = await db[COLLECTION].index_information()
+    if "username_1" in existing_indexes:
+        await db[COLLECTION].drop_index("username_1")
+    await db[COLLECTION].create_index("username_normalized", unique=True)
 
 
 async def insert(db: AsyncIOMotorDatabase, document: dict) -> dict:
@@ -28,8 +51,8 @@ async def insert(db: AsyncIOMotorDatabase, document: dict) -> dict:
     return await db[COLLECTION].find_one({"_id": result.inserted_id})
 
 
-async def find_by_username(db: AsyncIOMotorDatabase, username: str) -> dict | None:
-    return await db[COLLECTION].find_one({"username": username})
+async def find_by_username_normalized(db: AsyncIOMotorDatabase, normalized_username: str) -> dict | None:
+    return await db[COLLECTION].find_one({"username_normalized": normalized_username})
 
 
 async def find_by_id(db: AsyncIOMotorDatabase, user_id: str) -> dict | None:

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.36.1 (build 0045) — 2026-08-02
+
+- Fix: login fra telefonen fejlede med "forkert brugernavn/adgangskode" selvom det var korrekt — telefonen (iOS) autokapitaliserede stille og roligt det første bogstav i brugernavnet, mens login krævede eksakt store/små bogstaver. Login tjekker nu ikke længere store/små bogstaver i brugernavnet, så det ikke sker igen.
+
 ## v0.36.0 (build 0044) — 2026-08-02
 
 - **Ny "TV-serier"-fane!** Katalogisér TV-serier helt som film — scan et cover eller søg manuelt, sæt tags/format/lokation. Nyt: markér hvilke sæsoner du ejer, og hvilke episoder du har set, med dato. Scan og manuel søgning finder nu automatisk både film og TV-serier og foreslår det rigtige sted at gemme.

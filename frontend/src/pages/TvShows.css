@@ -3,7 +3,7 @@
   z-index: 2;
   bottom: 8px;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(calc(-50% + 16px));
   background: rgba(0, 0, 0, 0.55);
   color: #fff;
   font-size: 0.68rem;

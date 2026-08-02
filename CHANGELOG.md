@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.39.1 build 0049] — 2026-08-02 — Justering: sæson-badge-position på TV-kort (feature #55)
+
+- `.movie-seasons-badge` (`TvShows.css`) flyttet fra centreret (`translateX(-50%)`) til 16px højre for centrum (`translateX(calc(-50% + 16px))`), efter visuel feedback fra Jan om at badgen sad forkert i forhold til rating-badgen i nederste venstre hjørne af posteren.
+
 ## [0.39.0 build 0048] — 2026-08-02 — Sæsonvalg ved oprettelse af ny serie, sæson-badge på TV-kort, TV-sektion på Print-siden (feature #54/#55/#56)
 
 - **Feature #54**: nyt backend-endpoint `GET /api/tv-shows/tmdb-preview/{tmdb_id}` henter TMDb's sæsonliste (samme `Season`-form som `create_tv_show` allerede bruger) uden at gemme noget — bruges til at vise en sæson-vælger i tilføj-formularen for en HELT NY serie (ingen dublet), så brugeren kan afkrydse hvilke sæsoner udgaven indeholder *før* "Gem". De valgte sæsoner markeres automatisk som ejet (`setSeasonOwned`) lige efter oprettelsen, i samme handling. Sæson-vælgeren fra dublet-flowet (feature #53) er samtidig udvidet fra énkelt-valg til fler-valg (`selectedSeasonNumber` → `selectedSeasonNumbers[]`), så man kan tilføje flere sæsoner ad gangen (fx en "Sæson 4-6"-boks) i begge flows.

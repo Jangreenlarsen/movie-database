@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.39.1 (build 0049) — 2026-08-02
+
+- Lille justering: sæson-badgen ("2/6 sæsoner") på TV-kort sidder nu lidt længere til højre, så den passer bedre sammen med rating-badgen.
+
 ## v0.39.0 (build 0048) — 2026-08-02
 
 - Når du opretter en helt ny TV-serie via scan/søgning, kan du nu vælge hvilke sæsoner udgaven indeholder direkte i tilføj-formularen, før du gemmer — de markeres automatisk som ejet med det samme. Samme sæson-vælger (både ved ny serie og ved gruppering på en eksisterende serie) understøtter nu også at vælge flere sæsoner på én gang.

@@ -20,13 +20,22 @@ Produktion kører **native** på en dedikeret Debian-server — ikke Docker Comp
 | MongoDB | `mongodb-org` 8.0 (MongoDB's officielle apt-repo, bookworm-pakken — trixie har endnu ingen egen) | `127.0.0.1:27017` (systemd: `mongod`) |
 | Backend | Python venv (`/opt/moviedb/backend/.venv`) + uvicorn | `127.0.0.1:8000` (systemd: `moviedb-backend`) |
 | Frontend | `npm run build` → statiske filer i `/opt/moviedb/frontend/dist`, serveret af Caddy | — |
-| Reverse proxy / TLS | Caddy 2, `/etc/caddy/Caddyfile` | `:443` (HTTPS, selvsigneret via `tls internal`), `:80` (redirect til HTTPS) |
+| Reverse proxy / TLS | Caddy 2, `/etc/caddy/Caddyfile` | `:443` (HTTPS), `:80` (redirect til HTTPS) |
 
 Kun port 22 (SSH), 80 og 443 er åbne udefra (`ufw`). MongoDB og backend er kun tilgængelige på `localhost` — nås udelukkende via Caddys reverse proxy.
 
-Certifikatet er **selvsigneret** (Caddys interne CA, samme tilgang som dev-serveren) — telefonen/browseren skal acceptere sikkerhedsadvarslen første gang. Intet domænenavn er sat op, så en rigtig Let's Encrypt-cert er ikke muligt lige nu (kræver et domæne der peger på serveren).
+### TLS-certifikat (se BUGS.md #23)
 
-**Vigtigt (se BUGS.md #23)**: Caddys interne CA-hierarki roterer *automatisk og hyppigt* — root-certifikatet er langtidsholdbart (~10 år), men det udstedte **intermediate**-certifikat roteres hver **7. dag**, og selve **leaf**-certifikatet der reelt serveres roteres hver **12. time**. En browser-sikkerhedsundtagelse der kun blev accepteret for det *specifikke* certifikat (fx Firefox' "Tilføj undtagelse", som er bundet til certifikatets fingerprint, ikke selve CA'en) holder derfor kun indtil næste rotation — herefter fejler baggrunds-`fetch()`-kald (API-kald) stille med en netværksfejl (typisk `NetworkError when attempting to fetch resource` i Firefox), selvom selve siden stadig kan loade fra cache. **Den korrekte, holdbare løsning er at importere selve root-CA'en** som en betroet rod-autoritet på hver klientenhed (ikke bare klikke sig forbi advarslen) — så holder tilliden på tværs af alle fremtidige intermediate-/leaf-rotationer uden gentagne advarsler. Root-certifikatet kan hentes fra serveren via Caddys admin-API (kun tilgængeligt lokalt på serveren): `curl -s http://127.0.0.1:2019/pki/ca/local` (JSON-felt `root_certificate`).
+Sitet serveres nu på to adresser med to forskellige certifikater (Caddyfile har to site-blocks, der deler handler-logik via en `(common)`-snippet):
+
+- **`https://movie.ll.lan`** (primær, anbefalet adresse) — rigtigt certifikat udstedt af Jans **interne Windows AD CS-CA** (`ll-AD-CA`, allerede betroet på hans enheder), gyldigt 2 år (2026-08-02 → 2028-08-01), fil: `/etc/caddy/certs/movie.ll.lan.{crt,key}` (root:caddy, 640). Kræver en intern DNS-post for `movie.ll.lan` → `10.1.130.10`. Ingen certifikat-advarsler, ingen manuel per-enhed import nødvendig (enhederne stoler allerede på `ll-AD-CA`).
+- **`https://10.1.130.10`** (midlertidig fallback, IP-baseret) — stadig Caddys egen selvsignerede `tls internal`, med samme rotations-svaghed som beskrevet i BUGS.md #23 (leaf roterer hver 12. time, intermediate hver 7. dag). Bevaret bevidst under overgangen, så eksisterende bogmærker/PWA-ikoner ikke brækker akut — udfases når alle enheder er skiftet til `movie.ll.lan`.
+
+**Sådan blev certifikatet udstedt** (manuel CSR-signering, ikke ACME — Jans interne CA understøtter ikke automatisk udstedelse): en ECDSA P-256-nøgle + CSR (CN+SAN=`movie.ll.lan`) blev genereret direkte på serveren (nøglen forlod aldrig serveren), CSR'en blev signeret af Jans interne CA via Windows-certifikatanmodning, det signerede certifikat (`certnew.cer`, DER-format) og CA-rodcertifikatet (`CA.cer`) blev konverteret til PEM og verificeret (public key-hash) til at matche den lokale private nøgle, før det blev installeret.
+
+**Fornyelse**: certifikatet udløber 2028-08-01. Gentag samme proces (ny CSR med samme CN/SAN, ny signering fra `ll-AD-CA`, `sudo install`/`sudo cp`/`sudo systemctl reload caddy`) i god tid inden da — sæt evt. en kalender-påmindelse, da der ikke er nogen automatisk fornyelse.
+
+**Adgang til de nødvendige `sudo`-kommandoer**: en midlertidig, snævert scopet sudoers-regel (`/etc/sudoers.d/jgl-tls-cert-install`, kun eksakte kommandoer — install til specifikke stier, `caddy validate`, `systemctl reload caddy`) blev tilføjet af Jan for at lade Claude udføre selve installationen via SSH, efter samme mønster som den eksisterende snævre `jgl-deploy-ota`-regel. Kan fjernes igen når certifikatet ikke skal opdateres (`sudo rm /etc/sudoers.d/jgl-tls-cert-install`).
 
 **HTTP/3 er slået fra** (`servers { protocols h1 h2 }` i Caddyfile'ens globale block). Caddy annoncerer ellers HTTP/3 (QUIC/**UDP** 443) via en `Alt-Svc`-header, men `ufw` åbner kun **TCP** 443 — browseren forsøger så at opgradere til QUIC, det fejler stille mod den lukkede UDP-port, og det viste sig i Firefox som `SSL_ERROR_INTERNAL_ERROR_ALERT` i stedet for det forventede "usikker forbindelse, fortsæt alligevel"-varsel. Løsningen er enten at slå HTTP/3 fra (valgt her — unødvendigt for en lille LAN-app) eller at åbne UDP 443 i firewallen også.
 

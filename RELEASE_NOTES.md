@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.39.0 (build 0048) — 2026-08-02
+
+- Når du opretter en helt ny TV-serie via scan/søgning, kan du nu vælge hvilke sæsoner udgaven indeholder direkte i tilføj-formularen, før du gemmer — de markeres automatisk som ejet med det samme. Samme sæson-vælger (både ved ny serie og ved gruppering på en eksisterende serie) understøtter nu også at vælge flere sæsoner på én gang.
+- TV-seriekort viser nu et lille "2/6 sæsoner"-badge med hvor mange sæsoner du ejer ud af seriens samlede antal.
+- Print-siden har nu også en separat tabel for TV-serier, ud over filmtabellen.
+
 ## v0.38.0 (build 0047) — 2026-08-02
 
 - Scanner du en ny sæson af en TV-serie du allerede har (fx "The Americans" sæson 2), foreslår appen nu at føje den til den eksisterende serie i stedet for at oprette en ny separat post — vælg bare den rigtige sæson i det nye panel, der dukker op. Serien viser derefter alle dine ejede sæsoner ét sted.

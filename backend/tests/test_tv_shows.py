@@ -329,6 +329,25 @@ async def test_tmdb_search_endpoint(client, monkeypatch):
     assert response.json()[0]["media_kind"] == "tv"
 
 
+async def test_tmdb_preview_endpoint_returns_seasons_without_saving(client, monkeypatch):
+    async def fake_get_tv_show_details(tv_id):
+        assert tv_id == 1396
+        return _fake_tv_details(1396)
+
+    monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
+
+    response = await client.get("/api/tv-shows/tmdb-preview/1396")
+    assert response.status_code == 200
+    seasons = response.json()
+    assert [s["season_number"] for s in seasons] == [1, 2]
+    assert all(s["owned"] is False for s in seasons)
+    assert all(s["episodes"] == [] for s in seasons)
+
+    # Nothing was persisted — the show list is still empty.
+    list_response = await client.get("/api/tv-shows")
+    assert list_response.json() == []
+
+
 async def test_attribute_options_reuses_movie_enums(client):
     response = await client.get("/api/tv-shows/attribute-options")
     assert response.status_code == 200

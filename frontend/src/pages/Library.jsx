@@ -761,10 +761,13 @@ function MovieDetailModal({
   async function remove() {
     if (!window.confirm(`Slet "${movie.title}" fra biblioteket?`)) return;
     setDeleting(true);
+    setError(null);
     try {
       await api.deleteMovie(movie.id);
       onChanged();
       onClose();
+    } catch (err) {
+      setError(err.message);
     } finally {
       setDeleting(false);
     }

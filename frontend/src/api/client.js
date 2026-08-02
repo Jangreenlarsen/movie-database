@@ -71,6 +71,7 @@ export const api = {
   deleteMovie: (id) => request(`/movies/${id}`, { method: "DELETE" }),
   listDeletedMovies: () => request("/movies/deleted"),
   syncMoviesFromTmdb: () => request("/movies/sync-tmdb", { method: "POST" }),
+  syncTvShowsFromTmdb: () => request("/tv-shows/sync-tmdb", { method: "POST" }),
   listTags: () => request("/tags"),
   attributeOptions: () => request("/movies/attribute-options"),
   checkDuplicate: (tmdbId) =>

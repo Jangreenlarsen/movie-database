@@ -100,6 +100,24 @@ async def test_plex_token_behaves_like_the_other_secrets(client, monkeypatch):
     assert settings.plex_token == "plex-secret-abc"
 
 
+async def test_clearing_override_survives_a_key_missing_from_env_defaults(client, monkeypatch):
+    """Regression test for BUGS.md #30: if a new overridable key is ever
+    added to OVERRIDABLE_KEYS/SystemSettingsUpdate without also adding it to
+    ENV_DEFAULT_API_KEYS in config.py, clearing its override used to raise
+    a bare KeyError (-> 500) instead of degrading gracefully."""
+    monkeypatch.setattr(settings, "upc_api_key", "original-env-key")
+    monkeypatch.setitem(ENV_DEFAULT_API_KEYS, "upc_api_key", "original-env-key")
+
+    first = await client.patch("/api/settings/system", json={"upc_api_key": "override-key"})
+    assert first.json()["upc_api_key"]["source"] == "custom"
+
+    monkeypatch.delitem(ENV_DEFAULT_API_KEYS, "upc_api_key")
+
+    second = await client.patch("/api/settings/system", json={"upc_api_key": ""})
+    assert second.status_code == 200
+    assert settings.upc_api_key == ""
+
+
 async def test_plex_server_url_is_returned_with_its_actual_value(client, monkeypatch):
     """Unlike every other field on this endpoint, plex_server_url is not a
     secret — it should round-trip as plain text, not a masked status."""

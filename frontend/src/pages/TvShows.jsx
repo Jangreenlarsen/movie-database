@@ -657,10 +657,13 @@ function TvShowDetailModal({ show, user, attributeOptions, serialPaddingWidth, o
   async function remove() {
     if (!window.confirm(`Slet "${show.name}" fra biblioteket?`)) return;
     setDeleting(true);
+    setError(null);
     try {
       await api.deleteTvShow(show.id);
       onChanged();
       onClose();
+    } catch (err) {
+      setError(err.message);
     } finally {
       setDeleting(false);
     }
@@ -681,19 +684,31 @@ function TvShowDetailModal({ show, user, attributeOptions, serialPaddingWidth, o
   }
 
   async function setSeasonOwned(seasonNumber, owned) {
-    const updated = await api.setSeasonOwned(show.id, seasonNumber, owned);
-    setSeasons(updated.seasons);
+    setError(null);
+    try {
+      const updated = await api.setSeasonOwned(show.id, seasonNumber, owned);
+      setSeasons(updated.seasons);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    }
   }
 
   async function setEpisodeWatched(seasonNumber, episodeNumber, ep_watched) {
-    const updated = await api.setEpisodeWatched(
-      show.id,
-      seasonNumber,
-      episodeNumber,
-      ep_watched,
-      ep_watched ? new Date().toISOString().slice(0, 10) : null
-    );
-    setSeasons(updated.seasons);
+    setError(null);
+    try {
+      const updated = await api.setEpisodeWatched(
+        show.id,
+        seasonNumber,
+        episodeNumber,
+        ep_watched,
+        ep_watched ? new Date().toISOString().slice(0, 10) : null
+      );
+      setSeasons(updated.seasons);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    }
   }
 
   return (

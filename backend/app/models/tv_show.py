@@ -35,6 +35,13 @@ class TvShowCreate(BaseModel):
     format: MovieFormat | None = None
     audio_types: list[AudioType] = Field(default_factory=list)
     media_type: MediaType | None = None
+    # Season numbers to mark owned in the same request that creates the show
+    # (feature #54) — bundling this into creation instead of a follow-up
+    # POST-then-N-PATCH round trip from the frontend closes a duplicate-
+    # creation risk if one of those PATCHes failed after the show already
+    # existed (BUGS.md #28). Ignored when `tmdb_id` is None (a manually
+    # entered show has no TMDb season list to mark against).
+    owned_seasons: list[int] = Field(default_factory=list)
 
     name: str | None = None
     year: int | None = None

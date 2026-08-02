@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_admin
 from app.db import get_database
 from app.integrations import tmdb_client
-from app.models.movie import AudioType, MediaType, MovieFormat
+from app.models.movie import AudioType, MediaType, MovieFormat, TmdbSyncResult
 from app.models.scan import MovieCandidate
 from app.models.tv_show import (
     DeletedTvShow,
@@ -89,6 +89,13 @@ async def attribute_options() -> dict:
 @router.get("/deleted", response_model=list[DeletedTvShow])
 async def list_deleted_tv_shows(db: AsyncIOMotorDatabase = Depends(get_database)):
     return await tv_show_service.list_deleted_tv_shows(db)
+
+
+@router.post(
+    "/sync-tmdb", response_model=TmdbSyncResult, dependencies=[Depends(require_admin)]
+)
+async def sync_tv_shows_from_tmdb(db: AsyncIOMotorDatabase = Depends(get_database)):
+    return await tv_show_service.sync_all_from_tmdb(db)
 
 
 @router.get("/{tv_show_id}", response_model=TvShow)

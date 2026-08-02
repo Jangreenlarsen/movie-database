@@ -47,6 +47,11 @@ async def update_settings(
     await system_settings_repository.apply_updates(db, updates)
 
     for key, value in updates.items():
-        setattr(settings, key, value if value != "" else ENV_DEFAULT_API_KEYS[key])
+        # `.get(key, "")` rather than `[key]` — if a new overridable key is
+        # ever added to `SystemSettingsUpdate`/`OVERRIDABLE_KEYS` without
+        # also adding it to `ENV_DEFAULT_API_KEYS` in config.py, clearing its
+        # override degrades to "no .env fallback" instead of a raw 500
+        # (BUGS.md #30).
+        setattr(settings, key, value if value != "" else ENV_DEFAULT_API_KEYS.get(key, ""))
 
     return await get_status(db)

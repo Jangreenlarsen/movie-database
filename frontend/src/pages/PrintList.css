@@ -49,4 +49,8 @@
     border-bottom: 1px solid #ccc;
     color: #000;
   }
+
+  .print-section-break {
+    break-before: page;
+  }
 }

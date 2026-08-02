@@ -40,11 +40,15 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   const [lastSavedKind, setLastSavedKind] = useState("movie");
 
   // Sæson-gruppering (feature #53): når en scannet/søgt TV-serie allerede
-  // findes, kan brugeren i stedet markere en sæson som ejet på den
+  // findes, kan brugeren i stedet markere sæson(er) som ejet på den
   // eksisterende serie — undgår at hver ny sæson-boks (fx "The Americans
   // Season 2") opretter sin egen separate serie-post.
   const [existingTvShow, setExistingTvShow] = useState(null);
-  const [selectedSeasonNumber, setSelectedSeasonNumber] = useState(null);
+  // Sæsonvalg ved oprettelse af en HELT NY serie (feature #54): TMDb's
+  // sæson-liste hentes til forhåndsvisning (uden at gemme noget), så
+  // brugeren kan afkrydse hvilke sæsoner udgaven indeholder *før* Gem.
+  const [previewSeasons, setPreviewSeasons] = useState([]);
+  const [selectedSeasonNumbers, setSelectedSeasonNumbers] = useState([]);
   const [groupStatus, setGroupStatus] = useState("idle");
   const [groupError, setGroupError] = useState(null);
   const [groupSavedShowName, setGroupSavedShowName] = useState(null);
@@ -102,29 +106,43 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
     setSaveStatus("idle");
     setDuplicates([]);
     setExistingTvShow(null);
-    setSelectedSeasonNumber(null);
+    setPreviewSeasons([]);
+    setSelectedSeasonNumbers([]);
     setGroupStatus("idle");
     setGroupError(null);
     setGroupSavedShowName(null);
-    const checkDuplicate =
-      candidate.media_kind === "tv" ? api.checkTvDuplicate : api.checkDuplicate;
-    checkDuplicate(candidate.tmdb_id)
+    if (candidate.media_kind !== "tv") {
+      api.checkDuplicate(candidate.tmdb_id).then(setDuplicates).catch(() => {});
+      return;
+    }
+    api
+      .checkTvDuplicate(candidate.tmdb_id)
       .then((matches) => {
         setDuplicates(matches);
-        if (candidate.media_kind !== "tv" || matches.length === 0) return;
-        // Kun den første eksisterende serie tilbydes som gruppering — jf.
-        // Jans bekræftede design (2026-08-02): ét scan grupperes ind i den
-        // ene eksisterende post, ikke et valg mellem flere.
-        api
-          .getTvShow(matches[0].id)
-          .then((show) => {
-            setExistingTvShow(show);
-            const preselect = show.seasons.find((s) => !s.owned) ?? show.seasons[0];
-            setSelectedSeasonNumber(preselect?.season_number ?? null);
-          })
-          .catch(() => {});
+        if (matches.length > 0) {
+          // Kun den første eksisterende serie tilbydes som gruppering — jf.
+          // Jans bekræftede design (2026-08-02): ét scan grupperes ind i den
+          // ene eksisterende post, ikke et valg mellem flere.
+          api
+            .getTvShow(matches[0].id)
+            .then((show) => {
+              setExistingTvShow(show);
+              const preselect = show.seasons.find((s) => !s.owned) ?? show.seasons[0];
+              setSelectedSeasonNumbers(preselect ? [preselect.season_number] : []);
+            })
+            .catch(() => {});
+        } else {
+          // Ingen dublet — vis en sæson-vælger til forhåndsvisning, så
+          // brugeren kan afkrydse hvilke sæsoner udgaven indeholder inden
+          // den overhovedet oprettes (feature #54).
+          api.tvTmdbPreview(candidate.tmdb_id).then(setPreviewSeasons).catch(() => {});
+        }
       })
       .catch(() => {});
+  }
+
+  function toggleSeasonNumber(seasonNumber) {
+    setSelectedSeasonNumbers((prev) => toggleValue(prev, seasonNumber));
   }
 
   function resetFormAfterSave() {
@@ -139,7 +157,8 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
     setBarcode(null);
     setDuplicates([]);
     setExistingTvShow(null);
-    setSelectedSeasonNumber(null);
+    setPreviewSeasons([]);
+    setSelectedSeasonNumbers([]);
     setGroupStatus("idle");
     setGroupError(null);
   }
@@ -150,7 +169,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
     const isTv = selectedCandidate.media_kind === "tv";
     try {
       const create = isTv ? api.createTvShow : api.createMovie;
-      await create({
+      const created = await create({
         tmdb_id: selectedCandidate.tmdb_id,
         barcode,
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
@@ -161,6 +180,11 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
         owner: owner.trim() || null,
         is_wishlist: wishlist,
       });
+      if (isTv && selectedSeasonNumbers.length > 0) {
+        for (const seasonNumber of selectedSeasonNumbers) {
+          await api.setSeasonOwned(created.id, seasonNumber, true);
+        }
+      }
       setSaveStatus("saved");
       setLastSavedKind(selectedCandidate.media_kind ?? "movie");
       resetFormAfterSave();
@@ -171,12 +195,14 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
     }
   }
 
-  async function addSeasonToExistingShow() {
-    if (!existingTvShow || selectedSeasonNumber == null) return;
+  async function addSeasonsToExistingShow() {
+    if (!existingTvShow || selectedSeasonNumbers.length === 0) return;
     setGroupStatus("saving");
     setGroupError(null);
     try {
-      await api.setSeasonOwned(existingTvShow.id, selectedSeasonNumber, true);
+      for (const seasonNumber of selectedSeasonNumbers) {
+        await api.setSeasonOwned(existingTvShow.id, seasonNumber, true);
+      }
       setGroupSavedShowName(existingTvShow.name);
       resetFormAfterSave();
       onSaved?.();
@@ -305,21 +331,29 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
             </div>
           )}
 
-          {existingTvShow && existingTvShow.seasons.length > 0 && (
+          {(existingTvShow?.seasons.length > 0 || previewSeasons.length > 0) && (
             <div className="season-group-panel">
-              <h3>Føj til eksisterende serie i stedet</h3>
+              <h3>
+                {existingTvShow ? "Føj til eksisterende serie i stedet" : "Vælg hvilke sæsoner du ejer"}
+              </h3>
               <p className="muted" style={{ margin: 0 }}>
-                Vælg hvilken sæson dette er, så markeres den som ejet på den eksisterende serie "
-                {existingTvShow.name}" — i stedet for at oprette en ny separat post. Sæsoner markeret ✓ er
-                allerede ejet.
+                {existingTvShow ? (
+                  <>
+                    Vælg hvilke sæsoner dette er, så markeres de som ejet på den eksisterende serie "
+                    {existingTvShow.name}" — i stedet for at oprette en ny separat post. Sæsoner markeret ✓
+                    er allerede ejet.
+                  </>
+                ) : (
+                  "Vælg hvilke sæsoner denne udgave indeholder (fx en boks med flere sæsoner) — de markeres automatisk som ejet med det samme du gemmer."
+                )}
               </p>
               <div className="chip-row">
-                {existingTvShow.seasons.map((season) => (
+                {(existingTvShow?.seasons ?? previewSeasons).map((season) => (
                   <Chip
                     key={season.season_number}
                     label={`${season.name ?? `Sæson ${season.season_number}`}${season.owned ? " ✓" : ""}`}
-                    active={selectedSeasonNumber === season.season_number}
-                    onClick={() => setSelectedSeasonNumber(season.season_number)}
+                    active={selectedSeasonNumbers.includes(season.season_number)}
+                    onClick={() => toggleSeasonNumber(season.season_number)}
                   />
                 ))}
               </div>
@@ -328,14 +362,16 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
                   {groupError ?? "Kunne ikke opdatere serien."}
                 </div>
               )}
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={addSeasonToExistingShow}
-                disabled={selectedSeasonNumber == null || groupStatus === "saving"}
-              >
-                {groupStatus === "saving" ? "Tilføjer..." : "Tilføj sæson til eksisterende serie"}
-              </button>
+              {existingTvShow && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={addSeasonsToExistingShow}
+                  disabled={selectedSeasonNumbers.length === 0 || groupStatus === "saving"}
+                >
+                  {groupStatus === "saving" ? "Tilføjer..." : "Tilføj sæson(er) til eksisterende serie"}
+                </button>
+              )}
             </div>
           )}
 

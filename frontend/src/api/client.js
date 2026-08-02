@@ -119,6 +119,7 @@ export const api = {
     request(`/tv-shows/check-duplicate?${new URLSearchParams({ tmdb_id: tmdbId })}`),
   tvTmdbSearch: (query) =>
     request(`/tv-shows/tmdb-search?${new URLSearchParams({ query })}`),
+  tvTmdbPreview: (tmdbId) => request(`/tv-shows/tmdb-preview/${tmdbId}`),
   setSeasonOwned: (tvShowId, seasonNumber, owned) =>
     request(`/tv-shows/${tvShowId}/seasons/${seasonNumber}`, {
       method: "PATCH",

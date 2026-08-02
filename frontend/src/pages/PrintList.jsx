@@ -9,6 +9,7 @@ function formatSerial(serialNumber, paddingWidth) {
 
 export default function PrintList() {
   const [movies, setMovies] = useState([]);
+  const [shows, setShows] = useState([]);
   const [status, setStatus] = useState("loading");
   const [query, setQuery] = useState("");
   const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
@@ -22,10 +23,13 @@ export default function PrintList() {
 
   useEffect(() => {
     setStatus("loading");
-    api
-      .listMovies({ q: query || undefined, sort: "serial_number:asc" })
-      .then((data) => {
-        setMovies(data);
+    Promise.all([
+      api.listMovies({ q: query || undefined, sort: "serial_number:asc" }),
+      api.listTvShows({ q: query || undefined, sort: "serial_number:asc" }),
+    ])
+      .then(([movieData, showData]) => {
+        setMovies(movieData);
+        setShows(showData);
         setStatus("ready");
       })
       .catch(() => setStatus("error"));
@@ -51,11 +55,12 @@ export default function PrintList() {
 
       {status === "loading" && <p className="muted">Indlæser...</p>}
       {status === "error" && (
-        <div className="banner banner-error">Kunne ikke hente film.</div>
+        <div className="banner banner-error">Kunne ikke hente film/TV-serier.</div>
       )}
 
       {status === "ready" && (
         <>
+          <h2>Film</h2>
           <table className="print-table">
             <thead>
               <tr>
@@ -80,6 +85,39 @@ export default function PrintList() {
           </table>
           <p className="muted no-print" style={{ marginTop: 12 }}>
             {movies.length} film
+          </p>
+
+          <h2 className="print-section-break">TV-serier</h2>
+          <table className="print-table">
+            <thead>
+              <tr>
+                <th>Serienr.</th>
+                <th>Navn</th>
+                <th>År</th>
+                <th>Sæsoner</th>
+                <th>Format</th>
+                <th>Lokation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shows.map((show) => (
+                <tr key={show.id}>
+                  <td>{formatSerial(show.serial_number, serialPaddingWidth)}</td>
+                  <td>{show.name}</td>
+                  <td>{show.year ?? ""}</td>
+                  <td>
+                    {show.number_of_seasons
+                      ? `${show.seasons.filter((s) => s.owned).length}/${show.number_of_seasons}`
+                      : ""}
+                  </td>
+                  <td>{show.format ?? ""}</td>
+                  <td>{show.location ?? ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="muted no-print" style={{ marginTop: 12 }}>
+            {shows.length} TV-serier
           </p>
         </>
       )}

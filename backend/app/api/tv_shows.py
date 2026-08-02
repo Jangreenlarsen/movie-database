@@ -10,6 +10,7 @@ from app.models.tv_show import (
     DeletedTvShow,
     DuplicateTvShowMatch,
     EpisodeWatchedUpdate,
+    Season,
     SeasonOwnedUpdate,
     TvShow,
     TvShowCreate,
@@ -58,6 +59,15 @@ async def create_tv_show(
 async def tmdb_search(query: str = Query(...)):
     candidates = await tmdb_client.search_tv(query)
     return [MovieCandidate(**candidate, media_kind="tv") for candidate in candidates]
+
+
+@router.get("/tmdb-preview/{tmdb_id}", response_model=list[Season])
+async def tmdb_preview(tmdb_id: int):
+    """Let's the add-form show a season picker *before* the show is saved
+    (feature #54) — fetches TMDb's light season list without persisting
+    anything, same shape `create_tv_show` already builds `seasons[]` from."""
+    details = await tmdb_client.get_tv_show_details(tmdb_id)
+    return [Season(**season) for season in details["seasons"]]
 
 
 @router.get("/check-duplicate", response_model=list[DuplicateTvShowMatch])

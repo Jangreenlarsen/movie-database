@@ -2,6 +2,13 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.39.0 build 0048] — 2026-08-02 — Sæsonvalg ved oprettelse af ny serie, sæson-badge på TV-kort, TV-sektion på Print-siden (feature #54/#55/#56)
+
+- **Feature #54**: nyt backend-endpoint `GET /api/tv-shows/tmdb-preview/{tmdb_id}` henter TMDb's sæsonliste (samme `Season`-form som `create_tv_show` allerede bruger) uden at gemme noget — bruges til at vise en sæson-vælger i tilføj-formularen for en HELT NY serie (ingen dublet), så brugeren kan afkrydse hvilke sæsoner udgaven indeholder *før* "Gem". De valgte sæsoner markeres automatisk som ejet (`setSeasonOwned`) lige efter oprettelsen, i samme handling. Sæson-vælgeren fra dublet-flowet (feature #53) er samtidig udvidet fra énkelt-valg til fler-valg (`selectedSeasonNumber` → `selectedSeasonNumbers[]`), så man kan tilføje flere sæsoner ad gangen (fx en "Sæson 4-6"-boks) i begge flows.
+- **Feature #55**: TV-seriekort (`TvShows.jsx`/`.css`) viser nu en badge ("2/6 sæsoner") med antal ejede sæsoner ud af seriens samlede antal, i samme visuelle stil som serienummer-/format-badgen — erstatter den tidligere rene tekstlinje der kun viste det samlede antal.
+- **Feature #56**: `PrintList.jsx` henter nu både film og TV-serier (`api.listTvShows`) og viser en selvstændig TV-serie-tabel (Serienr./Navn/År/Sæsoner/Format/Lokation) efter filmtabellen, med sideskift ved print (`.print-section-break`). Samme fritekst-søgning filtrerer begge tabeller.
+- Nyt test i `test_tv_shows.py` for `tmdb-preview`-endpointet (verificerer at intet persisteres). Alle 22 TV-serie-tests + frontend-build kørt igennem uden fejl.
+
 ## [0.38.0 build 0047] — 2026-08-02 — Sæson-gruppering ved scan af TV-serier (feature #53)
 
 - `MovieLookupForm.jsx`: når en valgt TV-serie-kandidat allerede findes i biblioteket (`checkTvDuplicate`), hentes den fulde eksisterende post (`api.getTvShow`) og et nyt "Føj til eksisterende serie i stedet"-panel vises — en sæson-vælger (chips, ✓ markerer allerede-ejede sæsoner) der kalder den allerede eksisterende `PATCH /api/tv-shows/{id}/seasons/{n}` (`setSeasonOwned`) direkte på den fundne serie, i stedet for at oprette en ny duplikeret `TvShow`-post. Løser Jans eksempel: scanner man "The Americans Season 2" efter allerede at have "The Americans" i biblioteket, markeres sæson 2 som ejet på den eksisterende serie i stedet for at oprette en ny "The Americans"-post.

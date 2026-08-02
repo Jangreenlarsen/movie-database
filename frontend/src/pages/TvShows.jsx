@@ -543,6 +543,11 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
                     ✓ Set
                   </div>
                 )}
+                {show.number_of_seasons > 0 && (
+                  <div className="movie-seasons-badge" title="Ejede sæsoner ud af serien totalt">
+                    {show.seasons.filter((s) => s.owned).length}/{show.number_of_seasons} sæsoner
+                  </div>
+                )}
               </div>
               <div className="movie-info">
                 <div className="movie-title">{show.name}</div>
@@ -552,9 +557,6 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
                       {show.year}
                       {show.end_year && show.end_year !== show.year ? `–${show.end_year}` : ""}
                     </span>
-                  )}
-                  {show.number_of_seasons && (
-                    <span className="movie-meta-item">{show.number_of_seasons} sæsoner</span>
                   )}
                   {visibleFields.format && show.format && (
                     <span className="movie-meta-item">{show.format}</span>

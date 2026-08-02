@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.37.0 (build 0046) — 2026-08-02
+
+- Den separate "Scan"-fane er væk — hver fane (Film/TV-serier) har nu sit eget "+ Tilføj film"/"+ Tilføj serie"-panel med samme scan-/søgefunktion som før, bare ét sted.
+- TV-serie-fanen har nu samme sortering (op til 3 niveauer), "gemte visninger" og "Vis felter"-panel som filmbiblioteket — samme udseende og funktioner på tværs af de to faner.
+- Fix: "Medietype"-visningen i "Vis felter"-panelet blev ikke husket ved genindlæsning — er nu rettet.
+
 ## v0.36.1 (build 0045) — 2026-08-02
 
 - Fix: login fra telefonen fejlede med "forkert brugernavn/adgangskode" selvom det var korrekt — telefonen (iOS) autokapitaliserede stille og roligt det første bogstav i brugernavnet, mens login krævede eksakt store/små bogstaver. Login tjekker nu ikke længere store/små bogstaver i brugernavnet, så det ikke sker igen.

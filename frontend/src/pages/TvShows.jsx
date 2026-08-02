@@ -12,10 +12,41 @@ const SORT_OPTIONS = [
   { value: "year", label: "År" },
   { value: "rating", label: "Rating" },
   { value: "personal_rating", label: "Din rating" },
+  { value: "watched_at", label: "Set-dato" },
   { value: "format", label: "Format" },
+  { value: "audio_types", label: "Lyd-type" },
+  { value: "media_type", label: "Medietype" },
   { value: "location", label: "Lokation" },
   { value: "owner", label: "Ejer" },
+  { value: "registered_by", label: "Registreret af" },
 ];
+const MAX_SORT_LEVELS = 3;
+
+function initialSortLevels(settings) {
+  if (settings?.tv_sort_levels?.length) return settings.tv_sort_levels;
+  return [{ field: "serial_number", direction: "desc" }];
+}
+
+const VISIBLE_FIELD_OPTIONS = [
+  { key: "year", label: "År" },
+  { key: "tags", label: "Tags" },
+  { key: "format", label: "Format" },
+  { key: "audioTypes", label: "Lyd-type" },
+  { key: "mediaType", label: "Medietype" },
+  { key: "rating", label: "Rating" },
+];
+
+function visibleFieldsFromSettings(settings) {
+  const vf = settings?.tv_visible_fields ?? {};
+  return {
+    year: vf.year ?? true,
+    tags: vf.tags ?? true,
+    format: vf.format ?? false,
+    audioTypes: vf.audio_types ?? false,
+    mediaType: vf.media_type ?? false,
+    rating: vf.rating ?? false,
+  };
+}
 
 function toggleValue(list, value) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -25,15 +56,16 @@ function formatSerial(serialNumber, paddingWidth) {
   return `#${String(serialNumber).padStart(paddingWidth, "0")}`;
 }
 
-export default function TvShows({ user, wishlist = false }) {
+export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
   const [query, setQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedFormats, setSelectedFormats] = useState([]);
   const [selectedAudioTypes, setSelectedAudioTypes] = useState([]);
   const [selectedMediaTypes, setSelectedMediaTypes] = useState([]);
   const [watchedFilter, setWatchedFilter] = useState(null);
-  const [sortField, setSortField] = useState("serial_number");
-  const [sortDirection, setSortDirection] = useState("desc");
+  const [sortLevels, setSortLevels] = useState(() => initialSortLevels(user.settings));
+  const [presets, setPresets] = useState(user.settings.tv_sort_presets ?? []);
+  const [presetNameInput, setPresetNameInput] = useState("");
   const [shows, setShows] = useState([]);
   const [status, setStatus] = useState("loading");
   const [allTags, setAllTags] = useState([]);
@@ -43,9 +75,36 @@ export default function TvShows({ user, wishlist = false }) {
     media_types: [],
   });
   const [activeShow, setActiveShow] = useState(null);
+  const [visibleFields, setVisibleFields] = useState(() => visibleFieldsFromSettings(user.settings));
+  const [showFieldPanel, setShowFieldPanel] = useState(false);
+  const [showSortPanel, setShowSortPanel] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
+
+  function persistVisibleFields(nextVisible) {
+    api
+      .updateMySettings({
+        tv_visible_fields: {
+          year: nextVisible.year,
+          tags: nextVisible.tags,
+          format: nextVisible.format,
+          audio_types: nextVisible.audioTypes,
+          media_type: nextVisible.mediaType,
+          rating: nextVisible.rating,
+        },
+      })
+      .then(onSettingsChanged)
+      .catch(() => {});
+  }
+
+  function persistSortLevels(nextLevels) {
+    api.updateMySettings({ tv_sort_levels: nextLevels }).then(onSettingsChanged).catch(() => {});
+  }
+
+  function persistSortPresets(nextPresets) {
+    api.updateMySettings({ tv_sort_presets: nextPresets }).then(onSettingsChanged).catch(() => {});
+  }
 
   useEffect(() => {
     api.listTags().then(setAllTags).catch(() => {});
@@ -63,7 +122,7 @@ export default function TvShows({ user, wishlist = false }) {
       format: selectedFormats,
       audioTypes: selectedAudioTypes,
       mediaTypes: selectedMediaTypes,
-      sort: `${sortField}:${sortDirection}`,
+      sort: sortLevels,
       wishlist,
       watched: watchedFilter,
     });
@@ -84,13 +143,98 @@ export default function TvShows({ user, wishlist = false }) {
     selectedFormats,
     selectedAudioTypes,
     selectedMediaTypes,
+    sortLevels,
     watchedFilter,
-    sortField,
-    sortDirection,
   ]);
 
   function refresh() {
     fetchShows().then(setShows).catch(() => {});
+  }
+
+  function updateVisibleField(key, value) {
+    setVisibleFields((prev) => {
+      const next = { ...prev, [key]: value };
+      persistVisibleFields(next);
+      return next;
+    });
+  }
+
+  function updateSortLevelField(index, field) {
+    setSortLevels((prev) => {
+      const next = prev.map((level, i) => (i === index ? { ...level, field } : level));
+      persistSortLevels(next);
+      return next;
+    });
+  }
+
+  function toggleSortLevelDirection(index) {
+    setSortLevels((prev) => {
+      const next = prev.map((level, i) =>
+        i === index ? { ...level, direction: level.direction === "asc" ? "desc" : "asc" } : level
+      );
+      persistSortLevels(next);
+      return next;
+    });
+  }
+
+  function addSortLevel() {
+    setSortLevels((prev) => {
+      if (prev.length >= MAX_SORT_LEVELS) return prev;
+      const used = new Set(prev.map((level) => level.field));
+      const nextField = SORT_OPTIONS.find((opt) => !used.has(opt.value))?.value ?? SORT_OPTIONS[0].value;
+      const next = [...prev, { field: nextField, direction: "asc" }];
+      persistSortLevels(next);
+      return next;
+    });
+  }
+
+  function removeSortLevel(index) {
+    setSortLevels((prev) => {
+      if (prev.length <= 1) return prev;
+      const next = prev.filter((_, i) => i !== index);
+      persistSortLevels(next);
+      return next;
+    });
+  }
+
+  function applyPreset(name) {
+    const preset = presets.find((p) => p.name === name);
+    if (!preset) return;
+    setSortLevels(preset.levels);
+    persistSortLevels(preset.levels);
+    setQuery(preset.query ?? "");
+    setSelectedTags(preset.tags ?? []);
+    setSelectedFormats(preset.formats ?? []);
+    setSelectedAudioTypes(preset.audio_types ?? []);
+    setSelectedMediaTypes(preset.media_types ?? []);
+    setWatchedFilter(preset.watched ?? null);
+  }
+
+  function saveCurrentAsPreset() {
+    const name = presetNameInput.trim();
+    if (!name) return;
+    const next = [
+      ...presets.filter((p) => p.name !== name),
+      {
+        name,
+        levels: sortLevels,
+        query: query || null,
+        tags: selectedTags,
+        formats: selectedFormats,
+        audio_types: selectedAudioTypes,
+        media_types: selectedMediaTypes,
+        watched: watchedFilter,
+      },
+    ];
+    setPresets(next);
+    persistSortPresets(next);
+    setPresetNameInput("");
+  }
+
+  function deletePreset(name) {
+    const next = presets.filter((p) => p.name !== name);
+    setPresets(next);
+    persistSortPresets(next);
   }
 
   const hasActiveFilters =
@@ -119,27 +263,19 @@ export default function TvShows({ user, wishlist = false }) {
           </div>
 
           <button type="button" className="btn btn-primary" onClick={() => setShowAddPanel((v) => !v)}>
-            {showAddPanel ? "Luk" : "+ Tilføj serie"} ▾
+            {showAddPanel ? "Luk" : wishlist ? "+ Tilføj ønske" : "+ Tilføj serie"} ▾
           </button>
 
-          <select value={sortField} onChange={(e) => setSortField(e.target.value)}>
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="btn"
-            title={sortDirection === "asc" ? "Stigende" : "Faldende"}
-            onClick={() => setSortDirection((d) => (d === "asc" ? "desc" : "asc"))}
-          >
-            {sortDirection === "asc" ? "↑" : "↓"}
+          <button type="button" className="btn" onClick={() => setShowSortPanel((v) => !v)}>
+            Sortér ▾
           </button>
 
           <button type="button" className="btn" onClick={() => setShowFilterPanel((v) => !v)}>
             Filtrér {hasActiveFilters ? `(${selectedTags.length + selectedFormats.length + selectedAudioTypes.length + selectedMediaTypes.length + (watchedFilter != null ? 1 : 0)}) ` : ""}▾
+          </button>
+
+          <button type="button" className="btn" onClick={() => setShowFieldPanel((v) => !v)}>
+            Vis felter ▾
           </button>
         </div>
 
@@ -153,6 +289,113 @@ export default function TvShows({ user, wishlist = false }) {
                 setShowAddPanel(false);
               }}
             />
+          </div>
+        )}
+
+        {showSortPanel && (
+          <div className="filter-panel">
+            <div className="sort-levels">
+              {sortLevels.map((level, index) => (
+                <div key={index} className="sort-level-row">
+                  <span className="sort-level-index">{index + 1}.</span>
+                  <select value={level.field} onChange={(e) => updateSortLevelField(index, e.target.value)}>
+                    {SORT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn"
+                    title={level.direction === "asc" ? "Stigende" : "Faldende"}
+                    onClick={() => toggleSortLevelDirection(index)}
+                  >
+                    {level.direction === "asc" ? "↑" : "↓"}
+                  </button>
+                  {sortLevels.length > 1 && (
+                    <button
+                      type="button"
+                      className="btn"
+                      title="Fjern niveau"
+                      onClick={() => removeSortLevel(index)}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+              {sortLevels.length < MAX_SORT_LEVELS && (
+                <button type="button" className="btn" onClick={addSortLevel}>
+                  + Tilføj sorteringsniveau
+                </button>
+              )}
+            </div>
+
+            <div className="filter-group sort-preset-row">
+              <span className="filter-group-label">Gemte visninger</span>
+              <select value="" onChange={(e) => e.target.value && applyPreset(e.target.value)}>
+                <option value="">Vælg gemt visning...</option>
+                {presets.map((preset) => (
+                  <option key={preset.name} value={preset.name}>
+                    {preset.name}
+                  </option>
+                ))}
+              </select>
+              <input
+                placeholder="Navngiv visning..."
+                value={presetNameInput}
+                onChange={(e) => setPresetNameInput(e.target.value)}
+                style={{ maxWidth: 160 }}
+              />
+              <button
+                type="button"
+                className="btn"
+                onClick={saveCurrentAsPreset}
+                disabled={!presetNameInput.trim()}
+              >
+                Gem nuværende visning
+              </button>
+            </div>
+            <p className="muted" style={{ margin: 0 }}>
+              En gemt visning husker søgetekst, alle filtre og sortering — ikke kun rækkefølgen.
+            </p>
+
+            {presets.length > 0 && (
+              <div className="sort-preset-list">
+                {presets.map((preset) => (
+                  <span key={preset.name} className="sort-preset-item">
+                    {preset.name}
+                    <button
+                      type="button"
+                      className="sort-preset-remove"
+                      title={`Slet preset "${preset.name}"`}
+                      onClick={() => deletePreset(preset.name)}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {showFieldPanel && (
+          <div className="filter-panel">
+            <div className="filter-group">
+              <span className="filter-group-label">Vis på kort</span>
+              <div className="chip-row">
+                {VISIBLE_FIELD_OPTIONS.map((opt) => (
+                  <Chip
+                    key={opt.key}
+                    label={opt.label}
+                    active={visibleFields[opt.key]}
+                    onClick={() => updateVisibleField(opt.key, !visibleFields[opt.key])}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -292,7 +535,7 @@ export default function TvShows({ user, wishlist = false }) {
                 ) : (
                   "📺"
                 )}
-                {show.rating != null && (
+                {visibleFields.rating && show.rating != null && (
                   <div className="movie-rating-badge">★ {show.rating.toFixed(1)}</div>
                 )}
                 {show.watched && (
@@ -304,7 +547,7 @@ export default function TvShows({ user, wishlist = false }) {
               <div className="movie-info">
                 <div className="movie-title">{show.name}</div>
                 <div className="movie-meta-grid">
-                  {show.year && (
+                  {visibleFields.year && show.year && (
                     <span className="movie-meta-item">
                       {show.year}
                       {show.end_year && show.end_year !== show.year ? `–${show.end_year}` : ""}
@@ -313,8 +556,17 @@ export default function TvShows({ user, wishlist = false }) {
                   {show.number_of_seasons && (
                     <span className="movie-meta-item">{show.number_of_seasons} sæsoner</span>
                   )}
+                  {visibleFields.format && show.format && (
+                    <span className="movie-meta-item">{show.format}</span>
+                  )}
+                  {visibleFields.audioTypes && show.audio_types.length > 0 && (
+                    <span className="movie-meta-item">{show.audio_types.join(", ")}</span>
+                  )}
+                  {visibleFields.mediaType && show.media_type && (
+                    <span className="movie-meta-item">{show.media_type}</span>
+                  )}
                 </div>
-                {show.tags.length > 0 && (
+                {visibleFields.tags && show.tags.length > 0 && (
                   <div className="movie-tags">
                     {show.tags.map((tag) => (
                       <span key={tag} className="movie-tag-pill">

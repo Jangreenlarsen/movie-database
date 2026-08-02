@@ -2,6 +2,13 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.37.0 build 0046] — 2026-08-02 — UI-konsolidering del 1+2: separat Scan-fane fjernet, TV-serier får fuld sort/preset/vis-felter-paritet (feature #51/#52), fix (BUGS.md #22)
+
+- **Feature #51**: separat "Scan"-fane fjernet fra hovedmenuen (`App.jsx`) og `ScanMovie.jsx` slettet. `MovieLookupForm` (scan + manuel TMDb-søgning) er nu integreret direkte i hver bibliotek-fane via et "+ Tilføj film"/"+ Tilføj serie"-panel (`Library.jsx`s panel var allerede der for ønskelisten — gjort ubetinget synligt også for hovedbiblioteket; `TvShows.jsx` havde allerede sit "Tilføj serie"-panel).
+- **Feature #52**: `TvShows.jsx`s værktøjslinje omskrevet til fuld paritet med `Library.jsx`: fler-niveau sortering (op til 3 niveauer, feature #17/#27), navngivne/gemte "visninger" der husker søgetekst+filtre+sortering (feature #44), og et nyt "Vis felter"-panel (år/tags/format/lyd-type/medietype/rating) — alle bagt af nye, TV-separate indstillingsfelter (`tv_sort_levels`/`tv_sort_presets`/`tv_visible_fields`) på `UserSettings`, persisteret via samme `PATCH /api/users/me/settings`-endpoint (allerede dotted-path-atomisk, ingen backend-ændring nødvendig ud over modellen). `api.listTvShows` opgraderet til at acceptere fler-niveau sort-arrays (samme form som `api.listMovies`).
+- **BUGS.md #22** (opdaget undervejs, rettet i samme commit da den delte model lige alligevel blev udvidet): `VisibleFields`-modellen manglede `media_type`-feltet som frontend allerede sendte/læste — "Medietype"-togglen i filmbibliotekets "Vis felter"-panel virkede derfor kun for den aktuelle session og nulstilledes ved genindlæsning. Tilføjet til modellen og til `DEFAULT_SETTINGS` (både film og TV).
+- Backend-tests: alle 218 eksisterende tests kører uændret igennem (ingen ny backend-logik i denne commit ud over model-/default-udvidelsen).
+
 ## [0.36.1 build 0045] — 2026-08-02 — Fix: login fra mobil fejlede pga. autokapitalisering (BUGS.md #21)
 
 - `Login.jsx`: brugernavn-feltet fik `autoCapitalize="off" autoCorrect="off" spellCheck={false}` — iOS Safari (og det installerede PWA-ikon) autokapitaliserede ellers første bogstav i feltet, så "jgl" blev til "Jgl" mens brugeren skrev, hvilket gav en ægte men forvirrende 401 mod det eksakt versalfølsomme login-opslag.

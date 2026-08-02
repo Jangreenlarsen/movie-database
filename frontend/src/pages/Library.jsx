@@ -283,15 +283,13 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
             />
           </div>
 
-          {wishlist && (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => setShowAddPanel((v) => !v)}
-            >
-              {showAddPanel ? "Luk" : "+ Tilføj ønske"} ▾
-            </button>
-          )}
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setShowAddPanel((v) => !v)}
+          >
+            {showAddPanel ? "Luk" : wishlist ? "+ Tilføj ønske" : "+ Tilføj film"} ▾
+          </button>
 
           <button type="button" className="btn" onClick={() => setShowSortPanel((v) => !v)}>
             Sortér ▾
@@ -306,11 +304,11 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
           </button>
         </div>
 
-        {wishlist && showAddPanel && (
+        {showAddPanel && (
           <div style={{ marginTop: 8 }}>
             <MovieLookupForm
               user={user}
-              wishlist
+              wishlist={wishlist}
               onSaved={() => {
                 refresh();
                 setShowAddPanel(false);

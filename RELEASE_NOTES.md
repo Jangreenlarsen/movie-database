@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.38.0 (build 0047) — 2026-08-02
+
+- Scanner du en ny sæson af en TV-serie du allerede har (fx "The Americans" sæson 2), foreslår appen nu at føje den til den eksisterende serie i stedet for at oprette en ny separat post — vælg bare den rigtige sæson i det nye panel, der dukker op. Serien viser derefter alle dine ejede sæsoner ét sted.
+
 ## v0.37.0 (build 0046) — 2026-08-02
 
 - Den separate "Scan"-fane er væk — hver fane (Film/TV-serier) har nu sit eget "+ Tilføj film"/"+ Tilføj serie"-panel med samme scan-/søgefunktion som før, bare ét sted.

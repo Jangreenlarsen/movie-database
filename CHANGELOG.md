@@ -2,6 +2,13 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.38.0 build 0047] — 2026-08-02 — Sæson-gruppering ved scan af TV-serier (feature #53)
+
+- `MovieLookupForm.jsx`: når en valgt TV-serie-kandidat allerede findes i biblioteket (`checkTvDuplicate`), hentes den fulde eksisterende post (`api.getTvShow`) og et nyt "Føj til eksisterende serie i stedet"-panel vises — en sæson-vælger (chips, ✓ markerer allerede-ejede sæsoner) der kalder den allerede eksisterende `PATCH /api/tv-shows/{id}/seasons/{n}` (`setSeasonOwned`) direkte på den fundne serie, i stedet for at oprette en ny duplikeret `TvShow`-post. Løser Jans eksempel: scanner man "The Americans Season 2" efter allerede at have "The Americans" i biblioteket, markeres sæson 2 som ejet på den eksisterende serie i stedet for at oprette en ny "The Americans"-post.
+- Ingen backend-ændringer nødvendige — genbruger udelukkende eksisterende endpoints (`GET /api/tv-shows/{id}`, `PATCH .../seasons/{n}`) fra feature #47/#48.
+- Den almindelige "Gem"-knap findes stadig som bevidst fallback (omdøbt til "Opret som ny separat serie" når en gruppering er mulig) — til reelt tilsigtede duplikater (fx to fysiske kopier af samme sæson).
+- Design bekræftet eksplicit af Jan før implementering (2026-08-02): genbrug af TV-seriens allerede eksisterende `seasons[]`-underarray som "gruppen", fremfor en ny separat gruppe-/franchise-model.
+
 ## [0.37.0 build 0046] — 2026-08-02 — UI-konsolidering del 1+2: separat Scan-fane fjernet, TV-serier får fuld sort/preset/vis-felter-paritet (feature #51/#52), fix (BUGS.md #22)
 
 - **Feature #51**: separat "Scan"-fane fjernet fra hovedmenuen (`App.jsx`) og `ScanMovie.jsx` slettet. `MovieLookupForm` (scan + manuel TMDb-søgning) er nu integreret direkte i hver bibliotek-fane via et "+ Tilføj film"/"+ Tilføj serie"-panel (`Library.jsx`s panel var allerede der for ønskelisten — gjort ubetinget synligt også for hovedbiblioteket; `TvShows.jsx` havde allerede sit "Tilføj serie"-panel).

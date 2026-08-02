@@ -14,7 +14,24 @@ export default function Settings({ user }) {
       <AccountSection user={user} />
       <SerialNumberSection isAdmin={isAdmin} />
       <DeletedMoviesSection />
-      {isAdmin && <TmdbSyncSection />}
+      {isAdmin && (
+        <TmdbSyncSection
+          title="TMDb-synkronisering (film)"
+          description="Henter frisk metadata (titel, år, poster, plot, genrer, medvirkende, rating, spilletid) fra TMDb for alle film der er oprettet via TMDb, og opdaterer det lokalt gemte. Dine egne oplysninger (tags, format, lyd-type, lokation, ejer, serienummer) rører den ikke. Kan tage et øjeblik afhængig af antal film."
+          buttonLabel="Opdatér alle film fra TMDb"
+          itemLabel="film"
+          syncFn={api.syncMoviesFromTmdb}
+        />
+      )}
+      {isAdmin && (
+        <TmdbSyncSection
+          title="TMDb-synkronisering (TV-serier)"
+          description="Henter frisk metadata (navn, år, status, poster, plot, genrer, medvirkende, rating, sæson-/episodetal) fra TMDb for alle TV-serier der er oprettet via TMDb. Dine egne oplysninger (tags, format, lokation, ejer, serienummer) samt hvilke sæsoner du ejer og hvilke episoder du har set rører den ikke."
+          buttonLabel="Opdatér alle TV-serier fra TMDb"
+          itemLabel="TV-serier"
+          syncFn={api.syncTvShowsFromTmdb}
+        />
+      )}
       {isAdmin && <SystemSettingsSection />}
       {isAdmin && <DeploySection />}
       {isAdmin && <UsersSection currentUserId={user.id} />}
@@ -245,7 +262,7 @@ function DeletedMoviesSection() {
   );
 }
 
-function TmdbSyncSection() {
+function TmdbSyncSection({ title, description, buttonLabel, itemLabel, syncFn }) {
   const [status, setStatus] = useState("idle");
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -255,7 +272,7 @@ function TmdbSyncSection() {
     setError(null);
     setResult(null);
     try {
-      const data = await api.syncMoviesFromTmdb();
+      const data = await syncFn();
       setResult(data);
       setStatus("done");
     } catch (err) {
@@ -266,16 +283,11 @@ function TmdbSyncSection() {
 
   return (
     <div className="card settings-section">
-      <h2>TMDb-synkronisering</h2>
-      <p className="muted">
-        Henter frisk metadata (titel, år, poster, plot, genrer, medvirkende, rating,
-        spilletid) fra TMDb for alle film der er oprettet via TMDb, og opdaterer det
-        lokalt gemte. Dine egne oplysninger (tags, format, lyd-type, lokation, ejer,
-        serienummer) rører den ikke. Kan tage et øjeblik afhængig af antal film.
-      </p>
+      <h2>{title}</h2>
+      <p className="muted">{description}</p>
 
       <button type="button" className="btn btn-primary" onClick={sync} disabled={status === "syncing"}>
-        {status === "syncing" ? "Synkroniserer..." : "Opdatér alle film fra TMDb"}
+        {status === "syncing" ? "Synkroniserer..." : buttonLabel}
       </button>
 
       {status === "error" && (
@@ -294,13 +306,13 @@ function TmdbSyncSection() {
               <>Synkronisering afbrudt — tjek at backend har en gyldig TMDB_API_TOKEN.</>
             ) : (
               <>
-                {result.synced} af {result.total} film opdateret, men stoppet tidligt fordi TMDb
-                ramte et rate-limit. Prøv igen om lidt for at opdatere resten.
+                {result.synced} af {result.total} {itemLabel} opdateret, men stoppet tidligt fordi
+                TMDb ramte et rate-limit. Prøv igen om lidt for at opdatere resten.
               </>
             )
           ) : (
             <>
-              {result.synced} af {result.total} film opdateret.
+              {result.synced} af {result.total} {itemLabel} opdateret.
               {result.failed > 0 &&
                 ` ${result.failed} kunne ikke hentes: ${result.failed_titles.join(", ")}.`}
             </>

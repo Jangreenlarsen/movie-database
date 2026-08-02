@@ -196,16 +196,49 @@ async def set_season_episodes(
     db: AsyncIOMotorDatabase, tv_show_id: str, season_number: int, episodes: list[dict]
 ) -> bool:
     """Atomically replaces one season's *entire* episode list via the
-    positional `$` update operator. Used both to populate a season right
-    after its lazy TMDb fetch, and to persist a single episode's toggled
-    `watched` flag (the caller — tv_show_service — reads the current list,
-    mutates one entry in Python, and passes the whole list back here).
-    Bounds any read-modify-write race to "two concurrent episode toggles
-    within the same season", never across seasons or the rest of the
-    document — deliberately avoids MongoDB `arrayFilters`, whose mongomock
-    support is inconsistent (see movie_repository's label-migration note)."""
+    positional `$` update operator. Used only to populate a season right
+    after its lazy TMDb fetch (a single write, nothing concurrent to race
+    against) — see `set_episode_watched` below for toggling one episode,
+    which must not use this "read the whole list, mutate one entry,
+    write the whole list back" shape (see BUGS.md #25)."""
     result = await db[COLLECTION].update_one(
         {"_id": ObjectId(tv_show_id), "seasons.season_number": season_number},
         {"$set": {"seasons.$.episodes": episodes}},
+    )
+    return result.matched_count > 0
+
+
+async def set_episode_watched(
+    db: AsyncIOMotorDatabase,
+    tv_show_id: str,
+    season_index: int,
+    episode_index: int,
+    watched: bool,
+    watched_at,
+) -> bool:
+    """Atomically updates a single episode's watched-status via a numeric
+    array-index path (`seasons.<i>.episodes.<j>.watched`) instead of
+    reading the season's whole episode list, mutating one entry, and
+    writing the whole list back — that read-modify-write shape lost writes
+    under concurrent toggles of different episodes (BUGS.md #25, verified
+    empirically: two concurrent toggles landed as `{1: False, 2: True}`
+    instead of both `True`). Deliberately avoids the positional `$`/
+    `arrayFilters` operators for this, which mongomock does not implement
+    at all (confirmed directly — raises `NotImplementedError` — not just
+    "inconsistent" as movie_repository's label-migration note assumed for a
+    different, single-level case). The caller resolves `season_index`/
+    `episode_index` from `season_number`/`episode_number` — safe because
+    seasons/episodes are never reordered after being written once from
+    TMDb, so two concurrent calls addressing different episodes always
+    resolve to different, stable index paths and never clobber each
+    other."""
+    result = await db[COLLECTION].update_one(
+        {"_id": ObjectId(tv_show_id)},
+        {
+            "$set": {
+                f"seasons.{season_index}.episodes.{episode_index}.watched": watched,
+                f"seasons.{season_index}.episodes.{episode_index}.watched_at": watched_at,
+            }
+        },
     )
     return result.matched_count > 0

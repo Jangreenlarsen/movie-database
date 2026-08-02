@@ -266,6 +266,22 @@ async def test_multi_level_sort_falls_through_to_second_field(client):
     assert [m["title"] for m in response.json()] == ["Middle", "Alpha", "Zeta"]
 
 
+async def test_create_movie_returns_429_on_tmdb_rate_limit(client, monkeypatch):
+    """Regression test for BUGS.md #24: TmdbRateLimitedError used to have no
+    exception handler and propagated as a raw 500 (verified across this and
+    3 other endpoints during the 2026-08-02 code review)."""
+    from app.core.errors import TmdbRateLimitedError
+    from app.integrations import tmdb_client
+
+    async def fake_get_movie_details(tmdb_id):
+        raise TmdbRateLimitedError()
+
+    monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
+
+    response = await client.post("/api/movies", json={"tmdb_id": 1})
+    assert response.status_code == 429
+
+
 async def test_sort_by_rating(client, monkeypatch):
     from app.integrations import tmdb_client
 

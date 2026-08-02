@@ -169,7 +169,12 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
     const isTv = selectedCandidate.media_kind === "tv";
     try {
       const create = isTv ? api.createTvShow : api.createMovie;
-      const created = await create({
+      // Selected seasons are marked owned as part of the same creation
+      // request (feature #54), not a follow-up PATCH loop — a partial
+      // failure there used to leave an already-created show behind while
+      // the form stayed open for a retry, risking a duplicate on the next
+      // "Gem" click (BUGS.md #28).
+      await create({
         tmdb_id: selectedCandidate.tmdb_id,
         barcode,
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
@@ -179,12 +184,10 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
         location: location.trim() || null,
         owner: owner.trim() || null,
         is_wishlist: wishlist,
+        ...(isTv && selectedSeasonNumbers.length > 0
+          ? { owned_seasons: selectedSeasonNumbers }
+          : {}),
       });
-      if (isTv && selectedSeasonNumbers.length > 0) {
-        for (const seasonNumber of selectedSeasonNumbers) {
-          await api.setSeasonOwned(created.id, seasonNumber, true);
-        }
-      }
       setSaveStatus("saved");
       setLastSavedKind(selectedCandidate.media_kind ?? "movie");
       resetFormAfterSave();

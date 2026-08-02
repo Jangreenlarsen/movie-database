@@ -87,6 +87,60 @@ async def test_create_tv_show_from_tmdb_fetches_metadata_and_light_seasons(clien
     assert show["tags"] == ["Favorite"]
 
 
+async def test_create_tv_show_marks_owned_seasons_and_fetches_their_episodes(client, monkeypatch):
+    """Feature #54 bundled into creation itself (BUGS.md #28): the caller no
+    longer has to POST-then-PATCH-per-season, which used to leave a
+    duplicate-prone half-finished show behind if a PATCH failed."""
+
+    async def fake_get_tv_show_details(tv_id):
+        return _fake_tv_details(tv_id)
+
+    async def fake_get_season_details(tv_id, season_number):
+        assert season_number == 2
+        return _fake_episodes(season_number, 13)
+
+    monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
+    monkeypatch.setattr(tmdb_client, "get_season_details", fake_get_season_details)
+
+    response = await client.post(
+        "/api/tv-shows", json={"tmdb_id": 1396, "owned_seasons": [2]}
+    )
+    assert response.status_code == 201
+    seasons = response.json()["seasons"]
+
+    season_1 = next(s for s in seasons if s["season_number"] == 1)
+    assert season_1["owned"] is False
+    assert season_1["episodes"] == []
+
+    season_2 = next(s for s in seasons if s["season_number"] == 2)
+    assert season_2["owned"] is True
+    assert len(season_2["episodes"]) == 13
+
+
+async def test_create_tv_show_owned_season_survives_tmdb_episode_fetch_failure(client, monkeypatch):
+    """A TMDb failure while fetching one season's episodes must not fail
+    the whole creation — the season still ends up owned, just without a
+    cached episode list yet (self-heals on the next owned-toggle)."""
+    from app.core.errors import TmdbUnavailableError
+
+    async def fake_get_tv_show_details(tv_id):
+        return _fake_tv_details(tv_id)
+
+    async def failing_get_season_details(tv_id, season_number):
+        raise TmdbUnavailableError("TMDb er nede")
+
+    monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
+    monkeypatch.setattr(tmdb_client, "get_season_details", failing_get_season_details)
+
+    response = await client.post(
+        "/api/tv-shows", json={"tmdb_id": 1396, "owned_seasons": [1]}
+    )
+    assert response.status_code == 201
+    season_1 = next(s for s in response.json()["seasons"] if s["season_number"] == 1)
+    assert season_1["owned"] is True
+    assert season_1["episodes"] == []
+
+
 async def test_tv_show_serial_numbers_are_independent_from_movies(client):
     await client.post("/api/movies", json={"title": "A Movie"})
     await client.post("/api/movies", json={"title": "Another Movie"})
@@ -316,6 +370,50 @@ async def test_set_episode_watched_on_unknown_season_returns_404(client):
     assert response.status_code == 404
 
 
+async def test_concurrent_episode_toggles_do_not_lose_writes(db, monkeypatch):
+    """Regression test for BUGS.md #25: set_episode_watched used to read the
+    whole season's episode list, mutate one entry, and write the whole list
+    back — two concurrent toggles of *different* episodes could lose one of
+    them. Reproduced empirically pre-fix as `{1: False, 2: True}`."""
+    import asyncio
+
+    from app.integrations import tmdb_client
+    from app.models.tv_show import TvShowCreate
+    from app.repositories import tv_show_repository
+    from app.services import tv_show_service
+
+    async def fake_get_tv_show_details(tv_id):
+        return _fake_tv_details(tv_id)
+
+    async def fake_get_season_details(tv_id, season_number):
+        return _fake_episodes(season_number, 2)
+
+    monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
+    monkeypatch.setattr(tmdb_client, "get_season_details", fake_get_season_details)
+
+    show = await tv_show_service.create_tv_show(db, TvShowCreate(tmdb_id=1396), "tester")
+    await tv_show_service.set_season_owned(db, show.id, 1, True)
+
+    # Force the same interleaving a real (non-instant) MongoDB round-trip
+    # allows, which mongomock's synchronous resolution otherwise hides.
+    real_write = tv_show_repository.set_episode_watched
+
+    async def slow_write(*args, **kwargs):
+        await asyncio.sleep(0.01)
+        return await real_write(*args, **kwargs)
+
+    monkeypatch.setattr(tv_show_repository, "set_episode_watched", slow_write)
+
+    await asyncio.gather(
+        tv_show_service.set_episode_watched(db, show.id, 1, 1, True, None),
+        tv_show_service.set_episode_watched(db, show.id, 1, 2, True, None),
+    )
+
+    final = await tv_show_service.get_tv_show(db, show.id)
+    watched = {e.episode_number: e.watched for e in final.seasons[0].episodes}
+    assert watched == {1: True, 2: True}
+
+
 async def test_tmdb_search_endpoint(client, monkeypatch):
     async def fake_search_tv(query):
         assert query == "Breaking"
@@ -346,6 +444,20 @@ async def test_tmdb_preview_endpoint_returns_seasons_without_saving(client, monk
     # Nothing was persisted — the show list is still empty.
     list_response = await client.get("/api/tv-shows")
     assert list_response.json() == []
+
+
+async def test_tmdb_preview_returns_429_on_tmdb_rate_limit(client, monkeypatch):
+    """Regression test for BUGS.md #24: TmdbRateLimitedError used to have no
+    exception handler and propagated as a raw 500."""
+    from app.core.errors import TmdbRateLimitedError
+
+    async def fake_get_tv_show_details(tv_id):
+        raise TmdbRateLimitedError()
+
+    monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
+
+    response = await client.get("/api/tv-shows/tmdb-preview/1396")
+    assert response.status_code == 429
 
 
 async def test_attribute_options_reuses_movie_enums(client):

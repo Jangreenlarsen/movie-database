@@ -1,5 +1,13 @@
 # Release Notes
 
+## v0.40.0 (build 0050) — 2026-08-02
+
+- Ny "TMDb-synkronisering"-knap for TV-serier under Indstillinger (admin) — akkurat som filmenes, henter frisk metadata (navn, status, poster, plot, rating, sæson-/episodetal) for alle TV-serier oprettet via TMDb. Dine egne sæson-/episode-markeringer (ejet/set) rører den ikke.
+- Sæson-/episode-fejl i TV-serier viser nu en rigtig fejlbesked i stedet for bare at hoppe tilbage uden forklaring, og TV-kortets sæson-badge opdateres straks når du ændrer hvilke sæsoner du ejer.
+- Fejl ved sletning af en film eller TV-serie viser nu en fejlbesked i stedet for at fejle stille.
+- Ramte TMDb et rate-limit midt i et opslag, fik du tidligere en uforklarlig serverfejl — nu en klar besked om at prøve igen om lidt.
+- Mindre robusthedsrettelser under motorhjelmen (ingen synlig ændring i det daglige): oprettelse af en ny TV-serie med valgte sæsoner er nu én sammenhængende handling i stedet for flere, så en fejl undervejs ikke kan give en dublet-serie ved et nyt forsøg.
+
 ## v0.39.1 (build 0049) — 2026-08-02
 
 - Lille justering: sæson-badgen ("2/6 sæsoner") på TV-kort sidder nu lidt længere til højre, så den passer bedre sammen med rating-badgen.

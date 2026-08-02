@@ -2,6 +2,21 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.40.0 build 0050] — 2026-08-02 — Retter 8 fund fra to-fase-gennemgangen (BUGS.md #24-#31) + TMDb-synk for TV-serier (feature #57)
+
+**Bugfixes:**
+- **#24**: `TmdbRateLimitedError` manglede en `@app.exception_handler` og gav rå 500 på 4 endpoints ved TMDb rate-limit — tilføjet handler, mapper til 429.
+- **#25**: Samtidige episode-afkrydsninger kunne miste hinandens skrivning (read-modify-write af hele episode-arrayet). `set_episode_watched` opdaterer nu kun det ene episode-felt atomisk via en indekseret felt-sti.
+- **#26/#27**: `setSeasonOwned`/`setEpisodeWatched` i TV-detaljevinduet havde hverken fejlhåndtering eller kaldte `onChanged()` — tilføjet begge dele.
+- **#28**: Feature #54's ny-serie-gem-flow kunne efterlade en halvfærdig oprettelse (dublet-risiko ved retry). `TvShowCreate` har fået et `owned_seasons`-felt, så sæson-markering nu sker i selve opret-kaldet i stedet for en efterfølgende POST-så-N-PATCH-løkke.
+- **#29**: `remove()` i `Library.jsx`/`TvShows.jsx` manglede `catch` — fejlede sletning viste intet til brugeren. Tilføjet, samme mønster som `moveToLibrary()`.
+- **#30**: Latent `KeyError`-risiko i `system_settings_service.update_settings` ved en fremtidig ude-af-sync nøgleliste — ændret til `.get(key, "")`.
+- **#31**: Testsuiten afhang utilsigtet af udviklerens lokale `.env` (CWD-relativ indlæsning). Ny autouse-fixture i `conftest.py` pinner eksterne API-nøgler til faste testværdier — verificeret identisk resultat (233 passed) fra både `backend/` og repo-roden.
+
+**Feature #57**: `tv_show_service.sync_all_from_tmdb` + `POST /api/tv-shows/sync-tmdb` (admin), ny "TMDb-synkronisering (TV-serier)"-sektion på Indstillinger-siden. Genbruger film-synkens batch-mønster (rate-limit-stop, token-tjek før løkken). Sæson-listen flettes med den eksisterende via `season_number`, så `seasons[].owned` og episoders `watched`-status bevares uændret mens sæson-metadata (episode_count/navn/air_date) opdateres — en ny sæson tilføjes uejet, en fjernet sæson droppes.
+
+Alle rettelser har egne regressionstests (16 nye backend-tests i alt). Fuld backend-suite (233 tests) og frontend-build kørt igennem uden fejl efter hver ændring.
+
 ## [0.39.1 build 0049] — 2026-08-02 — Justering: sæson-badge-position på TV-kort (feature #55)
 
 - `.movie-seasons-badge` (`TvShows.css`) flyttet fra centreret (`translateX(-50%)`) til 16px højre for centrum (`translateX(calc(-50% + 16px))`), efter visuel feedback fra Jan om at badgen sad forkert i forhold til rating-badgen i nederste venstre hjørne af posteren.

@@ -26,6 +26,7 @@ from app.core.errors import (
     NotAuthenticatedError,
     NotAuthorizedError,
     TmdbNotFoundError,
+    TmdbRateLimitedError,
     TmdbUnavailableError,
     TvShowNotFoundError,
     UserNotFoundError,
@@ -94,6 +95,15 @@ async def tmdb_not_found_handler(request: Request, exc: TmdbNotFoundError) -> JS
 @app.exception_handler(TmdbUnavailableError)
 async def tmdb_unavailable_handler(request: Request, exc: TmdbUnavailableError) -> JSONResponse:
     return JSONResponse(status_code=502, content={"detail": str(exc)})
+
+
+@app.exception_handler(TmdbRateLimitedError)
+async def tmdb_rate_limited_handler(request: Request, exc: TmdbRateLimitedError) -> JSONResponse:
+    """Without this handler the exception propagated unhandled into a raw
+    500 on every endpoint except sync_all_from_tmdb (which catches it
+    itself) — verified empirically across 4 endpoints during the 2026-08-02
+    code review (BUGS.md #24)."""
+    return JSONResponse(status_code=429, content={"detail": str(exc)})
 
 
 @app.exception_handler(UsernameTakenError)

@@ -1,14 +1,20 @@
+import asyncio
 from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
+from app.core.config import settings
 from app.core.errors import (
     DuplicateBarcodeError,
     NotAuthorizedError,
+    TmdbNotFoundError,
+    TmdbRateLimitedError,
+    TmdbUnavailableError,
     TvShowNotFoundError,
 )
 from app.integrations import omdb_client, tmdb_client
+from app.models.movie import TmdbSyncResult
 from app.models.tv_show import (
     DeletedTvShow,
     DuplicateTvShowMatch,
@@ -68,6 +74,42 @@ async def _resolve_rating(details: dict) -> float | None:
     return imdb_rating if imdb_rating is not None else details["rating"]
 
 
+async def _build_seasons(
+    tmdb_id: int, tmdb_seasons: list[dict], owned_season_numbers: list[int]
+) -> list[dict]:
+    """Marks the caller-selected seasons as owned right at creation time
+    (feature #54), instead of the frontend making a separate
+    POST-then-N-PATCH round trip — that had a real duplicate-creation risk
+    if any of the PATCHes failed after the show already existed (BUGS.md
+    #28). A TMDb failure while fetching one season's episode list is not
+    fatal to creation: the season is still marked owned with an empty
+    (not-yet-cached) episode list — the next toggle of that season off/on
+    retries the fetch, same self-healing behavior `set_season_owned`
+    already relies on."""
+    owned_set = set(owned_season_numbers)
+    seasons = []
+    for season in tmdb_seasons:
+        owned = season["season_number"] in owned_set
+        episodes: list[dict] = []
+        if owned:
+            try:
+                raw_episodes = await tmdb_client.get_season_details(
+                    tmdb_id, season["season_number"]
+                )
+                episodes = [
+                    Episode(
+                        episode_number=ep["episode_number"],
+                        name=ep["name"],
+                        air_date=ep["air_date"],
+                    ).model_dump(mode="json")
+                    for ep in raw_episodes
+                ]
+            except (TmdbNotFoundError, TmdbUnavailableError, TmdbRateLimitedError):
+                episodes = []
+        seasons.append({**season, "owned": owned, "episodes": episodes})
+    return seasons
+
+
 async def create_tv_show(
     db: AsyncIOMotorDatabase, payload: TvShowCreate, registered_by: str
 ) -> TvShow:
@@ -91,9 +133,9 @@ async def create_tv_show(
             "number_of_seasons": details["number_of_seasons"],
             "number_of_episodes": details["number_of_episodes"],
             "imdb_url": details["imdb_url"],
-            "seasons": [
-                {**season, "owned": False, "episodes": []} for season in details["seasons"]
-            ],
+            "seasons": await _build_seasons(
+                details["tmdb_id"], details["seasons"], payload.owned_seasons
+            ),
         }
     else:
         show_fields = {
@@ -302,6 +344,13 @@ def _find_season(document: dict, season_number: int) -> dict | None:
     return None
 
 
+def _find_season_index(document: dict, season_number: int) -> int | None:
+    for index, season in enumerate(document.get("seasons", [])):
+        if season["season_number"] == season_number:
+            return index
+    return None
+
+
 async def set_season_owned(
     db: AsyncIOMotorDatabase, tv_show_id: str, season_number: int, owned: bool
 ) -> TvShow:
@@ -347,22 +396,110 @@ async def set_episode_watched(
     if document is None:
         raise TvShowNotFoundError(tv_show_id)
 
-    season = _find_season(document, season_number)
-    if season is None:
+    season_index = _find_season_index(document, season_number)
+    if season_index is None:
         raise TvShowNotFoundError(tv_show_id)
 
-    episodes = season.get("episodes", [])
-    found = False
-    for episode in episodes:
-        if episode["episode_number"] == episode_number:
-            episode["watched"] = watched
-            episode["watched_at"] = watched_at
-            found = True
-            break
-    if not found:
+    episodes = document["seasons"][season_index].get("episodes", [])
+    episode_index = next(
+        (i for i, ep in enumerate(episodes) if ep["episode_number"] == episode_number), None
+    )
+    if episode_index is None:
         raise TvShowNotFoundError(tv_show_id)
 
-    await tv_show_repository.set_season_episodes(db, tv_show_id, season_number, episodes)
+    # Atomic single-field update, not read-modify-write — see BUGS.md #25.
+    await tv_show_repository.set_episode_watched(
+        db, tv_show_id, season_index, episode_index, watched, watched_at
+    )
 
     updated = await tv_show_repository.find_by_id(db, tv_show_id)
     return _to_model(updated)
+
+
+def _merge_seasons(existing_seasons: list[dict], tmdb_seasons: list[dict]) -> list[dict]:
+    """Refreshes each season's TMDb-sourced metadata (name/episode_count/
+    air_date/poster_url) while preserving `owned` and cached `episodes`
+    (with their watched-status) by matching on `season_number` — those are
+    the TV show's per-season equivalent of a movie's user-entered fields
+    (tags/format/location/...), which `sync_all_from_tmdb` must never touch
+    (FEATURES.md #57). A season TMDb no longer lists is dropped; a newly
+    announced season is added unowned with no cached episodes yet, same as
+    at initial creation."""
+    existing_by_number = {season["season_number"]: season for season in existing_seasons}
+    merged = []
+    for season in tmdb_seasons:
+        existing = existing_by_number.get(season["season_number"])
+        merged.append(
+            {
+                **season,
+                "owned": existing["owned"] if existing else False,
+                "episodes": existing.get("episodes", []) if existing else [],
+            }
+        )
+    return merged
+
+
+async def sync_all_from_tmdb(db: AsyncIOMotorDatabase) -> TmdbSyncResult:
+    """TV-show counterpart to movie_service.sync_all_from_tmdb (FEATURES.md
+    #57) — same batch semantics: a missing TMDB_API_TOKEN or a mid-batch
+    rate-limit short-circuits the rest of the batch instead of hammering an
+    already-unavailable/throttled TMDb per show (see BUGS.md #15/#16), and
+    a single show's TMDb lookup failing doesn't abort the rest. Never
+    touches user-entered fields (tags/format/location/owner/serial_number/
+    registered_by/barcode/personal_rating/personal_note/watched/is_wishlist)
+    nor a season's `owned`/episode `watched` status — see `_merge_seasons`."""
+    documents = await tv_show_repository.find_all_with_tmdb_id(db)
+
+    if not settings.tmdb_api_token:
+        names = [doc["name"] for doc in documents]
+        return TmdbSyncResult(
+            total=len(documents),
+            synced=0,
+            failed=len(names),
+            failed_titles=names,
+            stopped_early=True,
+        )
+
+    synced = 0
+    failed_titles: list[str] = []
+    stopped_early = False
+
+    for index, document in enumerate(documents):
+        try:
+            details = await tmdb_client.get_tv_show_details(document["tmdb_id"])
+        except TmdbRateLimitedError:
+            failed_titles.extend(doc["name"] for doc in documents[index:])
+            stopped_early = True
+            break
+        except (TmdbNotFoundError, TmdbUnavailableError):
+            failed_titles.append(document["name"])
+            continue
+
+        fields = {
+            "name": details["name"],
+            "year": details["year"],
+            "end_year": details["end_year"],
+            "status": details["status"],
+            "poster_url": details["poster_url"],
+            "overview": details["overview"],
+            "genres": details["genres"],
+            "cast": details["cast"],
+            "creators": details["creators"],
+            "rating": await _resolve_rating(details),
+            "number_of_seasons": details["number_of_seasons"],
+            "number_of_episodes": details["number_of_episodes"],
+            "imdb_url": details["imdb_url"],
+            "seasons": _merge_seasons(document.get("seasons", []), details["seasons"]),
+            "updated_at": datetime.now(timezone.utc),
+        }
+        await tv_show_repository.update(db, str(document["_id"]), fields)
+        synced += 1
+        await asyncio.sleep(0.05)  # be gentle with TMDb across a large batch
+
+    return TmdbSyncResult(
+        total=len(documents),
+        synced=synced,
+        failed=len(failed_titles),
+        failed_titles=failed_titles,
+        stopped_early=stopped_early,
+    )

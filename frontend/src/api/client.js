@@ -98,7 +98,10 @@ export const api = {
     if (format?.length) params.set("format", format.join(","));
     if (audioTypes?.length) params.set("audio_types", audioTypes.join(","));
     if (mediaTypes?.length) params.set("media_types", mediaTypes.join(","));
-    if (sort) params.set("sort", sort);
+    const sortParam = Array.isArray(sort)
+      ? sort.map((level) => `${level.field}:${level.direction}`).join(",")
+      : sort;
+    if (sortParam) params.set("sort", sortParam);
     if (wishlist) params.set("wishlist", "true");
     if (watched != null) params.set("watched", String(watched));
     const query = params.toString();

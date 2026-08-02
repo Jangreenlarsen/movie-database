@@ -11,11 +11,23 @@ DEFAULT_SETTINGS = {
         "tags": True,
         "format": False,
         "audio_types": False,
+        "media_type": False,
         "rating": False,
         "runtime": False,
     },
     "sort_levels": [],
     "sort_presets": [],
+    "tv_visible_fields": {
+        "year": True,
+        "tags": True,
+        "format": False,
+        "audio_types": False,
+        "media_type": False,
+        "rating": False,
+        "runtime": False,
+    },
+    "tv_sort_levels": [],
+    "tv_sort_presets": [],
 }
 
 

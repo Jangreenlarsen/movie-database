@@ -132,6 +132,20 @@
   justify-content: flex-end;
 }
 
+.season-group-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+}
+
+.season-group-panel h3 {
+  margin: 0;
+}
+
 @media (max-width: 640px) {
   .scan-card {
     padding: 16px;

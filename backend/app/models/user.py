@@ -27,6 +27,7 @@ class VisibleFields(BaseModel):
     tags: bool = True
     format: bool = False
     audio_types: bool = False
+    media_type: bool = False
     rating: bool = False
     runtime: bool = False
 
@@ -58,6 +59,13 @@ class UserSettings(BaseModel):
     visible_fields: VisibleFields = Field(default_factory=VisibleFields)
     sort_levels: list[SortLevel] = Field(default_factory=list)
     sort_presets: list[SortPreset] = Field(default_factory=list)
+    # TV-serier har egne visnings-/sorterings-indstillinger, adskilt fra
+    # filmenes (feature #52) — samme model-shapes genbruges (samme
+    # VisibleFields/SortLevel/SortPreset), kun opbevaringen er separat, da
+    # de to faners relevante felter/sorteringsmuligheder ikke er identiske.
+    tv_visible_fields: VisibleFields = Field(default_factory=VisibleFields)
+    tv_sort_levels: list[SortLevel] = Field(default_factory=list)
+    tv_sort_presets: list[SortPreset] = Field(default_factory=list)
 
 
 class UserSettingsUpdate(BaseModel):
@@ -66,6 +74,9 @@ class UserSettingsUpdate(BaseModel):
     visible_fields: VisibleFields | None = None
     sort_levels: list[SortLevel] | None = None
     sort_presets: list[SortPreset] | None = None
+    tv_visible_fields: VisibleFields | None = None
+    tv_sort_levels: list[SortLevel] | None = None
+    tv_sort_presets: list[SortPreset] | None = None
 
 
 class UserRegister(BaseModel):

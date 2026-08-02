@@ -2,6 +2,20 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.38.0 build 0047] — 2026-08-02 — Sæson-gruppering ved scan af TV-serier (feature #53)
+
+- `MovieLookupForm.jsx`: når en valgt TV-serie-kandidat allerede findes i biblioteket (`checkTvDuplicate`), hentes den fulde eksisterende post (`api.getTvShow`) og et nyt "Føj til eksisterende serie i stedet"-panel vises — en sæson-vælger (chips, ✓ markerer allerede-ejede sæsoner) der kalder den allerede eksisterende `PATCH /api/tv-shows/{id}/seasons/{n}` (`setSeasonOwned`) direkte på den fundne serie, i stedet for at oprette en ny duplikeret `TvShow`-post. Løser Jans eksempel: scanner man "The Americans Season 2" efter allerede at have "The Americans" i biblioteket, markeres sæson 2 som ejet på den eksisterende serie i stedet for at oprette en ny "The Americans"-post.
+- Ingen backend-ændringer nødvendige — genbruger udelukkende eksisterende endpoints (`GET /api/tv-shows/{id}`, `PATCH .../seasons/{n}`) fra feature #47/#48.
+- Den almindelige "Gem"-knap findes stadig som bevidst fallback (omdøbt til "Opret som ny separat serie" når en gruppering er mulig) — til reelt tilsigtede duplikater (fx to fysiske kopier af samme sæson).
+- Design bekræftet eksplicit af Jan før implementering (2026-08-02): genbrug af TV-seriens allerede eksisterende `seasons[]`-underarray som "gruppen", fremfor en ny separat gruppe-/franchise-model.
+
+## [0.37.0 build 0046] — 2026-08-02 — UI-konsolidering del 1+2: separat Scan-fane fjernet, TV-serier får fuld sort/preset/vis-felter-paritet (feature #51/#52), fix (BUGS.md #22)
+
+- **Feature #51**: separat "Scan"-fane fjernet fra hovedmenuen (`App.jsx`) og `ScanMovie.jsx` slettet. `MovieLookupForm` (scan + manuel TMDb-søgning) er nu integreret direkte i hver bibliotek-fane via et "+ Tilføj film"/"+ Tilføj serie"-panel (`Library.jsx`s panel var allerede der for ønskelisten — gjort ubetinget synligt også for hovedbiblioteket; `TvShows.jsx` havde allerede sit "Tilføj serie"-panel).
+- **Feature #52**: `TvShows.jsx`s værktøjslinje omskrevet til fuld paritet med `Library.jsx`: fler-niveau sortering (op til 3 niveauer, feature #17/#27), navngivne/gemte "visninger" der husker søgetekst+filtre+sortering (feature #44), og et nyt "Vis felter"-panel (år/tags/format/lyd-type/medietype/rating) — alle bagt af nye, TV-separate indstillingsfelter (`tv_sort_levels`/`tv_sort_presets`/`tv_visible_fields`) på `UserSettings`, persisteret via samme `PATCH /api/users/me/settings`-endpoint (allerede dotted-path-atomisk, ingen backend-ændring nødvendig ud over modellen). `api.listTvShows` opgraderet til at acceptere fler-niveau sort-arrays (samme form som `api.listMovies`).
+- **BUGS.md #22** (opdaget undervejs, rettet i samme commit da den delte model lige alligevel blev udvidet): `VisibleFields`-modellen manglede `media_type`-feltet som frontend allerede sendte/læste — "Medietype"-togglen i filmbibliotekets "Vis felter"-panel virkede derfor kun for den aktuelle session og nulstilledes ved genindlæsning. Tilføjet til modellen og til `DEFAULT_SETTINGS` (både film og TV).
+- Backend-tests: alle 218 eksisterende tests kører uændret igennem (ingen ny backend-logik i denne commit ud over model-/default-udvidelsen).
+
 ## [0.36.1 build 0045] — 2026-08-02 — Fix: login fra mobil fejlede pga. autokapitalisering (BUGS.md #21)
 
 - `Login.jsx`: brugernavn-feltet fik `autoCapitalize="off" autoCorrect="off" spellCheck={false}` — iOS Safari (og det installerede PWA-ikon) autokapitaliserede ellers første bogstav i feltet, så "jgl" blev til "Jgl" mens brugeren skrev, hvilket gav en ægte men forvirrende 401 mod det eksakt versalfølsomme login-opslag.

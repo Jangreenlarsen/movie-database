@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import Library from "./pages/Library";
-import ScanMovie from "./pages/ScanMovie";
 import TvShows from "./pages/TvShows";
 import Settings from "./pages/Settings";
 import PrintList from "./pages/PrintList";
@@ -62,12 +61,6 @@ function App() {
               TV-serier
             </button>
             <button
-              className={tab === "scan" ? "active" : ""}
-              onClick={() => setTab("scan")}
-            >
-              Scan
-            </button>
-            <button
               className={tab === "wishlist" ? "active" : ""}
               onClick={() => setTab("wishlist")}
             >
@@ -103,8 +96,7 @@ function App() {
 
       <main className="app-main">
         {tab === "library" && <Library user={user} onSettingsChanged={setUser} />}
-        {tab === "tv" && <TvShows user={user} />}
-        {tab === "scan" && <ScanMovie user={user} />}
+        {tab === "tv" && <TvShows user={user} onSettingsChanged={setUser} />}
         {tab === "wishlist" && <Library user={user} onSettingsChanged={setUser} wishlist />}
         {tab === "print" && <PrintList />}
         {tab === "stats" && <Statistics />}

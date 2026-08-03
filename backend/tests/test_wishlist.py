@@ -13,10 +13,10 @@ async def test_library_and_wishlist_listings_are_separate(client):
     await client.post("/api/movies", json={"title": "Wanted Movie", "is_wishlist": True})
 
     library = await client.get("/api/movies")
-    assert [m["title"] for m in library.json()] == ["Owned Movie"]
+    assert [m["title"] for m in library.json()["items"]] == ["Owned Movie"]
 
     wishlist = await client.get("/api/movies", params={"wishlist": "true"})
-    assert [m["title"] for m in wishlist.json()] == ["Wanted Movie"]
+    assert [m["title"] for m in wishlist.json()["items"]] == ["Wanted Movie"]
 
 
 async def test_multiple_wishlist_movies_can_be_created(client):
@@ -48,9 +48,9 @@ async def test_moving_a_wishlist_movie_to_the_library_assigns_a_serial_number(cl
 
     # It must now show up in the library listing, not the wishlist.
     library = await client.get("/api/movies")
-    assert "Finally Got It" in [m["title"] for m in library.json()]
+    assert "Finally Got It" in [m["title"] for m in library.json()["items"]]
     wishlist = await client.get("/api/movies", params={"wishlist": "true"})
-    assert "Finally Got It" not in [m["title"] for m in wishlist.json()]
+    assert "Finally Got It" not in [m["title"] for m in wishlist.json()["items"]]
 
 
 async def test_moving_a_wishlist_movie_to_the_library_is_not_gated_by_registrant(client):
@@ -62,8 +62,11 @@ async def test_moving_a_wishlist_movie_to_the_library_is_not_gated_by_registrant
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as standard_client:
-        await standard_client.post(
+        register = await standard_client.post(
             "/api/auth/register", json={"username": "wishuser", "password": "testpassword123"}
+        )
+        await client.patch(
+            f"/api/users/{register.json()['id']}/status", json={"status": "active"}
         )
         create = await standard_client.post(
             "/api/movies", json={"title": "Someone Else's Wish", "is_wishlist": True}

@@ -239,7 +239,7 @@ async def test_create_movie_from_tmdb_id_fetches_metadata(client, monkeypatch):
     movie = response.json()
     assert movie["title"] == "The Matrix"
     assert movie["genres"] == ["Action", "Science Fiction"]
-    assert movie["tags"] == ["Favorite"]
+    assert movie["tags"] == ["Favorite", "Tilføjet af testuser"]
     assert movie["rating"] == 8.2
     assert movie["runtime"] == 136
     assert movie["imdb_url"] == "https://www.imdb.com/title/tt0133093/"

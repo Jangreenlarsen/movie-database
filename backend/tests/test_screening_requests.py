@@ -35,8 +35,11 @@ async def test_requesting_same_movie_by_different_users_adds_both(client):
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as second:
-        await second.post(
+        register = await second.post(
             "/api/auth/register", json={"username": "seconduser", "password": "testpassword123"}
+        )
+        await client.patch(
+            f"/api/users/{register.json()['id']}/status", json={"status": "active"}
         )
         await second.post("/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id})
 

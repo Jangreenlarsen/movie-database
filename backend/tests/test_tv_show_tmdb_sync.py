@@ -82,7 +82,7 @@ async def test_sync_refreshes_tmdb_fields_without_touching_user_data(client, mon
     assert show["name"] == "Refreshed Name"
     assert show["rating"] == 9.5
     # User-entered fields must survive untouched.
-    assert show["tags"] == ["Favorite"]
+    assert show["tags"] == ["Favorite", "Tilføjet af testuser"]
     assert show["format"] == "DVD"
     assert show["location"] == "Stuen"
     assert show["serial_number"] == serial_number

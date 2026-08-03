@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import Chip from "../components/Chip";
 import Combobox from "../components/Combobox";
 import MovieLookupForm from "../components/MovieLookupForm";
+import Pagination from "../components/Pagination";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import "../pages/Library.css";
 import "./TvShows.css";
@@ -59,6 +60,7 @@ function formatSerial(serialNumber, paddingWidth) {
 }
 
 export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
+  const isGuest = user.role === "guest";
   const [query, setQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedFormats, setSelectedFormats] = useState([]);
@@ -69,6 +71,9 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
   const [presets, setPresets] = useState(user.settings.tv_sort_presets ?? []);
   const [presetNameInput, setPresetNameInput] = useState("");
   const [shows, setShows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(user.settings.page_size ?? 50);
   const [status, setStatus] = useState("loading");
   const [allTags, setAllTags] = useState([]);
   const [allOwners, setAllOwners] = useState([]);
@@ -131,14 +136,33 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
       sort: sortLevels,
       wishlist,
       watched: watchedFilter,
+      page,
+      pageSize,
     });
   }
+
+  // See Library.jsx's identical pattern — separate effect so page resets to
+  // 1 before the fetch effect below reads it (feature #15).
+  useEffect(() => {
+    setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    query,
+    selectedTags,
+    selectedFormats,
+    selectedAudioTypes,
+    selectedMediaTypes,
+    sortLevels,
+    watchedFilter,
+    pageSize,
+  ]);
 
   useEffect(() => {
     setStatus("loading");
     fetchShows()
       .then((data) => {
-        setShows(data);
+        setShows(data.items);
+        setTotal(data.total);
         setStatus("ready");
       })
       .catch(() => setStatus("error"));
@@ -151,10 +175,21 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
     selectedMediaTypes,
     sortLevels,
     watchedFilter,
+    page,
+    pageSize,
   ]);
 
+  function persistPageSize(nextPageSize) {
+    api.updateMySettings({ page_size: nextPageSize }).then(onSettingsChanged).catch(() => {});
+  }
+
   function refresh() {
-    fetchShows().then(setShows).catch(() => {});
+    fetchShows()
+      .then((data) => {
+        setShows(data.items);
+        setTotal(data.total);
+      })
+      .catch(() => {});
   }
 
   function updateVisibleField(key, value) {
@@ -268,9 +303,11 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
             />
           </div>
 
-          <button type="button" className="btn btn-primary" onClick={() => setShowAddPanel((v) => !v)}>
-            {showAddPanel ? "Luk" : wishlist ? "+ Tilføj ønske" : "+ Tilføj serie"} ▾
-          </button>
+          {!isGuest && (
+            <button type="button" className="btn btn-primary" onClick={() => setShowAddPanel((v) => !v)}>
+              {showAddPanel ? "Luk" : wishlist ? "+ Tilføj ønske" : "+ Tilføj serie"} ▾
+            </button>
+          )}
 
           <button type="button" className="btn" onClick={() => setShowSortPanel((v) => !v)}>
             Sortér ▾
@@ -589,6 +626,19 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
         </ul>
       )}
 
+      {status === "ready" && total > 0 && (
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={setPage}
+          onPageSizeChange={(nextPageSize) => {
+            setPageSize(nextPageSize);
+            persistPageSize(nextPageSize);
+          }}
+        />
+      )}
+
       {activeShow && (
         <TvShowDetailModal
           show={activeShow}
@@ -639,6 +689,7 @@ function TvShowDetailModal({
   const [deleting, setDeleting] = useState(false);
   const [moving, setMoving] = useState(false);
   const [error, setError] = useState(null);
+  const isGuest = user.role === "guest";
 
   function addTag(tag) {
     const current = tagsInput.split(",").map((t) => t.trim()).filter(Boolean);
@@ -796,122 +847,176 @@ function TvShowDetailModal({
             </p>
           )}
 
-          {!show.is_wishlist && (
-            <div>
-              <div className="modal-section-label">Serienummer</div>
-              <p className="muted">
-                {canEditSerial
-                  ? "Redigér serienummeret via API'et om nødvendigt."
-                  : `Kun en admin eller ${show.registered_by ?? "den der registrerede serien"} kan ændre serienummeret.`}
-              </p>
-            </div>
-          )}
-
-          <div>
-            <div className="modal-section-label">Tags</div>
-            <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} />
-            {allTags.length > 0 && (
-              <div className="chip-row" style={{ marginTop: 8 }}>
-                {allTags.map((tag) => (
-                  <Chip key={tag} label={tag} onClick={() => addTag(tag)} />
-                ))}
+          {isGuest ? (
+            <>
+              {!show.is_wishlist && (
+                <div>
+                  <div className="modal-section-label">Serienummer</div>
+                  <p>{formatSerial(show.serial_number, serialPaddingWidth)}</p>
+                </div>
+              )}
+              <div>
+                <div className="modal-section-label">Tags</div>
+                <p>{show.tags.length > 0 ? show.tags.join(", ") : "Ingen tags"}</p>
               </div>
-            )}
-          </div>
+              <div>
+                <div className="modal-section-label">Lokation</div>
+                <p>{show.location || "—"}</p>
+              </div>
+              <div>
+                <div className="modal-section-label">Ejer</div>
+                <p>{show.owner || "—"}</p>
+              </div>
+              {show.registered_by && <p className="muted">Registreret af: {show.registered_by}</p>}
+              <div>
+                <div className="modal-section-label">Format</div>
+                <p>{show.format || "Ikke angivet"}</p>
+              </div>
+              <div>
+                <div className="modal-section-label">Medietype</div>
+                <p>{show.media_type || "Ikke angivet"}</p>
+              </div>
+              <div>
+                <div className="modal-section-label">Lyd-type</div>
+                <p>{show.audio_types.length > 0 ? show.audio_types.join(", ") : "—"}</p>
+              </div>
+              <div>
+                <div className="modal-section-label">Set-status (hele serien)</div>
+                <p>
+                  {show.watched
+                    ? `✓ Set${show.watched_at ? ` d. ${new Date(show.watched_at).toLocaleDateString("da-DK")}` : ""}`
+                    : "Ikke set"}
+                </p>
+              </div>
+              <div>
+                <div className="modal-section-label">Din rating</div>
+                <p>{show.personal_rating != null ? `${show.personal_rating}/10` : "—"}</p>
+              </div>
+              <div>
+                <div className="modal-section-label">Din note</div>
+                <p>{show.personal_note || "—"}</p>
+              </div>
+            </>
+          ) : (
+            <>
+              {!show.is_wishlist && (
+                <div>
+                  <div className="modal-section-label">Serienummer</div>
+                  <p className="muted">
+                    {canEditSerial
+                      ? "Redigér serienummeret via API'et om nødvendigt."
+                      : `Kun en admin eller ${show.registered_by ?? "den der registrerede serien"} kan ændre serienummeret.`}
+                  </p>
+                </div>
+              )}
 
-          <div>
-            <div className="modal-section-label">Lokation</div>
-            <Combobox
-              value={location}
-              onChange={setLocation}
-              options={allLocations}
-              placeholder="Stue, reol 2..."
-            />
-          </div>
+              <div>
+                <div className="modal-section-label">Tags</div>
+                <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} />
+                {allTags.length > 0 && (
+                  <div className="chip-row" style={{ marginTop: 8 }}>
+                    {allTags.map((tag) => (
+                      <Chip key={tag} label={tag} onClick={() => addTag(tag)} />
+                    ))}
+                  </div>
+                )}
+              </div>
 
-          <div>
-            <div className="modal-section-label">Ejer</div>
-            <Combobox value={owner} onChange={setOwner} options={allOwners} placeholder="Hvem ejer den..." />
-          </div>
-
-          {show.registered_by && <p className="muted">Registreret af: {show.registered_by}</p>}
-
-          <div>
-            <div className="modal-section-label">Format</div>
-            <select value={format} onChange={(e) => setFormat(e.target.value)}>
-              <option value="">Ikke angivet</option>
-              {attributeOptions.formats.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <div className="modal-section-label">Medietype</div>
-            <select value={mediaType} onChange={(e) => setMediaType(e.target.value)}>
-              <option value="">Ikke angivet</option>
-              {attributeOptions.media_types.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <div className="modal-section-label">Lyd-type</div>
-            <div className="chip-row">
-              {attributeOptions.audio_types.map((audioType) => (
-                <Chip
-                  key={audioType}
-                  label={audioType}
-                  active={audioTypes.includes(audioType)}
-                  onClick={() => setAudioTypes((prev) => toggleValue(prev, audioType))}
+              <div>
+                <div className="modal-section-label">Lokation</div>
+                <Combobox
+                  value={location}
+                  onChange={setLocation}
+                  options={allLocations}
+                  placeholder="Stue, reol 2..."
                 />
-              ))}
-            </div>
-          </div>
+              </div>
 
-          <div>
-            <div className="modal-section-label">Set-status (hele serien)</div>
-            <label className="watched-toggle">
-              <input type="checkbox" checked={watched} onChange={toggleWatched} />
-              Set
-            </label>
-            {watched && (
-              <input
-                type="date"
-                value={watchedAt}
-                onChange={(e) => setWatchedAt(e.target.value)}
-                style={{ marginLeft: 10 }}
-              />
-            )}
-          </div>
+              <div>
+                <div className="modal-section-label">Ejer</div>
+                <Combobox value={owner} onChange={setOwner} options={allOwners} placeholder="Hvem ejer den..." />
+              </div>
 
-          <div>
-            <div className="modal-section-label">Din rating (1-10)</div>
-            <input
-              type="number"
-              min="1"
-              max="10"
-              value={personalRating}
-              onChange={(e) => setPersonalRating(e.target.value)}
-              style={{ width: 80 }}
-            />
-          </div>
+              {show.registered_by && <p className="muted">Registreret af: {show.registered_by}</p>}
 
-          <div>
-            <div className="modal-section-label">Din note</div>
-            <textarea
-              value={personalNote}
-              onChange={(e) => setPersonalNote(e.target.value)}
-              placeholder="Egne tanker om serien..."
-              rows={3}
-              style={{ width: "100%", resize: "vertical" }}
-            />
-          </div>
+              <div>
+                <div className="modal-section-label">Format</div>
+                <select value={format} onChange={(e) => setFormat(e.target.value)}>
+                  <option value="">Ikke angivet</option>
+                  {attributeOptions.formats.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div className="modal-section-label">Medietype</div>
+                <select value={mediaType} onChange={(e) => setMediaType(e.target.value)}>
+                  <option value="">Ikke angivet</option>
+                  {attributeOptions.media_types.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div className="modal-section-label">Lyd-type</div>
+                <div className="chip-row">
+                  {attributeOptions.audio_types.map((audioType) => (
+                    <Chip
+                      key={audioType}
+                      label={audioType}
+                      active={audioTypes.includes(audioType)}
+                      onClick={() => setAudioTypes((prev) => toggleValue(prev, audioType))}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="modal-section-label">Set-status (hele serien)</div>
+                <label className="watched-toggle">
+                  <input type="checkbox" checked={watched} onChange={toggleWatched} />
+                  Set
+                </label>
+                {watched && (
+                  <input
+                    type="date"
+                    value={watchedAt}
+                    onChange={(e) => setWatchedAt(e.target.value)}
+                    style={{ marginLeft: 10 }}
+                  />
+                )}
+              </div>
+
+              <div>
+                <div className="modal-section-label">Din rating (1-10)</div>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={personalRating}
+                  onChange={(e) => setPersonalRating(e.target.value)}
+                  style={{ width: 80 }}
+                />
+              </div>
+
+              <div>
+                <div className="modal-section-label">Din note</div>
+                <textarea
+                  value={personalNote}
+                  onChange={(e) => setPersonalNote(e.target.value)}
+                  placeholder="Egne tanker om serien..."
+                  rows={3}
+                  style={{ width: "100%", resize: "vertical" }}
+                />
+              </div>
+            </>
+          )}
 
           {seasons.length > 0 && (
             <div>
@@ -921,6 +1026,7 @@ function TvShowDetailModal({
                   <SeasonRow
                     key={season.season_number}
                     season={season}
+                    isGuest={isGuest}
                     onToggleOwned={(owned) => setSeasonOwned(season.season_number, owned)}
                     onToggleEpisode={(episodeNumber, ep_watched) =>
                       setEpisodeWatched(season.season_number, episodeNumber, ep_watched)
@@ -934,6 +1040,7 @@ function TvShowDetailModal({
           {error && <div className="banner banner-error">{error}</div>}
         </div>
 
+        {!isGuest && (
         <div className="modal-footer">
           <button type="button" className="btn" onClick={remove} disabled={deleting}>
             {deleting ? "Sletter..." : "Slet serie"}
@@ -948,12 +1055,13 @@ function TvShowDetailModal({
             {saving ? "Gemmer..." : "Gem ændringer"}
           </button>
         </div>
+        )}
       </div>
     </div>
   );
 }
 
-function SeasonRow({ season, onToggleOwned, onToggleEpisode }) {
+function SeasonRow({ season, isGuest, onToggleOwned, onToggleEpisode }) {
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -973,7 +1081,12 @@ function SeasonRow({ season, onToggleOwned, onToggleEpisode }) {
     <div className="season-row">
       <div className="season-row-header">
         <label className="watched-toggle">
-          <input type="checkbox" checked={season.owned} onChange={handleOwnedChange} disabled={busy} />
+          <input
+            type="checkbox"
+            checked={season.owned}
+            onChange={handleOwnedChange}
+            disabled={busy || isGuest}
+          />
           {season.name ?? `Sæson ${season.season_number}`} ({season.episode_count} episoder)
         </label>
         {season.episodes.length > 0 && (
@@ -996,6 +1109,7 @@ function SeasonRow({ season, onToggleOwned, onToggleEpisode }) {
                 <input
                   type="checkbox"
                   checked={episode.watched}
+                  disabled={isGuest}
                   onChange={(e) => onToggleEpisode(episode.episode_number, e.target.checked)}
                 />
                 {episode.episode_number}. {episode.name ?? `Episode ${episode.episode_number}`}

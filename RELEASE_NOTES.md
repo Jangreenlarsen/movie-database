@@ -1,5 +1,41 @@
 # Release Notes
 
+## v0.53.0 (build 0064) — 2026-08-03
+
+- Nye film og TV-serier får nu automatisk et "Tilføjet af {dit brugernavn}"-tag — gør det nemt at filtrere biblioteket efter hvem der har tilføjet hvad.
+
+## v0.52.0 (build 0063) — 2026-08-03
+
+- Ny bruger-rolle: "Guest" (read-only) — kan se film-/TV-biblioteket og Voldby BIO, men ikke redigere noget. Sættes fra rolle-dropdown'en i Brugere-listen på Indstillinger.
+
+## v0.51.0 (build 0062) — 2026-08-03
+
+- Voldby BIO har nu en offentlig side på `/bio` du kan dele med andre (fx i en besked) — ingen login krævet, viser kun programmet + billeder/info om biografen. Find "🔗 Del link"-knappen på Voldby BIO-fanen.
+
+## v0.50.0 (build 0061) — 2026-08-03
+
+- Film- og TV-serie-biblioteket er nu pagineret — vælg hvor mange der vises pr. side, og bladr med Forrige/Næste. Fjerner samtidig et skjult loft på 500 film/serier.
+
+## v0.49.0 (build 0060) — 2026-08-03
+
+- Ny "Nulstil database"-knap under Indstillinger (kun admin) — tømmer film-/TV-biblioteket helt. Bekræftes med din adgangskode. Brugerkonti og system-indstillinger rører den ikke.
+
+## v0.48.0 (build 0059) — 2026-08-03
+
+- Nye brugere skal nu godkendes af en admin før de får adgang (Indstillinger → Brugere). Din egen konto er upåvirket.
+
+## v0.47.0 (build 0058) — 2026-08-03
+
+- Ny "Audit-log" under Indstillinger (kun admin): se hvem der har ændret roller, opdateret system-nøgler, udløst en opdatering, taget/gendannet backup, eller planlagt/afvist en Voldby BIO-visning — og hvornår.
+
+## v0.46.0 (build 0057) — 2026-08-03
+
+- Gem/slet-knapperne i film-/TV-seriens redigeringsvindue er nu altid synlige — ikke kun når du har scrollet helt ned.
+
+## v0.45.0 (build 0056) — 2026-08-03
+
+- "Føj til hjemmeskærm" på iPhone giver nu et rigtigt app-ikon i stedet for et tilfældigt skærmbillede af siden.
+
 ## v0.44.0 (build 0055) — 2026-08-03
 
 - Stregkode-scanning har fået en ekstra, gratis opslags-kilde (UPCDatabase.org) som forsøges hvis de to andre ikke finder et match — kan forbedre chancen for at finde nordiske/danske DVD-covers. Konfigureres under Indstillinger ligesom de andre API-nøgler.

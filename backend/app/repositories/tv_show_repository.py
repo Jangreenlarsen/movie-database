@@ -161,17 +161,17 @@ async def clear_serial_number(db: AsyncIOMotorDatabase, tv_show_id: str) -> None
     )
 
 
-async def find_many(
-    db: AsyncIOMotorDatabase,
+def _build_find_many_filter(
     query: str | None,
     normalized_tags: list[str] | None,
     formats: list[str] | None = None,
     audio_types: list[str] | None = None,
     media_types: list[str] | None = None,
-    sort_spec: list[tuple[str, int]] | None = None,
     is_wishlist: bool = False,
     watched: bool | None = None,
-) -> list[dict]:
+) -> dict:
+    """Shared by `find_many`/`count_many` (feature #15) so the two can never
+    drift apart on what counts as a match."""
     filter_: dict = {"is_wishlist": True if is_wishlist else {"$ne": True}}
     if query:
         filter_["$text"] = {"$search": query}
@@ -185,10 +185,53 @@ async def find_many(
         filter_["media_type"] = {"$in": media_types}
     if watched is not None:
         filter_["watched"] = True if watched else {"$ne": True}
+    return filter_
 
+
+async def find_many(
+    db: AsyncIOMotorDatabase,
+    query: str | None,
+    normalized_tags: list[str] | None,
+    formats: list[str] | None = None,
+    audio_types: list[str] | None = None,
+    media_types: list[str] | None = None,
+    sort_spec: list[tuple[str, int]] | None = None,
+    is_wishlist: bool = False,
+    watched: bool | None = None,
+    skip: int = 0,
+    limit: int | None = None,
+) -> list[dict]:
+    """`limit=None` (the default) fetches every match, no cap — used by
+    callers that need the whole filtered set (Print-siden, Voldby BIO's
+    søgning). `tv_show_service.list_tv_shows` passes a real `limit` for the
+    paginated library view (feature #15), which used to be silently capped
+    at 500 with no way to see or reach anything past it."""
+    filter_ = _build_find_many_filter(
+        query, normalized_tags, formats, audio_types, media_types, is_wishlist, watched
+    )
     cursor = db[COLLECTION].find(filter_)
     cursor = cursor.sort(sort_spec) if sort_spec else cursor.sort(DEFAULT_SORT_FIELD, -1)
-    return await cursor.to_list(length=500)
+    if skip:
+        cursor = cursor.skip(skip)
+    if limit is not None:
+        cursor = cursor.limit(limit)
+    return await cursor.to_list(length=limit)
+
+
+async def count_many(
+    db: AsyncIOMotorDatabase,
+    query: str | None,
+    normalized_tags: list[str] | None,
+    formats: list[str] | None = None,
+    audio_types: list[str] | None = None,
+    media_types: list[str] | None = None,
+    is_wishlist: bool = False,
+    watched: bool | None = None,
+) -> int:
+    filter_ = _build_find_many_filter(
+        query, normalized_tags, formats, audio_types, media_types, is_wishlist, watched
+    )
+    return await db[COLLECTION].count_documents(filter_)
 
 
 async def update(db: AsyncIOMotorDatabase, tv_show_id: str, fields: dict) -> dict | None:

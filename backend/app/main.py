@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.api import (
     attributes,
+    audit_log,
     auth,
     health,
     library_backup,
@@ -22,6 +23,8 @@ from app.api import (
 )
 from app.core.config import settings
 from app.core.errors import (
+    AccountPendingError,
+    AccountRejectedError,
     DeployScriptNotFoundError,
     DuplicateBarcodeError,
     InvalidCredentialsError,
@@ -36,10 +39,12 @@ from app.core.errors import (
     TmdbUnavailableError,
     TvShowNotFoundError,
     UserNotFoundError,
+    UserNotPendingError,
     UsernameTakenError,
 )
 from app.db import close_client, get_client, get_database
 from app.repositories import (
+    audit_log_repository,
     movie_repository,
     screening_repository,
     screening_request_repository,
@@ -71,6 +76,7 @@ async def lifespan(app: FastAPI):
     await user_repository.ensure_indexes(db)
     await screening_request_repository.ensure_indexes(db)
     await screening_repository.ensure_indexes(db)
+    await audit_log_repository.ensure_indexes(db)
     logger.info("MongoDB client initialized (%s)", settings.mongo_db_name)
     yield
     await close_client()
@@ -155,6 +161,21 @@ async def not_authorized_handler(request: Request, exc: NotAuthorizedError) -> J
     return JSONResponse(status_code=403, content={"detail": str(exc)})
 
 
+@app.exception_handler(AccountPendingError)
+async def account_pending_handler(request: Request, exc: AccountPendingError) -> JSONResponse:
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(AccountRejectedError)
+async def account_rejected_handler(request: Request, exc: AccountRejectedError) -> JSONResponse:
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(UserNotPendingError)
+async def user_not_pending_handler(request: Request, exc: UserNotPendingError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
 @app.exception_handler(UserNotFoundError)
 async def user_not_found_handler(request: Request, exc: UserNotFoundError) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": str(exc)})
@@ -173,6 +194,7 @@ async def deploy_script_not_found_handler(
 
 
 app.include_router(health.router)
+app.include_router(audit_log.router)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(movies.router)

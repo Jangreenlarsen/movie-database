@@ -4,8 +4,15 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.mongo_json import from_json_safe, to_json_safe
 from app.core.version_info import VERSION_INFO
-from app.models.backup import SystemBackup, SystemRestoreResult
-from app.repositories import movie_repository, tag_repository, tv_show_repository, user_repository
+from app.models.backup import DatabaseResetResult, SystemBackup, SystemRestoreResult
+from app.repositories import (
+    movie_repository,
+    screening_repository,
+    screening_request_repository,
+    tag_repository,
+    tv_show_repository,
+    user_repository,
+)
 
 # `counters` isn't owned by any single domain repository — it's a shared
 # low-level primitive (both movie_repository and tv_show_repository read/
@@ -82,4 +89,40 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
         tags_imported=len(tags),
         users_imported=len(users),
         counters_imported=len(counters),
+    )
+
+
+async def _clear_collection(db: AsyncIOMotorDatabase, name: str) -> int:
+    result = await db[name].delete_many({})
+    return result.deleted_count
+
+
+async def reset_library(db: AsyncIOMotorDatabase) -> DatabaseResetResult:
+    """Feature #67 — wipes the film/TV library back to a fresh-install empty
+    state: movies, TV shows, their soft-deleted logs, tags, and the serial
+    number counters (which lazily recreate themselves starting back at 1 the
+    next time a movie/TV show is created — see movie_repository.next_serial_
+    number). Also clears Voldby BIO screenings/screening-requests, since
+    otherwise they'd be left pointing at movie/tv_show ids that no longer
+    exist (Jan's confirmed choice 2026-08-03 — "kun film/TV + relateret").
+    Deliberately does NOT touch `users` or `system_settings` — this is a
+    library reset, not a factory reset of the whole app."""
+    movies_removed = await _clear_collection(db, movie_repository.COLLECTION)
+    tv_shows_removed = await _clear_collection(db, tv_show_repository.COLLECTION)
+    deleted_movies_removed = await _clear_collection(db, movie_repository.DELETED_COLLECTION)
+    deleted_tv_shows_removed = await _clear_collection(db, tv_show_repository.DELETED_COLLECTION)
+    tags_removed = await _clear_collection(db, tag_repository.COLLECTION)
+    counters_removed = await _clear_collection(db, _COUNTERS_COLLECTION)
+    screenings_removed = await _clear_collection(db, screening_repository.COLLECTION)
+    screening_requests_removed = await _clear_collection(db, screening_request_repository.COLLECTION)
+
+    return DatabaseResetResult(
+        movies_removed=movies_removed,
+        tv_shows_removed=tv_shows_removed,
+        deleted_movies_removed=deleted_movies_removed,
+        deleted_tv_shows_removed=deleted_tv_shows_removed,
+        tags_removed=tags_removed,
+        counters_removed=counters_removed,
+        screenings_removed=screenings_removed,
+        screening_requests_removed=screening_requests_removed,
     )

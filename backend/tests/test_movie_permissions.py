@@ -26,8 +26,13 @@ async def test_standard_user_can_edit_serial_number_of_own_registered_movie(clie
     may renumber it even without admin rights."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as standard_client:
-        await standard_client.post(
+        register = await standard_client.post(
             "/api/auth/register", json={"username": "registrant", "password": "testpassword123"}
+        )
+        # Feature #66 — a freshly registered user is `pending` by default and
+        # blocked until an admin approves them.
+        await client.patch(
+            f"/api/users/{register.json()['id']}/status", json={"status": "active"}
         )
         create = await standard_client.post("/api/movies", json={"title": "Own Movie"})
         movie_id = create.json()["id"]
@@ -58,8 +63,11 @@ async def test_admin_can_edit_serial_number_of_any_movie(client):
     """The `client` fixture's user is always admin (first registered user)."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as standard_client:
-        await standard_client.post(
+        register = await standard_client.post(
             "/api/auth/register", json={"username": "someoneelse", "password": "testpassword123"}
+        )
+        await client.patch(
+            f"/api/users/{register.json()['id']}/status", json={"status": "active"}
         )
         create = await standard_client.post(
             "/api/movies", json={"title": "Someone Else's Movie"}

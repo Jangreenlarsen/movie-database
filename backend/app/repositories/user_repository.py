@@ -29,6 +29,7 @@ DEFAULT_SETTINGS = {
     "tv_sort_levels": [],
     "tv_sort_presets": [],
     "card_size": "medium",
+    "page_size": 50,
 }
 
 
@@ -45,8 +46,19 @@ async def _migrate_username_normalized(db: AsyncIOMotorDatabase) -> None:
         )
 
 
+async def _migrate_missing_status(db: AsyncIOMotorDatabase) -> None:
+    """Backfills `status: "active"` (feature #66) for any user document
+    created before the pending-approval gate existed — otherwise every
+    pre-existing account would suddenly be locked out as implicitly
+    "pending" the moment this feature ships."""
+    await db[COLLECTION].update_many(
+        {"status": {"$exists": False}}, {"$set": {"status": "active"}}
+    )
+
+
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     await _migrate_username_normalized(db)
+    await _migrate_missing_status(db)
 
     # Uniqueness now lives on the normalized field (case-insensitive), not
     # the raw one — Mongo won't redefine an existing same-named index under
@@ -121,6 +133,13 @@ async def set_role(db: AsyncIOMotorDatabase, user_id: str, role: str) -> dict | 
     if not ObjectId.is_valid(user_id):
         return None
     await db[COLLECTION].update_one({"_id": ObjectId(user_id)}, {"$set": {"role": role}})
+    return await db[COLLECTION].find_one({"_id": ObjectId(user_id)})
+
+
+async def set_status(db: AsyncIOMotorDatabase, user_id: str, status: str) -> dict | None:
+    if not ObjectId.is_valid(user_id):
+        return None
+    await db[COLLECTION].update_one({"_id": ObjectId(user_id)}, {"$set": {"status": status}})
     return await db[COLLECTION].find_one({"_id": ObjectId(user_id)})
 
 

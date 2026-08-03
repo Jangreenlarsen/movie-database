@@ -4,11 +4,15 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.api.deps import get_current_user, require_admin
 from app.db import get_database
 from app.models.screening import Screening, ScreeningCreate, ScreeningUpdate
-from app.services import screening_service
+from app.services import audit_log_service, screening_service
 
-# Feature #63 — admin-scheduled screenings, backing the public Voldby BIO
-# calendar (feature #64, GET is open to any logged-in user).
-router = APIRouter(prefix="/api/screenings", tags=["screenings"], dependencies=[Depends(get_current_user)])
+# Feature #63 — admin-scheduled screenings, backing the Voldby BIO calendar.
+# GET has no auth dependency at all (feature #70) — the public /bio page
+# must work for anonymous visitors, not just logged-in users. Every
+# mutating route below still requires admin explicitly via require_admin
+# (which itself depends on get_current_user), so nothing here weakens
+# write access — only the read-only "what's on" listing became public.
+router = APIRouter(prefix="/api/screenings", tags=["screenings"])
 
 
 @router.get("", response_model=list[Screening])
@@ -25,7 +29,14 @@ async def create_screening(
     current_user: dict = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
-    return await screening_service.create_screening(db, payload, current_user["username"])
+    result = await screening_service.create_screening(db, payload, current_user["username"])
+    await audit_log_service.record(
+        db,
+        current_user["username"],
+        "screening.scheduled",
+        f"{result.title} d. {result.scheduled_at:%d-%m-%Y %H:%M}",
+    )
+    return result
 
 
 @router.patch("/{screening_id}", response_model=Screening, dependencies=[Depends(require_admin)])

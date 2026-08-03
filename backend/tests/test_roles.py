@@ -46,8 +46,11 @@ async def test_standard_user_cannot_update_serial_number_config(client):
 async def test_standard_user_can_still_read_serial_number_config(client):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as standard_client:
-        await standard_client.post(
+        register = await standard_client.post(
             "/api/auth/register", json={"username": "readonly", "password": "testpassword123"}
+        )
+        await client.patch(
+            f"/api/users/{register.json()['id']}/status", json={"status": "active"}
         )
         response = await standard_client.get("/api/settings/serial-number")
         assert response.status_code == 200

@@ -130,6 +130,15 @@ class Movie(BaseModel):
     updated_at: datetime
 
 
+class MoviePage(BaseModel):
+    """Feature #15 — `total` is the full filtered match count (not just
+    `len(items)`), so the frontend can render page navigation without a
+    second round-trip."""
+
+    items: list[Movie]
+    total: int
+
+
 class CollectionPart(BaseModel):
     tmdb_id: int
     title: str | None = None

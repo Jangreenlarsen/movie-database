@@ -2,6 +2,76 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.53.0 build 0064] — 2026-08-03 — Automatisk "Tilføjet af {bruger}"-tag (feature #18)
+
+Enhver ny film/TV-serie får nu automatisk et "Tilføjet af {brugernavn}"-tag ved oprettelse — uanset om det sker via stregkode-scan, manuel TMDb-søgning eller ren manuel indtastning, da alle tre funnel gennem samme `create_movie`/`create_tv_show`-kald. Ny delt `tag_service.added_by_tag(username)` sikrer at ordlyden ikke kan gå ud af trit mellem film og TV-serier. Udvidet til også at gælde TV-serier (ikke kun film som FEATURES.md oprindeligt sagde), for konsistens med hvordan de to ressourcer ellers deler tag-mekanismen.
+
+Tagget går gennem samme normaliserings-/dedup-pipeline som brugerens egne tags (`tag_service.resolve_tags`) — vises i tag-autocomplete, er filtrerbart via `?tags=` ligesom alle andre tags, og er ikke specielt beskyttet (kan fjernes igen manuelt som ethvert andet tag). Tilføjes kun ved oprettelse, ikke ved efterfølgende redigering.
+
+7 nye backend-tests + 9 eksisterende opdateret til at forvente det nye tag. Live-verificeret: tagget vises korrekt på filmkortet.
+
+## [0.52.0 build 0063] — 2026-08-03 — Ny "guest"-rolle: read-only adgang (feature #72)
+
+Ny tredje rolle `guest` (udover `admin`/`standard`) — kan browse/søge film-/TV-biblioteket og den offentlige Voldby BIO-side, og ændre egen adgangskode/view-indstillinger, men intet andet. Håndhævet i **backend** (ikke kun UI, jf. CLAUDE.md regel 16): ny `Depends(require_not_guest)` i `app/api/deps.py`, sat på alle skrive-endpoints for film/TV-serier (opret/redigér/slet, sæson-/episode-markering) og `POST /api/screening-requests`.
+
+Frontend: Ønsker-/Print-/Statistik-fanerne samt "+ Tilføj film/serie"-panelerne er skjult for guest. Film-/TV-seriens redigeringsvindue viser samme information som normalt, men som en ren visnings-udgave — ingen input-felter, intet Gem/Slet, ingen "Ønsk visning i Voldby BIO"-knap, sæson-/episode-markeringer vist som deaktiverede afkrydsningsfelter. Admin tildeler rollen fra en ny rolle-dropdown (Admin/Standard/Guest) i Brugere-listen på Indstillinger, i stedet for den tidligere binære "Gør til/fjern admin"-knap.
+
+10 nye backend-tests. Live-verificeret med Playwright: guest ser kun de 4 tilladte faner, redigeringsvinduet er fuldt skrivebeskyttet, og et direkte API-kald for at oprette en film afvises med 403.
+
+## [0.51.0 build 0062] — 2026-08-03 — Voldby BIO: offentlig side + showcase-sektion (feature #70/#71)
+
+Ny offentlig, login-fri side på `/bio` — en direkte, delbar URL med kun programmet (hvad går i bio, hvornår) og en ny showcase-sektion (billeder af biografrummet + lyd-/billed-specs), ingen anmodnings-/planlægnings-værktøjer. `GET /api/screenings` kræver ikke længere login (POST/PATCH/DELETE er uændret admin-only) — kun læsning blev åbnet.
+
+Ingen router-bibliotek tilføjet: `/bio` tjekkes som et rent `window.location.pathname`-opslag i `App.jsx`, før login-tjekket overhovedet kører — eneste offentlige rute i en ellers fane-baseret app. Caddys eksisterende `try_files {path} /index.html` (se DEPLOYMENT.md) og Vites dev-server serverer allerede `index.html` for enhver ukendt sti, så et delt link virker uden yderligere server-opsætning.
+
+Ny delt `CinemaShowcase`-komponent (billeder + specs) bruges både på den offentlige side og den eksisterende indloggede Voldby BIO-fane, som også har fået en "🔗 Del link"-knap der kopierer `/bio`-URL'en. Delt `cinemaFormat.js` (dato-/tids-formattering) udtrukket, så de to sider ikke kan gå ud af trit.
+
+Backend-tests opdateret/udvidet (offentligt GET, skriv forbliver auth-krævende). Live-verificeret med Playwright: helt frisk, ikke-logget-ind browser-kontekst kan se programmet på `/bio` uden cookies, admin-værktøjer er ikke synlige, og "Del link"-knappen kopierer den korrekte URL.
+
+## [0.50.0 build 0061] — 2026-08-03 — Paginering af biblioteksvisning (feature #15)
+
+`/api/movies` og `/api/tv-shows` GET returnerede tidligere en rå liste, stille begrænset til 500 dokumenter uden nogen måde at se eller nå noget derudover — samlinger med mere end 500 film/serier ville simpelthen miste resten af visningen. Begge repositories har nu rigtig `skip`/`limit` + en delt `count_many` (samme filter-opbygning som `find_many`, kan aldrig gå ud af trit), og response-formen er ændret til `{items: [...], total: N}`.
+
+`?page=`+`?page_size=` (begge skal angives sammen) giver en rigtig, afgrænset side; udelades de (Print-siden, Voldby BIO's søgning), hentes alt uden loft — det tidligere 500-loft er dermed fjernet permanent for alle forbrugere af endpointet, ikke kun de nye paginerede.
+
+Nyt delt `Pagination`-komponent (Forrige/Næste + sideindikator + "pr. side"-vælger) i både Film- og TV-serie-fanen. Antal pr. side er en ny persisteret bruger-indstilling (`page_size`, delt mellem faner, samme mønster som `card_size`, feature #59) — huskes på tværs af sessioner. Skift af filter/søgning/sortering springer automatisk tilbage til side 1.
+
+13 nye backend-tests. 26 eksisterende tests opdateret til det nye `{items, total}`-svar (inkl. et par steder der brugte `len(response.json())` — ville have talt ordbogens 2 nøgler i stedet for det faktiske antal film, uden at fejle synligt). Live-verificeret med Playwright: 30 film, sideskift, og at valgt sidestørrelse overlever en genindlæsning.
+
+## [0.49.0 build 0060] — 2026-08-03 — "Nulstil database"-knap på Indstillinger (feature #67)
+
+Ny admin-only "Nulstil database"-sektion på Indstillinger: tømmer film-/TV-biblioteket tilbage til tom tilstand — `movies`, `tv_shows`, `deleted_movies`, `deleted_tv_shows`, `tags`, `counters` (serienumre starter forfra ved næste oprettelse) samt Voldby BIO's `screenings`/`screening_requests` (ellers ville de pege på film/serier der ikke længere findes, Jans bekræftede valg 2026-08-03). Rører **ikke** brugerkonti eller system-indstillinger.
+
+Bekræftes med admins egen adgangskode (nyt `auth_service.verify_current_password`, samme tjek som `change_password`) i stedet for blot en tekst-bekræftelsesfrase som backup/restore (#60/#61) — en reset er endnu mere uigenkaldelig, da der ikke er nogen backup-fil at fortryde med medmindre admin selv har taget en først. Ny `POST /api/system/reset`, ny `system_backup_service.reset_library`. Handlingen audit-logges (feature #65).
+
+6 nye backend-tests. Live-verificeret med Playwright: forkert adgangskode afvises tydeligt, korrekt adgangskode tømmer biblioteket og viser en opsummering.
+
+## [0.48.0 build 0059] — 2026-08-03 — Admin-godkendelse af ny bruger-registrering (feature #66)
+
+Tilmelding var hidtil helt åben — enhver der kendte URL'en fik fuld adgang med det samme. Ny bruger får nu `status: pending` ved registrering (undtagen den allerførste bruger nogensinde, som stadig bootstrapper sig selv til `active` admin — ellers ville ingen kunne logge ind og godkende dem, jf. CLAUDE.md regel 16's lockout-princip). En `pending`-bruger kan logge ind og se sin egen status, men er blokeret fra alt andet (nyt 403 via `get_current_user`, som næsten alle endpoints allerede afhænger af); en `rejected`-bruger forbliver blokeret med en tydelig besked.
+
+Admin godkender/afviser fra "Brugere"-listen på Indstillinger (nyt `PATCH /api/users/{id}/status`) — kun tilladt mens brugeren rent faktisk er `pending`, så et forkert klik ikke kan låse en allerede-aktiv bruger ude. Begge handlinger audit-logges (feature #65). Eksisterende brugere migreres automatisk til `status: active` ved opstart (samme mønster som `username_normalized`-migrationen).
+
+12 nye backend-tests, heriblandt en eksplicit regressionstest for at den allerførste bruger altid bootstrapper til `active`. 5 eksisterende tests opdateret (de registrerede en "anden bruger" og forventede fuld adgang med det samme — skal nu godkendes af admin først, som er den korrekte nye adfærd). Live-verificeret med Playwright: fuldt flow fra registrering → "afventer godkendelse"-skærm → admin-godkendelse → adgang.
+
+## [0.47.0 build 0058] — 2026-08-03 — Audit-log på Indstillinger-siden (feature #65)
+
+Nyt admin-only "Audit-log"-afsnit på Indstillinger, med en løbende, pagineret (`?skip=&limit=`, nyeste først) log over sikkerheds-/data-relevante handlinger: rolle-ændringer, system-nøgle-opdateringer (kun feltnavne logges, aldrig værdier — CLAUDE.md regel 6), OTA-deploy, bibliotek-/system-backup og -gendannelse, samt biograf-planlægning/afvisning (Voldby BIO).
+
+Ny `audit_log`-collection + `audit_log_repository.py`/`audit_log_service.py` (samme lag-struktur som resten af appen) og nyt `GET /api/audit-log` (admin-only, intet write-endpoint — entries skrives udelukkende som sideeffekt af de 8 instrumenterede handlinger i deres respektive routere). `audit_log_service.record()` er bevidst best-effort — samme filosofi som Plex/OMDb-integrationerne: en fejlet audit-log-skrivning må aldrig fejle den handling den logger, kun logges som en advarsel.
+
+12 nye backend-tests (alle 8 handlinger + admin-gating + paginering + "aldrig kaster" for `record()`). Live-verificeret med Playwright at sektionen renderer korrekt i Indstillinger.
+
+## [0.46.0 build 0057] — 2026-08-03 — Sticky gem/slet-knapper i redigeringsvindue (feature #68)
+
+`.modal-card` scrollede tidligere som én samlet blok (`overflow-y: auto` på hele kortet) — det betød at `modal-footer`s "Gem ændringer"/"Slet"-knapper kun blev synlige efter at have scrollet forbi alle felterne i en lang film-/TV-serie-redigering. Ændret til en flex-kolonne hvor kun `.modal-body` scroller internt (`flex: 1; min-height: 0; overflow-y: auto`), mens `.modal-header` og `.modal-footer` (begge `flex-shrink: 0`) forbliver fast synlige i toppen/bunden af modalen uanset scroll-position. Gælder både `MovieDetailModal` og `TvShowDetailModal` (deler samme CSS-klasser i `Library.css`).
+
+Live-verificeret med Playwright mod ægte backend (kort viewport der tvinger scroll): footer-knappernes bounding box er identisk før og efter scroll i begge modaler.
+
+## [0.45.0 build 0056] — 2026-08-03 — PWA-installation på iPhone (feature #9)
+
+`apple-touch-icon` pegede på `favicon.svg` — iOS Safari rasterizerer ikke SVG til hjemmeskærms-ikonet og faldt derfor stille tilbage til et skærmbillede af siden i stedet for et rigtigt ikon. Genereret et fuldt PNG-ikonsæt fra den eksisterende SVG-logo (`apple-touch-icon.png` 180×180, `pwa-192x192.png`, `pwa-512x512.png`, samt en maskable variant med ekstra padding til Android/Chromes cirkel-beskæring), lagt på mørk baggrund (`#0f0f0f`, matcher `theme_color`) da iOS' ikon ikke understøtter transparens. `index.html`s `apple-touch-icon`-link og `vite.config.js`s manifest-`icons`-liste opdateret til at bruge dem. Resten af PWA-grundlaget (`viewport`, `apple-mobile-web-app-capable`, service worker via `vite-plugin-pwa`, responsivt CSS) var allerede på plads.
+
 ## [0.44.0 build 0055] — 2026-08-03 — UPCDatabase.org som tredje stregkode-opslags-fallback (feature #69)
 
 Efter at have bekræftet (BUGS.md #32) at 4 konkrete danske DVD-stregkoder manglede i både UPCitemdb og Discogs, er **UPCDatabase.org** tilføjet som et tredje, sidste fallback-forsøg i `scan_service._lookup_title` — gratis niveau, 100 opslag/dag. Ny `backend/app/integrations/upcdatabase_client.py` følger samme `lookup_title(barcode) -> str | None`-kontrakt og fejl-filosofi som UPCitemdb/Discogs (aldrig en kastet exception). I modsætning til Discogs er token her påkrævet for auth — et tomt `upcdatabase_token` springer opslaget helt over i stedet for at forsøge et kald der alligevel vil få 403.

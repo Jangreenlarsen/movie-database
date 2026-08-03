@@ -6,7 +6,8 @@ async def test_create_and_get_movie(client):
     assert response.status_code == 201
     movie = response.json()
     assert movie["title"] == "The Matrix"
-    assert movie["tags"] == ["Sci-Fi", "Favorite"]
+    # "Tilføjet af {username}" is auto-added at creation (feature #18).
+    assert movie["tags"] == ["Sci-Fi", "Favorite", "Tilføjet af testuser"]
 
     get_response = await client.get(f"/api/movies/{movie['id']}")
     assert get_response.status_code == 200
@@ -26,10 +27,10 @@ async def test_get_invalid_id_returns_404(client):
 async def test_tag_reuses_canonical_casing_across_movies(client):
     await client.post("/api/movies", json={"title": "Movie A", "tags": ["Action"]})
     response = await client.post("/api/movies", json={"title": "Movie B", "tags": ["ACTION"]})
-    assert response.json()["tags"] == ["Action"]
+    assert response.json()["tags"] == ["Action", "Tilføjet af testuser"]
 
     tags_response = await client.get("/api/tags")
-    assert tags_response.json() == ["Action"]
+    assert tags_response.json() == ["Action", "Tilføjet af testuser"]
 
 
 async def test_new_tag_survives_concurrent_insert_race(client, monkeypatch):
@@ -58,7 +59,7 @@ async def test_new_tag_survives_concurrent_insert_race(client, monkeypatch):
         "/api/movies", json={"title": "Race Test", "tags": ["BrandNewTag"]}
     )
     assert response.status_code == 201
-    assert response.json()["tags"] == ["BrandNewTag"]
+    assert response.json()["tags"] == ["BrandNewTag", "Tilføjet af testuser"]
 
 
 async def test_filter_by_tag_is_case_insensitive(client):
@@ -66,7 +67,7 @@ async def test_filter_by_tag_is_case_insensitive(client):
     await client.post("/api/movies", json={"title": "Untagged"})
 
     response = await client.get("/api/movies", params={"tags": "christmas"})
-    titles = [m["title"] for m in response.json()]
+    titles = [m["title"] for m in response.json()["items"]]
     assert titles == ["Tagged"]
 
 
@@ -177,10 +178,10 @@ async def test_filter_by_format_and_audio_type(client):
     )
 
     by_format = await client.get("/api/movies", params={"format": "BD"})
-    assert [m["title"] for m in by_format.json()] == ["Blu-ray DTS"]
+    assert [m["title"] for m in by_format.json()["items"]] == ["Blu-ray DTS"]
 
     by_audio = await client.get("/api/movies", params={"audio_types": "Stereo"})
-    assert [m["title"] for m in by_audio.json()] == ["DVD Stereo"]
+    assert [m["title"] for m in by_audio.json()["items"]] == ["DVD Stereo"]
 
 
 async def test_media_type_roundtrip_and_filter(client):
@@ -192,7 +193,7 @@ async def test_media_type_roundtrip_and_filter(client):
     await client.post("/api/movies", json={"title": "Digital Copy", "media_type": "Digital"})
 
     by_media_type = await client.get("/api/movies", params={"media_types": "Digital"})
-    assert [m["title"] for m in by_media_type.json()] == ["Digital Copy"]
+    assert [m["title"] for m in by_media_type.json()["items"]] == ["Digital Copy"]
 
     options = await client.get("/api/movies/attribute-options")
     assert options.json()["media_types"] == ["Fysisk", "Digital"]
@@ -211,19 +212,19 @@ async def test_sort_by_newly_added_fields(client):
     )
 
     by_runtime = await client.get("/api/movies", params={"sort": "runtime:asc"})
-    assert [m["title"] for m in by_runtime.json()] == ["B Movie", "A Movie"]
+    assert [m["title"] for m in by_runtime.json()["items"]] == ["B Movie", "A Movie"]
 
     by_location = await client.get("/api/movies", params={"sort": "location:asc"})
-    assert [m["title"] for m in by_location.json()] == ["B Movie", "A Movie"]
+    assert [m["title"] for m in by_location.json()["items"]] == ["B Movie", "A Movie"]
 
     by_owner = await client.get("/api/movies", params={"sort": "owner:asc"})
-    assert [m["title"] for m in by_owner.json()] == ["B Movie", "A Movie"]
+    assert [m["title"] for m in by_owner.json()["items"]] == ["B Movie", "A Movie"]
 
     by_registered_by = await client.get("/api/movies", params={"sort": "registered_by:asc"})
-    assert len(by_registered_by.json()) == 2
+    assert len(by_registered_by.json()["items"]) == 2
 
     by_created_at = await client.get("/api/movies", params={"sort": "created_at:asc"})
-    assert [m["title"] for m in by_created_at.json()] == ["B Movie", "A Movie"]
+    assert [m["title"] for m in by_created_at.json()["items"]] == ["B Movie", "A Movie"]
 
 
 async def test_sort_by_title(client):
@@ -231,10 +232,10 @@ async def test_sort_by_title(client):
     await client.post("/api/movies", json={"title": "Apple"})
 
     asc = await client.get("/api/movies", params={"sort": "title:asc"})
-    assert [m["title"] for m in asc.json()] == ["Apple", "Zebra"]
+    assert [m["title"] for m in asc.json()["items"]] == ["Apple", "Zebra"]
 
     desc = await client.get("/api/movies", params={"sort": "title:desc"})
-    assert [m["title"] for m in desc.json()] == ["Zebra", "Apple"]
+    assert [m["title"] for m in desc.json()["items"]] == ["Zebra", "Apple"]
 
 
 async def test_sort_by_year(client):
@@ -242,7 +243,7 @@ async def test_sort_by_year(client):
     await client.post("/api/movies", json={"title": "New", "year": 2020})
 
     response = await client.get("/api/movies", params={"sort": "year:asc"})
-    assert [m["title"] for m in response.json()] == ["Old", "New"]
+    assert [m["title"] for m in response.json()["items"]] == ["Old", "New"]
 
 
 async def test_sort_by_serial_number(client):
@@ -250,7 +251,7 @@ async def test_sort_by_serial_number(client):
     await client.post("/api/movies", json={"title": "Second"})
 
     response = await client.get("/api/movies", params={"sort": "serial_number:desc"})
-    assert [m["title"] for m in response.json()] == ["Second", "First"]
+    assert [m["title"] for m in response.json()["items"]] == ["Second", "First"]
 
 
 async def test_multi_level_sort_falls_through_to_second_field(client):
@@ -263,7 +264,7 @@ async def test_multi_level_sort_falls_through_to_second_field(client):
     response = await client.get(
         "/api/movies", params={"sort": "format:asc,title:asc"}
     )
-    assert [m["title"] for m in response.json()] == ["Middle", "Alpha", "Zeta"]
+    assert [m["title"] for m in response.json()["items"]] == ["Middle", "Alpha", "Zeta"]
 
 
 async def test_create_movie_returns_429_on_tmdb_rate_limit(client, monkeypatch):
@@ -310,7 +311,7 @@ async def test_sort_by_rating(client, monkeypatch):
     await client.post("/api/movies", json={"tmdb_id": 2})
 
     response = await client.get("/api/movies", params={"sort": "rating:desc"})
-    assert [m["rating"] for m in response.json()] == [9.0, 5.0]
+    assert [m["rating"] for m in response.json()["items"]] == [9.0, 5.0]
 
 
 async def test_sort_ignores_unknown_field_and_falls_back_to_default(client):
@@ -320,7 +321,7 @@ async def test_sort_ignores_unknown_field_and_falls_back_to_default(client):
     await client.post("/api/movies", json={"title": "Movie"})
     response = await client.get("/api/movies", params={"sort": "invalid_field"})
     assert response.status_code == 200
-    assert len(response.json()) == 1
+    assert len(response.json()["items"]) == 1
 
 
 async def test_sort_treats_unrecognized_direction_as_ascending(client):
@@ -329,7 +330,7 @@ async def test_sort_treats_unrecognized_direction_as_ascending(client):
 
     response = await client.get("/api/movies", params={"sort": "title:sideways"})
     assert response.status_code == 200
-    assert [m["title"] for m in response.json()] == ["Apple", "Zebra"]
+    assert [m["title"] for m in response.json()["items"]] == ["Apple", "Zebra"]
 
 
 async def test_update_movie_format_and_audio_types(client):

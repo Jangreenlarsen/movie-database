@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.api.deps import get_current_user, require_admin
+from app.api.deps import get_current_user, require_admin, require_not_guest
 from app.db import get_database
 from app.integrations import tmdb_client
 from app.models.movie import (
@@ -14,6 +14,7 @@ from app.models.movie import (
     Movie,
     MovieCreate,
     MovieFormat,
+    MoviePage,
     MovieUpdate,
     TmdbSyncResult,
 )
@@ -24,7 +25,7 @@ from app.services import movie_service, plex_service
 router = APIRouter(prefix="/api/movies", tags=["movies"], dependencies=[Depends(get_current_user)])
 
 
-@router.get("", response_model=list[Movie])
+@router.get("", response_model=MoviePage)
 async def list_movies(
     q: str | None = Query(default=None),
     tags: str | None = Query(default=None),
@@ -43,6 +44,8 @@ async def list_movies(
     watched: bool | None = Query(default=None),
     cast: str | None = Query(default=None, description="Exact cast-member name match."),
     director: str | None = Query(default=None, description="Exact director name match."),
+    page: int | None = Query(default=None, ge=1),
+    page_size: int | None = Query(default=None, ge=1, le=500),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     tag_list = tags.split(",") if tags else None
@@ -61,13 +64,15 @@ async def list_movies(
         watched,
         cast,
         director,
+        page,
+        page_size,
     )
 
 
 @router.post("", response_model=Movie, status_code=201)
 async def create_movie(
     payload: MovieCreate,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_not_guest),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     return await movie_service.create_movie(db, payload, current_user["username"])
@@ -136,7 +141,7 @@ async def get_plex_availability(movie_id: str, db: AsyncIOMotorDatabase = Depend
 async def update_movie(
     movie_id: str,
     payload: MovieUpdate,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_not_guest),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     return await movie_service.update_movie(db, movie_id, payload, current_user)
@@ -145,7 +150,7 @@ async def update_movie(
 @router.delete("/{movie_id}", status_code=204)
 async def delete_movie(
     movie_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_not_guest),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     await movie_service.delete_movie(db, movie_id, current_user["username"])

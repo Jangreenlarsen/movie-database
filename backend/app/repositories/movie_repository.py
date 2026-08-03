@@ -307,28 +307,23 @@ async def clear_serial_number(db: AsyncIOMotorDatabase, movie_id: str) -> None:
     )
 
 
-async def find_many(
-    db: AsyncIOMotorDatabase,
+def _build_find_many_filter(
     query: str | None,
     normalized_tags: list[str] | None,
     formats: list[str] | None = None,
     audio_types: list[str] | None = None,
     media_types: list[str] | None = None,
-    sort_spec: list[tuple[str, int]] | None = None,
     is_wishlist: bool = False,
     watched: bool | None = None,
     cast: str | None = None,
     director: str | None = None,
-) -> list[dict]:
-    """`sort_spec` is a list of up to `MAX_SORT_LEVELS` (already-whitelisted
-    mongo field name, direction) tuples for compound multi-level sorting
-    (see FEATURES.md #17/#27) — validation against `SORT_FIELDS` happens in
-    `movie_service`, this layer just applies whatever it is given.
-
-    `is_wishlist=False` matches both `is_wishlist: false` *and* documents
+) -> dict:
+    """`is_wishlist=False` matches both `is_wishlist: false` *and* documents
     that predate this field entirely (`$ne: True`, not a `False` equality
     check) — see FEATURES.md #28 and BUGS.md's "check every representation
-    of empty" lesson (CLAUDE.md regel 16)."""
+    of empty" lesson (CLAUDE.md regel 16). Shared by `find_many`/`count_many`
+    (feature #15) so the two can never drift apart on what counts as a
+    match."""
     filter_: dict = {"is_wishlist": True if is_wishlist else {"$ne": True}}
     if query:
         filter_["$text"] = {"$search": query}
@@ -350,10 +345,62 @@ async def find_many(
         filter_["cast"] = cast
     if director:
         filter_["director"] = director
+    return filter_
 
+
+async def find_many(
+    db: AsyncIOMotorDatabase,
+    query: str | None,
+    normalized_tags: list[str] | None,
+    formats: list[str] | None = None,
+    audio_types: list[str] | None = None,
+    media_types: list[str] | None = None,
+    sort_spec: list[tuple[str, int]] | None = None,
+    is_wishlist: bool = False,
+    watched: bool | None = None,
+    cast: str | None = None,
+    director: str | None = None,
+    skip: int = 0,
+    limit: int | None = None,
+) -> list[dict]:
+    """`sort_spec` is a list of up to `MAX_SORT_LEVELS` (already-whitelisted
+    mongo field name, direction) tuples for compound multi-level sorting
+    (see FEATURES.md #17/#27) — validation against `SORT_FIELDS` happens in
+    `movie_service`, this layer just applies whatever it is given.
+
+    `limit=None` (the default) fetches every match, no cap — used by callers
+    that need the whole filtered set (Print-siden, Voldby BIO's søgning).
+    `movie_service.list_movies` passes a real `limit` for the paginated
+    library view (feature #15), which used to be silently capped at 500
+    with no way to see or reach anything past it."""
+    filter_ = _build_find_many_filter(
+        query, normalized_tags, formats, audio_types, media_types, is_wishlist, watched, cast, director
+    )
     cursor = db[COLLECTION].find(filter_)
     cursor = cursor.sort(sort_spec) if sort_spec else cursor.sort(DEFAULT_SORT_FIELD, -1)
-    return await cursor.to_list(length=500)
+    if skip:
+        cursor = cursor.skip(skip)
+    if limit is not None:
+        cursor = cursor.limit(limit)
+    return await cursor.to_list(length=limit)
+
+
+async def count_many(
+    db: AsyncIOMotorDatabase,
+    query: str | None,
+    normalized_tags: list[str] | None,
+    formats: list[str] | None = None,
+    audio_types: list[str] | None = None,
+    media_types: list[str] | None = None,
+    is_wishlist: bool = False,
+    watched: bool | None = None,
+    cast: str | None = None,
+    director: str | None = None,
+) -> int:
+    filter_ = _build_find_many_filter(
+        query, normalized_tags, formats, audio_types, media_types, is_wishlist, watched, cast, director
+    )
+    return await db[COLLECTION].count_documents(filter_)
 
 
 async def update(db: AsyncIOMotorDatabase, movie_id: str, fields: dict) -> dict | None:

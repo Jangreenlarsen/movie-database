@@ -8,6 +8,15 @@ def normalize(raw: str) -> str:
     return raw.strip().lower()
 
 
+def added_by_tag(username: str) -> str:
+    """Feature #18 — auto-tag added to every new movie/TV-show's tags at
+    creation time, so "who added this" is filterable via the same tag
+    mechanism as everything else — regardless of whether it came from a
+    barcode scan, a manual TMDb search, or pure manual entry, since all
+    three funnel through the same create_movie/create_tv_show call."""
+    return f"Tilføjet af {username}"
+
+
 async def resolve_tags(db: AsyncIOMotorDatabase, raw_tags: list[str]) -> list[str]:
     """Dedup by normalized form, preserving each tag's first-typed casing."""
     canonical_names: list[str] = []

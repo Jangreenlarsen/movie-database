@@ -8,6 +8,7 @@ from app.core.errors import (
     LastAdminError,
     UserNotFoundError,
     UsernameTakenError,
+    UserNotPendingError,
 )
 from app.core.security import hash_password, verify_password
 from app.models.user import (
@@ -18,6 +19,7 @@ from app.models.user import (
     UserRole,
     UserSettings,
     UserSettingsUpdate,
+    UserStatus,
 )
 from app.repositories import user_repository
 
@@ -28,6 +30,7 @@ def to_user_model(document: dict) -> User:
         id=str(document["_id"]),
         username=document["username"],
         role=document.get("role", UserRole.STANDARD),
+        status=document.get("status", UserStatus.ACTIVE),
         settings=UserSettings(**merged_settings),
         created_at=document["created_at"],
     )
@@ -44,14 +47,19 @@ def _normalize_username(username: str) -> str:
 
 async def register(db: AsyncIOMotorDatabase, payload: UserRegister) -> User:
     # Bootstrapping: the very first account ever created has no one to grant
-    # it admin rights, so it grants itself — every account after that starts
-    # as a standard user.
+    # it admin rights or approve it, so it grants itself both — every
+    # account after that starts as a standard, PENDING user (feature #66)
+    # and can't do anything beyond GET /api/users/me until an admin approves
+    # it. Without this special case the very first admin would start
+    # pending too, with no other admin ever able to log in and approve them
+    # — a permanent lockout (CLAUDE.md regel 16).
     is_first_user = await user_repository.count(db) == 0
     document = {
         "username": payload.username,
         "username_normalized": _normalize_username(payload.username),
         "password_hash": hash_password(payload.password),
         "role": UserRole.ADMIN if is_first_user else UserRole.STANDARD,
+        "status": UserStatus.ACTIVE if is_first_user else UserStatus.PENDING,
         "settings": user_repository.DEFAULT_SETTINGS,
         "created_at": datetime.now(timezone.utc),
     }
@@ -99,6 +107,16 @@ async def change_password(
     await user_repository.set_password_hash(db, user_id, hash_password(payload.new_password))
 
 
+async def verify_current_password(db: AsyncIOMotorDatabase, user_id: str, current_password: str) -> None:
+    """Re-checks the acting admin's own password as a stronger confirmation
+    step for the most irreversible admin actions (feature #67's database
+    reset) — same check as `change_password`, factored out since it isn't
+    itself changing anything here."""
+    document = await user_repository.find_by_id(db, user_id)
+    if document is None or not verify_password(current_password, document["password_hash"]):
+        raise InvalidCredentialsError()
+
+
 async def list_users(db: AsyncIOMotorDatabase) -> list[User]:
     documents = await user_repository.list_all(db)
     return [to_user_model(doc) for doc in documents]
@@ -116,4 +134,19 @@ async def update_user_role(db: AsyncIOMotorDatabase, user_id: str, role: UserRol
             raise LastAdminError()
 
     updated = await user_repository.set_role(db, user_id, role.value)
+    return to_user_model(updated)
+
+
+async def update_user_status(db: AsyncIOMotorDatabase, user_id: str, status: str) -> User:
+    """Approve (`active`) or reject (`rejected`) a pending registration
+    (feature #66). Only allowed while the target is still `pending` —
+    otherwise a stray click could silently lock out an already-active user
+    (e.g. rejecting an admin by mistake)."""
+    target = await user_repository.find_by_id(db, user_id)
+    if target is None:
+        raise UserNotFoundError(user_id)
+    if target.get("status", UserStatus.ACTIVE.value) != UserStatus.PENDING.value:
+        raise UserNotPendingError(user_id)
+
+    updated = await user_repository.set_status(db, user_id, status)
     return to_user_model(updated)

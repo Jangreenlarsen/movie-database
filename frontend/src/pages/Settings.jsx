@@ -36,9 +36,11 @@ export default function Settings({ user, onSettingsChanged }) {
       )}
       {isAdmin && <LibraryBackupSection />}
       {isAdmin && <SystemBackupSection />}
+      {isAdmin && <DatabaseResetSection />}
       {isAdmin && <SystemSettingsSection />}
       {isAdmin && <DeploySection />}
       {isAdmin && <UsersSection currentUserId={user.id} />}
+      {isAdmin && <AuditLogSection />}
     </section>
   );
 }
@@ -377,6 +379,70 @@ function SystemBackupSection() {
   );
 }
 
+function DatabaseResetSection() {
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState("idle");
+  const [error, setError] = useState(null);
+  const [result, setResult] = useState(null);
+
+  async function reset() {
+    if (!password) return;
+    setStatus("resetting");
+    setError(null);
+    setResult(null);
+    try {
+      const data = await api.resetDatabase(password);
+      setResult(data);
+      setStatus("done");
+      setPassword("");
+    } catch (err) {
+      setError(err.message);
+      setStatus("error");
+    }
+  }
+
+  return (
+    <div className="card settings-section">
+      <h2>Nulstil database</h2>
+      <p className="muted">
+        Tømmer film-/TV-biblioteket helt (film, TV-serier, slettede film/TV-serier, tags,
+        serienummer-tællere, samt Voldby BIO-visninger/-anmodninger) tilbage til tom tilstand.{" "}
+        <strong>Rører ikke</strong> brugerkonti eller system-indstillinger.{" "}
+        <strong>Uigenkaldeligt</strong> — tag en fuld system-backup ovenfor først, hvis du vil kunne
+        fortryde. Bekræft med din egen adgangskode.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Din adgangskode"
+          autoComplete="current-password"
+        />
+        <button
+          type="button"
+          className="btn"
+          onClick={reset}
+          disabled={!password || status === "resetting"}
+        >
+          {status === "resetting" ? "Nulstiller..." : "Nulstil database"}
+        </button>
+      </div>
+      {status === "error" && (
+        <div className="banner banner-error" style={{ marginTop: 12 }}>
+          {error}
+        </div>
+      )}
+      {status === "done" && result && (
+        <div className="banner banner-info" style={{ marginTop: 12 }}>
+          Nulstillet: {result.movies_removed} film, {result.tv_shows_removed} TV-serier og
+          relaterede data fjernet.
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SerialNumberSection({ isAdmin }) {
   const [status, setStatus] = useState("loading");
   const [startNumber, setStartNumber] = useState("");
@@ -678,6 +744,87 @@ function SystemSettingsSection() {
   );
 }
 
+const AUDIT_ACTION_LABELS = {
+  "user.role_changed": "Rolle ændret",
+  "system_settings.updated": "System-nøgler opdateret",
+  "deploy.triggered": "OTA-opdatering udløst",
+  "system_backup.created": "System-backup taget",
+  "system_backup.restored": "System gendannet fra backup",
+  "library_backup.exported": "Bibliotek eksporteret",
+  "library_backup.imported": "Bibliotek importeret",
+  "screening_request.declined": "Visningsanmodning afvist",
+  "screening.scheduled": "Visning planlagt",
+};
+
+const AUDIT_PAGE_SIZE = 50;
+
+function AuditLogSection() {
+  const [entries, setEntries] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [status, setStatus] = useState("loading");
+
+  function load(skip) {
+    setStatus(skip === 0 ? "loading" : "loading-more");
+    api
+      .listAuditLog({ skip, limit: AUDIT_PAGE_SIZE })
+      .then((data) => {
+        setEntries((prev) => (skip === 0 ? data.entries : [...prev, ...data.entries]));
+        setTotal(data.total);
+        setStatus("ready");
+      })
+      .catch(() => setStatus("error"));
+  }
+
+  useEffect(() => load(0), []);
+
+  return (
+    <div className="card settings-section">
+      <h2>Audit-log</h2>
+      <p className="muted">
+        Sikkerheds-/data-relevante handlinger (rolle-ændringer, system-nøgle-opdateringer,
+        OTA-opdatering, backup/gendannelse, biograf-planlægning/afvisning), nyeste øverst.
+      </p>
+
+      {status === "loading" && <p className="muted">Indlæser...</p>}
+      {status === "error" && (
+        <div className="banner banner-error">Kunne ikke hente audit-log.</div>
+      )}
+
+      {entries.length > 0 && (
+        <ul className="user-list">
+          {entries.map((entry) => (
+            <li key={entry.id} className="user-row">
+              <span className="user-row-name">
+                {AUDIT_ACTION_LABELS[entry.action] ?? entry.action}
+                {entry.detail && <span className="muted"> — {entry.detail}</span>}
+              </span>
+              <span className="muted">{entry.actor}</span>
+              <span className="muted">
+                {new Date(entry.created_at).toLocaleString("da-DK")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {status === "ready" && entries.length === 0 && (
+        <p className="muted">Ingen registrerede handlinger endnu.</p>
+      )}
+
+      {entries.length < total && (
+        <button
+          type="button"
+          className="btn"
+          onClick={() => load(entries.length)}
+          disabled={status === "loading-more"}
+        >
+          {status === "loading-more" ? "Indlæser..." : `Vis flere (${entries.length}/${total})`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function PlainSettingRow({ label, field, hint, currentValue, onSaved }) {
   const [value, setValue] = useState(currentValue ?? "");
   const [saving, setSaving] = useState(false);
@@ -890,8 +1037,8 @@ function UsersSection({ currentUserId }) {
 
   useEffect(load, []);
 
-  async function toggleRole(targetUser) {
-    const nextRole = targetUser.role === "admin" ? "standard" : "admin";
+  async function changeRole(targetUser, nextRole) {
+    if (nextRole === targetUser.role) return;
     setUpdatingId(targetUser.id);
     setError(null);
     try {
@@ -904,10 +1051,28 @@ function UsersSection({ currentUserId }) {
     }
   }
 
+  async function setStatusFor(targetUser, nextStatus) {
+    setUpdatingId(targetUser.id);
+    setError(null);
+    try {
+      await api.updateUserStatus(targetUser.id, nextStatus);
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  const pendingCount = users.filter((u) => u.status === "pending").length;
+
   return (
     <div className="card settings-section">
       <h2>Brugere</h2>
-      <p className="muted">Administrér hvem der har admin-rettigheder.</p>
+      <p className="muted">
+        Administrér hvem der har admin-rettigheder, og godkend/afvis nye registreringer
+        {pendingCount > 0 && ` (${pendingCount} afventer godkendelse)`}.
+      </p>
 
       {status === "loading" && <p className="muted">Indlæser...</p>}
       {status === "error" && (
@@ -923,19 +1088,43 @@ function UsersSection({ currentUserId }) {
                 {u.username}
                 {u.id === currentUserId && <span className="muted"> (dig)</span>}
               </span>
-              <span className="role-badge">{u.role === "admin" ? "Admin" : "Standard"}</span>
-              <button
-                type="button"
-                className="btn"
-                disabled={u.id === currentUserId || updatingId === u.id}
-                onClick={() => toggleRole(u)}
-              >
-                {updatingId === u.id
-                  ? "Opdaterer..."
-                  : u.role === "admin"
-                    ? "Fjern admin"
-                    : "Gør til admin"}
-              </button>
+              {u.status === "pending" && <span className="role-badge">Afventer</span>}
+              {u.status === "rejected" && <span className="role-badge">Afvist</span>}
+              {u.status === "active" && (
+                <span className="role-badge">
+                  {u.role === "admin" ? "Admin" : u.role === "guest" ? "Guest" : "Standard"}
+                </span>
+              )}
+              {u.status === "pending" ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={updatingId === u.id}
+                    onClick={() => setStatusFor(u, "active")}
+                  >
+                    {updatingId === u.id ? "..." : "Godkend"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={updatingId === u.id}
+                    onClick={() => setStatusFor(u, "rejected")}
+                  >
+                    Afvis
+                  </button>
+                </>
+              ) : u.status === "active" ? (
+                <select
+                  value={u.role}
+                  disabled={u.id === currentUserId || updatingId === u.id}
+                  onChange={(e) => changeRole(u, e.target.value)}
+                >
+                  <option value="admin">Admin</option>
+                  <option value="standard">Standard</option>
+                  <option value="guest">Guest (read-only)</option>
+                </select>
+              ) : null}
             </li>
           ))}
         </ul>

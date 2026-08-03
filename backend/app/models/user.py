@@ -20,6 +20,20 @@ def _validate_bcrypt_byte_length(value: str) -> str:
 class UserRole(str, Enum):
     ADMIN = "admin"
     STANDARD = "standard"
+    # Feature #72 — read-only: can browse/search the film-/TV-library and
+    # the public Voldby BIO page, and change their own password, but can't
+    # create/edit/delete anything. Enforced in the backend (see
+    # api.deps.require_not_guest), not just hidden in the UI.
+    GUEST = "guest"
+
+
+class UserStatus(str, Enum):
+    # Feature #66 — every account except the very first (which bootstraps
+    # itself as ACTIVE admin, see auth_service.register) starts PENDING and
+    # cannot use anything beyond GET /api/users/me until an admin approves it.
+    PENDING = "pending"
+    ACTIVE = "active"
+    REJECTED = "rejected"
 
 
 class VisibleFields(BaseModel):
@@ -75,6 +89,9 @@ class UserSettings(BaseModel):
     # bevidst adskilt pr. fane — kortstørrelse er en ren visuel præference,
     # ikke indholds-specifik.
     card_size: CardSize = "medium"
+    # Antal film/serier pr. side i biblioteksvisningen (feature #15) — én
+    # fælles indstilling for begge faner, samme begrundelse som card_size.
+    page_size: int = 50
 
 
 class UserSettingsUpdate(BaseModel):
@@ -87,6 +104,7 @@ class UserSettingsUpdate(BaseModel):
     tv_sort_levels: list[SortLevel] | None = None
     tv_sort_presets: list[SortPreset] | None = None
     card_size: CardSize | None = None
+    page_size: int | None = Field(default=None, ge=1, le=500)
 
 
 class UserRegister(BaseModel):
@@ -125,9 +143,16 @@ class UserRoleUpdate(BaseModel):
     role: UserRole
 
 
+class UserStatusUpdate(BaseModel):
+    # Only these two are settable via the endpoint — a user can't be set
+    # back to "pending" once approved/rejected.
+    status: Literal["active", "rejected"]
+
+
 class User(BaseModel):
     id: str
     username: str
     role: UserRole
+    status: UserStatus
     settings: UserSettings
     created_at: datetime

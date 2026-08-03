@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.44.0 build 0055] — 2026-08-03 — UPCDatabase.org som tredje stregkode-opslags-fallback (feature #69)
+
+Efter at have bekræftet (BUGS.md #32) at 4 konkrete danske DVD-stregkoder manglede i både UPCitemdb og Discogs, er **UPCDatabase.org** tilføjet som et tredje, sidste fallback-forsøg i `scan_service._lookup_title` — gratis niveau, 100 opslag/dag. Ny `backend/app/integrations/upcdatabase_client.py` følger samme `lookup_title(barcode) -> str | None`-kontrakt og fejl-filosofi som UPCitemdb/Discogs (aldrig en kastet exception). I modsætning til Discogs er token her påkrævet for auth — et tomt `upcdatabase_token` springer opslaget helt over i stedet for at forsøge et kald der alligevel vil få 403.
+
+Nøglen konfigureres som de øvrige eksterne API-nøgler (CLAUDE.md regel 6): `UPCDATABASE_TOKEN` i `.env`, eller admin-override via Indstillinger → System-indstillinger (nyt felt i `SystemSettingsStatus`/`SystemSettingsUpdate`, tilføjet til `OVERRIDABLE_KEYS`) — aldrig eksponeret til frontend, kun `configured`/`source`.
+
+5 nye tests af `upcdatabase_client` + 1 ny scan-fallback-regressionstest + 1 ny system-settings-test. Fuld suite (276 tests) grøn.
+
 ## [0.43.0 build 0054] — 2026-08-03 — "Voldby BIO": visningsanmodninger, admin-planlægning og offentlig kalender (feature #62/#63/#64)
 
 **Feature #62**: Ny "🎬 Ønsk visning i Voldby BIO"-knap i film-/TV-seriens detaljevindue. Nyt `screening_requests`-collection (ét dokument pr. titel, med en liste af hvem der har ønsket den — idempotent, ingen duplikater ved gentaget ønske). Nye `POST/GET /api/screening-requests`, `GET /api/screening-requests/mine`, `PATCH /api/screening-requests/{id}` (kun `declined`, admin-only).

@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     tmdb_api_token: str = ""
     upc_api_key: str = ""
     discogs_token: str = ""
+    # Tredje stregkode-opslags-fallback (efter UPCitemdb og Discogs) — fri
+    # niveau, 100 opslag/dag, se MOVIE_API_REFERENCE.md. Tilføjet 2026-08-03
+    # for at forsøge bedre dækning af nordiske DVD/Blu-ray-stregkoder, som
+    # hverken UPCitemdb eller Discogs typisk har katalogiseret.
+    upcdatabase_token: str = ""
     # Faktisk IMDb-rating (feature #46) — TMDb's egen vote_average er ikke
     # det samme tal som vises på imdb.com.
     omdb_api_key: str = ""
@@ -57,6 +62,7 @@ ENV_DEFAULT_API_KEYS: dict[str, str] = {
     "tmdb_api_token": settings.tmdb_api_token,
     "upc_api_key": settings.upc_api_key,
     "discogs_token": settings.discogs_token,
+    "upcdatabase_token": settings.upcdatabase_token,
     "omdb_api_key": settings.omdb_api_key,
     "plex_server_url": settings.plex_server_url,
     "plex_token": settings.plex_token,

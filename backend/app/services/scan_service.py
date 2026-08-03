@@ -1,4 +1,4 @@
-from app.integrations import discogs_client, tmdb_client, upc_client
+from app.integrations import discogs_client, tmdb_client, upc_client, upcdatabase_client
 from app.models.scan import MovieCandidate
 
 
@@ -23,6 +23,10 @@ async def _lookup_title(barcode: str) -> str | None:
         # European EAN-13 movie barcodes — Discogs' community-catalogued
         # database has better international DVD/Blu-ray coverage.
         guessed_title = await discogs_client.lookup_title(barcode)
+    if not guessed_title:
+        # Third fallback, added for Nordic/Danish DVD/Blu-ray barcodes that
+        # neither of the above two typically catalogue (BUGS.md #32).
+        guessed_title = await upcdatabase_client.lookup_title(barcode)
     return guessed_title
 
 

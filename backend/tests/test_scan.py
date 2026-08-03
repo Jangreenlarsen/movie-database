@@ -1,5 +1,5 @@
 from app.core.errors import TmdbUnavailableError
-from app.integrations import discogs_client, tmdb_client, upc_client
+from app.integrations import discogs_client, tmdb_client, upc_client, upcdatabase_client
 from app.services import scan_service
 
 
@@ -66,6 +66,37 @@ async def test_scan_lookup_falls_back_to_discogs_when_upc_has_no_match(client, m
 
     monkeypatch.setattr(upc_client, "lookup_title", fake_upc_lookup_title)
     monkeypatch.setattr(discogs_client, "lookup_title", fake_discogs_lookup_title)
+    monkeypatch.setattr(tmdb_client, "search_movies", fake_search_movies)
+    monkeypatch.setattr(tmdb_client, "search_tv", _no_tv_matches)
+
+    response = await client.post("/api/scan/lookup", json={"barcode": "5051890012345"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["guessed_title"] == "The Matrix (DVD)"
+    assert data["candidates"][0]["tmdb_id"] == 603
+
+
+async def test_scan_lookup_falls_back_to_upcdatabase_when_discogs_has_no_match(client, monkeypatch):
+    """Regression test for FEATURES.md #69 — when both UPCitemdb and Discogs
+    miss, UPCDatabase.org should be tried as a third fallback."""
+
+    async def fake_upc_lookup_title(barcode):
+        return None
+
+    async def fake_discogs_lookup_title(barcode):
+        return None
+
+    async def fake_upcdatabase_lookup_title(barcode):
+        assert barcode == "5051890012345"
+        return "The Matrix (DVD)"
+
+    async def fake_search_movies(query):
+        assert query == "The Matrix (DVD)"
+        return [{"tmdb_id": 603, "title": "The Matrix", "year": 1999, "poster_url": None}]
+
+    monkeypatch.setattr(upc_client, "lookup_title", fake_upc_lookup_title)
+    monkeypatch.setattr(discogs_client, "lookup_title", fake_discogs_lookup_title)
+    monkeypatch.setattr(upcdatabase_client, "lookup_title", fake_upcdatabase_lookup_title)
     monkeypatch.setattr(tmdb_client, "search_movies", fake_search_movies)
     monkeypatch.setattr(tmdb_client, "search_tv", _no_tv_matches)
 

@@ -91,6 +91,17 @@ async def test_omdb_api_key_behaves_like_the_other_secrets(client, monkeypatch):
     assert settings.omdb_api_key == "omdb-secret-abc"
 
 
+async def test_upcdatabase_token_behaves_like_the_other_secrets(client, monkeypatch):
+    monkeypatch.setattr(settings, "upcdatabase_token", "")
+
+    response = await client.patch(
+        "/api/settings/system", json={"upcdatabase_token": "upcdatabase-secret-abc"}
+    )
+    assert response.json()["upcdatabase_token"] == {"configured": True, "source": "custom"}
+    assert "upcdatabase-secret-abc" not in response.text
+    assert settings.upcdatabase_token == "upcdatabase-secret-abc"
+
+
 async def test_plex_token_behaves_like_the_other_secrets(client, monkeypatch):
     monkeypatch.setattr(settings, "plex_token", "")
 

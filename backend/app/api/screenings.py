@@ -6,9 +6,13 @@ from app.db import get_database
 from app.models.screening import Screening, ScreeningCreate, ScreeningUpdate
 from app.services import audit_log_service, screening_service
 
-# Feature #63 — admin-scheduled screenings, backing the public Voldby BIO
-# calendar (feature #64, GET is open to any logged-in user).
-router = APIRouter(prefix="/api/screenings", tags=["screenings"], dependencies=[Depends(get_current_user)])
+# Feature #63 — admin-scheduled screenings, backing the Voldby BIO calendar.
+# GET has no auth dependency at all (feature #70) — the public /bio page
+# must work for anonymous visitors, not just logged-in users. Every
+# mutating route below still requires admin explicitly via require_admin
+# (which itself depends on get_current_user), so nothing here weakens
+# write access — only the read-only "what's on" listing became public.
+router = APIRouter(prefix="/api/screenings", tags=["screenings"])
 
 
 @router.get("", response_model=list[Screening])

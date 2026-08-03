@@ -194,6 +194,17 @@ async def test_delete_unknown_screening_returns_404(client):
     assert response.status_code == 404
 
 
-async def test_screenings_list_requires_authentication(raw_client):
+async def test_screenings_list_is_public(raw_client):
+    """Regression test for feature #70 — the public /bio page must be able
+    to fetch the program without being logged in at all."""
     response = await raw_client.get("/api/screenings")
+    assert response.status_code == 200
+
+
+async def test_creating_a_screening_still_requires_authentication(raw_client):
+    """Only the GET became public (feature #70) — writes are unaffected."""
+    response = await raw_client.post(
+        "/api/screenings",
+        json={"media_kind": "movie", "movie_id": "000000000000000000000000", "scheduled_at": "2026-09-01T20:00:00"},
+    )
     assert response.status_code == 401

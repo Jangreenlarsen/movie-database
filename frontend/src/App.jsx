@@ -5,6 +5,7 @@ import Settings from "./pages/Settings";
 import PrintList from "./pages/PrintList";
 import Statistics from "./pages/Statistics";
 import Cinema from "./pages/Cinema";
+import CinemaPublic from "./pages/CinemaPublic";
 import Login from "./pages/Login";
 import PendingApproval from "./pages/PendingApproval";
 import { api } from "./api/client";
@@ -29,6 +30,18 @@ function App() {
   async function handleLogout() {
     await api.logout();
     setUser(null);
+  }
+
+  // Feature #70 — /bio is a public, no-login page (shareable outside the
+  // app), checked before any auth state so it never waits on or requires
+  // a login check. No router library: this is the only route that needs
+  // to exist outside the tab-based authenticated app, so a plain pathname
+  // check is simpler than pulling in react-router for one page. Caddy's
+  // `try_files {path} /index.html` (see DEPLOYMENT.md) and Vite's dev
+  // server both already serve index.html for any unmatched path, so a
+  // direct/shared link to /bio works without further server config.
+  if (window.location.pathname.startsWith("/bio")) {
+    return <CinemaPublic />;
   }
 
   if (user === undefined) {

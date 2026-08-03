@@ -1,43 +1,25 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import CinemaShowcase from "../components/CinemaShowcase";
+import { formatDateHeading, formatTime, groupByDate } from "../utils/cinemaFormat";
 import "./Cinema.css";
-
-function dateKey(iso) {
-  return iso.slice(0, 10);
-}
-
-function formatDateHeading(iso) {
-  const date = new Date(iso);
-  const label = date.toLocaleDateString("da-DK", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-  return label.charAt(0).toUpperCase() + label.slice(1);
-}
-
-function formatTime(iso) {
-  return new Date(iso).toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
-}
-
-function groupByDate(screenings) {
-  const groups = [];
-  let currentKey = null;
-  for (const screening of screenings) {
-    const key = dateKey(screening.scheduled_at);
-    if (key !== currentKey) {
-      groups.push({ key, date: screening.scheduled_at, screenings: [] });
-      currentKey = key;
-    }
-    groups[groups.length - 1].screenings.push(screening);
-  }
-  return groups;
-}
 
 export default function Cinema({ user }) {
   const isAdmin = user.role === "admin";
   const [screenings, setScreenings] = useState([]);
   const [status, setStatus] = useState("loading");
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  function copyPublicLink() {
+    const url = `${window.location.origin}/bio`;
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 2000);
+      })
+      .catch(() => {});
+  }
 
   function refresh() {
     return api
@@ -59,7 +41,12 @@ export default function Cinema({ user }) {
     <section>
       <div className="page-header">
         <h1>🎬 Voldby BIO</h1>
+        <button type="button" className="btn" onClick={copyPublicLink}>
+          {linkCopied ? "Link kopieret!" : "🔗 Del link til Voldby BIO"}
+        </button>
       </div>
+
+      <CinemaShowcase />
 
       {isAdmin && <AdminScreeningTools onChanged={refresh} />}
 

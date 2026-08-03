@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.51.0 (build 0062) — 2026-08-03
+
+- Voldby BIO har nu en offentlig side på `/bio` du kan dele med andre (fx i en besked) — ingen login krævet, viser kun programmet + billeder/info om biografen. Find "🔗 Del link"-knappen på Voldby BIO-fanen.
+
 ## v0.50.0 (build 0061) — 2026-08-03
 
 - Film- og TV-serie-biblioteket er nu pagineret — vælg hvor mange der vises pr. side, og bladr med Forrige/Næste. Fjerner samtidig et skjult loft på 500 film/serier.

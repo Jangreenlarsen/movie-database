@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.51.0 build 0062] — 2026-08-03 — Voldby BIO: offentlig side + showcase-sektion (feature #70/#71)
+
+Ny offentlig, login-fri side på `/bio` — en direkte, delbar URL med kun programmet (hvad går i bio, hvornår) og en ny showcase-sektion (billeder af biografrummet + lyd-/billed-specs), ingen anmodnings-/planlægnings-værktøjer. `GET /api/screenings` kræver ikke længere login (POST/PATCH/DELETE er uændret admin-only) — kun læsning blev åbnet.
+
+Ingen router-bibliotek tilføjet: `/bio` tjekkes som et rent `window.location.pathname`-opslag i `App.jsx`, før login-tjekket overhovedet kører — eneste offentlige rute i en ellers fane-baseret app. Caddys eksisterende `try_files {path} /index.html` (se DEPLOYMENT.md) og Vites dev-server serverer allerede `index.html` for enhver ukendt sti, så et delt link virker uden yderligere server-opsætning.
+
+Ny delt `CinemaShowcase`-komponent (billeder + specs) bruges både på den offentlige side og den eksisterende indloggede Voldby BIO-fane, som også har fået en "🔗 Del link"-knap der kopierer `/bio`-URL'en. Delt `cinemaFormat.js` (dato-/tids-formattering) udtrukket, så de to sider ikke kan gå ud af trit.
+
+Backend-tests opdateret/udvidet (offentligt GET, skriv forbliver auth-krævende). Live-verificeret med Playwright: helt frisk, ikke-logget-ind browser-kontekst kan se programmet på `/bio` uden cookies, admin-værktøjer er ikke synlige, og "Del link"-knappen kopierer den korrekte URL.
+
 ## [0.50.0 build 0061] — 2026-08-03 — Paginering af biblioteksvisning (feature #15)
 
 `/api/movies` og `/api/tv-shows` GET returnerede tidligere en rå liste, stille begrænset til 500 dokumenter uden nogen måde at se eller nå noget derudover — samlinger med mere end 500 film/serier ville simpelthen miste resten af visningen. Begge repositories har nu rigtig `skip`/`limit` + en delt `count_many` (samme filter-opbygning som `find_many`, kan aldrig gå ud af trit), og response-formen er ændret til `{items: [...], total: N}`.

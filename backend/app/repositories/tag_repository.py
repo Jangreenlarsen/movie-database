@@ -21,3 +21,16 @@ async def insert(db: AsyncIOMotorDatabase, name: str, normalized: str) -> dict:
 async def list_all(db: AsyncIOMotorDatabase) -> list[dict]:
     cursor = db[COLLECTION].find().sort("name", 1)
     return await cursor.to_list(length=1000)
+
+
+async def find_all_raw(db: AsyncIOMotorDatabase) -> list[dict]:
+    """Unbounded — backs the full system backup (feature #61)."""
+    return await db[COLLECTION].find({}).to_list(length=None)
+
+
+async def replace_all(db: AsyncIOMotorDatabase, documents: list[dict]) -> None:
+    """Wholesale replace — used only by the system restore (feature #61).
+    Not transactional; see movie_repository.replace_all's docstring."""
+    await db[COLLECTION].delete_many({})
+    if documents:
+        await db[COLLECTION].insert_many(documents)

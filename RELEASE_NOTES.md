@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.42.0 (build 0053) — 2026-08-03
+
+- To nye admin-værktøjer under Indstillinger: "Bibliotek-eksport / -gendannelse" (hent hele film-/TV-biblioteket som en JSON-fil, eller gendan fra en tidligere fil) og "Fuld system-backup" (backup/gendan hele systemet — undtagen dine API-nøgler, som skal genindtastes manuelt bagefter). Begge kræver at du skriver en bekræftelsesfrase for at forhindre uheld.
+
 ## v0.41.1 (build 0052) — 2026-08-03
 
 - Fix: sæson-badgen ("1/5 sæsoner") på TV-kortet sad forkert ved siden af skift til lille eller stor kortstørrelse — sidder nu konsekvent i højre hjørne uanset kortstørrelse.

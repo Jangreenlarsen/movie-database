@@ -9,6 +9,7 @@ from app.api import (
     attributes,
     auth,
     health,
+    library_backup,
     movies,
     scan,
     settings as settings_api,
@@ -156,3 +157,4 @@ app.include_router(attributes.router)
 app.include_router(scan.router)
 app.include_router(settings_api.router)
 app.include_router(system.router)
+app.include_router(library_backup.router)

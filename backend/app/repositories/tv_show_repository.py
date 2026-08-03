@@ -109,6 +109,32 @@ async def find_all_with_tmdb_id(db: AsyncIOMotorDatabase) -> list[dict]:
     return await cursor.to_list(length=10_000)
 
 
+async def find_all_raw(db: AsyncIOMotorDatabase) -> list[dict]:
+    """Every TV show document, unbounded — backs the full-library export
+    (feature #60), unlike `find_many`'s 500-document page cap."""
+    return await db[COLLECTION].find({}).to_list(length=None)
+
+
+async def replace_all(db: AsyncIOMotorDatabase, documents: list[dict]) -> None:
+    """Wholesale replace of the collection — see movie_repository's
+    counterpart for the same not-a-transaction caveat."""
+    await db[COLLECTION].delete_many({})
+    if documents:
+        await db[COLLECTION].insert_many(documents)
+
+
+async def bump_serial_counter_past(db: AsyncIOMotorDatabase, documents: list[dict]) -> None:
+    """See movie_repository's counterpart — same rationale."""
+    existing_serials = [doc["serial_number"] for doc in documents if doc.get("serial_number") is not None]
+    if not existing_serials:
+        return
+    config = await _ensure_serial_config(db)
+    if config.get("next_value", 0) <= max(existing_serials):
+        await db[COUNTERS_COLLECTION].update_one(
+            {"_id": SERIAL_COUNTER_ID}, {"$set": {"next_value": max(existing_serials) + 1}}
+        )
+
+
 async def distinct_owners(db: AsyncIOMotorDatabase) -> list[str]:
     """Owner values already in use across the collection — feeds the
     owner-field combobox (FEATURES.md #58) alongside `movie_repository`'s

@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.42.0 build 0053] — 2026-08-03 — Bibliotek-eksport/-gendannelse (feature #60) + fuld system-backup/restore (feature #61)
+
+**Feature #60**: Ny "Bibliotek-eksport / -gendannelse"-sektion på Indstillinger (admin-only). "Eksportér bibliotek" henter en JSON-fil med alle film + TV-serier, ubegrænset (nye `movie_repository.find_all_raw`/`tv_show_repository.find_all_raw`, uden `find_many`s 500-dokument-cap). "Gendan" erstatter `movies`+`tv_shows`-collections wholesale med filens indhold — gated bag en bekræftelsesfrase i UI'et ("GENDAN") før knappen aktiveres. Ny `GET/POST /api/library/export`/`/import`.
+
+**Feature #61**: Ny "Fuld system-backup"-sektion (admin-only). Dumper *alle* collections (film, TV-serier, slettede film/TV-serier, tags, brugere, tællere) som JSON. **Udelader bevidst `system_settings`** (Jans eksplicitte valg 2026-08-03) — et ægte fuldt backup ville kræve at sende de faktiske TMDb/UPC/Discogs/OMDb/Plex-nøgler til frontend, hvilket er i direkte konflikt med CLAUDE.md regel 6; en gendannelse er derfor ikke 100% komplet og kræver manuel genindtastning af nøglerne bagefter. Restore er ligeledes gated bag en bekræftelsesfrase ("GENDAN SYSTEM"). Ny `GET/POST /api/system/backup`/`/restore`.
+
+Begge features deler en ny `app/core/mongo_json.py` — round-trippable JSON-kodning af rå MongoDB-dokumenter via en let udgave af MongoDB's egen Extended JSON-konvention (`{"$oid": ...}`/`{"$date": ...}`) i stedet for en heuristisk gætning af hvilke strenge der "ligner" datoer/ObjectIds.
+
+Live-verificeret (Playwright) mod en isoleret throwaway-database (ikke produktions-/dev-data) — eksport, import, bekræftelsesfrase-gating, og at `system_settings` aldrig optræder i backup-responsen selv når en rigtig API-nøgle er sat. 15 nye backend-tests. Fuld suite (248 tests) + frontend-build grønt.
+
 ## [0.41.1 build 0052] — 2026-08-03 — Fix: sæson-badge sad fast forkert ved skift af kortstørrelse
 
 - `.movie-seasons-badge` (`TvShows.css`) ændret fra centreret+fast-px-nudge (`left: 50%; transform: translateX(calc(-50% + 16px))`) til right-anchoret (`right: 8px`, samme mønster som `.movie-format-badge`/`.movie-watched-badge`) — den faste 16px-nudge var en konstant brøkdel af en *varierende* poster-bredde, så positionen så fin ud ved én kortstørrelse (feature #59) men skæv ved de andre. Stablet 26px over `.movie-watched-badge` (`bottom: 34px`) for at undgå overlap når begge badges vises samtidig. Live-verificeret (Playwright) ved alle tre kortstørrelser — ingen overlap, konsistent placering.

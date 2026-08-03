@@ -50,7 +50,7 @@ async def test_filter_by_director(client, monkeypatch):
     await client.post("/api/movies", json={"title": "Unrelated"})
 
     response = await client.get("/api/movies", params={"director": "Christopher Nolan"})
-    titles = [m["title"] for m in response.json()]
+    titles = [m["title"] for m in response.json()["items"]]
     assert titles == ["Movie 1"]
 
 
@@ -63,7 +63,7 @@ async def test_filter_by_cast_member(client, monkeypatch):
     await client.post("/api/movies", json={"title": "No Tom Here"})
 
     response = await client.get("/api/movies", params={"cast": "Tom Hanks"})
-    titles = [m["title"] for m in response.json()]
+    titles = [m["title"] for m in response.json()["items"]]
     assert titles == ["Movie 1"]
 
 
@@ -71,4 +71,6 @@ async def test_no_person_filter_returns_everything(client):
     await client.post("/api/movies", json={"title": "A"})
     await client.post("/api/movies", json={"title": "B"})
     response = await client.get("/api/movies")
-    assert len(response.json()) == 2
+    data = response.json()
+    assert len(data["items"]) == 2
+    assert data["total"] == 2

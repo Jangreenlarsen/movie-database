@@ -23,6 +23,7 @@ from app.models.movie import (
     DuplicateMatch,
     Movie,
     MovieCreate,
+    MoviePage,
     MovieUpdate,
     NamedCount,
     TmdbSyncResult,
@@ -178,9 +179,19 @@ async def list_movies(
     watched: bool | None = None,
     cast: str | None = None,
     director: str | None = None,
-) -> list[Movie]:
+    page: int | None = None,
+    page_size: int | None = None,
+) -> MoviePage:
+    """`page`/`page_size` omitted (the default) fetches every match, no cap
+    — used by callers that need the whole filtered set (Print-siden, Voldby
+    BIO's søgning), not just the biblioteks-visningens aktuelle side
+    (feature #15)."""
     normalized_tags = [tag_service.normalize(tag) for tag in (tags or []) if tag.strip()]
     sort_spec = parse_sort_param(sort)
+    paginating = page is not None and page_size is not None
+    skip = (page - 1) * page_size if paginating else 0
+    limit = page_size if paginating else None
+
     documents = await movie_repository.find_many(
         db,
         q,
@@ -193,8 +204,20 @@ async def list_movies(
         watched,
         cast,
         director,
+        skip,
+        limit,
     )
-    return [_to_model(doc) for doc in documents]
+    items = [_to_model(doc) for doc in documents]
+
+    if paginating:
+        total = await movie_repository.count_many(
+            db, q, normalized_tags or None, formats or None, audio_types or None,
+            media_types or None, is_wishlist, watched, cast, director,
+        )
+    else:
+        total = len(items)
+
+    return MoviePage(items=items, total=total)
 
 
 async def get_collection_info(db: AsyncIOMotorDatabase, collection_id: int) -> CollectionInfo:

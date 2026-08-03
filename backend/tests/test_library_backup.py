@@ -35,13 +35,13 @@ async def test_import_replaces_movies_and_tv_shows(client):
 
     # A second, unrelated movie is created after the export was taken.
     await client.post("/api/movies", json={"title": "Created After Export"})
-    assert len((await client.get("/api/movies")).json()) == 2
+    assert len((await client.get("/api/movies")).json()["items"]) == 2
 
     response = await client.post("/api/library/import", json=original_export)
     assert response.status_code == 200
     assert response.json() == {"movies_imported": 1, "tv_shows_imported": 0}
 
-    movies = (await client.get("/api/movies")).json()
+    movies = (await client.get("/api/movies")).json()["items"]
     assert len(movies) == 1
     assert movies[0]["title"] == "Original Movie"
 
@@ -53,7 +53,7 @@ async def test_import_preserves_serial_numbers_and_bumps_counter(client):
 
     await client.post("/api/library/import", json=export_data)
 
-    movies = (await client.get("/api/movies")).json()
+    movies = (await client.get("/api/movies")).json()["items"]
     assert movies[0]["serial_number"] == original_serial
 
     # The next movie created after a restore must not collide with the

@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.50.0 build 0061] — 2026-08-03 — Paginering af biblioteksvisning (feature #15)
+
+`/api/movies` og `/api/tv-shows` GET returnerede tidligere en rå liste, stille begrænset til 500 dokumenter uden nogen måde at se eller nå noget derudover — samlinger med mere end 500 film/serier ville simpelthen miste resten af visningen. Begge repositories har nu rigtig `skip`/`limit` + en delt `count_many` (samme filter-opbygning som `find_many`, kan aldrig gå ud af trit), og response-formen er ændret til `{items: [...], total: N}`.
+
+`?page=`+`?page_size=` (begge skal angives sammen) giver en rigtig, afgrænset side; udelades de (Print-siden, Voldby BIO's søgning), hentes alt uden loft — det tidligere 500-loft er dermed fjernet permanent for alle forbrugere af endpointet, ikke kun de nye paginerede.
+
+Nyt delt `Pagination`-komponent (Forrige/Næste + sideindikator + "pr. side"-vælger) i både Film- og TV-serie-fanen. Antal pr. side er en ny persisteret bruger-indstilling (`page_size`, delt mellem faner, samme mønster som `card_size`, feature #59) — huskes på tværs af sessioner. Skift af filter/søgning/sortering springer automatisk tilbage til side 1.
+
+13 nye backend-tests. 26 eksisterende tests opdateret til det nye `{items, total}`-svar (inkl. et par steder der brugte `len(response.json())` — ville have talt ordbogens 2 nøgler i stedet for det faktiske antal film, uden at fejle synligt). Live-verificeret med Playwright: 30 film, sideskift, og at valgt sidestørrelse overlever en genindlæsning.
+
 ## [0.49.0 build 0060] — 2026-08-03 — "Nulstil database"-knap på Indstillinger (feature #67)
 
 Ny admin-only "Nulstil database"-sektion på Indstillinger: tømmer film-/TV-biblioteket tilbage til tom tilstand — `movies`, `tv_shows`, `deleted_movies`, `deleted_tv_shows`, `tags`, `counters` (serienumre starter forfra ved næste oprettelse) samt Voldby BIO's `screenings`/`screening_requests` (ellers ville de pege på film/serier der ikke længere findes, Jans bekræftede valg 2026-08-03). Rører **ikke** brugerkonti eller system-indstillinger.

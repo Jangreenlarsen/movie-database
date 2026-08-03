@@ -28,8 +28,8 @@ export default function PrintList() {
       api.listTvShows({ q: query || undefined, sort: "serial_number:asc" }),
     ])
       .then(([movieData, showData]) => {
-        setMovies(movieData);
-        setShows(showData);
+        setMovies(movieData.items);
+        setShows(showData.items);
         setStatus("ready");
       })
       .catch(() => setStatus("error"));

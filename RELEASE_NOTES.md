@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.50.0 (build 0061) — 2026-08-03
+
+- Film- og TV-serie-biblioteket er nu pagineret — vælg hvor mange der vises pr. side, og bladr med Forrige/Næste. Fjerner samtidig et skjult loft på 500 film/serier.
+
 ## v0.49.0 (build 0060) — 2026-08-03
 
 - Ny "Nulstil database"-knap under Indstillinger (kun admin) — tømmer film-/TV-biblioteket helt. Bekræftes med din adgangskode. Brugerkonti og system-indstillinger rører den ikke.

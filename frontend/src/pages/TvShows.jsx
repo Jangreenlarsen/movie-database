@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import Chip from "../components/Chip";
 import Combobox from "../components/Combobox";
 import MovieLookupForm from "../components/MovieLookupForm";
+import Pagination from "../components/Pagination";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import "../pages/Library.css";
 import "./TvShows.css";
@@ -69,6 +70,9 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
   const [presets, setPresets] = useState(user.settings.tv_sort_presets ?? []);
   const [presetNameInput, setPresetNameInput] = useState("");
   const [shows, setShows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(user.settings.page_size ?? 50);
   const [status, setStatus] = useState("loading");
   const [allTags, setAllTags] = useState([]);
   const [allOwners, setAllOwners] = useState([]);
@@ -131,14 +135,33 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
       sort: sortLevels,
       wishlist,
       watched: watchedFilter,
+      page,
+      pageSize,
     });
   }
+
+  // See Library.jsx's identical pattern — separate effect so page resets to
+  // 1 before the fetch effect below reads it (feature #15).
+  useEffect(() => {
+    setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    query,
+    selectedTags,
+    selectedFormats,
+    selectedAudioTypes,
+    selectedMediaTypes,
+    sortLevels,
+    watchedFilter,
+    pageSize,
+  ]);
 
   useEffect(() => {
     setStatus("loading");
     fetchShows()
       .then((data) => {
-        setShows(data);
+        setShows(data.items);
+        setTotal(data.total);
         setStatus("ready");
       })
       .catch(() => setStatus("error"));
@@ -151,10 +174,21 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
     selectedMediaTypes,
     sortLevels,
     watchedFilter,
+    page,
+    pageSize,
   ]);
 
+  function persistPageSize(nextPageSize) {
+    api.updateMySettings({ page_size: nextPageSize }).then(onSettingsChanged).catch(() => {});
+  }
+
   function refresh() {
-    fetchShows().then(setShows).catch(() => {});
+    fetchShows()
+      .then((data) => {
+        setShows(data.items);
+        setTotal(data.total);
+      })
+      .catch(() => {});
   }
 
   function updateVisibleField(key, value) {
@@ -587,6 +621,19 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {status === "ready" && total > 0 && (
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={setPage}
+          onPageSizeChange={(nextPageSize) => {
+            setPageSize(nextPageSize);
+            persistPageSize(nextPageSize);
+          }}
+        />
       )}
 
       {activeShow && (

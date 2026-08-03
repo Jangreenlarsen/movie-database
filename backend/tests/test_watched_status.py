@@ -36,8 +36,8 @@ async def test_filter_by_watched_status(client):
     watched_only = await client.get("/api/movies", params={"watched": "true"})
     unwatched_only = await client.get("/api/movies", params={"watched": "false"})
 
-    watched_titles = [m["title"] for m in watched_only.json()]
-    unwatched_titles = [m["title"] for m in unwatched_only.json()]
+    watched_titles = [m["title"] for m in watched_only.json()["items"]]
+    unwatched_titles = [m["title"] for m in unwatched_only.json()["items"]]
     assert watched_titles == ["Watched One"]
     assert unwatched_titles == ["Unwatched One"]
 
@@ -47,7 +47,7 @@ async def test_no_watched_filter_returns_everything(client):
     await client.post("/api/movies", json={"title": "B"})
 
     response = await client.get("/api/movies")
-    assert len(response.json()) == 2
+    assert len(response.json()["items"]) == 2
 
 
 async def test_sort_by_watched_at(client):
@@ -57,5 +57,5 @@ async def test_sort_by_watched_at(client):
     await client.patch(f"/api/movies/{b.json()['id']}", json={"watched": True, "watched_at": "2026-06-01"})
 
     response = await client.get("/api/movies", params={"sort": "watched_at:desc"})
-    titles = [m["title"] for m in response.json()]
+    titles = [m["title"] for m in response.json()["items"]]
     assert titles.index("Later") < titles.index("Earlier")

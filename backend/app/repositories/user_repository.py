@@ -29,6 +29,7 @@ DEFAULT_SETTINGS = {
     "tv_sort_levels": [],
     "tv_sort_presets": [],
     "card_size": "medium",
+    "page_size": 50,
 }
 
 

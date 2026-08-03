@@ -46,7 +46,20 @@ export const api = {
   updateUserStatus: (userId, status) =>
     request(`/users/${userId}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
   listMovies: (
-    { q, tags, format, audioTypes, mediaTypes, sort, wishlist, watched, cast, director } = {}
+    {
+      q,
+      tags,
+      format,
+      audioTypes,
+      mediaTypes,
+      sort,
+      wishlist,
+      watched,
+      cast,
+      director,
+      page,
+      pageSize,
+    } = {}
   ) => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
@@ -64,6 +77,10 @@ export const api = {
     if (watched != null) params.set("watched", String(watched));
     if (cast) params.set("cast", cast);
     if (director) params.set("director", director);
+    // Omitting page/pageSize (feature #15) fetches every match, unpaginated
+    // — used by Print/Voldby BIO, which need the whole filtered set.
+    if (page != null) params.set("page", String(page));
+    if (pageSize != null) params.set("page_size", String(pageSize));
     const query = params.toString();
     return request(`/movies${query ? `?${query}` : ""}`);
   },
@@ -132,7 +149,9 @@ export const api = {
   deleteScreening: (id) => request(`/screenings/${id}`, { method: "DELETE" }),
 
   // TV-serier (feature #47) — egen ressource, samme kontrakt-form som film.
-  listTvShows: ({ q, tags, format, audioTypes, mediaTypes, sort, wishlist, watched } = {}) => {
+  listTvShows: (
+    { q, tags, format, audioTypes, mediaTypes, sort, wishlist, watched, page, pageSize } = {}
+  ) => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (tags?.length) params.set("tags", tags.join(","));
@@ -145,6 +164,8 @@ export const api = {
     if (sortParam) params.set("sort", sortParam);
     if (wishlist) params.set("wishlist", "true");
     if (watched != null) params.set("watched", String(watched));
+    if (page != null) params.set("page", String(page));
+    if (pageSize != null) params.set("page_size", String(pageSize));
     const query = params.toString();
     return request(`/tv-shows${query ? `?${query}` : ""}`);
   },

@@ -116,6 +116,13 @@ class TvShow(BaseModel):
     updated_at: datetime
 
 
+class TvShowPage(BaseModel):
+    """Feature #15 — see `MoviePage`'s docstring."""
+
+    items: list[TvShow]
+    total: int
+
+
 class SeasonOwnedUpdate(BaseModel):
     owned: bool
 

@@ -14,6 +14,7 @@ from app.models.tv_show import (
     SeasonOwnedUpdate,
     TvShow,
     TvShowCreate,
+    TvShowPage,
     TvShowUpdate,
 )
 from app.services import tv_show_service
@@ -23,7 +24,7 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=list[TvShow])
+@router.get("", response_model=TvShowPage)
 async def list_tv_shows(
     q: str | None = Query(default=None),
     tags: str | None = Query(default=None),
@@ -33,6 +34,8 @@ async def list_tv_shows(
     sort: str | None = Query(default=None),
     wishlist: bool = Query(default=False),
     watched: bool | None = Query(default=None),
+    page: int | None = Query(default=None, ge=1),
+    page_size: int | None = Query(default=None, ge=1, le=500),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     tag_list = tags.split(",") if tags else None
@@ -40,7 +43,8 @@ async def list_tv_shows(
     audio_type_list = audio_types.split(",") if audio_types else None
     media_type_list = media_types.split(",") if media_types else None
     return await tv_show_service.list_tv_shows(
-        db, q, tag_list, format_list, audio_type_list, media_type_list, sort, wishlist, watched
+        db, q, tag_list, format_list, audio_type_list, media_type_list, sort, wishlist, watched,
+        page, page_size,
     )
 
 

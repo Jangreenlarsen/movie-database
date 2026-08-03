@@ -227,10 +227,10 @@ async def test_search_filter_and_sort(client):
     await client.post("/api/tv-shows", json={"name": "Beta Show", "format": "DVD"})
 
     filtered = await client.get("/api/tv-shows", params={"format": "BD"})
-    assert [s["name"] for s in filtered.json()] == ["Alpha Show"]
+    assert [s["name"] for s in filtered.json()["items"]] == ["Alpha Show"]
 
     sorted_asc = await client.get("/api/tv-shows", params={"sort": "name:asc"})
-    assert [s["name"] for s in sorted_asc.json()] == ["Alpha Show", "Beta Show"]
+    assert [s["name"] for s in sorted_asc.json()["items"]] == ["Alpha Show", "Beta Show"]
 
 
 async def test_personal_rating_and_note(client):
@@ -254,7 +254,7 @@ async def test_top_level_watched_toggle(client):
     assert response.json()["watched"] is True
 
     filtered = await client.get("/api/tv-shows", params={"watched": "true"})
-    assert len(filtered.json()) == 1
+    assert len(filtered.json()["items"]) == 1
 
 
 async def test_marking_season_owned_lazily_fetches_episodes(client, monkeypatch):
@@ -443,7 +443,7 @@ async def test_tmdb_preview_endpoint_returns_seasons_without_saving(client, monk
 
     # Nothing was persisted — the show list is still empty.
     list_response = await client.get("/api/tv-shows")
-    assert list_response.json() == []
+    assert list_response.json()["items"] == []
 
 
 async def test_tmdb_preview_returns_429_on_tmdb_rate_limit(client, monkeypatch):

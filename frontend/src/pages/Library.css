@@ -144,6 +144,42 @@
   gap: 24px;
 }
 
+/* Paginering (feature #15) */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.pagination-size {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.pagination-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .pagination {
+    justify-content: center;
+  }
+
+  .pagination-nav {
+    gap: 8px;
+  }
+}
+
 .movie-card {
   position: relative;
   border-radius: var(--radius-md);

@@ -84,6 +84,9 @@ class UserSettings(BaseModel):
     # bevidst adskilt pr. fane — kortstørrelse er en ren visuel præference,
     # ikke indholds-specifik.
     card_size: CardSize = "medium"
+    # Antal film/serier pr. side i biblioteksvisningen (feature #15) — én
+    # fælles indstilling for begge faner, samme begrundelse som card_size.
+    page_size: int = 50
 
 
 class UserSettingsUpdate(BaseModel):
@@ -96,6 +99,7 @@ class UserSettingsUpdate(BaseModel):
     tv_sort_levels: list[SortLevel] | None = None
     tv_sort_presets: list[SortPreset] | None = None
     card_size: CardSize | None = None
+    page_size: int | None = Field(default=None, ge=1, le=500)
 
 
 class UserRegister(BaseModel):

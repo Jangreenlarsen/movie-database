@@ -47,5 +47,5 @@ async def test_sorting_by_personal_rating(client):
     await client.patch(f"/api/movies/{b.json()['id']}", json={"personal_rating": 9})
 
     response = await client.get("/api/movies", params={"sort": "personal_rating:desc"})
-    titles = [m["title"] for m in response.json()]
+    titles = [m["title"] for m in response.json()["items"]]
     assert titles.index("B") < titles.index("A")

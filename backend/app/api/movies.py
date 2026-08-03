@@ -14,6 +14,7 @@ from app.models.movie import (
     Movie,
     MovieCreate,
     MovieFormat,
+    MoviePage,
     MovieUpdate,
     TmdbSyncResult,
 )
@@ -24,7 +25,7 @@ from app.services import movie_service, plex_service
 router = APIRouter(prefix="/api/movies", tags=["movies"], dependencies=[Depends(get_current_user)])
 
 
-@router.get("", response_model=list[Movie])
+@router.get("", response_model=MoviePage)
 async def list_movies(
     q: str | None = Query(default=None),
     tags: str | None = Query(default=None),
@@ -43,6 +44,8 @@ async def list_movies(
     watched: bool | None = Query(default=None),
     cast: str | None = Query(default=None, description="Exact cast-member name match."),
     director: str | None = Query(default=None, description="Exact director name match."),
+    page: int | None = Query(default=None, ge=1),
+    page_size: int | None = Query(default=None, ge=1, le=500),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     tag_list = tags.split(",") if tags else None
@@ -61,6 +64,8 @@ async def list_movies(
         watched,
         cast,
         director,
+        page,
+        page_size,
     )
 
 

@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import Chip from "../components/Chip";
 import Combobox from "../components/Combobox";
 import MovieLookupForm from "../components/MovieLookupForm";
+import Pagination from "../components/Pagination";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import "./Library.css";
 
@@ -81,6 +82,9 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
   const [presets, setPresets] = useState(user.settings.sort_presets ?? []);
   const [presetNameInput, setPresetNameInput] = useState("");
   const [movies, setMovies] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(user.settings.page_size ?? 50);
   const [status, setStatus] = useState("loading");
   const [allTags, setAllTags] = useState([]);
   const [allOwners, setAllOwners] = useState([]);
@@ -146,14 +150,36 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
       watched: watchedFilter,
       cast: personFilter?.type === "cast" ? personFilter.name : undefined,
       director: personFilter?.type === "director" ? personFilter.name : undefined,
+      page,
+      pageSize,
     });
   }
+
+  // Changing a filter/sort/search must jump back to page 1 — the current
+  // page number may no longer exist in the new, smaller/reordered result
+  // set (feature #15). Kept as its own effect (separate from the fetch
+  // effect below) so it fires before the fetch reads `page`.
+  useEffect(() => {
+    setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    query,
+    selectedTags,
+    selectedFormats,
+    selectedAudioTypes,
+    selectedMediaTypes,
+    sortLevels,
+    watchedFilter,
+    personFilter,
+    pageSize,
+  ]);
 
   useEffect(() => {
     setStatus("loading");
     fetchMovies()
       .then((data) => {
-        setMovies(data);
+        setMovies(data.items);
+        setTotal(data.total);
         setStatus("ready");
       })
       .catch(() => setStatus("error"));
@@ -167,10 +193,21 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
     sortLevels,
     watchedFilter,
     personFilter,
+    page,
+    pageSize,
   ]);
 
+  function persistPageSize(nextPageSize) {
+    api.updateMySettings({ page_size: nextPageSize }).then(onSettingsChanged).catch(() => {});
+  }
+
   function refresh() {
-    fetchMovies().then(setMovies).catch(() => {});
+    fetchMovies()
+      .then((data) => {
+        setMovies(data.items);
+        setTotal(data.total);
+      })
+      .catch(() => {});
   }
 
   function updateVisibleField(key, value) {
@@ -630,6 +667,19 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {status === "ready" && total > 0 && (
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={setPage}
+          onPageSizeChange={(nextPageSize) => {
+            setPageSize(nextPageSize);
+            persistPageSize(nextPageSize);
+          }}
+        />
       )}
 
       {activeMovie && (

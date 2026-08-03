@@ -22,6 +22,7 @@ from app.models.tv_show import (
     Season,
     TvShow,
     TvShowCreate,
+    TvShowPage,
     TvShowUpdate,
 )
 from app.repositories import tv_show_repository
@@ -207,9 +208,19 @@ async def list_tv_shows(
     sort: str | None = None,
     is_wishlist: bool = False,
     watched: bool | None = None,
-) -> list[TvShow]:
+    page: int | None = None,
+    page_size: int | None = None,
+) -> TvShowPage:
+    """`page`/`page_size` omitted (the default) fetches every match, no cap
+    — used by callers that need the whole filtered set (Print-siden, Voldby
+    BIO's søgning), not just the biblioteks-visningens aktuelle side
+    (feature #15)."""
     normalized_tags = [tag_service.normalize(tag) for tag in (tags or []) if tag.strip()]
     sort_spec = parse_sort_param(sort)
+    paginating = page is not None and page_size is not None
+    skip = (page - 1) * page_size if paginating else 0
+    limit = page_size if paginating else None
+
     documents = await tv_show_repository.find_many(
         db,
         q,
@@ -220,8 +231,20 @@ async def list_tv_shows(
         sort_spec or None,
         is_wishlist,
         watched,
+        skip,
+        limit,
     )
-    return [_to_model(doc) for doc in documents]
+    items = [_to_model(doc) for doc in documents]
+
+    if paginating:
+        total = await tv_show_repository.count_many(
+            db, q, normalized_tags or None, formats or None, audio_types or None,
+            media_types or None, is_wishlist, watched,
+        )
+    else:
+        total = len(items)
+
+    return TvShowPage(items=items, total=total)
 
 
 async def check_tmdb_duplicates(db: AsyncIOMotorDatabase, tmdb_id: int) -> list[DuplicateTvShowMatch]:

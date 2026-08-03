@@ -1206,6 +1206,7 @@ function DeploySection() {
     setStatus("deploying");
     setError(null);
     const startedFromBuild = currentBuild;
+    const triggeredAt = Date.now();
 
     try {
       await api.triggerDeploy();
@@ -1221,6 +1222,23 @@ function DeploySection() {
         clearInterval(poll);
         setStatus("timeout");
         return;
+      }
+      // BUGS.md #36 — hvis der intet nyt var at hente, ændrer build-nummeret
+      // sig aldrig, så det alene kan ikke afgøre succes. Tjek også det
+      // eksplicitte deploy-udfald, og kun betragt det som friskt (fra
+      // *dette* klik, ikke et efterladt udfald fra sidste gang) hvis det
+      // blev skrevet efter vi klikkede.
+      try {
+        const deployStatus = await api.getDeployStatus();
+        const writtenAt = deployStatus.at ? new Date(deployStatus.at).getTime() : 0;
+        if (deployStatus.outcome === "up-to-date" && writtenAt >= triggeredAt) {
+          clearInterval(poll);
+          setStatus("up-to-date");
+          return;
+        }
+      } catch {
+        // Statusfil findes muligvis ikke endnu (fx før scripts/deploy.sh er
+        // opdateret i produktion) — falder tilbage til build-polling nedenfor.
       }
       try {
         const data = await api.health();
@@ -1263,6 +1281,11 @@ function DeploySection() {
         <div className="banner banner-error" style={{ marginTop: 12 }}>
           Kunne ikke bekræfte at opdateringen er fuldført endnu — tjek serveren manuelt (se
           DEPLOYMENT.md's fejlsøgnings-afsnit) eller genindlæs siden om lidt.
+        </div>
+      )}
+      {status === "up-to-date" && (
+        <div className="banner banner-info" style={{ marginTop: 12 }}>
+          Allerede opdateret — der var ingen ny version at hente. Kører stadig build {currentBuild}.
         </div>
       )}
       {status === "done" && (

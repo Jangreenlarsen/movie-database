@@ -1,8 +1,22 @@
+import json
 import subprocess
 from pathlib import Path
 
 from app.core.config import settings
 from app.core.errors import DeployScriptNotFoundError
+
+
+def get_deploy_status() -> dict:
+    """Reads the outcome deploy.sh wrote from its last run (BUGS.md #36) —
+    `{"outcome": "up-to-date"|"updated", "commit": ..., "at": ...}`. Returns
+    `{"outcome": "unknown"}` if the file is missing (fresh install, or the
+    production copy of deploy.sh hasn't been updated to write it yet) or
+    unparsable — never raises, this is a best-effort status read."""
+    status_path = Path(settings.deploy_status_path)
+    try:
+        return json.loads(status_path.read_text())
+    except (OSError, ValueError):
+        return {"outcome": "unknown"}
 
 
 def trigger_deploy() -> None:

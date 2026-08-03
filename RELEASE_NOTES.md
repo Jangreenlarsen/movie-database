@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.54.2 (build 0072) — 2026-08-03
+
+- "Opdatér fra GitHub" viser nu en rolig "Allerede opdateret"-besked med det samme, hvis der intet nyt er at hente, i stedet for en alarmerende fejl efter to minutters ventetid. Kræver et lille manuelt trin på serveren, før den nye besked virker — spørg Claude når du er klar.
+
 ## v0.54.1 (build 0071) — 2026-08-03
 
 - Fundet og rettet den rigtige årsag til sort skærm på iOS ved gem — den forrige rettelse ramte forbi. Test det gerne igen på din iPhone, men denne gang er fejlen faktisk genskabt og bekræftet rettet i test, ikke bare en teori.

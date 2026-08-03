@@ -37,6 +37,14 @@ async def deploy(
     return {"status": "started"}
 
 
+@router.get("/deploy/status", dependencies=[Depends(require_admin)])
+async def deploy_status() -> dict:
+    """BUGS.md #36 — lader frontend skelne "intet nyt at hente" fra en reel
+    deploy-fejl, i stedet for udelukkende at polle /api/health for et
+    ændret build-nummer (som aldrig ændrer sig når der ikke var noget nyt)."""
+    return deploy_service.get_deploy_status()
+
+
 @router.get(
     "/backup", response_model=SystemBackup, dependencies=[Depends(require_admin)]
 )

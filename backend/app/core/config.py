@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     # `git pull` aldrig overskriver den fil der er ved at blive eksekveret.
     deploy_script_path: str = "/opt/moviedb-deploy.sh"
     deploy_log_path: str = "/opt/moviedb-deploy.log"
+    # BUGS.md #36 — deploy.sh skriver sit udfald hertil (up-to-date/updated),
+    # så frontend kan skelne "intet nyt at hente" fra en reel fejl i stedet
+    # for udelukkende at gætte ud fra om build-nummeret ændrede sig.
+    deploy_status_path: str = "/opt/moviedb/.deploy-status"
 
     # TLS-certifikat-styring (feature #73) — kun meningsfuldt i produktion,
     # se DEPLOYMENT.md/BUGS.md #23. `cert_live_path` er den faktisk

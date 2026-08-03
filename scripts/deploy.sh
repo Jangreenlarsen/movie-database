@@ -16,11 +16,23 @@ set -e
 
 REPO_DIR="/opt/moviedb"
 RESTART_TRIGGER="$REPO_DIR/.deploy-restart-trigger"
+STATUS_FILE="$REPO_DIR/.deploy-status"
 
 echo "[$(date -u +%FT%TZ)] Deploy startet"
 
 cd "$REPO_DIR"
+BEFORE_COMMIT=$(git rev-parse HEAD)
 git pull origin main
+AFTER_COMMIT=$(git rev-parse HEAD)
+
+# BUGS.md #36 — intet nyt at hente er ikke en fejl: spring den fulde
+# pipeline (pip/npm/restart) helt over i stedet for at genstarte unødigt,
+# og skriv et tydeligt udfald frontend kan skelne fra en reel fejl.
+if [ "$BEFORE_COMMIT" = "$AFTER_COMMIT" ]; then
+  printf '{"outcome":"up-to-date","commit":"%s","at":"%s"}\n' "$AFTER_COMMIT" "$(date -u +%FT%TZ)" > "$STATUS_FILE"
+  echo "[$(date -u +%FT%TZ)] Allerede opdateret — intet nyt at hente (commit $AFTER_COMMIT)"
+  exit 0
+fi
 
 cd "$REPO_DIR/backend"
 .venv/bin/pip install --quiet -r requirements.txt
@@ -35,4 +47,5 @@ npm run build
 rm -f "$RESTART_TRIGGER"
 touch "$RESTART_TRIGGER"
 
+printf '{"outcome":"updated","commit":"%s","at":"%s"}\n' "$AFTER_COMMIT" "$(date -u +%FT%TZ)" > "$STATUS_FILE"
 echo "[$(date -u +%FT%TZ)] Deploy fuldført (genstart udløst)"

@@ -1,9 +1,13 @@
 .movie-seasons-badge {
+  /* Right-anchored with a fixed edge offset, like the other corner badges
+     (.movie-format-badge/.movie-watched-badge) — scales correctly across
+     all card sizes (feature #59). The previous centered-plus-fixed-px-nudge
+     approach looked fine at one card size but drifted badly at the others,
+     since the nudge was a constant fraction of a *varying* poster width. */
   position: absolute;
   z-index: 2;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(calc(-50% + 16px));
+  bottom: 34px;
+  right: 8px;
   background: rgba(0, 0, 0, 0.55);
   color: #fff;
   font-size: 0.68rem;

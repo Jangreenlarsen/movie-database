@@ -9,8 +9,11 @@ from app.api import (
     attributes,
     auth,
     health,
+    library_backup,
     movies,
     scan,
+    screening_requests,
+    screenings,
     settings as settings_api,
     system,
     tags,
@@ -26,6 +29,8 @@ from app.core.errors import (
     MovieNotFoundError,
     NotAuthenticatedError,
     NotAuthorizedError,
+    ScreeningNotFoundError,
+    ScreeningRequestNotFoundError,
     TmdbNotFoundError,
     TmdbRateLimitedError,
     TmdbUnavailableError,
@@ -34,7 +39,14 @@ from app.core.errors import (
     UsernameTakenError,
 )
 from app.db import close_client, get_client, get_database
-from app.repositories import movie_repository, tag_repository, tv_show_repository, user_repository
+from app.repositories import (
+    movie_repository,
+    screening_repository,
+    screening_request_repository,
+    tag_repository,
+    tv_show_repository,
+    user_repository,
+)
 from app.services import system_settings_service
 
 logging.basicConfig(level=settings.log_level)
@@ -57,6 +69,8 @@ async def lifespan(app: FastAPI):
     await tv_show_repository.ensure_indexes(db)
     await tag_repository.ensure_indexes(db)
     await user_repository.ensure_indexes(db)
+    await screening_request_repository.ensure_indexes(db)
+    await screening_repository.ensure_indexes(db)
     logger.info("MongoDB client initialized (%s)", settings.mongo_db_name)
     yield
     await close_client()
@@ -80,6 +94,18 @@ async def movie_not_found_handler(request: Request, exc: MovieNotFoundError) -> 
 
 @app.exception_handler(TvShowNotFoundError)
 async def tv_show_not_found_handler(request: Request, exc: TvShowNotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(ScreeningRequestNotFoundError)
+async def screening_request_not_found_handler(
+    request: Request, exc: ScreeningRequestNotFoundError
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(ScreeningNotFoundError)
+async def screening_not_found_handler(request: Request, exc: ScreeningNotFoundError) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
@@ -156,3 +182,6 @@ app.include_router(attributes.router)
 app.include_router(scan.router)
 app.include_router(settings_api.router)
 app.include_router(system.router)
+app.include_router(library_backup.router)
+app.include_router(screening_requests.router)
+app.include_router(screenings.router)

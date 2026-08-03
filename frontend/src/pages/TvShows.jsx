@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import Chip from "../components/Chip";
 import Combobox from "../components/Combobox";
 import MovieLookupForm from "../components/MovieLookupForm";
+import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import "../pages/Library.css";
 import "./TvShows.css";
 
@@ -942,6 +943,7 @@ function TvShowDetailModal({
               {moving ? "Flytter..." : "Flyt til bibliotek"}
             </button>
           )}
+          <ScreeningRequestButton mediaKind="tv" id={show.id} />
           <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
             {saving ? "Gemmer..." : "Gem ændringer"}
           </button>

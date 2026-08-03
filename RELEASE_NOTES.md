@@ -1,5 +1,17 @@
 # Release Notes
 
+## v0.43.0 (build 0054) — 2026-08-03
+
+- Ny fane: **🎬 Voldby BIO**! Ønsk en film eller TV-serie vist ved at trykke "Ønsk visning i Voldby BIO" i dens detaljevindue. Admin kan derefter planlægge dato/tid for de ønskede titler (eller tilføje en visning direkte), hvorefter den dukker op på Voldby BIO-siden for alle — med poster, plot, trailer-link og tidspunkt, ligesom en rigtig biograf-forside.
+
+## v0.42.0 (build 0053) — 2026-08-03
+
+- To nye admin-værktøjer under Indstillinger: "Bibliotek-eksport / -gendannelse" (hent hele film-/TV-biblioteket som en JSON-fil, eller gendan fra en tidligere fil) og "Fuld system-backup" (backup/gendan hele systemet — undtagen dine API-nøgler, som skal genindtastes manuelt bagefter). Begge kræver at du skriver en bekræftelsesfrase for at forhindre uheld.
+
+## v0.41.1 (build 0052) — 2026-08-03
+
+- Fix: sæson-badgen ("1/5 sæsoner") på TV-kortet sad forkert ved siden af skift til lille eller stor kortstørrelse — sidder nu konsekvent i højre hjørne uanset kortstørrelse.
+
 ## v0.41.0 (build 0051) — 2026-08-03
 
 - Tags-, lokations- og ejer-felterne (ved tilføjelse og redigering af film/TV-serier) viser nu forslag ud fra hvad du allerede har brugt — men du kan stadig bare skrive noget nyt. Virker også fra telefonen.

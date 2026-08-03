@@ -39,6 +39,8 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 | GET    | `/api/tags`                    | Liste alle tags (til autocomplete)                            | done |
 | GET    | `/api/owners`                  | Liste ejer-værdier allerede i brug, samlet på tværs af film og TV-serier (til combobox-forslag, feature #58) | done |
 | GET    | `/api/locations`               | Samme som `/api/owners`, for lokations-feltet                 | done |
+| GET    | `/api/library/export`          | Højniveau eksport af hele film-/TV-biblioteket som JSON (feature #60). **Kræver admin.** Ikke en fuld system-backup — se `/api/system/backup` | done |
+| POST   | `/api/library/import`          | Erstatter `movies`+`tv_shows`-collections wholesale med en tidligere `/api/library/export`. **Kræver admin.** Destruktiv — frontend kræver bekræftelsesfrase før kaldet | done |
 | POST   | `/api/scan/lookup`             | Input: scannet UPC/EAN. Output: titel-gæt + TMDb-kandidater. Prøver UPCitemdb først, herefter Discogs som fallback hvis intet match (se MOVIE_API_REFERENCE.md). 502 hvis TMDb er utilgængelig/token mangler. | done |
 | GET    | `/api/movies/tmdb-search`      | Direkte TMDb-titel-søgning (fallback når scan ikke matcher). Registreret før `/{movie_id}`. | done |
 | GET    | `/api/health`                  | Health check (backend + MongoDB-forbindelse), samt `version`/`build` fra `version.json` (se `app/core/version_info.py`) | done |
@@ -53,6 +55,16 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 | GET    | `/api/users`                    | Liste alle brugere (id, username, role, created_at). **Kræver admin.** | done |
 | PATCH  | `/api/users/{id}/role`          | Sæt en brugers rolle (`admin`\|`standard`). **Kræver admin.**    | done |
 | POST   | `/api/system/deploy`            | Udløser en OTA-opdatering (`git pull` + geninstaller afhængigheder + genstart services) — se note nedenfor. **Kræver admin.** Kun meningsfuldt i produktion (se DEPLOYMENT.md); kører ikke lokalt under dev. | done |
+| GET    | `/api/system/backup`            | Fuldt lavniveau system-backup (feature #61): alle collections (film, TV-serier, slettede film/TV-serier, tags, brugere, tællere) undtagen `system_settings` — udelades bevidst da et ægte fuldt backup ville kræve at sende de faktiske eksterne API-nøgler til frontend, hvilket CLAUDE.md regel 6 forbyder. **Kræver admin.** | done |
+| POST   | `/api/system/restore`           | Erstatter alle collections fra `/api/system/backup` wholesale med indholdet af en tidligere backup. **Kræver admin.** Destruktiv — frontend kræver bekræftelsesfrase før kaldet. Ikke transaktionel (standalone MongoDB, ingen replica set) | done |
+| POST   | `/api/screening-requests`       | Feature #62 — nuværende bruger ønsker en titel vist i Voldby BIO. Idempotent: lægger brugeren ind på den delte ventende anmodning for titlen (opretter den hvis den ikke findes), ingen duplikat ved gentaget ønske fra samme bruger | done |
+| GET    | `/api/screening-requests`       | Liste alle anmodninger, valgfrit filtreret på `?status=`. **Kræver admin.** Beriget med titel/år/poster fra det refererede film-/TV-dokument | done |
+| GET    | `/api/screening-requests/mine`  | Nuværende brugers egne ventende anmodninger (til "✓ Ønsket"-tilstand i UI'et). Registreret før `/{request_id}` | done |
+| PATCH  | `/api/screening-requests/{id}`  | Sæt status til `declined`. **Kræver admin.** Status `scheduled` sker aldrig via denne — kun som sideeffekt af `POST /api/screenings` med `request_id` | done |
+| GET    | `/api/screenings`               | Liste planlagte visninger, sorteret efter `scheduled_at`. `?upcoming=true` viser kun fremtidige (bruges af den offentlige Voldby BIO-side, feature #64). Åben for alle logget-ind brugere | done |
+| POST   | `/api/screenings`               | Opret en planlagt visning (feature #63). **Kræver admin.** Valgfrit `request_id` markerer den tilhørende anmodning som `scheduled` i samme handling | done |
+| PATCH  | `/api/screenings/{id}`          | Ret dato/tid eller note. **Kræver admin.** | done |
+| DELETE | `/api/screenings/{id}`          | Fjern en planlagt visning. **Kræver admin.** | done |
 | GET    | `/api/settings/system`          | Status for eksterne API-nøgler/Plex-token (`configured: bool` + `source: "env"\|"custom"\|"unset"` pr. nøgle) — **aldrig** den faktiske værdi. Undtagelsen er `plex_server_url` (ikke en hemmelighed), som returneres med sin faktiske værdi. **Kræver admin.** Se note nedenfor. | done |
 | PATCH  | `/api/settings/system`          | Sæt/ryd TMDb-/UPC-/Discogs-/OMDb-/Plex-nøgle samt Plex-server-URL. Skriv-kun for nøglerne (request-body, aldrig i response). Tomt felt rydder overstyringen (falder tilbage til `.env`). **Kræver admin.** | done |
 | GET    | `/api/tv-shows`                | Liste TV-serier — samme filter-/sorterings-kontrakt som `/api/movies` (`?q=`, `?tags=`, `?format=`, `?audio_types=`, `?media_types=`, `?sort=`, `?wishlist=`, `?watched=` — samme betydning som for film: en manuelt sat helhedsvurdering af serien, se note om sæson/episode-sporing for den mere finkornede variant). Egen `tv_shows`-collection, ikke en visning af `/api/movies` (feature #47). | planned |
@@ -161,5 +173,7 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 | `counters` | `_id` (fast nøgle `"movie_serial"`), `next_value` (hvad næste film får), `increment`, `padding_width` (kun visning) | — (kun ét dokument, atomisk `$inc`)         |
 | `deleted_movies` | `movie_id` (den oprindelige films `_id`), `serial_number`, `title`, `year`, `format`, `deleted_at`, `deleted_by` (brugernavn) — se `movie_repository.archive_deleted` | index på `deleted_at`                       |
 | `users`    | `username` (unik), `password_hash` (bcrypt), `role` (`admin`\|`standard`), `settings` (sort_field, sort_direction, visible_fields — personlige view-/filterindstillinger) | unique index på `username`                  |
+| `screening_requests` | `media_kind` (`movie`\|`tv`), `movie_id`/`tv_show_id` (reference, kun ét sat), `status` (`pending`\|`scheduled`\|`declined`), `requested_by[]` ({username, requested_at} — ét dokument pr. titel, ikke pr. bruger, se feature #62) | index på `(media_kind, movie_id, tv_show_id)`, index på `status` |
+| `screenings` | `media_kind`, `movie_id`/`tv_show_id` (reference), `scheduled_at`, `note`, `created_by` — titel/poster/plot/trailer hentes **ikke** duplikeret ind her, kun via reference (feature #63) | index på `scheduled_at` |
 
 Detaljeret skema og indexes: se [TECH_REFERENCE.md](TECH_REFERENCE.md).

@@ -100,6 +100,23 @@ async def list_all(db: AsyncIOMotorDatabase) -> list[dict]:
     return await cursor.to_list(length=1000)
 
 
+async def find_all_raw(db: AsyncIOMotorDatabase) -> list[dict]:
+    """Unbounded, includes `password_hash` — backs the full system backup
+    (feature #61). A hash isn't the plaintext password (that's the whole
+    point of hashing), so including it is standard practice for a genuine
+    database backup — unlike the external API keys in `system_settings`,
+    it isn't excluded (see FEATURES.md #61 for why those specifically are)."""
+    return await db[COLLECTION].find({}).to_list(length=None)
+
+
+async def replace_all(db: AsyncIOMotorDatabase, documents: list[dict]) -> None:
+    """Wholesale replace — used only by the system restore (feature #61).
+    Not transactional; see movie_repository.replace_all's docstring."""
+    await db[COLLECTION].delete_many({})
+    if documents:
+        await db[COLLECTION].insert_many(documents)
+
+
 async def set_role(db: AsyncIOMotorDatabase, user_id: str, role: str) -> dict | None:
     if not ObjectId.is_valid(user_id):
         return None

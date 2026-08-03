@@ -10,6 +10,18 @@ class TvShowNotFoundError(Exception):
         super().__init__(f"TV show not found: {tv_show_id}")
 
 
+class ScreeningRequestNotFoundError(Exception):
+    def __init__(self, request_id: str):
+        self.request_id = request_id
+        super().__init__(f"Screening request not found: {request_id}")
+
+
+class ScreeningNotFoundError(Exception):
+    def __init__(self, screening_id: str):
+        self.screening_id = screening_id
+        super().__init__(f"Screening not found: {screening_id}")
+
+
 class DuplicateBarcodeError(Exception):
     def __init__(self, barcode: str):
         self.barcode = barcode

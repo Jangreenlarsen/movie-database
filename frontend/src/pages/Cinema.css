@@ -1,0 +1,223 @@
+.cinema-panel {
+  margin-bottom: 24px;
+}
+
+.cinema-program {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.cinema-day-heading {
+  font-size: 1.2rem;
+  margin: 0 0 12px;
+  color: var(--accent-strong);
+}
+
+.cinema-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.cinema-card {
+  display: flex;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 14px;
+}
+
+.cinema-card-poster {
+  flex-shrink: 0;
+  width: 90px;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+}
+
+.cinema-card-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cinema-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.cinema-card-time {
+  display: inline-block;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 2px 9px;
+  border-radius: 999px;
+  margin-bottom: 6px;
+}
+
+.cinema-card-title {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+}
+
+.cinema-card-genres {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.cinema-card-overview {
+  font-size: 0.85rem;
+  color: var(--text);
+  margin: 0 0 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cinema-card-note {
+  font-size: 0.82rem;
+  font-style: italic;
+  margin: 0 0 8px;
+}
+
+.cinema-card-links {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.cinema-card-links a {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.cinema-card-admin-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.cinema-card-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 320px;
+}
+
+.cinema-requests {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 14px 0;
+}
+
+.cinema-request-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  flex-wrap: wrap;
+}
+
+.cinema-request-poster {
+  flex-shrink: 0;
+  width: 48px;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cinema-request-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cinema-request-info {
+  flex: 1;
+  min-width: 160px;
+}
+
+.cinema-request-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cinema-search-form {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.cinema-search-form input {
+  flex: 1;
+}
+
+.cinema-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.cinema-search-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.cinema-search-result img {
+  width: 32px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.cinema-search-result:hover {
+  border-color: var(--accent);
+}
+
+@media (max-width: 640px) {
+  .cinema-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .cinema-card {
+    flex-direction: column;
+  }
+
+  .cinema-card-poster {
+    width: 100%;
+    max-width: 160px;
+  }
+}

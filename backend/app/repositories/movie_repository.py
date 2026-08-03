@@ -246,6 +246,38 @@ async def find_all_with_tmdb_id(db: AsyncIOMotorDatabase) -> list[dict]:
     return await cursor.to_list(length=10_000)
 
 
+async def find_all_raw(db: AsyncIOMotorDatabase) -> list[dict]:
+    """Every movie document, unbounded — unlike `find_many`'s 500-document
+    page cap, this backs the full-library export (feature #60)."""
+    return await db[COLLECTION].find({}).to_list(length=None)
+
+
+async def replace_all(db: AsyncIOMotorDatabase, documents: list[dict]) -> None:
+    """Wholesale replace of the collection — used only by the library
+    import/restore (feature #60). Not wrapped in a transaction (this app
+    runs against a standalone MongoDB, not a replica set) — a failure
+    partway through an `insert_many` can leave the collection with only
+    some of the imported documents; the caller surfaces that as an error
+    rather than silently reporting success."""
+    await db[COLLECTION].delete_many({})
+    if documents:
+        await db[COLLECTION].insert_many(documents)
+
+
+async def bump_serial_counter_past(db: AsyncIOMotorDatabase, documents: list[dict]) -> None:
+    """After a wholesale import, the next auto-assigned serial number must
+    be higher than any serial number the import just brought in — otherwise
+    the very next created movie could collide with an imported one."""
+    existing_serials = [doc["serial_number"] for doc in documents if doc.get("serial_number") is not None]
+    if not existing_serials:
+        return
+    config = await _ensure_serial_config(db)
+    if config.get("next_value", 0) <= max(existing_serials):
+        await db[COUNTERS_COLLECTION].update_one(
+            {"_id": SERIAL_COUNTER_ID}, {"$set": {"next_value": max(existing_serials) + 1}}
+        )
+
+
 async def distinct_owners(db: AsyncIOMotorDatabase) -> list[str]:
     """Owner values already in use across the collection — feeds the
     owner-field combobox (FEATURES.md #58) alongside `tv_show_repository`'s

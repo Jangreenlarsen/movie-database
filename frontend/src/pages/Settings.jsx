@@ -34,6 +34,8 @@ export default function Settings({ user, onSettingsChanged }) {
           syncFn={api.syncTvShowsFromTmdb}
         />
       )}
+      {isAdmin && <LibraryBackupSection />}
+      {isAdmin && <SystemBackupSection />}
       {isAdmin && <SystemSettingsSection />}
       {isAdmin && <DeploySection />}
       {isAdmin && <UsersSection currentUserId={user.id} />}
@@ -151,6 +153,224 @@ function CardSizeSection({ cardSize, onSettingsChanged }) {
       {error && (
         <div className="banner banner-error" style={{ marginTop: 12 }}>
           {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function downloadJson(data, filename) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function timestampForFilename() {
+  return new Date().toISOString().replace(/[:.]/g, "-");
+}
+
+function LibraryBackupSection() {
+  const [exportStatus, setExportStatus] = useState("idle");
+  const [exportError, setExportError] = useState(null);
+
+  const [importFile, setImportFile] = useState(null);
+  const [confirmText, setConfirmText] = useState("");
+  const [importStatus, setImportStatus] = useState("idle");
+  const [importError, setImportError] = useState(null);
+  const [importResult, setImportResult] = useState(null);
+
+  async function exportLibrary() {
+    setExportStatus("exporting");
+    setExportError(null);
+    try {
+      const data = await api.exportLibrary();
+      downloadJson(data, `moviedb-bibliotek-${timestampForFilename()}.json`);
+      setExportStatus("idle");
+    } catch (err) {
+      setExportError(err.message);
+      setExportStatus("error");
+    }
+  }
+
+  async function importLibrary() {
+    if (!importFile || confirmText !== "GENDAN") return;
+    setImportStatus("importing");
+    setImportError(null);
+    setImportResult(null);
+    try {
+      const text = await importFile.text();
+      const data = JSON.parse(text);
+      const result = await api.importLibrary(data);
+      setImportResult(result);
+      setImportStatus("done");
+      setConfirmText("");
+      setImportFile(null);
+    } catch (err) {
+      setImportError(err.message);
+      setImportStatus("error");
+    }
+  }
+
+  return (
+    <div className="card settings-section">
+      <h2>Bibliotek-eksport / -gendannelse</h2>
+      <p className="muted">
+        Eksportér hele film-/TV-biblioteket som en JSON-fil — til at bruge i et andet system, eller
+        som en gendannelsesmulighed hvis biblioteket skulle blive rodet til. Dette er{" "}
+        <strong>ikke</strong> en fuld system-backup (se den nedenfor) — kun selve film-/TV-dataene.
+      </p>
+      <button type="button" className="btn btn-primary" onClick={exportLibrary} disabled={exportStatus === "exporting"}>
+        {exportStatus === "exporting" ? "Eksporterer..." : "Eksportér bibliotek"}
+      </button>
+      {exportStatus === "error" && (
+        <div className="banner banner-error" style={{ marginTop: 12 }}>
+          {exportError}
+        </div>
+      )}
+
+      <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
+
+      <p className="muted">
+        <strong>Gendan</strong> erstatter hele det nuværende film-/TV-bibliotek med indholdet af en
+        tidligere eksporteret fil — alt der ikke er i filen, forsvinder. Vælg en fil, og skriv{" "}
+        <strong>GENDAN</strong> for at bekræfte.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
+        <input
+          type="file"
+          accept="application/json"
+          onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+        />
+        <input
+          value={confirmText}
+          onChange={(e) => setConfirmText(e.target.value)}
+          placeholder='Skriv "GENDAN" for at bekræfte'
+        />
+        <button
+          type="button"
+          className="btn"
+          onClick={importLibrary}
+          disabled={!importFile || confirmText !== "GENDAN" || importStatus === "importing"}
+        >
+          {importStatus === "importing" ? "Gendanner..." : "Gendan bibliotek"}
+        </button>
+      </div>
+      {importStatus === "error" && (
+        <div className="banner banner-error" style={{ marginTop: 12 }}>
+          {importError}
+        </div>
+      )}
+      {importStatus === "done" && importResult && (
+        <div className="banner banner-info" style={{ marginTop: 12 }}>
+          Gendannet: {importResult.movies_imported} film, {importResult.tv_shows_imported} TV-serier.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SystemBackupSection() {
+  const [backupStatus, setBackupStatus] = useState("idle");
+  const [backupError, setBackupError] = useState(null);
+
+  const [restoreFile, setRestoreFile] = useState(null);
+  const [confirmText, setConfirmText] = useState("");
+  const [restoreStatus, setRestoreStatus] = useState("idle");
+  const [restoreError, setRestoreError] = useState(null);
+  const [restoreResult, setRestoreResult] = useState(null);
+
+  async function takeBackup() {
+    setBackupStatus("backing-up");
+    setBackupError(null);
+    try {
+      const data = await api.getSystemBackup();
+      downloadJson(data, `moviedb-system-backup-${timestampForFilename()}.json`);
+      setBackupStatus("idle");
+    } catch (err) {
+      setBackupError(err.message);
+      setBackupStatus("error");
+    }
+  }
+
+  async function restoreBackup() {
+    if (!restoreFile || confirmText !== "GENDAN SYSTEM") return;
+    setRestoreStatus("restoring");
+    setRestoreError(null);
+    setRestoreResult(null);
+    try {
+      const text = await restoreFile.text();
+      const data = JSON.parse(text);
+      const result = await api.restoreSystemBackup(data);
+      setRestoreResult(result);
+      setRestoreStatus("done");
+      setConfirmText("");
+      setRestoreFile(null);
+    } catch (err) {
+      setRestoreError(err.message);
+      setRestoreStatus("error");
+    }
+  }
+
+  return (
+    <div className="card settings-section">
+      <h2>Fuld system-backup</h2>
+      <p className="muted">
+        Tager en fuld lavniveau-backup af hele systemet (film, TV-serier, slettede film/TV-serier,
+        tags, brugere, tællere) — til katastrofe-gendannelse. <strong>Bemærk:</strong> dine eksterne
+        API-nøgler (TMDb/UPC/Discogs/OMDb/Plex) er <strong>ikke</strong> med i backuppen og skal
+        genindtastes manuelt under "System-indstillinger" nedenfor efter en gendannelse.
+      </p>
+      <button type="button" className="btn btn-primary" onClick={takeBackup} disabled={backupStatus === "backing-up"}>
+        {backupStatus === "backing-up" ? "Tager backup..." : "Tag fuld system-backup"}
+      </button>
+      {backupStatus === "error" && (
+        <div className="banner banner-error" style={{ marginTop: 12 }}>
+          {backupError}
+        </div>
+      )}
+
+      <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
+
+      <p className="muted">
+        <strong>Gendan hele systemet</strong> erstatter alt ovenstående med indholdet af en tidligere
+        system-backup — inklusive brugerkonti. Vælg en fil, og skriv <strong>GENDAN SYSTEM</strong>{" "}
+        for at bekræfte.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
+        <input
+          type="file"
+          accept="application/json"
+          onChange={(e) => setRestoreFile(e.target.files?.[0] ?? null)}
+        />
+        <input
+          value={confirmText}
+          onChange={(e) => setConfirmText(e.target.value)}
+          placeholder='Skriv "GENDAN SYSTEM" for at bekræfte'
+        />
+        <button
+          type="button"
+          className="btn"
+          onClick={restoreBackup}
+          disabled={!restoreFile || confirmText !== "GENDAN SYSTEM" || restoreStatus === "restoring"}
+        >
+          {restoreStatus === "restoring" ? "Gendanner..." : "Gendan hele systemet"}
+        </button>
+      </div>
+      {restoreStatus === "error" && (
+        <div className="banner banner-error" style={{ marginTop: 12 }}>
+          {restoreError}
+        </div>
+      )}
+      {restoreStatus === "done" && restoreResult && (
+        <div className="banner banner-info" style={{ marginTop: 12 }}>
+          Gendannet: {restoreResult.movies_imported} film, {restoreResult.tv_shows_imported} TV-serier,{" "}
+          {restoreResult.users_imported} brugere.
         </div>
       )}
     </div>

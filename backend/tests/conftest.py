@@ -6,7 +6,14 @@ from mongomock_motor import AsyncMongoMockClient
 from app.core.config import settings
 from app.db import get_database
 from app.main import app
-from app.repositories import movie_repository, tag_repository, tv_show_repository, user_repository
+from app.repositories import (
+    movie_repository,
+    screening_repository,
+    screening_request_repository,
+    tag_repository,
+    tv_show_repository,
+    user_repository,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -41,6 +48,8 @@ async def db():
     await tv_show_repository.ensure_indexes(test_db)
     await tag_repository.ensure_indexes(test_db)
     await user_repository.ensure_indexes(test_db)
+    await screening_request_repository.ensure_indexes(test_db)
+    await screening_repository.ensure_indexes(test_db)
     return test_db
 
 

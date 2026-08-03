@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.45.0 (build 0056) — 2026-08-03
+
+- "Føj til hjemmeskærm" på iPhone giver nu et rigtigt app-ikon i stedet for et tilfældigt skærmbillede af siden.
+
 ## v0.44.0 (build 0055) — 2026-08-03
 
 - Stregkode-scanning har fået en ekstra, gratis opslags-kilde (UPCDatabase.org) som forsøges hvis de to andre ikke finder et match — kan forbedre chancen for at finde nordiske/danske DVD-covers. Konfigureres under Indstillinger ligesom de andre API-nøgler.

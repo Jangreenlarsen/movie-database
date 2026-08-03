@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.45.0 build 0056] — 2026-08-03 — PWA-installation på iPhone (feature #9)
+
+`apple-touch-icon` pegede på `favicon.svg` — iOS Safari rasterizerer ikke SVG til hjemmeskærms-ikonet og faldt derfor stille tilbage til et skærmbillede af siden i stedet for et rigtigt ikon. Genereret et fuldt PNG-ikonsæt fra den eksisterende SVG-logo (`apple-touch-icon.png` 180×180, `pwa-192x192.png`, `pwa-512x512.png`, samt en maskable variant med ekstra padding til Android/Chromes cirkel-beskæring), lagt på mørk baggrund (`#0f0f0f`, matcher `theme_color`) da iOS' ikon ikke understøtter transparens. `index.html`s `apple-touch-icon`-link og `vite.config.js`s manifest-`icons`-liste opdateret til at bruge dem. Resten af PWA-grundlaget (`viewport`, `apple-mobile-web-app-capable`, service worker via `vite-plugin-pwa`, responsivt CSS) var allerede på plads.
+
 ## [0.44.0 build 0055] — 2026-08-03 — UPCDatabase.org som tredje stregkode-opslags-fallback (feature #69)
 
 Efter at have bekræftet (BUGS.md #32) at 4 konkrete danske DVD-stregkoder manglede i både UPCitemdb og Discogs, er **UPCDatabase.org** tilføjet som et tredje, sidste fallback-forsøg i `scan_service._lookup_title` — gratis niveau, 100 opslag/dag. Ny `backend/app/integrations/upcdatabase_client.py` følger samme `lookup_title(barcode) -> str | None`-kontrakt og fejl-filosofi som UPCitemdb/Discogs (aldrig en kastet exception). I modsætning til Discogs er token her påkrævet for auth — et tomt `upcdatabase_token` springer opslaget helt over i stedet for at forsøge et kald der alligevel vil få 403.

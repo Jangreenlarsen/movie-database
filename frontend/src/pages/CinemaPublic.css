@@ -36,6 +36,71 @@
   font-size: 1.5rem;
 }
 
+/* Poster grid (v2) — every upcoming screening side by side in one flat
+   grid, matching the app's own movie-grid card look instead of the wide
+   admin-style cards (which forced one-per-row with real content). */
+.bio-poster-grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 20px;
+}
+
+.bio-poster-card {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.bio-poster-card-poster {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  width: 100%;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  overflow: hidden;
+}
+
+.bio-poster-card-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bio-poster-card-datetime {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.bio-poster-card-body {
+  padding: 10px 12px 12px;
+}
+
+.bio-poster-card-title {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.bio-poster-card-genres {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 @media (max-width: 640px) {
   .cinema-public-hero {
     padding: 32px 16px 24px;
@@ -48,5 +113,10 @@
   .cinema-public-main {
     padding: 24px 16px;
     gap: 32px;
+  }
+
+  .bio-poster-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 14px;
   }
 }

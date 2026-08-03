@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.53.2 (build 0066) — 2026-08-03
+
+- Voldby BIO's offentlige side: alle kommende visninger står nu side om side i et gitter (i stedet for en lang liste), og "Om Voldby BIO" er tilbage øverst.
+
 ## v0.53.1 (build 0065) — 2026-08-03
 
 - Voldby BIO's offentlige side (`/bio`) har fået en tydelig overskrift, og viser nu programmet ("Hvad går i bio") øverst, med info om biografen ("Om Voldby BIO") nedenunder.

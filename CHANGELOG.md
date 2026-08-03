@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.41.1 build 0052] — 2026-08-03 — Fix: sæson-badge sad fast forkert ved skift af kortstørrelse
+
+- `.movie-seasons-badge` (`TvShows.css`) ændret fra centreret+fast-px-nudge (`left: 50%; transform: translateX(calc(-50% + 16px))`) til right-anchoret (`right: 8px`, samme mønster som `.movie-format-badge`/`.movie-watched-badge`) — den faste 16px-nudge var en konstant brøkdel af en *varierende* poster-bredde, så positionen så fin ud ved én kortstørrelse (feature #59) men skæv ved de andre. Stablet 26px over `.movie-watched-badge` (`bottom: 34px`) for at undgå overlap når begge badges vises samtidig. Live-verificeret (Playwright) ved alle tre kortstørrelser — ingen overlap, konsistent placering.
+
 ## [0.41.0 build 0051] — 2026-08-03 — Combobox for tags/lokation/ejer (feature #58) + valgbar kortstørrelse (feature #59)
 
 **Feature #58**: Tags-, lokations- og ejer-felterne i tilføj-/redigeringsformularerne (scan/manuel-tilføj-panelet, film- og TV-seriens redigeringsvindue) viser nu eksisterende værdier der allerede er i brug, men tillader stadig fri indtastning af en ny værdi.

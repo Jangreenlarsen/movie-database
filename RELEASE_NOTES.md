@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.41.1 (build 0052) — 2026-08-03
+
+- Fix: sæson-badgen ("1/5 sæsoner") på TV-kortet sad forkert ved siden af skift til lille eller stor kortstørrelse — sidder nu konsekvent i højre hjørne uanset kortstørrelse.
+
 ## v0.41.0 (build 0051) — 2026-08-03
 
 - Tags-, lokations- og ejer-felterne (ved tilføjelse og redigering af film/TV-serier) viser nu forslag ud fra hvad du allerede har brugt — men du kan stadig bare skrive noget nyt. Virker også fra telefonen.

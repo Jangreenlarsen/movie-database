@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.47.0 (build 0058) — 2026-08-03
+
+- Ny "Audit-log" under Indstillinger (kun admin): se hvem der har ændret roller, opdateret system-nøgler, udløst en opdatering, taget/gendannet backup, eller planlagt/afvist en Voldby BIO-visning — og hvornår.
+
 ## v0.46.0 (build 0057) — 2026-08-03
 
 - Gem/slet-knapperne i film-/TV-seriens redigeringsvindue er nu altid synlige — ikke kun når du har scrollet helt ned.

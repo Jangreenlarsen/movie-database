@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.api import (
     attributes,
+    audit_log,
     auth,
     health,
     library_backup,
@@ -40,6 +41,7 @@ from app.core.errors import (
 )
 from app.db import close_client, get_client, get_database
 from app.repositories import (
+    audit_log_repository,
     movie_repository,
     screening_repository,
     screening_request_repository,
@@ -71,6 +73,7 @@ async def lifespan(app: FastAPI):
     await user_repository.ensure_indexes(db)
     await screening_request_repository.ensure_indexes(db)
     await screening_repository.ensure_indexes(db)
+    await audit_log_repository.ensure_indexes(db)
     logger.info("MongoDB client initialized (%s)", settings.mongo_db_name)
     yield
     await close_client()
@@ -173,6 +176,7 @@ async def deploy_script_not_found_handler(
 
 
 app.include_router(health.router)
+app.include_router(audit_log.router)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(movies.router)

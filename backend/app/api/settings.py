@@ -9,7 +9,7 @@ from app.models.settings import (
     SystemSettingsStatus,
     SystemSettingsUpdate,
 )
-from app.services import movie_service, system_settings_service
+from app.services import audit_log_service, movie_service, system_settings_service
 
 router = APIRouter(
     prefix="/api/settings", tags=["settings"], dependencies=[Depends(get_current_user)]
@@ -39,6 +39,15 @@ async def get_system_settings(db: AsyncIOMotorDatabase = Depends(get_database)):
     "/system", response_model=SystemSettingsStatus, dependencies=[Depends(require_admin)]
 )
 async def update_system_settings(
-    payload: SystemSettingsUpdate, db: AsyncIOMotorDatabase = Depends(get_database)
+    payload: SystemSettingsUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
 ):
-    return await system_settings_service.update_settings(db, payload)
+    result = await system_settings_service.update_settings(db, payload)
+    # Log which keys changed, never the values themselves (CLAUDE.md regel 6).
+    changed_keys = sorted(payload.model_dump(exclude_unset=True).keys())
+    if changed_keys:
+        await audit_log_service.record(
+            db, current_user["username"], "system_settings.updated", ", ".join(changed_keys)
+        )
+    return result

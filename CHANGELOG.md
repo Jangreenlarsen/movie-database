@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.47.0 build 0058] — 2026-08-03 — Audit-log på Indstillinger-siden (feature #65)
+
+Nyt admin-only "Audit-log"-afsnit på Indstillinger, med en løbende, pagineret (`?skip=&limit=`, nyeste først) log over sikkerheds-/data-relevante handlinger: rolle-ændringer, system-nøgle-opdateringer (kun feltnavne logges, aldrig værdier — CLAUDE.md regel 6), OTA-deploy, bibliotek-/system-backup og -gendannelse, samt biograf-planlægning/afvisning (Voldby BIO).
+
+Ny `audit_log`-collection + `audit_log_repository.py`/`audit_log_service.py` (samme lag-struktur som resten af appen) og nyt `GET /api/audit-log` (admin-only, intet write-endpoint — entries skrives udelukkende som sideeffekt af de 8 instrumenterede handlinger i deres respektive routere). `audit_log_service.record()` er bevidst best-effort — samme filosofi som Plex/OMDb-integrationerne: en fejlet audit-log-skrivning må aldrig fejle den handling den logger, kun logges som en advarsel.
+
+12 nye backend-tests (alle 8 handlinger + admin-gating + paginering + "aldrig kaster" for `record()`). Live-verificeret med Playwright at sektionen renderer korrekt i Indstillinger.
+
 ## [0.46.0 build 0057] — 2026-08-03 — Sticky gem/slet-knapper i redigeringsvindue (feature #68)
 
 `.modal-card` scrollede tidligere som én samlet blok (`overflow-y: auto` på hele kortet) — det betød at `modal-footer`s "Gem ændringer"/"Slet"-knapper kun blev synlige efter at have scrollet forbi alle felterne i en lang film-/TV-serie-redigering. Ændret til en flex-kolonne hvor kun `.modal-body` scroller internt (`flex: 1; min-height: 0; overflow-y: auto`), mens `.modal-header` og `.modal-footer` (begge `flex-shrink: 0`) forbliver fast synlige i toppen/bunden af modalen uanset scroll-position. Gælder både `MovieDetailModal` og `TvShowDetailModal` (deler samme CSS-klasser i `Library.css`).

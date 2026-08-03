@@ -39,6 +39,7 @@ export default function Settings({ user, onSettingsChanged }) {
       {isAdmin && <SystemSettingsSection />}
       {isAdmin && <DeploySection />}
       {isAdmin && <UsersSection currentUserId={user.id} />}
+      {isAdmin && <AuditLogSection />}
     </section>
   );
 }
@@ -673,6 +674,87 @@ function SystemSettingsSection() {
             onSaved={load}
           />
         </>
+      )}
+    </div>
+  );
+}
+
+const AUDIT_ACTION_LABELS = {
+  "user.role_changed": "Rolle ændret",
+  "system_settings.updated": "System-nøgler opdateret",
+  "deploy.triggered": "OTA-opdatering udløst",
+  "system_backup.created": "System-backup taget",
+  "system_backup.restored": "System gendannet fra backup",
+  "library_backup.exported": "Bibliotek eksporteret",
+  "library_backup.imported": "Bibliotek importeret",
+  "screening_request.declined": "Visningsanmodning afvist",
+  "screening.scheduled": "Visning planlagt",
+};
+
+const AUDIT_PAGE_SIZE = 50;
+
+function AuditLogSection() {
+  const [entries, setEntries] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [status, setStatus] = useState("loading");
+
+  function load(skip) {
+    setStatus(skip === 0 ? "loading" : "loading-more");
+    api
+      .listAuditLog({ skip, limit: AUDIT_PAGE_SIZE })
+      .then((data) => {
+        setEntries((prev) => (skip === 0 ? data.entries : [...prev, ...data.entries]));
+        setTotal(data.total);
+        setStatus("ready");
+      })
+      .catch(() => setStatus("error"));
+  }
+
+  useEffect(() => load(0), []);
+
+  return (
+    <div className="card settings-section">
+      <h2>Audit-log</h2>
+      <p className="muted">
+        Sikkerheds-/data-relevante handlinger (rolle-ændringer, system-nøgle-opdateringer,
+        OTA-opdatering, backup/gendannelse, biograf-planlægning/afvisning), nyeste øverst.
+      </p>
+
+      {status === "loading" && <p className="muted">Indlæser...</p>}
+      {status === "error" && (
+        <div className="banner banner-error">Kunne ikke hente audit-log.</div>
+      )}
+
+      {entries.length > 0 && (
+        <ul className="user-list">
+          {entries.map((entry) => (
+            <li key={entry.id} className="user-row">
+              <span className="user-row-name">
+                {AUDIT_ACTION_LABELS[entry.action] ?? entry.action}
+                {entry.detail && <span className="muted"> — {entry.detail}</span>}
+              </span>
+              <span className="muted">{entry.actor}</span>
+              <span className="muted">
+                {new Date(entry.created_at).toLocaleString("da-DK")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {status === "ready" && entries.length === 0 && (
+        <p className="muted">Ingen registrerede handlinger endnu.</p>
+      )}
+
+      {entries.length < total && (
+        <button
+          type="button"
+          className="btn"
+          onClick={() => load(entries.length)}
+          disabled={status === "loading-more"}
+        >
+          {status === "loading-more" ? "Indlæser..." : `Vis flere (${entries.length}/${total})`}
+        </button>
       )}
     </div>
   );

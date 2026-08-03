@@ -39,6 +39,8 @@ export const api = {
       body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
     }),
   listUsers: () => request("/users"),
+  listAuditLog: ({ skip = 0, limit = 50 } = {}) =>
+    request(`/audit-log?${new URLSearchParams({ skip, limit })}`),
   updateUserRole: (userId, role) =>
     request(`/users/${userId}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
   listMovies: (

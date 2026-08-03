@@ -4,6 +4,7 @@ import TvShows from "./pages/TvShows";
 import Settings from "./pages/Settings";
 import PrintList from "./pages/PrintList";
 import Statistics from "./pages/Statistics";
+import Cinema from "./pages/Cinema";
 import Login from "./pages/Login";
 import { api } from "./api/client";
 import "./App.css";
@@ -67,6 +68,12 @@ function App() {
               Ønsker
             </button>
             <button
+              className={tab === "cinema" ? "active" : ""}
+              onClick={() => setTab("cinema")}
+            >
+              🎬 Voldby BIO
+            </button>
+            <button
               className={tab === "print" ? "active" : ""}
               onClick={() => setTab("print")}
             >
@@ -98,6 +105,7 @@ function App() {
         {tab === "library" && <Library user={user} onSettingsChanged={setUser} />}
         {tab === "tv" && <TvShows user={user} onSettingsChanged={setUser} />}
         {tab === "wishlist" && <Library user={user} onSettingsChanged={setUser} wishlist />}
+        {tab === "cinema" && <Cinema user={user} />}
         {tab === "print" && <PrintList />}
         {tab === "stats" && <Statistics />}
         {tab === "settings" && <Settings user={user} onSettingsChanged={setUser} />}

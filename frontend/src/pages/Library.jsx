@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import Chip from "../components/Chip";
 import Combobox from "../components/Combobox";
 import MovieLookupForm from "../components/MovieLookupForm";
+import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import "./Library.css";
 
 const SORT_OPTIONS = [
@@ -1048,6 +1049,7 @@ function MovieDetailModal({
               {moving ? "Flytter..." : "Flyt til bibliotek"}
             </button>
           )}
+          <ScreeningRequestButton mediaKind="movie" id={movie.id} />
           <button type="button" className="btn btn-primary" onClick={save} disabled={!dirty || saving}>
             {saving ? "Gemmer..." : "Gem ændringer"}
           </button>

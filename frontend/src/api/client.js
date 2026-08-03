@@ -99,6 +99,29 @@ export const api = {
   restoreSystemBackup: (payload) =>
     request("/system/restore", { method: "POST", body: JSON.stringify(payload) }),
 
+  // Voldby BIO (feature #62/#63/#64)
+  requestScreening: (mediaKind, id) =>
+    request("/screening-requests", {
+      method: "POST",
+      body: JSON.stringify(
+        mediaKind === "movie" ? { media_kind: "movie", movie_id: id } : { media_kind: "tv", tv_show_id: id }
+      ),
+    }),
+  listScreeningRequests: (status) =>
+    request(`/screening-requests${status ? `?status=${status}` : ""}`),
+  myScreeningRequests: () => request("/screening-requests/mine"),
+  declineScreeningRequest: (id) =>
+    request(`/screening-requests/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "declined" }),
+    }),
+  listScreenings: (upcoming) => request(`/screenings${upcoming ? "?upcoming=true" : ""}`),
+  createScreening: (payload) =>
+    request("/screenings", { method: "POST", body: JSON.stringify(payload) }),
+  updateScreening: (id, payload) =>
+    request(`/screenings/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  deleteScreening: (id) => request(`/screenings/${id}`, { method: "DELETE" }),
+
   // TV-serier (feature #47) — egen ressource, samme kontrakt-form som film.
   listTvShows: ({ q, tags, format, audioTypes, mediaTypes, sort, wishlist, watched } = {}) => {
     const params = new URLSearchParams();

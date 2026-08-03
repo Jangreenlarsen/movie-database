@@ -1,0 +1,44 @@
+from fastapi import APIRouter, Depends, Query
+from motor.motor_asyncio import AsyncIOMotorDatabase
+
+from app.api.deps import get_current_user, require_admin
+from app.db import get_database
+from app.models.screening import Screening, ScreeningCreate, ScreeningUpdate
+from app.services import screening_service
+
+# Feature #63 — admin-scheduled screenings, backing the public Voldby BIO
+# calendar (feature #64, GET is open to any logged-in user).
+router = APIRouter(prefix="/api/screenings", tags=["screenings"], dependencies=[Depends(get_current_user)])
+
+
+@router.get("", response_model=list[Screening])
+async def list_screenings(
+    upcoming: bool = Query(default=False, description="True limits to screenings not yet in the past"),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    return await screening_service.list_screenings(db, upcoming)
+
+
+@router.post("", response_model=Screening, status_code=201, dependencies=[Depends(require_admin)])
+async def create_screening(
+    payload: ScreeningCreate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    return await screening_service.create_screening(db, payload, current_user["username"])
+
+
+@router.patch("/{screening_id}", response_model=Screening, dependencies=[Depends(require_admin)])
+async def update_screening(
+    screening_id: str,
+    payload: ScreeningUpdate,
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    return await screening_service.update_screening(db, screening_id, payload)
+
+
+@router.delete("/{screening_id}", status_code=204, dependencies=[Depends(require_admin)])
+async def delete_screening(
+    screening_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    await screening_service.delete_screening(db, screening_id)

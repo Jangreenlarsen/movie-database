@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.43.0 build 0054] — 2026-08-03 — "Voldby BIO": visningsanmodninger, admin-planlægning og offentlig kalender (feature #62/#63/#64)
+
+**Feature #62**: Ny "🎬 Ønsk visning i Voldby BIO"-knap i film-/TV-seriens detaljevindue. Nyt `screening_requests`-collection (ét dokument pr. titel, med en liste af hvem der har ønsket den — idempotent, ingen duplikater ved gentaget ønske). Nye `POST/GET /api/screening-requests`, `GET /api/screening-requests/mine`, `PATCH /api/screening-requests/{id}` (kun `declined`, admin-only).
+
+**Feature #63**: Admin kan planlægge en anmodning (sætter dato/tid, markerer den `scheduled`) eller tilføje en visning direkte uden en forudgående anmodning (søger i det eksisterende bibliotek). Ny `screenings`-collection, fuldt adskilt fra anmodningerne (Jans valg af "Forslag 2", 2026-08-03) — titel/poster/plot/trailer hentes via reference til film-/TV-dokumentet ved visning, ikke duplikeret. Nye `GET/POST /api/screenings`, `PATCH/DELETE /api/screenings/{id}` (admin-only).
+
+**Feature #64**: Ny "🎬 Voldby BIO"-fane, synlig for alle brugere — viser kommende planlagte visninger grupperet efter dato, i stil med en rigtig biograf-forside (poster, titel, genrer, plot, trailer-link, tidspunkt). Admin ser desuden anmodnings-kø og "tilføj direkte"-værktøjer øverst på samme side.
+
+**BUGS.md #33** (fundet under live-verificering mod ægte MongoDB): `screening_service.update_screening` dumpede sin payload med `mode="json"`, hvilket serialiserede `scheduled_at` til en tekststreng før en rå `$set` — ødelagde feltets BSON-type, så en redigeret visning stille forsvandt fra "kommende visninger". Rettet ved at fjerne `mode="json"`. **OBS**: mongomock reproducerer ikke denne fejl-klasse (bekræftet ved manuel test) — kun den ægte MongoDB-verificering fangede den, jf. CLAUDE.md regel 16's runtime-kontekst-lektion. Samme mønster findes uafklaret i `movie_service`/`tv_show_service`s `watched_at`-felt (mindre akut, kun forkert sortering — egen fremtidig opgave med data-migration).
+
+Live-verificeret (Playwright mod ægte MongoDB, ikke mongomock) — hele flowet: anmod → planlæg → vis på forsiden → redigér → fjern, samt admin-only-gating, på både desktop- og mobil-viewport. 20 nye backend-tests. Fuld suite (269 tests) + frontend-build grønt.
+
 ## [0.42.0 build 0053] — 2026-08-03 — Bibliotek-eksport/-gendannelse (feature #60) + fuld system-backup/restore (feature #61)
 
 **Feature #60**: Ny "Bibliotek-eksport / -gendannelse"-sektion på Indstillinger (admin-only). "Eksportér bibliotek" henter en JSON-fil med alle film + TV-serier, ubegrænset (nye `movie_repository.find_all_raw`/`tv_show_repository.find_all_raw`, uden `find_many`s 500-dokument-cap). "Gendan" erstatter `movies`+`tv_shows`-collections wholesale med filens indhold — gated bag en bekræftelsesfrase i UI'et ("GENDAN") før knappen aktiveres. Ny `GET/POST /api/library/export`/`/import`.

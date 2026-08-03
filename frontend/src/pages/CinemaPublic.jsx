@@ -30,38 +30,40 @@ export default function CinemaPublic() {
 
   return (
     <div className="cinema-public-page">
-      <header className="cinema-public-header">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            🎬
-          </span>
-          Voldby BIO
-        </div>
+      <header className="cinema-public-hero">
+        <h1>🎬 Voldby BIO</h1>
+        <p className="cinema-public-tagline">Hjemmebiografen — se hvad der går i bio herunder.</p>
       </header>
 
       <main className="cinema-public-main">
-        <CinemaShowcase />
+        <section>
+          <h2 className="cinema-public-section-heading">Hvad går i bio</h2>
+          <div className="cinema-program">
+            {status === "loading" && <p className="muted">Indlæser program...</p>}
+            {status === "error" && (
+              <div className="banner banner-error">Kunne ikke hente programmet.</div>
+            )}
+            {status === "ready" && groups.length === 0 && (
+              <p className="muted">Ingen kommende visninger er planlagt endnu.</p>
+            )}
 
-        <div className="cinema-program">
-          {status === "loading" && <p className="muted">Indlæser program...</p>}
-          {status === "error" && (
-            <div className="banner banner-error">Kunne ikke hente programmet.</div>
-          )}
-          {status === "ready" && groups.length === 0 && (
-            <p className="muted">Ingen kommende visninger er planlagt endnu.</p>
-          )}
-
-          {groups.map((group) => (
-            <div key={group.key} className="cinema-day">
-              <h2 className="cinema-day-heading">{formatDateHeading(group.date)}</h2>
-              <div className="cinema-cards">
-                {group.screenings.map((screening) => (
-                  <PublicScreeningCard key={screening.id} screening={screening} />
-                ))}
+            {groups.map((group) => (
+              <div key={group.key} className="cinema-day">
+                <h3 className="cinema-day-heading">{formatDateHeading(group.date)}</h3>
+                <div className="cinema-cards">
+                  {group.screenings.map((screening) => (
+                    <PublicScreeningCard key={screening.id} screening={screening} />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </section>
+
+        <section>
+          <h2 className="cinema-public-section-heading">Om Voldby BIO</h2>
+          <CinemaShowcase />
+        </section>
       </main>
     </div>
   );

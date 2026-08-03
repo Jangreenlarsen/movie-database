@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.53.1 (build 0065) — 2026-08-03
+
+- Voldby BIO's offentlige side (`/bio`) har fået en tydelig overskrift, og viser nu programmet ("Hvad går i bio") øverst, med info om biografen ("Om Voldby BIO") nedenunder.
+
 ## v0.53.0 (build 0064) — 2026-08-03
 
 - Nye film og TV-serier får nu automatisk et "Tilføjet af {dit brugernavn}"-tag — gør det nemt at filtrere biblioteket efter hvem der har tilføjet hvad.

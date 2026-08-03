@@ -84,7 +84,7 @@ async def test_create_tv_show_from_tmdb_fetches_metadata_and_light_seasons(clien
     assert show["seasons"][0]["episode_count"] == 7
     assert show["seasons"][0]["episodes"] == []
     assert show["seasons"][0]["owned"] is False
-    assert show["tags"] == ["Favorite"]
+    assert show["tags"] == ["Favorite", "Tilføjet af testuser"]
 
 
 async def test_create_tv_show_marks_owned_seasons_and_fetches_their_episodes(client, monkeypatch):

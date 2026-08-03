@@ -80,7 +80,9 @@ async def _resolve_rating(details: dict) -> float | None:
 
 
 async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registered_by: str) -> Movie:
-    canonical_tags = await tag_service.resolve_tags(db, payload.tags)
+    canonical_tags = await tag_service.resolve_tags(
+        db, [*payload.tags, tag_service.added_by_tag(registered_by)]
+    )
     now = datetime.now(timezone.utc)
 
     if payload.tmdb_id is not None:

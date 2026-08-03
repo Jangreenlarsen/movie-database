@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.53.0 (build 0064) — 2026-08-03
+
+- Nye film og TV-serier får nu automatisk et "Tilføjet af {dit brugernavn}"-tag — gør det nemt at filtrere biblioteket efter hvem der har tilføjet hvad.
+
 ## v0.52.0 (build 0063) — 2026-08-03
 
 - Ny bruger-rolle: "Guest" (read-only) — kan se film-/TV-biblioteket og Voldby BIO, men ikke redigere noget. Sættes fra rolle-dropdown'en i Brugere-listen på Indstillinger.

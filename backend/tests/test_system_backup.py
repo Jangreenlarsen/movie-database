@@ -61,7 +61,7 @@ async def test_restore_round_trip_preserves_everything(client):
     movies = (await client.get("/api/movies")).json()["items"]
     assert len(movies) == 1
     assert movies[0]["title"] == "Roundtrip Movie"
-    assert movies[0]["tags"] == ["Favorite"]
+    assert movies[0]["tags"] == ["Favorite", "Tilføjet af testuser"]
 
     # The logged-in session survives the restore because the same user
     # document (same _id) came back — proves the round trip didn't corrupt

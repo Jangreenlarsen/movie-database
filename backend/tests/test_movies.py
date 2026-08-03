@@ -6,7 +6,8 @@ async def test_create_and_get_movie(client):
     assert response.status_code == 201
     movie = response.json()
     assert movie["title"] == "The Matrix"
-    assert movie["tags"] == ["Sci-Fi", "Favorite"]
+    # "Tilføjet af {username}" is auto-added at creation (feature #18).
+    assert movie["tags"] == ["Sci-Fi", "Favorite", "Tilføjet af testuser"]
 
     get_response = await client.get(f"/api/movies/{movie['id']}")
     assert get_response.status_code == 200
@@ -26,10 +27,10 @@ async def test_get_invalid_id_returns_404(client):
 async def test_tag_reuses_canonical_casing_across_movies(client):
     await client.post("/api/movies", json={"title": "Movie A", "tags": ["Action"]})
     response = await client.post("/api/movies", json={"title": "Movie B", "tags": ["ACTION"]})
-    assert response.json()["tags"] == ["Action"]
+    assert response.json()["tags"] == ["Action", "Tilføjet af testuser"]
 
     tags_response = await client.get("/api/tags")
-    assert tags_response.json() == ["Action"]
+    assert tags_response.json() == ["Action", "Tilføjet af testuser"]
 
 
 async def test_new_tag_survives_concurrent_insert_race(client, monkeypatch):
@@ -58,7 +59,7 @@ async def test_new_tag_survives_concurrent_insert_race(client, monkeypatch):
         "/api/movies", json={"title": "Race Test", "tags": ["BrandNewTag"]}
     )
     assert response.status_code == 201
-    assert response.json()["tags"] == ["BrandNewTag"]
+    assert response.json()["tags"] == ["BrandNewTag", "Tilføjet af testuser"]
 
 
 async def test_filter_by_tag_is_case_insensitive(client):

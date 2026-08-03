@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.53.0 build 0064] — 2026-08-03 — Automatisk "Tilføjet af {bruger}"-tag (feature #18)
+
+Enhver ny film/TV-serie får nu automatisk et "Tilføjet af {brugernavn}"-tag ved oprettelse — uanset om det sker via stregkode-scan, manuel TMDb-søgning eller ren manuel indtastning, da alle tre funnel gennem samme `create_movie`/`create_tv_show`-kald. Ny delt `tag_service.added_by_tag(username)` sikrer at ordlyden ikke kan gå ud af trit mellem film og TV-serier. Udvidet til også at gælde TV-serier (ikke kun film som FEATURES.md oprindeligt sagde), for konsistens med hvordan de to ressourcer ellers deler tag-mekanismen.
+
+Tagget går gennem samme normaliserings-/dedup-pipeline som brugerens egne tags (`tag_service.resolve_tags`) — vises i tag-autocomplete, er filtrerbart via `?tags=` ligesom alle andre tags, og er ikke specielt beskyttet (kan fjernes igen manuelt som ethvert andet tag). Tilføjes kun ved oprettelse, ikke ved efterfølgende redigering.
+
+7 nye backend-tests + 9 eksisterende opdateret til at forvente det nye tag. Live-verificeret: tagget vises korrekt på filmkortet.
+
 ## [0.52.0 build 0063] — 2026-08-03 — Ny "guest"-rolle: read-only adgang (feature #72)
 
 Ny tredje rolle `guest` (udover `admin`/`standard`) — kan browse/søge film-/TV-biblioteket og den offentlige Voldby BIO-side, og ændre egen adgangskode/view-indstillinger, men intet andet. Håndhævet i **backend** (ikke kun UI, jf. CLAUDE.md regel 16): ny `Depends(require_not_guest)` i `app/api/deps.py`, sat på alle skrive-endpoints for film/TV-serier (opret/redigér/slet, sæson-/episode-markering) og `POST /api/screening-requests`.

@@ -75,7 +75,7 @@ async def test_sync_refreshes_tmdb_fields_without_touching_user_data(client, mon
     assert movie["imdb_url"] == "https://www.imdb.com/title/tt_new/"
     assert movie["trailer_url"] == "https://www.youtube.com/watch?v=new"
     # User-entered fields must survive untouched.
-    assert movie["tags"] == ["Favorite"]
+    assert movie["tags"] == ["Favorite", "Tilføjet af testuser"]
     assert movie["format"] == "DVD"
     assert movie["location"] == "Stuen"
     assert movie["serial_number"] == serial_number

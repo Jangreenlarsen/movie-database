@@ -55,7 +55,10 @@ async def test_reset_clears_library_and_related_data(client):
     assert result["movies_removed"] == 2
     assert result["tv_shows_removed"] == 1
     assert result["deleted_movies_removed"] == 1
-    assert result["tags_removed"] == 1
+    # "x" plus the auto "Tilføjet af {username}" tag (feature #18) — the
+    # latter is shared/reused across all 4 creations in this test, not
+    # duplicated per item.
+    assert result["tags_removed"] == 2
     assert result["screenings_removed"] == 1
     assert result["screening_requests_removed"] == 1
 

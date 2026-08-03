@@ -114,7 +114,9 @@ async def _build_seasons(
 async def create_tv_show(
     db: AsyncIOMotorDatabase, payload: TvShowCreate, registered_by: str
 ) -> TvShow:
-    canonical_tags = await tag_service.resolve_tags(db, payload.tags)
+    canonical_tags = await tag_service.resolve_tags(
+        db, [*payload.tags, tag_service.added_by_tag(registered_by)]
+    )
     now = datetime.now(timezone.utc)
 
     if payload.tmdb_id is not None:

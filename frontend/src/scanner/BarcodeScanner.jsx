@@ -13,6 +13,25 @@ import "./BarcodeScanner.css";
 // actually misread by the user (BUGS.md #19).
 const HINTS = new Map([[DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.UPC_A]]]);
 
+// BUGS.md #35 — a known WebKit/iOS Safari issue: stopping a getUserMedia
+// MediaStream via a scanning library's own `.stop()` isn't always enough
+// to release the <video> element's hardware compositing layer on iOS —
+// it can leave a frozen/black layer behind, which has been observed
+// bleeding into the whole page (not just this small viewfinder box)
+// after the surrounding form unmounts/rerenders (e.g. right after "Gem").
+// Explicitly stopping every track AND clearing `srcObject` (not just
+// calling the library's `controls.stop()`) is the documented workaround.
+function releaseCamera(videoEl) {
+  const stream = videoEl?.srcObject;
+  if (stream instanceof MediaStream) {
+    stream.getTracks().forEach((track) => track.stop());
+  }
+  if (videoEl) {
+    videoEl.srcObject = null;
+    videoEl.load();
+  }
+}
+
 export default function BarcodeScanner({ onDetected }) {
   const videoRef = useRef(null);
   const readerRef = useRef(null);
@@ -22,6 +41,7 @@ export default function BarcodeScanner({ onDetected }) {
   useEffect(() => {
     return () => {
       readerRef.current?.stopContinuousDecode();
+      releaseCamera(videoRef.current);
     };
   }, []);
 
@@ -38,6 +58,7 @@ export default function BarcodeScanner({ onDetected }) {
         (result, err) => {
           if (result) {
             controls.stop();
+            releaseCamera(videoRef.current);
             setScanning(false);
             onDetected(result.getText());
           }

@@ -42,6 +42,17 @@ class Settings(BaseSettings):
     deploy_script_path: str = "/opt/moviedb-deploy.sh"
     deploy_log_path: str = "/opt/moviedb-deploy.log"
 
+    # TLS-certifikat-styring (feature #73) — kun meningsfuldt i produktion,
+    # se DEPLOYMENT.md/BUGS.md #23. `cert_live_path` er den faktisk
+    # installerede Caddy-cert (root:caddy, 640 — kræver læse-adgang, se
+    # DEPLOYMENT.md). `cert_staging_dir` er indenfor `moviedb-backend`s egen
+    # ReadWritePaths, hvor en ny nøgle/CSR/cert lægges midlertidigt før
+    # installation. Samme ikke-sudo-trigger-mønster som deploy ovenfor.
+    cert_live_path: str = "/etc/caddy/certs/movie.ll.lan.crt"
+    cert_staging_dir: str = "/opt/moviedb/certs/pending"
+    cert_install_trigger_path: str = "/opt/moviedb/.cert-install-trigger"
+    cert_common_name: str = "movie.ll.lan"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

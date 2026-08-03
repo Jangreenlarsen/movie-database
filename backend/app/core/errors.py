@@ -111,3 +111,36 @@ class DeployScriptNotFoundError(Exception):
         super().__init__(
             f"Deploy-script ikke fundet eller ikke eksekverbart: {path} — se DEPLOYMENT.md"
         )
+
+
+class NoPendingCsrError(Exception):
+    """Feature #73 — raised if an admin tries to upload a signed certificate
+    without ever having generated a CSR (no pending private key to pair it
+    with)."""
+
+    def __init__(self):
+        super().__init__("Ingen ventende CSR fundet — generér en CSR først.")
+
+
+class CertKeyMismatchError(Exception):
+    """Feature #73 — the uploaded signed certificate's public key doesn't
+    match the pending private key it's meant to pair with. Same check Claude
+    performed manually via SSH under BUGS.md #23, now automated."""
+
+    def __init__(self):
+        super().__init__(
+            "Certifikatets offentlige nøgle matcher ikke den ventende private nøgle."
+        )
+
+
+class Pkcs12ImportError(Exception):
+    def __init__(self, reason: str):
+        super().__init__(f"Kunne ikke læse PKCS12-filen: {reason}")
+
+
+class NoCertStagedError(Exception):
+    """Feature #73 — raised if `install` is triggered with nothing actually
+    staged (neither a completed CSR nor an imported PKCS12)."""
+
+    def __init__(self):
+        super().__init__("Intet certifikat er klar til installation.")

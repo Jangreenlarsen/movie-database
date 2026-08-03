@@ -1,0 +1,8 @@
+[Unit]
+Description=Installér staged TLS-certifikat + genindlæs Caddy (feature #73)
+
+[Service]
+Type=oneshot
+ExecStart=/opt/moviedb-cert-install.sh
+StandardOutput=append:/opt/moviedb-deploy.log
+StandardError=append:/opt/moviedb-deploy.log

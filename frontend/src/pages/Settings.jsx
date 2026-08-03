@@ -42,6 +42,7 @@ export default function Settings({ user, onSettingsChanged }) {
       {isAdmin && <DatabaseResetSection />}
       {isAdmin && <SystemSettingsSection />}
       {isAdmin && <DeploySection />}
+      {isAdmin && <TlsCertSection />}
       {isAdmin && <UsersSection currentUserId={user.id} />}
       {isAdmin && <AuditLogSection />}
     </section>
@@ -444,6 +445,256 @@ function DatabaseResetSection() {
           relaterede data fjernet.
         </div>
       )}
+    </div>
+  );
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(",")[1] ?? "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function formatCertDate(iso) {
+  return new Date(iso).toLocaleDateString("da-DK", { year: "numeric", month: "long", day: "numeric" });
+}
+
+function TlsCertSection() {
+  const [certStatus, setCertStatus] = useState(null);
+  const [loadStatus, setLoadStatus] = useState("loading");
+
+  const [csrPem, setCsrPem] = useState(null);
+  const [csrStatus, setCsrStatus] = useState("idle");
+  const [csrError, setCsrError] = useState(null);
+
+  const [signedCertPem, setSignedCertPem] = useState("");
+  const [completeStatus, setCompleteStatus] = useState("idle");
+  const [completeError, setCompleteError] = useState(null);
+
+  const [pkcs12File, setPkcs12File] = useState(null);
+  const [pkcs12Passphrase, setPkcs12Passphrase] = useState("");
+  const [pkcs12Status, setPkcs12Status] = useState("idle");
+  const [pkcs12Error, setPkcs12Error] = useState(null);
+
+  const [installPassword, setInstallPassword] = useState("");
+  const [installStatus, setInstallStatus] = useState("idle");
+  const [installError, setInstallError] = useState(null);
+
+  function load() {
+    setLoadStatus("loading");
+    api
+      .getCertStatus()
+      .then((data) => {
+        setCertStatus(data);
+        setLoadStatus("ready");
+      })
+      .catch(() => setLoadStatus("error"));
+  }
+
+  useEffect(load, []);
+
+  async function generateCsr() {
+    setCsrStatus("generating");
+    setCsrError(null);
+    try {
+      const data = await api.generateCsr();
+      setCsrPem(data.csr_pem);
+      setCsrStatus("ready");
+      load();
+    } catch (err) {
+      setCsrError(err.message);
+      setCsrStatus("error");
+    }
+  }
+
+  async function completeCsr() {
+    if (!signedCertPem.trim()) return;
+    setCompleteStatus("staging");
+    setCompleteError(null);
+    try {
+      await api.completeCsr(signedCertPem.trim());
+      setCompleteStatus("done");
+      setSignedCertPem("");
+      load();
+    } catch (err) {
+      setCompleteError(err.message);
+      setCompleteStatus("error");
+    }
+  }
+
+  async function importPkcs12() {
+    if (!pkcs12File) return;
+    setPkcs12Status("importing");
+    setPkcs12Error(null);
+    try {
+      const base64 = await fileToBase64(pkcs12File);
+      await api.importPkcs12(base64, pkcs12Passphrase);
+      setPkcs12Status("done");
+      setPkcs12File(null);
+      setPkcs12Passphrase("");
+      load();
+    } catch (err) {
+      setPkcs12Error(err.message);
+      setPkcs12Status("error");
+    }
+  }
+
+  async function install() {
+    if (!installPassword) return;
+    setInstallStatus("installing");
+    setInstallError(null);
+    try {
+      await api.installCert(installPassword);
+      setInstallStatus("done");
+      setInstallPassword("");
+    } catch (err) {
+      setInstallError(err.message);
+      setInstallStatus("error");
+    }
+  }
+
+  const expirySoon = certStatus?.days_until_expiry != null && certStatus.days_until_expiry < 30;
+
+  return (
+    <div className="card settings-section">
+      <h2>TLS-certifikat</h2>
+      <p className="muted">
+        Styrer produktionens HTTPS-certifikat (Caddy, <code>movie.ll.lan</code>, se
+        DEPLOYMENT.md/BUGS.md #23). <strong>Højere risiko end appens øvrige værktøjer</strong> — en
+        forkert installation kan gøre siden utilgængelig over HTTPS. Kun meningsfuldt i produktion.
+      </p>
+
+      {loadStatus === "loading" && <p className="muted">Indlæser status...</p>}
+      {loadStatus === "error" && (
+        <div className="banner banner-error">Kunne ikke hente certifikat-status.</div>
+      )}
+      {loadStatus === "ready" && certStatus && !certStatus.installed && !certStatus.staged && (
+        <p className="muted">Intet certifikat fundet (hverken installeret eller klar).</p>
+      )}
+      {loadStatus === "ready" && certStatus && (certStatus.installed || certStatus.staged) && (
+        <div className={`banner ${expirySoon ? "banner-error" : "banner-info"}`}>
+          {certStatus.installed ? "Installeret" : "Klar til installation (ikke installeret endnu)"}:{" "}
+          {certStatus.common_name} — gyldigt {formatCertDate(certStatus.valid_from)} til{" "}
+          {formatCertDate(certStatus.valid_until)} ({certStatus.days_until_expiry} dage tilbage)
+        </div>
+      )}
+
+      <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
+
+      <h3 style={{ marginTop: 0 }}>Metode 1: Generér CSR</h3>
+      <p className="muted">
+        Genererer en ny nøgle + CSR til ekstern signering (fx via din interne CA). Nøglen forlader
+        aldrig serveren.
+      </p>
+      <button type="button" className="btn" onClick={generateCsr} disabled={csrStatus === "generating"}>
+        {csrStatus === "generating" ? "Genererer..." : "Generér ny CSR"}
+      </button>
+      {csrStatus === "error" && (
+        <div className="banner banner-error" style={{ marginTop: 12 }}>{csrError}</div>
+      )}
+      {csrPem && (
+        <div style={{ marginTop: 12 }}>
+          <textarea readOnly value={csrPem} rows={8} style={{ width: "100%", fontFamily: "monospace" }} />
+          <button
+            type="button"
+            className="btn"
+            style={{ marginTop: 8 }}
+            onClick={() => navigator.clipboard.writeText(csrPem).catch(() => {})}
+          >
+            Kopiér CSR
+          </button>
+        </div>
+      )}
+
+      <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10, maxWidth: 500 }}>
+        <label className="field-label" htmlFor="signed-cert-input">
+          Indsæt det signerede certifikat (PEM), når du har fået CSR'en signeret
+        </label>
+        <textarea
+          id="signed-cert-input"
+          value={signedCertPem}
+          onChange={(e) => setSignedCertPem(e.target.value)}
+          rows={8}
+          style={{ width: "100%", fontFamily: "monospace" }}
+          placeholder="-----BEGIN CERTIFICATE-----..."
+        />
+        <button
+          type="button"
+          className="btn"
+          onClick={completeCsr}
+          disabled={!signedCertPem.trim() || completeStatus === "staging"}
+        >
+          {completeStatus === "staging" ? "Forbereder..." : "Fuldfør CSR"}
+        </button>
+        {completeStatus === "error" && <div className="banner banner-error">{completeError}</div>}
+        {completeStatus === "done" && <div className="banner banner-info">Certifikat klar til installation.</div>}
+      </div>
+
+      <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
+
+      <h3 style={{ marginTop: 0 }}>Metode 2: Importér PKCS12</h3>
+      <p className="muted">
+        Alternativ til CSR-flowet — upload en færdig .pfx/.p12-fil (cert + nøgle i én fil).
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
+        <input
+          type="file"
+          accept=".pfx,.p12"
+          onChange={(e) => setPkcs12File(e.target.files?.[0] ?? null)}
+        />
+        <input
+          type="password"
+          value={pkcs12Passphrase}
+          onChange={(e) => setPkcs12Passphrase(e.target.value)}
+          placeholder="Adgangsfrase for PKCS12-filen (hvis nogen)"
+          autoComplete="off"
+        />
+        <button
+          type="button"
+          className="btn"
+          onClick={importPkcs12}
+          disabled={!pkcs12File || pkcs12Status === "importing"}
+        >
+          {pkcs12Status === "importing" ? "Importerer..." : "Importér PKCS12"}
+        </button>
+        {pkcs12Status === "error" && <div className="banner banner-error">{pkcs12Error}</div>}
+        {pkcs12Status === "done" && <div className="banner banner-info">Certifikat klar til installation.</div>}
+      </div>
+
+      <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
+
+      <h3 style={{ marginTop: 0 }}>Installér</h3>
+      <p className="muted">
+        Erstatter det aktuelt kørende certifikat med det forberedte ovenfor, og genindlæser Caddy.{" "}
+        <strong>Uigenkaldeligt uden en frisk backup af det nuværende certifikat</strong> — bekræft
+        med din egen adgangskode.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
+        <input
+          type="password"
+          value={installPassword}
+          onChange={(e) => setInstallPassword(e.target.value)}
+          placeholder="Din adgangskode"
+          autoComplete="current-password"
+        />
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={install}
+          disabled={!installPassword || !certStatus?.staged || installStatus === "installing"}
+        >
+          {installStatus === "installing" ? "Installerer..." : "Installér nu"}
+        </button>
+        {installStatus === "error" && <div className="banner banner-error">{installError}</div>}
+        {installStatus === "done" && (
+          <div className="banner banner-info">
+            Installation igangsat — tjek at siden stadig svarer over HTTPS om et øjeblik.
+          </div>
+        )}
+      </div>
     </div>
   );
 }

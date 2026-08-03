@@ -1,5 +1,9 @@
+import logging
+
 from app.integrations import discogs_client, tmdb_client, upc_client, upcdatabase_client
 from app.models.scan import MovieCandidate
+
+logger = logging.getLogger("moviedb")
 
 
 def _alternate_upc_ean_form(barcode: str) -> str | None:
@@ -40,6 +44,16 @@ async def lookup_by_barcode(barcode: str) -> dict:
             guessed_title = await _lookup_title(alternate)
 
     if not guessed_title:
+        # BUGS.md #34 — this WARNING is the one clear line to grep for when
+        # diagnosing "scan finder ingen film": it means all three sources
+        # (UPCitemdb, Discogs, UPCDatabase.org — see the INFO line each one
+        # already logged for its own miss) came back empty, not that the
+        # request itself failed.
+        logger.warning(
+            "Intet titel-gæt fundet for stregkode %s (forsøgt mod UPCitemdb, Discogs, "
+            "UPCDatabase.org, inkl. alternativ UPC/EAN-form)",
+            barcode,
+        )
         return {"guessed_title": None, "candidates": []}
 
     # Searches both TMDb databases (feature #49) — a scanned barcode's
@@ -53,4 +67,10 @@ async def lookup_by_barcode(barcode: str) -> dict:
     candidates = [
         MovieCandidate(**candidate, media_kind="movie") for candidate in raw_movie_candidates
     ] + [MovieCandidate(**candidate, media_kind="tv") for candidate in raw_tv_candidates]
+    if not candidates:
+        logger.info(
+            "Stregkode %s gav titel-gæt '%s', men ingen TMDb-kandidater (hverken film eller TV)",
+            barcode,
+            guessed_title,
+        )
     return {"guessed_title": guessed_title, "candidates": candidates}

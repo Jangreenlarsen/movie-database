@@ -25,10 +25,14 @@ async def lookup_title(barcode: str) -> str | None:
 
     items = response.json().get("items") or []
     if not items:
+        logger.info("UPCitemdb: intet match for %s", barcode)
         return None
 
     raw_title = items[0].get("title")
     if not raw_title:
+        logger.info("UPCitemdb: match uden titel-felt for %s", barcode)
         return None
 
-    return clean_bracketed_title(raw_title)
+    title = clean_bracketed_title(raw_title)
+    logger.info("UPCitemdb: %s -> %r", barcode, title)
+    return title

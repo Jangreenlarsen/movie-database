@@ -2,6 +2,26 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.54.0 build 0070] — 2026-08-03 — feature: TLS-certifikat-styring i Indstillinger (#73)
+
+Ny admin-only "TLS-certifikat"-sektion på Indstillinger-siden til at forny produktionens `movie.ll.lan`-certifikat (se BUGS.md #23/DEPLOYMENT.md) uden manuel SSH-adgang. To metoder: (1) generér en ECDSA P-256-nøgle + CSR til ekstern signering (fx Jans interne AD CS) og indsæt det signerede certifikat bagefter, eller (2) importér en færdig PKCS12 (.pfx/.p12 med cert+nøgle). Begge veje verificerer at certifikatets offentlige nøgle matcher den ventende private nøgle før noget lægges klar ("staged"). En separat "Installér nu"-knap (kræver eget password, samme mønster som #67's database-reset) udløser den faktiske installation.
+
+Genbruger det ikke-sudo-trigger-mønster fra OTA-deploy (feature #20/BUGS.md #18): `moviedb-backend` kan hverken sudo'e eller skrive til `/etc/caddy/certs/`, så den lægger cert+nøgle i en staging-mappe indenfor egne `ReadWritePaths` og rører en trigger-fil — en ny, separat, root-ejet systemd path-unit (`scripts/moviedb-cert-install.{path,service}` + `scripts/cert-install.sh`, mirrorer `moviedb-deploy-restart.*`) reagerer på den, tager en `.bak`-backup af det eksisterende certifikat, installerer det nye med korrekt ejerskab/rettigheder, validerer Caddy-config og genindlæser først ved success. Disse nye systemd-units er **klar i repoet men endnu ikke installeret på produktionsserveren** — kræver Jans eksplicitte godkendelse før SSH-udførelse (se DEPLOYMENT.md).
+
+Backend: `backend/app/models/cert.py`, `backend/app/services/cert_service.py` (ny, bruger `cryptography`-biblioteket til CSR/X.509/PKCS12 — ingen `openssl`-subprocess), 5 nye endpoints under `/api/system/cert*` (`app/api/system.py`), 4 nye fejltyper (`app/core/errors.py`), nye settings-felter (`app/core/config.py`), `cryptography>=42.0` tilføjet til `requirements.txt`. Frontend: `TlsCertSection` i `Settings.jsx`, 5 nye `client.js`-funktioner. 13 nye backend-tests (`test_tls_cert.py`), fuld live-verifikation af hele UI-flowet (CSR-generering, fuldførelse, PKCS12-import, forkert/korrekt password ved installation) mod en rigtig kørende backend/frontend.
+
+## [0.53.5 build 0069] — 2026-08-03 — fix (afventer bekræftelse): sort skærm på iOS ved gem (BUGS.md #35)
+
+Jan rapporterede at skærmen bliver helt sort på en iOS-enhed ved oprettelse af en film og tryk på Gem. Mistanke om et kendt WebKit-kompatibilitetsproblem: `BarcodeScanner.jsx` stoppede tidligere kun selve stregkode-afkodningen (zxing-bibliotekets `controls.stop()`/`stopContinuousDecode()`), men overlod `<video>`-elementets `MediaStream`/hardware-compositing-lag til browseren — kan på visse WebKit-versioner efterlade et fastfrosset/sort lag der breder sig til hele siden, ikke kun kamera-boksen, når komponenten afmonteres/genrenderes (fx når "Gem" lukker tilføj-panelet).
+
+Ny `releaseCamera()`-hjælpefunktion stopper nu eksplicit alle `MediaStream`-tracks, nulstiller `video.srcObject` og kalder `video.load()` — både når en stregkode findes, og ved afmontering. **Kan ikke reproduceres/verificeres fra udviklingsmiljøet** (kræver en fysisk iOS-enhed) — status forbliver "afventer bekræftelse" i BUGS.md #35 indtil Jan har testet på sin iPhone efter deploy.
+
+## [0.53.4 build 0068] — 2026-08-03 — fix: tydeligere logging af stregkode-opslag (BUGS.md #34)
+
+Jan rapporterede at alle 10-15 nyligt scannede stregkoder fejlede opslag. Produktions-log-undersøgelse afslørede at UPCDatabase.org (feature #69) aldrig blev kaldt — `UPCDATABASE_TOKEN` var kun sat i udviklerens lokale `.env`, aldrig deployet til produktion (`.env` er git-ignoreret, deployes ikke via `git pull`). Samtidig var "intet match"-udfald slet ikke logget eksplicit i nogen af de tre kilder, kun selve HTTP-kaldet.
+
+Tilføjet eksplicit logging (`logger.info`/`logger.warning`) i `upc_client`, `discogs_client`, `upcdatabase_client` for "intet match"/"intet token", samt en opsummerende advarsel i `scan_service.lookup_by_barcode` når alle tre kilder er udtømt uden gæt. Selve nøgle-manglen kræver at Jan selv indsætter den via Indstillinger → System-indstillinger (admin-override, ingen genstart nødvendig).
+
 ## [0.53.3 build 0067] — 2026-08-03 — fix: Voldby BIO-side polish + guest-rolle-justeringer (feature #70/#71/#72)
 
 **Voldby BIO offentlig side**: dato+tid-badge flyttet fra et overlay nederst på plakaten til et normalt element ovenover (Jans ønske: "dato skal stå over film"). Hero-banneret har fået en farverig gradient-baggrund (`--accent`/`--accent-strong`) og en større, federe overskrift — var for fladt/farveløst før.

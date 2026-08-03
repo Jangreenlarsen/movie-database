@@ -4,22 +4,24 @@
 }
 
 .cinema-public-hero {
-  padding: 48px 24px 36px;
+  padding: 56px 24px 44px;
   text-align: center;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+  color: var(--accent-contrast);
 }
 
 .cinema-public-hero h1 {
   margin: 0 0 10px;
-  font-size: 2.4rem;
-  letter-spacing: -0.01em;
+  font-size: 2.9rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .cinema-public-tagline {
   margin: 0;
-  color: var(--text-muted);
-  font-size: 1.05rem;
+  color: var(--accent-contrast);
+  opacity: 0.85;
+  font-size: 1.1rem;
 }
 
 .cinema-public-main {
@@ -73,13 +75,9 @@
 }
 
 .bio-poster-card-datetime {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 4px 8px;
-  background: rgba(0, 0, 0, 0.65);
-  color: #fff;
+  padding: 6px 10px;
+  background: var(--accent);
+  color: var(--accent-contrast);
   font-size: 0.72rem;
   font-weight: 700;
   text-align: center;

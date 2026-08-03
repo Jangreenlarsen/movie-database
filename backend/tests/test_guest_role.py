@@ -115,7 +115,11 @@ async def test_guest_cannot_toggle_season_owned_or_episode_watched(client, monke
     await guest.aclose()
 
 
-async def test_guest_cannot_request_screening(client):
+async def test_guest_can_request_screening(client):
+    """Regression test for feature #72's later refinement (Jans explicit
+    choice 2026-08-03): guests may request a screening for a title they
+    find in the library — the one write action allowed for the read-only
+    role, since it's how they'd take part in Voldby BIO at all."""
     created = await client.post("/api/movies", json={"title": "Requestable Movie"})
     movie_id = created.json()["id"]
     guest = await _guest_client(client)
@@ -123,7 +127,7 @@ async def test_guest_cannot_request_screening(client):
     response = await guest.post(
         "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id}
     )
-    assert response.status_code == 403
+    assert response.status_code == 201
     await guest.aclose()
 
 

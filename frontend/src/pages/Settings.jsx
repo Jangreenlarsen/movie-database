@@ -5,6 +5,7 @@ import "./Settings.css";
 
 export default function Settings({ user, onSettingsChanged }) {
   const isAdmin = user.role === "admin";
+  const isGuest = user.role === "guest";
 
   return (
     <section>
@@ -14,8 +15,10 @@ export default function Settings({ user, onSettingsChanged }) {
 
       <AccountSection user={user} />
       <CardSizeSection cardSize={user.settings.card_size} onSettingsChanged={onSettingsChanged} />
-      <SerialNumberSection isAdmin={isAdmin} />
-      <DeletedMoviesSection />
+      {/* Feature #72: begge rører kun film-/TV-data en guest ikke må
+          redigere/slette alligevel — ikke relevante at vise. */}
+      {!isGuest && <SerialNumberSection isAdmin={isAdmin} />}
+      {!isGuest && <DeletedMoviesSection />}
       {isAdmin && (
         <TmdbSyncSection
           title="TMDb-synkronisering (film)"
@@ -74,7 +77,9 @@ function AccountSection({ user }) {
       <div className="modal-section-label">Konto</div>
       <p>
         Logget ind som <strong>{user.username}</strong>{" "}
-        <span className="role-badge">{user.role === "admin" ? "Admin" : "Standard"}</span>
+        <span className="role-badge">
+          {user.role === "admin" ? "Admin" : user.role === "guest" ? "Guest" : "Standard"}
+        </span>
       </p>
 
       <form className="serial-config-form" onSubmit={changePassword}>

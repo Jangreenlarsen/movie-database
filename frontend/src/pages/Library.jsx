@@ -1150,21 +1150,28 @@ function MovieDetailModal({
           {error && <div className="banner banner-error">{error}</div>}
         </div>
 
-        {!isGuest && (
-        <div className="modal-footer">
-          <button type="button" className="btn" onClick={remove} disabled={deleting}>
-            {deleting ? "Sletter..." : "Slet film"}
-          </button>
-          {movie.is_wishlist && (
-            <button type="button" className="btn" onClick={moveToLibrary} disabled={moving}>
-              {moving ? "Flytter..." : "Flyt til bibliotek"}
+        {isGuest ? (
+          // Feature #72's later refinement: guests may still request a
+          // screening (their one allowed write action) even though the
+          // rest of the footer (save/delete/move) stays hidden for them.
+          <div className="modal-footer">
+            <ScreeningRequestButton mediaKind="movie" id={movie.id} />
+          </div>
+        ) : (
+          <div className="modal-footer">
+            <button type="button" className="btn" onClick={remove} disabled={deleting}>
+              {deleting ? "Sletter..." : "Slet film"}
             </button>
-          )}
-          <ScreeningRequestButton mediaKind="movie" id={movie.id} />
-          <button type="button" className="btn btn-primary" onClick={save} disabled={!dirty || saving}>
-            {saving ? "Gemmer..." : "Gem ændringer"}
-          </button>
-        </div>
+            {movie.is_wishlist && (
+              <button type="button" className="btn" onClick={moveToLibrary} disabled={moving}>
+                {moving ? "Flytter..." : "Flyt til bibliotek"}
+              </button>
+            )}
+            <ScreeningRequestButton mediaKind="movie" id={movie.id} />
+            <button type="button" className="btn btn-primary" onClick={save} disabled={!dirty || saving}>
+              {saving ? "Gemmer..." : "Gem ændringer"}
+            </button>
+          </div>
         )}
       </div>
     </div>

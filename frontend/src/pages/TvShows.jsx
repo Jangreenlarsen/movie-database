@@ -1040,21 +1040,25 @@ function TvShowDetailModal({
           {error && <div className="banner banner-error">{error}</div>}
         </div>
 
-        {!isGuest && (
-        <div className="modal-footer">
-          <button type="button" className="btn" onClick={remove} disabled={deleting}>
-            {deleting ? "Sletter..." : "Slet serie"}
-          </button>
-          {show.is_wishlist && (
-            <button type="button" className="btn" onClick={moveToLibrary} disabled={moving}>
-              {moving ? "Flytter..." : "Flyt til bibliotek"}
+        {isGuest ? (
+          <div className="modal-footer">
+            <ScreeningRequestButton mediaKind="tv" id={show.id} />
+          </div>
+        ) : (
+          <div className="modal-footer">
+            <button type="button" className="btn" onClick={remove} disabled={deleting}>
+              {deleting ? "Sletter..." : "Slet serie"}
             </button>
-          )}
-          <ScreeningRequestButton mediaKind="tv" id={show.id} />
-          <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
-            {saving ? "Gemmer..." : "Gem ændringer"}
-          </button>
-        </div>
+            {show.is_wishlist && (
+              <button type="button" className="btn" onClick={moveToLibrary} disabled={moving}>
+                {moving ? "Flytter..." : "Flyt til bibliotek"}
+              </button>
+            )}
+            <ScreeningRequestButton mediaKind="tv" id={show.id} />
+            <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
+              {saving ? "Gemmer..." : "Gem ændringer"}
+            </button>
+          </div>
         )}
       </div>
     </div>

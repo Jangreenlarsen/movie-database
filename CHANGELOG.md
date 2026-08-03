@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.54.2 build 0072] — 2026-08-03 — fix: "Opdatér fra GitHub" viste fejl selv når intet var galt (BUGS.md #36)
+
+Jan ramte en alarmerende "Kunne ikke bekræfte at opdateringen er fuldført endnu"-besked ved et klik hvor produktionen allerede var opdateret. Rodårsag: `deploy.sh` kørte altid hele pipelinen uanset om `git pull` fandt noget nyt, og frontend'ens eneste succes-kriterie var at `/api/health`s build-nummer ændrede sig — hvilket det aldrig gør når der intet nyt er at hente, så pollingen ramte garanteret timeout.
+
+`deploy.sh` sammenligner nu commit-hash før/efter `git pull` og springer pip/npm/restart helt over hvis identisk (undgår unødig nedetid), og skriver udfaldet til en ny `.deploy-status`-fil. Ny `GET /api/system/deploy/status`-endpoint (admin-only) læser den. `Settings.jsx`s deploy-sektion viser nu straks en tydelig "Allerede opdateret"-besked i stedet for at vente to minutter på en fejlbanner. **Kræver at den opdaterede `deploy.sh` manuelt kopieres til `/opt/moviedb-deploy.sh` i produktion** — afventer Jans bekræftelse.
+
 ## [0.54.1 build 0071] — 2026-08-03 — fix (afventer endelig bekræftelse): ægte rodårsag til sort skærm på iOS fundet og rettet (BUGS.md #35)
 
 Jan testede build 0069's fix live og bekræftede at problemet var uændret — den første teori (WebKit-compositing-lag) var forkert og rettede aldrig den faktiske fejl. Ny undersøgelse fandt den ægte rodårsag ved at læse `@zxing/browser`s (v0.2.1) kildekode direkte: `BarcodeScanner.jsx`s unmount-cleanup kaldte `readerRef.current?.stopContinuousDecode()` — en metode der **slet ikke findes** i denne version af biblioteket. Den valgfri-kædning beskyttede kun mod `readerRef.current` selv værende null, ikke mod at kalde en ikke-eksisterende metode — så linjen kastede en `TypeError` ved hver eneste afmontering af scanneren, herunder præcis når "Gem" lukker tilføj-panelet. Uden nogen error boundary i appen fik denne ufangede fejl hele siden til at gå blank, uden vej tilbage undtagen manuel reload.

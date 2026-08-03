@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.52.0 (build 0063) — 2026-08-03
+
+- Ny bruger-rolle: "Guest" (read-only) — kan se film-/TV-biblioteket og Voldby BIO, men ikke redigere noget. Sættes fra rolle-dropdown'en i Brugere-listen på Indstillinger.
+
 ## v0.51.0 (build 0062) — 2026-08-03
 
 - Voldby BIO har nu en offentlig side på `/bio` du kan dele med andre (fx i en besked) — ingen login krævet, viser kun programmet + billeder/info om biografen. Find "🔗 Del link"-knappen på Voldby BIO-fanen.

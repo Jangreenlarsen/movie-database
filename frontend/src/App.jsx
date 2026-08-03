@@ -56,6 +56,11 @@ function App() {
     return <PendingApproval user={user} onLogout={handleLogout} />;
   }
 
+  // Feature #72 — guest is read-only: Ønsker/Print/Statistik all involve
+  // either writing (ønske en film) or aren't part of "se film/TV-bibliotek",
+  // so they're hidden entirely rather than just disabled.
+  const isGuest = user.role === "guest";
+
   return (
     <div className="app">
       <header className="app-header">
@@ -79,30 +84,36 @@ function App() {
             >
               TV-serier
             </button>
-            <button
-              className={tab === "wishlist" ? "active" : ""}
-              onClick={() => setTab("wishlist")}
-            >
-              Ønsker
-            </button>
+            {!isGuest && (
+              <button
+                className={tab === "wishlist" ? "active" : ""}
+                onClick={() => setTab("wishlist")}
+              >
+                Ønsker
+              </button>
+            )}
             <button
               className={tab === "cinema" ? "active" : ""}
               onClick={() => setTab("cinema")}
             >
               🎬 Voldby BIO
             </button>
-            <button
-              className={tab === "print" ? "active" : ""}
-              onClick={() => setTab("print")}
-            >
-              Print
-            </button>
-            <button
-              className={tab === "stats" ? "active" : ""}
-              onClick={() => setTab("stats")}
-            >
-              Statistik
-            </button>
+            {!isGuest && (
+              <button
+                className={tab === "print" ? "active" : ""}
+                onClick={() => setTab("print")}
+              >
+                Print
+              </button>
+            )}
+            {!isGuest && (
+              <button
+                className={tab === "stats" ? "active" : ""}
+                onClick={() => setTab("stats")}
+              >
+                Statistik
+              </button>
+            )}
             <button
               className={tab === "settings" ? "active" : ""}
               onClick={() => setTab("settings")}
@@ -122,10 +133,10 @@ function App() {
       <main className="app-main">
         {tab === "library" && <Library user={user} onSettingsChanged={setUser} />}
         {tab === "tv" && <TvShows user={user} onSettingsChanged={setUser} />}
-        {tab === "wishlist" && <Library user={user} onSettingsChanged={setUser} wishlist />}
+        {!isGuest && tab === "wishlist" && <Library user={user} onSettingsChanged={setUser} wishlist />}
         {tab === "cinema" && <Cinema user={user} />}
-        {tab === "print" && <PrintList />}
-        {tab === "stats" && <Statistics />}
+        {!isGuest && tab === "print" && <PrintList />}
+        {!isGuest && tab === "stats" && <Statistics />}
         {tab === "settings" && <Settings user={user} onSettingsChanged={setUser} />}
       </main>
 

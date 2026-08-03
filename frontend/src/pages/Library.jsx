@@ -71,6 +71,7 @@ function formatSerial(serialNumber, paddingWidth) {
 }
 
 export default function Library({ user, onSettingsChanged, wishlist = false }) {
+  const isGuest = user.role === "guest";
   const [query, setQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedFormats, setSelectedFormats] = useState([]);
@@ -326,13 +327,15 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
             />
           </div>
 
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => setShowAddPanel((v) => !v)}
-          >
-            {showAddPanel ? "Luk" : wishlist ? "+ Tilføj ønske" : "+ Tilføj film"} ▾
-          </button>
+          {!isGuest && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setShowAddPanel((v) => !v)}
+            >
+              {showAddPanel ? "Luk" : wishlist ? "+ Tilføj ønske" : "+ Tilføj film"} ▾
+            </button>
+          )}
 
           <button type="button" className="btn" onClick={() => setShowSortPanel((v) => !v)}>
             Sortér ▾
@@ -733,6 +736,7 @@ function MovieDetailModal({
     movie.personal_rating != null ? String(movie.personal_rating) : ""
   );
   const [personalNote, setPersonalNote] = useState(movie.personal_note ?? "");
+  const isGuest = user.role === "guest";
 
   function addTag(tag) {
     const current = tagsInput.split(",").map((t) => t.trim()).filter(Boolean);
@@ -949,147 +953,204 @@ function MovieDetailModal({
 
           <PlexSection movie={movie} />
 
-          {!movie.is_wishlist && (
-            <div>
-              <div className="modal-section-label">Serienummer</div>
-              <input
-                type="number"
-                min="1"
-                disabled={!canEditSerial}
-                value={serialNumberInput}
-                onChange={(e) => setSerialNumberInput(e.target.value)}
-                style={{ width: 100 }}
-              />
-              {canEditSerial ? (
-                <p className="muted" style={{ marginTop: 4 }}>
-                  Er nummeret allerede i brug af en anden film, bytter de to film
-                  automatisk plads.
-                </p>
-              ) : (
-                <p className="muted" style={{ marginTop: 4 }}>
-                  Kun en admin eller {movie.registered_by ?? "den der registrerede filmen"} kan ændre
-                  serienummeret.
-                </p>
+          {isGuest ? (
+            <>
+              {!movie.is_wishlist && (
+                <div>
+                  <div className="modal-section-label">Serienummer</div>
+                  <p>{formatSerial(movie.serial_number, serialPaddingWidth)}</p>
+                </div>
               )}
-            </div>
-          )}
-
-          <div>
-            <div className="modal-section-label">Tags</div>
-            <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} />
-            {allTags.length > 0 && (
-              <div className="chip-row" style={{ marginTop: 8 }}>
-                {allTags.map((tag) => (
-                  <Chip key={tag} label={tag} onClick={() => addTag(tag)} />
-                ))}
+              <div>
+                <div className="modal-section-label">Tags</div>
+                <p>{movie.tags.length > 0 ? movie.tags.join(", ") : "Ingen tags"}</p>
               </div>
-            )}
-          </div>
+              <div>
+                <div className="modal-section-label">Lokation</div>
+                <p>{movie.location || "—"}</p>
+              </div>
+              <div>
+                <div className="modal-section-label">Ejer</div>
+                <p>{movie.owner || "—"}</p>
+              </div>
+              {movie.registered_by && (
+                <p className="muted">Registreret af: {movie.registered_by}</p>
+              )}
+              <div>
+                <div className="modal-section-label">Set-status</div>
+                <p>
+                  {movie.watched
+                    ? `✓ Set${movie.watched_at ? ` d. ${new Date(movie.watched_at).toLocaleDateString("da-DK")}` : ""}`
+                    : "Ikke set"}
+                </p>
+              </div>
+              <div>
+                <div className="modal-section-label">Din rating</div>
+                <p>{movie.personal_rating != null ? `${movie.personal_rating}/10` : "—"}</p>
+              </div>
+              <div>
+                <div className="modal-section-label">Din note</div>
+                <p>{movie.personal_note || "—"}</p>
+              </div>
+              <div>
+                <div className="modal-section-label">Format</div>
+                <p>{movie.format || "Ikke angivet"}</p>
+              </div>
+              <div>
+                <div className="modal-section-label">Medietype</div>
+                <p>{movie.media_type || "Ikke angivet"}</p>
+              </div>
+              <div>
+                <div className="modal-section-label">Lyd-type</div>
+                <p>{movie.audio_types.length > 0 ? movie.audio_types.join(", ") : "—"}</p>
+              </div>
+            </>
+          ) : (
+            <>
+              {!movie.is_wishlist && (
+                <div>
+                  <div className="modal-section-label">Serienummer</div>
+                  <input
+                    type="number"
+                    min="1"
+                    disabled={!canEditSerial}
+                    value={serialNumberInput}
+                    onChange={(e) => setSerialNumberInput(e.target.value)}
+                    style={{ width: 100 }}
+                  />
+                  {canEditSerial ? (
+                    <p className="muted" style={{ marginTop: 4 }}>
+                      Er nummeret allerede i brug af en anden film, bytter de to film
+                      automatisk plads.
+                    </p>
+                  ) : (
+                    <p className="muted" style={{ marginTop: 4 }}>
+                      Kun en admin eller {movie.registered_by ?? "den der registrerede filmen"} kan ændre
+                      serienummeret.
+                    </p>
+                  )}
+                </div>
+              )}
 
-          <div>
-            <div className="modal-section-label">Lokation</div>
-            <Combobox
-              value={location}
-              onChange={setLocation}
-              options={allLocations}
-              placeholder="Stue, reol 2..."
-            />
-          </div>
+              <div>
+                <div className="modal-section-label">Tags</div>
+                <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} />
+                {allTags.length > 0 && (
+                  <div className="chip-row" style={{ marginTop: 8 }}>
+                    {allTags.map((tag) => (
+                      <Chip key={tag} label={tag} onClick={() => addTag(tag)} />
+                    ))}
+                  </div>
+                )}
+              </div>
 
-          <div>
-            <div className="modal-section-label">Ejer</div>
-            <Combobox
-              value={owner}
-              onChange={setOwner}
-              options={allOwners}
-              placeholder="Hvem ejer filmen..."
-            />
-          </div>
-
-          {movie.registered_by && (
-            <p className="muted">Registreret af: {movie.registered_by}</p>
-          )}
-
-          <div>
-            <div className="modal-section-label">Set-status</div>
-            <label className="watched-toggle">
-              <input type="checkbox" checked={watched} onChange={toggleWatched} />
-              Set
-            </label>
-            {watched && (
-              <input
-                type="date"
-                value={watchedAt}
-                onChange={(e) => setWatchedAt(e.target.value)}
-                style={{ marginLeft: 10 }}
-              />
-            )}
-          </div>
-
-          <div>
-            <div className="modal-section-label">Din rating (1-10)</div>
-            <input
-              type="number"
-              min="1"
-              max="10"
-              value={personalRating}
-              onChange={(e) => setPersonalRating(e.target.value)}
-              style={{ width: 80 }}
-            />
-          </div>
-
-          <div>
-            <div className="modal-section-label">Din note</div>
-            <textarea
-              value={personalNote}
-              onChange={(e) => setPersonalNote(e.target.value)}
-              placeholder="Egne tanker om filmen..."
-              rows={3}
-              style={{ width: "100%", resize: "vertical" }}
-            />
-          </div>
-
-          <div>
-            <div className="modal-section-label">Format</div>
-            <select value={format} onChange={(e) => setFormat(e.target.value)}>
-              <option value="">Ikke angivet</option>
-              {attributeOptions.formats.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <div className="modal-section-label">Medietype</div>
-            <select value={mediaType} onChange={(e) => setMediaType(e.target.value)}>
-              <option value="">Ikke angivet</option>
-              {attributeOptions.media_types.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <div className="modal-section-label">Lyd-type</div>
-            <div className="chip-row">
-              {attributeOptions.audio_types.map((audioType) => (
-                <Chip
-                  key={audioType}
-                  label={audioType}
-                  active={audioTypes.includes(audioType)}
-                  onClick={() => setAudioTypes((prev) => toggleValue(prev, audioType))}
+              <div>
+                <div className="modal-section-label">Lokation</div>
+                <Combobox
+                  value={location}
+                  onChange={setLocation}
+                  options={allLocations}
+                  placeholder="Stue, reol 2..."
                 />
-              ))}
-            </div>
-          </div>
+              </div>
+
+              <div>
+                <div className="modal-section-label">Ejer</div>
+                <Combobox
+                  value={owner}
+                  onChange={setOwner}
+                  options={allOwners}
+                  placeholder="Hvem ejer filmen..."
+                />
+              </div>
+
+              {movie.registered_by && (
+                <p className="muted">Registreret af: {movie.registered_by}</p>
+              )}
+
+              <div>
+                <div className="modal-section-label">Set-status</div>
+                <label className="watched-toggle">
+                  <input type="checkbox" checked={watched} onChange={toggleWatched} />
+                  Set
+                </label>
+                {watched && (
+                  <input
+                    type="date"
+                    value={watchedAt}
+                    onChange={(e) => setWatchedAt(e.target.value)}
+                    style={{ marginLeft: 10 }}
+                  />
+                )}
+              </div>
+
+              <div>
+                <div className="modal-section-label">Din rating (1-10)</div>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={personalRating}
+                  onChange={(e) => setPersonalRating(e.target.value)}
+                  style={{ width: 80 }}
+                />
+              </div>
+
+              <div>
+                <div className="modal-section-label">Din note</div>
+                <textarea
+                  value={personalNote}
+                  onChange={(e) => setPersonalNote(e.target.value)}
+                  placeholder="Egne tanker om filmen..."
+                  rows={3}
+                  style={{ width: "100%", resize: "vertical" }}
+                />
+              </div>
+
+              <div>
+                <div className="modal-section-label">Format</div>
+                <select value={format} onChange={(e) => setFormat(e.target.value)}>
+                  <option value="">Ikke angivet</option>
+                  {attributeOptions.formats.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div className="modal-section-label">Medietype</div>
+                <select value={mediaType} onChange={(e) => setMediaType(e.target.value)}>
+                  <option value="">Ikke angivet</option>
+                  {attributeOptions.media_types.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div className="modal-section-label">Lyd-type</div>
+                <div className="chip-row">
+                  {attributeOptions.audio_types.map((audioType) => (
+                    <Chip
+                      key={audioType}
+                      label={audioType}
+                      active={audioTypes.includes(audioType)}
+                      onClick={() => setAudioTypes((prev) => toggleValue(prev, audioType))}
+                    />
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           {error && <div className="banner banner-error">{error}</div>}
         </div>
 
+        {!isGuest && (
         <div className="modal-footer">
           <button type="button" className="btn" onClick={remove} disabled={deleting}>
             {deleting ? "Sletter..." : "Slet film"}
@@ -1104,6 +1165,7 @@ function MovieDetailModal({
             {saving ? "Gemmer..." : "Gem ændringer"}
           </button>
         </div>
+        )}
       </div>
     </div>
   );

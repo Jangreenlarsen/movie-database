@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.52.0 build 0063] — 2026-08-03 — Ny "guest"-rolle: read-only adgang (feature #72)
+
+Ny tredje rolle `guest` (udover `admin`/`standard`) — kan browse/søge film-/TV-biblioteket og den offentlige Voldby BIO-side, og ændre egen adgangskode/view-indstillinger, men intet andet. Håndhævet i **backend** (ikke kun UI, jf. CLAUDE.md regel 16): ny `Depends(require_not_guest)` i `app/api/deps.py`, sat på alle skrive-endpoints for film/TV-serier (opret/redigér/slet, sæson-/episode-markering) og `POST /api/screening-requests`.
+
+Frontend: Ønsker-/Print-/Statistik-fanerne samt "+ Tilføj film/serie"-panelerne er skjult for guest. Film-/TV-seriens redigeringsvindue viser samme information som normalt, men som en ren visnings-udgave — ingen input-felter, intet Gem/Slet, ingen "Ønsk visning i Voldby BIO"-knap, sæson-/episode-markeringer vist som deaktiverede afkrydsningsfelter. Admin tildeler rollen fra en ny rolle-dropdown (Admin/Standard/Guest) i Brugere-listen på Indstillinger, i stedet for den tidligere binære "Gør til/fjern admin"-knap.
+
+10 nye backend-tests. Live-verificeret med Playwright: guest ser kun de 4 tilladte faner, redigeringsvinduet er fuldt skrivebeskyttet, og et direkte API-kald for at oprette en film afvises med 403.
+
 ## [0.51.0 build 0062] — 2026-08-03 — Voldby BIO: offentlig side + showcase-sektion (feature #70/#71)
 
 Ny offentlig, login-fri side på `/bio` — en direkte, delbar URL med kun programmet (hvad går i bio, hvornår) og en ny showcase-sektion (billeder af biografrummet + lyd-/billed-specs), ingen anmodnings-/planlægnings-værktøjer. `GET /api/screenings` kræver ikke længere login (POST/PATCH/DELETE er uændret admin-only) — kun læsning blev åbnet.

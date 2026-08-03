@@ -20,6 +20,11 @@ def _validate_bcrypt_byte_length(value: str) -> str:
 class UserRole(str, Enum):
     ADMIN = "admin"
     STANDARD = "standard"
+    # Feature #72 — read-only: can browse/search the film-/TV-library and
+    # the public Voldby BIO page, and change their own password, but can't
+    # create/edit/delete anything. Enforced in the backend (see
+    # api.deps.require_not_guest), not just hidden in the UI.
+    GUEST = "guest"
 
 
 class UserStatus(str, Enum):

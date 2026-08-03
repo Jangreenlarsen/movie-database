@@ -60,3 +60,13 @@ async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
     if current_user.get("role") != "admin":
         raise NotAuthorizedError()
     return current_user
+
+
+async def require_not_guest(current_user: dict = Depends(get_current_user)) -> dict:
+    """Feature #72 — blocks the read-only guest role from every write
+    endpoint (create/update/delete movies/TV-shows/screening-requests).
+    Enforced here so it can never be bypassed by calling the API directly,
+    regardless of what the frontend does or doesn't render."""
+    if current_user.get("role") == "guest":
+        raise NotAuthorizedError("Gæster har kun læseadgang")
+    return current_user

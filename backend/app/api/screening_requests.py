@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.api.deps import get_current_user, require_admin
+from app.api.deps import get_current_user, require_admin, require_not_guest
 from app.db import get_database
 from app.models.screening import ScreeningRequest, ScreeningRequestCreate, ScreeningRequestUpdate
 from app.services import audit_log_service, screening_service
@@ -19,7 +19,7 @@ router = APIRouter(
 @router.post("", response_model=ScreeningRequest, status_code=201)
 async def create_request(
     payload: ScreeningRequestCreate,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_not_guest),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     return await screening_service.request_screening(

@@ -1037,8 +1037,8 @@ function UsersSection({ currentUserId }) {
 
   useEffect(load, []);
 
-  async function toggleRole(targetUser) {
-    const nextRole = targetUser.role === "admin" ? "standard" : "admin";
+  async function changeRole(targetUser, nextRole) {
+    if (nextRole === targetUser.role) return;
     setUpdatingId(targetUser.id);
     setError(null);
     try {
@@ -1091,7 +1091,9 @@ function UsersSection({ currentUserId }) {
               {u.status === "pending" && <span className="role-badge">Afventer</span>}
               {u.status === "rejected" && <span className="role-badge">Afvist</span>}
               {u.status === "active" && (
-                <span className="role-badge">{u.role === "admin" ? "Admin" : "Standard"}</span>
+                <span className="role-badge">
+                  {u.role === "admin" ? "Admin" : u.role === "guest" ? "Guest" : "Standard"}
+                </span>
               )}
               {u.status === "pending" ? (
                 <>
@@ -1113,18 +1115,15 @@ function UsersSection({ currentUserId }) {
                   </button>
                 </>
               ) : u.status === "active" ? (
-                <button
-                  type="button"
-                  className="btn"
+                <select
+                  value={u.role}
                   disabled={u.id === currentUserId || updatingId === u.id}
-                  onClick={() => toggleRole(u)}
+                  onChange={(e) => changeRole(u, e.target.value)}
                 >
-                  {updatingId === u.id
-                    ? "Opdaterer..."
-                    : u.role === "admin"
-                      ? "Fjern admin"
-                      : "Gør til admin"}
-                </button>
+                  <option value="admin">Admin</option>
+                  <option value="standard">Standard</option>
+                  <option value="guest">Guest (read-only)</option>
+                </select>
               ) : null}
             </li>
           ))}

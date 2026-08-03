@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.api.deps import get_current_user, require_admin
+from app.api.deps import get_current_user, require_admin, require_not_guest
 from app.db import get_database
 from app.integrations import tmdb_client
 from app.models.movie import AudioType, MediaType, MovieFormat, TmdbSyncResult
@@ -51,7 +51,7 @@ async def list_tv_shows(
 @router.post("", response_model=TvShow, status_code=201)
 async def create_tv_show(
     payload: TvShowCreate,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_not_guest),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     return await tv_show_service.create_tv_show(db, payload, current_user["username"])
@@ -111,7 +111,7 @@ async def get_tv_show(tv_show_id: str, db: AsyncIOMotorDatabase = Depends(get_da
 async def update_tv_show(
     tv_show_id: str,
     payload: TvShowUpdate,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_not_guest),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     return await tv_show_service.update_tv_show(db, tv_show_id, payload, current_user)
@@ -120,13 +120,17 @@ async def update_tv_show(
 @router.delete("/{tv_show_id}", status_code=204)
 async def delete_tv_show(
     tv_show_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_not_guest),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     await tv_show_service.delete_tv_show(db, tv_show_id, current_user["username"])
 
 
-@router.patch("/{tv_show_id}/seasons/{season_number}", response_model=TvShow)
+@router.patch(
+    "/{tv_show_id}/seasons/{season_number}",
+    response_model=TvShow,
+    dependencies=[Depends(require_not_guest)],
+)
 async def set_season_owned(
     tv_show_id: str,
     season_number: int,
@@ -137,7 +141,9 @@ async def set_season_owned(
 
 
 @router.patch(
-    "/{tv_show_id}/seasons/{season_number}/episodes/{episode_number}", response_model=TvShow
+    "/{tv_show_id}/seasons/{season_number}/episodes/{episode_number}",
+    response_model=TvShow,
+    dependencies=[Depends(require_not_guest)],
 )
 async def set_episode_watched(
     tv_show_id: str,

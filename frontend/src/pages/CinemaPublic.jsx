@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import CinemaShowcase from "../components/CinemaShowcase";
-import { formatDateHeading, formatTime, groupByDate } from "../utils/cinemaFormat";
-import "./Cinema.css";
+import { formatShortDate, formatTime } from "../utils/cinemaFormat";
 import "./CinemaPublic.css";
 
 // Feature #70 — public, no-login page at /bio. Read-only: no admin tools,
@@ -12,6 +11,12 @@ import "./CinemaPublic.css";
 // `user` throughout (role checks, screening-request actions), and keeping
 // the public route as its own simple component avoids having to thread a
 // "no user" case through all of that.
+//
+// v2 (Jans feedback 2026-08-03): "Om Voldby BIO" moved back above the
+// program, and every upcoming screening now sits in one flat side-by-side
+// poster grid instead of being grouped under full per-day headings — with
+// mostly one screening per day, date-grouping just produced a long single
+// column of near-empty rows.
 export default function CinemaPublic() {
   const [screenings, setScreenings] = useState([]);
   const [status, setStatus] = useState("loading");
@@ -26,8 +31,6 @@ export default function CinemaPublic() {
       .catch(() => setStatus("error"));
   }, []);
 
-  const groups = groupByDate(screenings);
-
   return (
     <div className="cinema-public-page">
       <header className="cinema-public-hero">
@@ -37,32 +40,27 @@ export default function CinemaPublic() {
 
       <main className="cinema-public-main">
         <section>
-          <h2 className="cinema-public-section-heading">Hvad går i bio</h2>
-          <div className="cinema-program">
-            {status === "loading" && <p className="muted">Indlæser program...</p>}
-            {status === "error" && (
-              <div className="banner banner-error">Kunne ikke hente programmet.</div>
-            )}
-            {status === "ready" && groups.length === 0 && (
-              <p className="muted">Ingen kommende visninger er planlagt endnu.</p>
-            )}
-
-            {groups.map((group) => (
-              <div key={group.key} className="cinema-day">
-                <h3 className="cinema-day-heading">{formatDateHeading(group.date)}</h3>
-                <div className="cinema-cards">
-                  {group.screenings.map((screening) => (
-                    <PublicScreeningCard key={screening.id} screening={screening} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          <h2 className="cinema-public-section-heading">Om Voldby BIO</h2>
+          <CinemaShowcase />
         </section>
 
         <section>
-          <h2 className="cinema-public-section-heading">Om Voldby BIO</h2>
-          <CinemaShowcase />
+          <h2 className="cinema-public-section-heading">Hvad går i bio</h2>
+          {status === "loading" && <p className="muted">Indlæser program...</p>}
+          {status === "error" && (
+            <div className="banner banner-error">Kunne ikke hente programmet.</div>
+          )}
+          {status === "ready" && screenings.length === 0 && (
+            <p className="muted">Ingen kommende visninger er planlagt endnu.</p>
+          )}
+
+          {screenings.length > 0 && (
+            <div className="bio-poster-grid">
+              {screenings.map((screening) => (
+                <PublicScreeningCard key={screening.id} screening={screening} />
+              ))}
+            </div>
+          )}
         </section>
       </main>
     </div>
@@ -71,37 +69,25 @@ export default function CinemaPublic() {
 
 function PublicScreeningCard({ screening }) {
   return (
-    <div className="cinema-card">
-      <div className="cinema-card-poster">
+    <div className="bio-poster-card">
+      <div className="bio-poster-card-poster">
         {screening.poster_url ? (
           <img src={screening.poster_url} alt={screening.title ?? ""} loading="lazy" />
         ) : (
           <span>{screening.media_kind === "movie" ? "🎬" : "📺"}</span>
         )}
+        <div className="bio-poster-card-datetime">
+          {formatShortDate(screening.scheduled_at)} · {formatTime(screening.scheduled_at)}
+        </div>
       </div>
-      <div className="cinema-card-body">
-        <div className="cinema-card-time">{formatTime(screening.scheduled_at)}</div>
-        <h3 className="cinema-card-title">
+      <div className="bio-poster-card-body">
+        <h3 className="bio-poster-card-title">
           {screening.title ?? "Ukendt titel"}
           {screening.year ? ` (${screening.year})` : ""}
         </h3>
         {screening.genres?.length > 0 && (
-          <div className="cinema-card-genres">{screening.genres.join(", ")}</div>
+          <div className="bio-poster-card-genres">{screening.genres.join(", ")}</div>
         )}
-        {screening.overview && <p className="cinema-card-overview">{screening.overview}</p>}
-        {screening.note && <p className="cinema-card-note">📝 {screening.note}</p>}
-        <div className="cinema-card-links">
-          {screening.trailer_url && (
-            <a href={screening.trailer_url} target="_blank" rel="noreferrer">
-              ▶ Se trailer
-            </a>
-          )}
-          {screening.imdb_url && (
-            <a href={screening.imdb_url} target="_blank" rel="noreferrer">
-              IMDb
-            </a>
-          )}
-        </div>
       </div>
     </div>
   );

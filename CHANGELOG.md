@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.53.2 build 0066] — 2026-08-03 — fix: Voldby BIO offentlig side — sideom-side-gitter + sektionsrækkefølge (feature #70/#71)
+
+Endnu en runde Jan-feedback på den offentlige `/bio`-side: "Om Voldby BIO" flyttet tilbage øverst (over programmet igen), og programmets datogruppering fjernet — med typisk én visning pr. dag gav det en lang, næsten tom kolonne af enkeltstående kort. Alle kommende visninger vises nu i ét fladt side-om-side gitter (samme `movie-grid`-poster-stil som resten af appen), hver med en dato+tid-badge nederst på plakaten i stedet for en fælles dags-overskrift.
+
 ## [0.53.1 build 0065] — 2026-08-03 — fix: Voldby BIO offentlig side prioriterer programmet (feature #70/#71)
 
 Jans feedback efter at have set den offentlige `/bio`-side: for lidt fyldt ud, og "hvad går i bio" skulle frem. Omstruktureret: en stor, tydelig "🎬 Voldby BIO"-hero-overskrift øverst (i stedet for en lille header-bjælke), programmet ("Hvad går i bio") flyttet op som første sektion, showcase-sektionen (billeder/specs) flyttet ned under en ny "Om Voldby BIO"-overskrift.

@@ -20,6 +20,13 @@ export function formatTime(iso) {
   return new Date(iso).toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
 }
 
+// Compact "1. sep" form — used on the public /bio page's poster-grid cards
+// (feature #70 v2), which show every upcoming screening side by side in one
+// flat grid instead of grouped under a full per-day heading.
+export function formatShortDate(iso) {
+  return new Date(iso).toLocaleDateString("da-DK", { day: "numeric", month: "short" });
+}
+
 export function groupByDate(screenings) {
   const groups = [];
   let currentKey = null;

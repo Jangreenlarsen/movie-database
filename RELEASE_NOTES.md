@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.49.0 (build 0060) — 2026-08-03
+
+- Ny "Nulstil database"-knap under Indstillinger (kun admin) — tømmer film-/TV-biblioteket helt. Bekræftes med din adgangskode. Brugerkonti og system-indstillinger rører den ikke.
+
 ## v0.48.0 (build 0059) — 2026-08-03
 
 - Nye brugere skal nu godkendes af en admin før de får adgang (Indstillinger → Brugere). Din egen konto er upåvirket.

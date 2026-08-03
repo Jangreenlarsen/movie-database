@@ -49,3 +49,23 @@ class SystemRestoreResult(BaseModel):
     tags_imported: int
     users_imported: int
     counters_imported: int
+
+
+class DatabaseResetConfirm(BaseModel):
+    """Feature #67 — a reset is more irreversible than a restore (a restore
+    at least still has *some* data behind it), so confirmation is the
+    admin's actual password, not just a typed phrase like #60/#61's
+    restore flows."""
+
+    current_password: str
+
+
+class DatabaseResetResult(BaseModel):
+    movies_removed: int
+    tv_shows_removed: int
+    deleted_movies_removed: int
+    deleted_tv_shows_removed: int
+    tags_removed: int
+    counters_removed: int
+    screenings_removed: int
+    screening_requests_removed: int

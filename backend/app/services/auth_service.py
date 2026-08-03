@@ -107,6 +107,16 @@ async def change_password(
     await user_repository.set_password_hash(db, user_id, hash_password(payload.new_password))
 
 
+async def verify_current_password(db: AsyncIOMotorDatabase, user_id: str, current_password: str) -> None:
+    """Re-checks the acting admin's own password as a stronger confirmation
+    step for the most irreversible admin actions (feature #67's database
+    reset) — same check as `change_password`, factored out since it isn't
+    itself changing anything here."""
+    document = await user_repository.find_by_id(db, user_id)
+    if document is None or not verify_password(current_password, document["password_hash"]):
+        raise InvalidCredentialsError()
+
+
 async def list_users(db: AsyncIOMotorDatabase) -> list[User]:
     documents = await user_repository.list_all(db)
     return [to_user_model(doc) for doc in documents]

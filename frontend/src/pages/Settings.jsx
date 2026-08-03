@@ -36,6 +36,7 @@ export default function Settings({ user, onSettingsChanged }) {
       )}
       {isAdmin && <LibraryBackupSection />}
       {isAdmin && <SystemBackupSection />}
+      {isAdmin && <DatabaseResetSection />}
       {isAdmin && <SystemSettingsSection />}
       {isAdmin && <DeploySection />}
       {isAdmin && <UsersSection currentUserId={user.id} />}
@@ -372,6 +373,70 @@ function SystemBackupSection() {
         <div className="banner banner-info" style={{ marginTop: 12 }}>
           Gendannet: {restoreResult.movies_imported} film, {restoreResult.tv_shows_imported} TV-serier,{" "}
           {restoreResult.users_imported} brugere.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DatabaseResetSection() {
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState("idle");
+  const [error, setError] = useState(null);
+  const [result, setResult] = useState(null);
+
+  async function reset() {
+    if (!password) return;
+    setStatus("resetting");
+    setError(null);
+    setResult(null);
+    try {
+      const data = await api.resetDatabase(password);
+      setResult(data);
+      setStatus("done");
+      setPassword("");
+    } catch (err) {
+      setError(err.message);
+      setStatus("error");
+    }
+  }
+
+  return (
+    <div className="card settings-section">
+      <h2>Nulstil database</h2>
+      <p className="muted">
+        Tømmer film-/TV-biblioteket helt (film, TV-serier, slettede film/TV-serier, tags,
+        serienummer-tællere, samt Voldby BIO-visninger/-anmodninger) tilbage til tom tilstand.{" "}
+        <strong>Rører ikke</strong> brugerkonti eller system-indstillinger.{" "}
+        <strong>Uigenkaldeligt</strong> — tag en fuld system-backup ovenfor først, hvis du vil kunne
+        fortryde. Bekræft med din egen adgangskode.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Din adgangskode"
+          autoComplete="current-password"
+        />
+        <button
+          type="button"
+          className="btn"
+          onClick={reset}
+          disabled={!password || status === "resetting"}
+        >
+          {status === "resetting" ? "Nulstiller..." : "Nulstil database"}
+        </button>
+      </div>
+      {status === "error" && (
+        <div className="banner banner-error" style={{ marginTop: 12 }}>
+          {error}
+        </div>
+      )}
+      {status === "done" && result && (
+        <div className="banner banner-info" style={{ marginTop: 12 }}>
+          Nulstillet: {result.movies_removed} film, {result.tv_shows_removed} TV-serier og
+          relaterede data fjernet.
         </div>
       )}
     </div>

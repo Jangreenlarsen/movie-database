@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.49.0 build 0060] — 2026-08-03 — "Nulstil database"-knap på Indstillinger (feature #67)
+
+Ny admin-only "Nulstil database"-sektion på Indstillinger: tømmer film-/TV-biblioteket tilbage til tom tilstand — `movies`, `tv_shows`, `deleted_movies`, `deleted_tv_shows`, `tags`, `counters` (serienumre starter forfra ved næste oprettelse) samt Voldby BIO's `screenings`/`screening_requests` (ellers ville de pege på film/serier der ikke længere findes, Jans bekræftede valg 2026-08-03). Rører **ikke** brugerkonti eller system-indstillinger.
+
+Bekræftes med admins egen adgangskode (nyt `auth_service.verify_current_password`, samme tjek som `change_password`) i stedet for blot en tekst-bekræftelsesfrase som backup/restore (#60/#61) — en reset er endnu mere uigenkaldelig, da der ikke er nogen backup-fil at fortryde med medmindre admin selv har taget en først. Ny `POST /api/system/reset`, ny `system_backup_service.reset_library`. Handlingen audit-logges (feature #65).
+
+6 nye backend-tests. Live-verificeret med Playwright: forkert adgangskode afvises tydeligt, korrekt adgangskode tømmer biblioteket og viser en opsummering.
+
 ## [0.48.0 build 0059] — 2026-08-03 — Admin-godkendelse af ny bruger-registrering (feature #66)
 
 Tilmelding var hidtil helt åben — enhver der kendte URL'en fik fuld adgang med det samme. Ny bruger får nu `status: pending` ved registrering (undtagen den allerførste bruger nogensinde, som stadig bootstrapper sig selv til `active` admin — ellers ville ingen kunne logge ind og godkende dem, jf. CLAUDE.md regel 16's lockout-princip). En `pending`-bruger kan logge ind og se sin egen status, men er blokeret fra alt andet (nyt 403 via `get_current_user`, som næsten alle endpoints allerede afhænger af); en `rejected`-bruger forbliver blokeret med en tydelig besked.

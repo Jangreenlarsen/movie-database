@@ -102,6 +102,11 @@ export const api = {
   getSystemBackup: () => request("/system/backup"),
   restoreSystemBackup: (payload) =>
     request("/system/restore", { method: "POST", body: JSON.stringify(payload) }),
+  resetDatabase: (currentPassword) =>
+    request("/system/reset", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword }),
+    }),
 
   // Voldby BIO (feature #62/#63/#64)
   requestScreening: (mediaKind, id) =>

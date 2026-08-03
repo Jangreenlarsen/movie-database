@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.54.0 (build 0070) — 2026-08-03
+
+- Ny "TLS-certifikat"-sektion på Indstillinger (admin-only): forny produktionens HTTPS-certifikat direkte fra appen — generér en CSR til ekstern signering, eller importér en færdig PKCS12-fil — uden manuel SSH-adgang. Selve installationen kræver stadig dit eget password som bekræftelse, og de sidste systemd-brikker på serveren skal sættes op manuelt én gang, før knappen kan bruges i produktion.
+
 ## v0.53.5 (build 0069) — 2026-08-03
 
 - Forsøgt rettelse af sort skærm på iOS efter at have gemt en scannet film — test det gerne på din iPhone og sig til om det stadig sker.

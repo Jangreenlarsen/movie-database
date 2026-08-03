@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.54.0 build 0070] — 2026-08-03 — feature: TLS-certifikat-styring i Indstillinger (#73)
+
+Ny admin-only "TLS-certifikat"-sektion på Indstillinger-siden til at forny produktionens `movie.ll.lan`-certifikat (se BUGS.md #23/DEPLOYMENT.md) uden manuel SSH-adgang. To metoder: (1) generér en ECDSA P-256-nøgle + CSR til ekstern signering (fx Jans interne AD CS) og indsæt det signerede certifikat bagefter, eller (2) importér en færdig PKCS12 (.pfx/.p12 med cert+nøgle). Begge veje verificerer at certifikatets offentlige nøgle matcher den ventende private nøgle før noget lægges klar ("staged"). En separat "Installér nu"-knap (kræver eget password, samme mønster som #67's database-reset) udløser den faktiske installation.
+
+Genbruger det ikke-sudo-trigger-mønster fra OTA-deploy (feature #20/BUGS.md #18): `moviedb-backend` kan hverken sudo'e eller skrive til `/etc/caddy/certs/`, så den lægger cert+nøgle i en staging-mappe indenfor egne `ReadWritePaths` og rører en trigger-fil — en ny, separat, root-ejet systemd path-unit (`scripts/moviedb-cert-install.{path,service}` + `scripts/cert-install.sh`, mirrorer `moviedb-deploy-restart.*`) reagerer på den, tager en `.bak`-backup af det eksisterende certifikat, installerer det nye med korrekt ejerskab/rettigheder, validerer Caddy-config og genindlæser først ved success. Disse nye systemd-units er **klar i repoet men endnu ikke installeret på produktionsserveren** — kræver Jans eksplicitte godkendelse før SSH-udførelse (se DEPLOYMENT.md).
+
+Backend: `backend/app/models/cert.py`, `backend/app/services/cert_service.py` (ny, bruger `cryptography`-biblioteket til CSR/X.509/PKCS12 — ingen `openssl`-subprocess), 5 nye endpoints under `/api/system/cert*` (`app/api/system.py`), 4 nye fejltyper (`app/core/errors.py`), nye settings-felter (`app/core/config.py`), `cryptography>=42.0` tilføjet til `requirements.txt`. Frontend: `TlsCertSection` i `Settings.jsx`, 5 nye `client.js`-funktioner. 13 nye backend-tests (`test_tls_cert.py`), fuld live-verifikation af hele UI-flowet (CSR-generering, fuldførelse, PKCS12-import, forkert/korrekt password ved installation) mod en rigtig kørende backend/frontend.
+
 ## [0.53.5 build 0069] — 2026-08-03 — fix (afventer bekræftelse): sort skærm på iOS ved gem (BUGS.md #35)
 
 Jan rapporterede at skærmen bliver helt sort på en iOS-enhed ved oprettelse af en film og tryk på Gem. Mistanke om et kendt WebKit-kompatibilitetsproblem: `BarcodeScanner.jsx` stoppede tidligere kun selve stregkode-afkodningen (zxing-bibliotekets `controls.stop()`/`stopContinuousDecode()`), men overlod `<video>`-elementets `MediaStream`/hardware-compositing-lag til browseren — kan på visse WebKit-versioner efterlade et fastfrosset/sort lag der breder sig til hele siden, ikke kun kamera-boksen, når komponenten afmonteres/genrenderes (fx når "Gem" lukker tilføj-panelet).

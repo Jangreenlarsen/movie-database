@@ -33,9 +33,43 @@ Sitet serveres nu på to adresser med to forskellige certifikater (Caddyfile har
 
 **Sådan blev certifikatet udstedt** (manuel CSR-signering, ikke ACME — Jans interne CA understøtter ikke automatisk udstedelse): en ECDSA P-256-nøgle + CSR (CN+SAN=`movie.ll.lan`) blev genereret direkte på serveren (nøglen forlod aldrig serveren), CSR'en blev signeret af Jans interne CA via Windows-certifikatanmodning, det signerede certifikat (`certnew.cer`, DER-format) og CA-rodcertifikatet (`CA.cer`) blev konverteret til PEM og verificeret (public key-hash) til at matche den lokale private nøgle, før det blev installeret.
 
-**Fornyelse**: certifikatet udløber 2028-08-01. Gentag samme proces (ny CSR med samme CN/SAN, ny signering fra `ll-AD-CA`, `sudo install`/`sudo cp`/`sudo systemctl reload caddy`) i god tid inden da — sæt evt. en kalender-påmindelse, da der ikke er nogen automatisk fornyelse.
+**Fornyelse (fra 2026-08-03, via appen — feature #73, anbefalet)**: Indstillinger-siden har nu en admin-only "TLS-certifikat"-sektion der kan generere en ny CSR eller importere en færdig PKCS12 direkte i UI'et, uden manuel SSH-adgang. Se afsnittet "TLS-certifikat via appen" nedenfor. Den oprindelige manuelle proces (næste afsnit) er stadig gyldig som fallback, fx hvis backend'en slet ikke kan starte.
 
-**Adgang til de nødvendige `sudo`-kommandoer**: en midlertidig, snævert scopet sudoers-regel (`/etc/sudoers.d/jgl-tls-cert-install`, kun eksakte kommandoer — install til specifikke stier, `caddy validate`, `systemctl reload caddy`) blev tilføjet af Jan for at lade Claude udføre selve installationen via SSH, efter samme mønster som den eksisterende snævre `jgl-deploy-ota`-regel. Kan fjernes igen når certifikatet ikke skal opdateres (`sudo rm /etc/sudoers.d/jgl-tls-cert-install`).
+**Sådan blev det oprindelige certifikat udstedt manuelt** (CSR-signering, ikke ACME — Jans interne CA understøtter ikke automatisk udstedelse): en ECDSA P-256-nøgle + CSR (CN+SAN=`movie.ll.lan`) blev genereret direkte på serveren (nøglen forlod aldrig serveren), CSR'en blev signeret af Jans interne CA via Windows-certifikatanmodning, det signerede certifikat (`certnew.cer`, DER-format) og CA-rodcertifikatet (`CA.cer`) blev konverteret til PEM og verificeret (public key-hash) til at matche den lokale private nøgle, før det blev installeret.
+
+**Udløb**: certifikatet udløber 2028-08-01 — brug fremover "TLS-certifikat"-sektionen i Indstillinger til fornyelse i god tid inden da (ingen automatisk fornyelse).
+
+**Den tidligere manuelle sudoers-regel er ikke længere nødvendig**: `/etc/sudoers.d/jgl-tls-cert-install` (snævert scopet til install/`caddy validate`/`systemctl reload caddy`) blev brugt til at lade Claude installere det *oprindelige* certifikat via SSH. Feature #73's `moviedb-cert-install`-systemd-unit (se nedenfor) overtager denne rolle uden sudo overhovedet — reglen kan fjernes (`sudo rm /etc/sudoers.d/jgl-tls-cert-install`) når/hvis den nye unit er sat op og afprøvet.
+
+### TLS-certifikat via appen (feature #73)
+
+Samme ikke-sudo-trigger-arkitektur som OTA-opdatering (se `## Opdatere produktion` nedenfor og ARCHITECTURE.md's note): `moviedb-backend` kan aldrig skrive til `/etc/caddy/certs/` eller bruge sudo, så den lægger et nyt cert+nøgle i `/opt/moviedb/certs/pending/` (indenfor sine egne `ReadWritePaths`) og rører en trigger-fil; en separat, root-ejet systemd path-unit opdager den og udfører selve installationen.
+
+**Opsætning på serveren (kun nødvendigt én gang — IKKE udført endnu, kræver eksplicit bekræftelse før udførelse jf. CLAUDE.md regel 16, da en fejl her kan tage produktionens HTTPS ned)**:
+
+```bash
+# Cert-install-scriptet — ligger uden for git-working-tree'en (samme grund som
+# /opt/moviedb-deploy.sh), så en samtidig "git pull" ikke kan overskrive den
+# fil bash er ved at eksekvere.
+sudo cp /opt/moviedb/scripts/cert-install.sh /opt/moviedb-cert-install.sh
+sudo chmod +x /opt/moviedb-cert-install.sh
+sudo chown jgl:jgl /opt/moviedb-cert-install.sh
+
+# Install-watcher (kører som root, uden for sandkassen — undgår sudo helt)
+sudo cp /opt/moviedb/scripts/moviedb-cert-install.path /opt/moviedb/scripts/moviedb-cert-install.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now moviedb-cert-install.path
+```
+
+`moviedb-backend.service`s `ReadWritePaths` skal udvides til at inkludere cert-staging-mappen (den findes allerede rekursivt under `/opt/moviedb`, så ingen ændring nødvendig hvis `ReadWritePaths=/opt/moviedb ...` allerede er sat som ovenfor):
+
+```ini
+ReadWritePaths=/opt/moviedb /opt/moviedb-deploy.log
+```
+
+**Læse-adgang til det installerede certifikat** (for at `GET /api/system/cert` kan vise status for det *aktuelt kørende* certifikat, ikke kun det staged): `moviedb-backend`-brugeren (`jgl`) skal kunne læse `/etc/caddy/certs/movie.ll.lan.crt` (root:caddy, 640) — `jgl` er allerede i `caddy`-gruppen fra den oprindelige cert-opsætning (se installations-loggen nedenfor), så dette er formentlig allerede opfyldt; verificér med `sudo -u jgl cat /etc/caddy/certs/movie.ll.lan.crt` hvis statusvisningen viser "intet certifikat fundet" på trods af at ét er installeret.
+
+`cert-install.sh` tager en `.bak`-kopi af det eksisterende cert+nøgle før overskrivning, kører `caddy validate` før `systemctl reload caddy`, og rydder både trigger-fil og staged nøgle/cert bagefter (se scriptet for detaljer). Fejler `caddy validate`, sker reload **ikke** — men filerne er allerede overskrevet på det tidspunkt, så en fejlet installation skal rulles tilbage manuelt fra `.bak`-filerne over SSH.
 
 **HTTP/3 er slået fra** (`servers { protocols h1 h2 }` i Caddyfile'ens globale block). Caddy annoncerer ellers HTTP/3 (QUIC/**UDP** 443) via en `Alt-Svc`-header, men `ufw` åbner kun **TCP** 443 — browseren forsøger så at opgradere til QUIC, det fejler stille mod den lukkede UDP-port, og det viste sig i Firefox som `SSL_ERROR_INTERNAL_ERROR_ALERT` i stedet for det forventede "usikker forbindelse, fortsæt alligevel"-varsel. Løsningen er enten at slå HTTP/3 fra (valgt her — unødvendigt for en lille LAN-app) eller at åbne UDP 443 i firewallen også.
 

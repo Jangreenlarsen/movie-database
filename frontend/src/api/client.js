@@ -125,6 +125,25 @@ export const api = {
       body: JSON.stringify({ current_password: currentPassword }),
     }),
 
+  // TLS-certifikat-styring (feature #73)
+  getCertStatus: () => request("/system/cert"),
+  generateCsr: () => request("/system/cert/csr", { method: "POST" }),
+  completeCsr: (certificatePem) =>
+    request("/system/cert/csr/complete", {
+      method: "POST",
+      body: JSON.stringify({ certificate_pem: certificatePem }),
+    }),
+  importPkcs12: (pkcs12Base64, passphrase) =>
+    request("/system/cert/pkcs12", {
+      method: "POST",
+      body: JSON.stringify({ pkcs12_base64: pkcs12Base64, passphrase }),
+    }),
+  installCert: (currentPassword) =>
+    request("/system/cert/install", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword }),
+    }),
+
   // Voldby BIO (feature #62/#63/#64)
   requestScreening: (mediaKind, id) =>
     request("/screening-requests", {

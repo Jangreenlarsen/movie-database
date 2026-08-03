@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for moviedb TLS-certifikat install trigger (feature #73)
+
+[Path]
+PathExists=/opt/moviedb/.cert-install-trigger
+Unit=moviedb-cert-install.service
+
+[Install]
+WantedBy=multi-user.target

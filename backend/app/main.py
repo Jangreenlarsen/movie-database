@@ -25,13 +25,17 @@ from app.core.config import settings
 from app.core.errors import (
     AccountPendingError,
     AccountRejectedError,
+    CertKeyMismatchError,
     DeployScriptNotFoundError,
     DuplicateBarcodeError,
     InvalidCredentialsError,
     LastAdminError,
     MovieNotFoundError,
+    NoCertStagedError,
+    NoPendingCsrError,
     NotAuthenticatedError,
     NotAuthorizedError,
+    Pkcs12ImportError,
     ScreeningNotFoundError,
     ScreeningRequestNotFoundError,
     TmdbNotFoundError,
@@ -191,6 +195,26 @@ async def deploy_script_not_found_handler(
     request: Request, exc: DeployScriptNotFoundError
 ) -> JSONResponse:
     return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+
+@app.exception_handler(NoPendingCsrError)
+async def no_pending_csr_handler(request: Request, exc: NoPendingCsrError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(CertKeyMismatchError)
+async def cert_key_mismatch_handler(request: Request, exc: CertKeyMismatchError) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(Pkcs12ImportError)
+async def pkcs12_import_handler(request: Request, exc: Pkcs12ImportError) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(NoCertStagedError)
+async def no_cert_staged_handler(request: Request, exc: NoCertStagedError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 app.include_router(health.router)

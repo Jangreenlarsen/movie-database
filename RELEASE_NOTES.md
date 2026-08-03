@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.53.3 (build 0067) — 2026-08-03
+
+- Voldby BIO's offentlige side har fået et federe, farverigt banner, og dato/tid står nu tydeligt ovenover hver film i stedet for som et overlay.
+- Guest-konti kan nu sende en "Ønsk visning i Voldby BIO"-anmodning for film/serier i biblioteket. Fixet: guest-konti viste fejlagtigt "Standard" i stedet for "Guest" under Konto på Indstillinger.
+
 ## v0.53.2 (build 0066) — 2026-08-03
 
 - Voldby BIO's offentlige side: alle kommende visninger står nu side om side i et gitter (i stedet for en lang liste), og "Om Voldby BIO" er tilbage øverst.

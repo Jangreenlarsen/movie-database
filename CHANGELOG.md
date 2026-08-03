@@ -2,6 +2,17 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.53.3 build 0067] — 2026-08-03 — fix: Voldby BIO-side polish + guest-rolle-justeringer (feature #70/#71/#72)
+
+**Voldby BIO offentlig side**: dato+tid-badge flyttet fra et overlay nederst på plakaten til et normalt element ovenover (Jans ønske: "dato skal stå over film"). Hero-banneret har fået en farverig gradient-baggrund (`--accent`/`--accent-strong`) og en større, federe overskrift — var for fladt/farveløst før.
+
+**Guest-rolle rettelser og udvidelse**:
+- **Bugfix**: `AccountSection` viste altid "Standard" for en guest-bruger (samme binære `admin ? "Admin" : "Standard"`-mønster jeg allerede havde rettet i `UsersSection`, men overså her) — viser nu korrekt "Guest".
+- Indstillinger skjuler nu også "Serienummer-opsætning" og "Slettede film" for guest (rører kun film-/TV-data en guest ikke må redigere alligevel).
+- **Udvidet**: guest må nu sende en "🎬 Ønsk visning i Voldby BIO"-anmodning for en titel i biblioteket — det ene skrive-endpoint der er tilladt for den ellers read-only rolle (Jans eksplicitte valg 2026-08-03). `POST /api/screening-requests` bruger igen almindelig `get_current_user` i stedet for `require_not_guest`; detaljevinduets read-only footer viser nu kun denne ene knap for guest.
+
+Backend-test opdateret (guest kan nu anmode, ikke længere blokeret). Live-verificeret.
+
 ## [0.53.2 build 0066] — 2026-08-03 — fix: Voldby BIO offentlig side — sideom-side-gitter + sektionsrækkefølge (feature #70/#71)
 
 Endnu en runde Jan-feedback på den offentlige `/bio`-side: "Om Voldby BIO" flyttet tilbage øverst (over programmet igen), og programmets datogruppering fjernet — med typisk én visning pr. dag gav det en lang, næsten tom kolonne af enkeltstående kort. Alle kommende visninger vises nu i ét fladt side-om-side gitter (samme `movie-grid`-poster-stil som resten af appen), hver med en dato+tid-badge nederst på plakaten i stedet for en fælles dags-overskrift.

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.api.deps import get_current_user, require_admin, require_not_guest
+from app.api.deps import get_current_user, require_admin
 from app.db import get_database
 from app.models.screening import ScreeningRequest, ScreeningRequestCreate, ScreeningRequestUpdate
 from app.services import audit_log_service, screening_service
@@ -9,6 +9,12 @@ from app.services import audit_log_service, screening_service
 # Feature #62 — any logged-in user can request a title be screened; only
 # an admin can list/review/decline requests (see /api/screenings for
 # turning a request into an actual dated screening, feature #63).
+#
+# Feature #72 update (Jans explicit choice 2026-08-03): guests, despite
+# being read-only everywhere else, CAN request a screening for a title
+# they find in the library — the one write action they're allowed, so
+# `create_request` deliberately uses plain `get_current_user`, not
+# `require_not_guest` like every other write endpoint in the app.
 router = APIRouter(
     prefix="/api/screening-requests",
     tags=["screening-requests"],
@@ -19,7 +25,7 @@ router = APIRouter(
 @router.post("", response_model=ScreeningRequest, status_code=201)
 async def create_request(
     payload: ScreeningRequestCreate,
-    current_user: dict = Depends(require_not_guest),
+    current_user: dict = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     return await screening_service.request_screening(

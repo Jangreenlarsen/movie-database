@@ -70,15 +70,15 @@ export default function CinemaPublic() {
 function PublicScreeningCard({ screening }) {
   return (
     <div className="bio-poster-card">
+      <div className="bio-poster-card-datetime">
+        {formatShortDate(screening.scheduled_at)} · {formatTime(screening.scheduled_at)}
+      </div>
       <div className="bio-poster-card-poster">
         {screening.poster_url ? (
           <img src={screening.poster_url} alt={screening.title ?? ""} loading="lazy" />
         ) : (
           <span>{screening.media_kind === "movie" ? "🎬" : "📺"}</span>
         )}
-        <div className="bio-poster-card-datetime">
-          {formatShortDate(screening.scheduled_at)} · {formatTime(screening.scheduled_at)}
-        </div>
       </div>
       <div className="bio-poster-card-body">
         <h3 className="bio-poster-card-title">

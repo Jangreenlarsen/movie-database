@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.53.5 (build 0069) — 2026-08-03
+
+- Forsøgt rettelse af sort skærm på iOS efter at have gemt en scannet film — test det gerne på din iPhone og sig til om det stadig sker.
+
 ## v0.53.4 (build 0068) — 2026-08-03
 
 - Bedre logging af stregkode-opslag, så vi hurtigere kan se hvorfor et scan ikke fandt noget. Vigtigt: UPCDatabase-nøglen (den tredje opslags-kilde) mangler stadig at blive sat i produktion — tilføj den under Indstillinger → System-indstillinger.

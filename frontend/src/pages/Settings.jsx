@@ -986,10 +986,28 @@ function UsersSection({ currentUserId }) {
     }
   }
 
+  async function setStatusFor(targetUser, nextStatus) {
+    setUpdatingId(targetUser.id);
+    setError(null);
+    try {
+      await api.updateUserStatus(targetUser.id, nextStatus);
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  const pendingCount = users.filter((u) => u.status === "pending").length;
+
   return (
     <div className="card settings-section">
       <h2>Brugere</h2>
-      <p className="muted">Administrér hvem der har admin-rettigheder.</p>
+      <p className="muted">
+        Administrér hvem der har admin-rettigheder, og godkend/afvis nye registreringer
+        {pendingCount > 0 && ` (${pendingCount} afventer godkendelse)`}.
+      </p>
 
       {status === "loading" && <p className="muted">Indlæser...</p>}
       {status === "error" && (
@@ -1005,19 +1023,44 @@ function UsersSection({ currentUserId }) {
                 {u.username}
                 {u.id === currentUserId && <span className="muted"> (dig)</span>}
               </span>
-              <span className="role-badge">{u.role === "admin" ? "Admin" : "Standard"}</span>
-              <button
-                type="button"
-                className="btn"
-                disabled={u.id === currentUserId || updatingId === u.id}
-                onClick={() => toggleRole(u)}
-              >
-                {updatingId === u.id
-                  ? "Opdaterer..."
-                  : u.role === "admin"
-                    ? "Fjern admin"
-                    : "Gør til admin"}
-              </button>
+              {u.status === "pending" && <span className="role-badge">Afventer</span>}
+              {u.status === "rejected" && <span className="role-badge">Afvist</span>}
+              {u.status === "active" && (
+                <span className="role-badge">{u.role === "admin" ? "Admin" : "Standard"}</span>
+              )}
+              {u.status === "pending" ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={updatingId === u.id}
+                    onClick={() => setStatusFor(u, "active")}
+                  >
+                    {updatingId === u.id ? "..." : "Godkend"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={updatingId === u.id}
+                    onClick={() => setStatusFor(u, "rejected")}
+                  >
+                    Afvis
+                  </button>
+                </>
+              ) : u.status === "active" ? (
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={u.id === currentUserId || updatingId === u.id}
+                  onClick={() => toggleRole(u)}
+                >
+                  {updatingId === u.id
+                    ? "Opdaterer..."
+                    : u.role === "admin"
+                      ? "Fjern admin"
+                      : "Gør til admin"}
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>

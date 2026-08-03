@@ -74,6 +74,26 @@ class NotAuthorizedError(Exception):
         super().__init__(message)
 
 
+class AccountPendingError(Exception):
+    def __init__(self):
+        super().__init__("Din konto afventer godkendelse fra en administrator.")
+
+
+class AccountRejectedError(Exception):
+    def __init__(self):
+        super().__init__("Din konto er blevet afvist. Kontakt en administrator.")
+
+
+class UserNotPendingError(Exception):
+    """Guards approve/reject (feature #66) against being pointed at a user
+    who isn't actually pending — e.g. re-clicking reject on an already-active
+    admin would otherwise silently lock them out."""
+
+    def __init__(self, user_id: str):
+        self.user_id = user_id
+        super().__init__(f"User is not pending approval: {user_id}")
+
+
 class UserNotFoundError(Exception):
     def __init__(self, user_id: str):
         self.user_id = user_id

@@ -62,8 +62,11 @@ async def test_moving_a_wishlist_movie_to_the_library_is_not_gated_by_registrant
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as standard_client:
-        await standard_client.post(
+        register = await standard_client.post(
             "/api/auth/register", json={"username": "wishuser", "password": "testpassword123"}
+        )
+        await client.patch(
+            f"/api/users/{register.json()['id']}/status", json={"status": "active"}
         )
         create = await standard_client.post(
             "/api/movies", json={"title": "Someone Else's Wish", "is_wishlist": True}

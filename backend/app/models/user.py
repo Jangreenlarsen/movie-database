@@ -22,6 +22,15 @@ class UserRole(str, Enum):
     STANDARD = "standard"
 
 
+class UserStatus(str, Enum):
+    # Feature #66 — every account except the very first (which bootstraps
+    # itself as ACTIVE admin, see auth_service.register) starts PENDING and
+    # cannot use anything beyond GET /api/users/me until an admin approves it.
+    PENDING = "pending"
+    ACTIVE = "active"
+    REJECTED = "rejected"
+
+
 class VisibleFields(BaseModel):
     year: bool = True
     tags: bool = True
@@ -125,9 +134,16 @@ class UserRoleUpdate(BaseModel):
     role: UserRole
 
 
+class UserStatusUpdate(BaseModel):
+    # Only these two are settable via the endpoint — a user can't be set
+    # back to "pending" once approved/rejected.
+    status: Literal["active", "rejected"]
+
+
 class User(BaseModel):
     id: str
     username: str
     role: UserRole
+    status: UserStatus
     settings: UserSettings
     created_at: datetime

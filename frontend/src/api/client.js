@@ -43,6 +43,8 @@ export const api = {
     request(`/audit-log?${new URLSearchParams({ skip, limit })}`),
   updateUserRole: (userId, role) =>
     request(`/users/${userId}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
+  updateUserStatus: (userId, status) =>
+    request(`/users/${userId}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
   listMovies: (
     { q, tags, format, audioTypes, mediaTypes, sort, wishlist, watched, cast, director } = {}
   ) => {

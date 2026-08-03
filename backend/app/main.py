@@ -23,6 +23,8 @@ from app.api import (
 )
 from app.core.config import settings
 from app.core.errors import (
+    AccountPendingError,
+    AccountRejectedError,
     DeployScriptNotFoundError,
     DuplicateBarcodeError,
     InvalidCredentialsError,
@@ -37,6 +39,7 @@ from app.core.errors import (
     TmdbUnavailableError,
     TvShowNotFoundError,
     UserNotFoundError,
+    UserNotPendingError,
     UsernameTakenError,
 )
 from app.db import close_client, get_client, get_database
@@ -156,6 +159,21 @@ async def not_authenticated_handler(request: Request, exc: NotAuthenticatedError
 @app.exception_handler(NotAuthorizedError)
 async def not_authorized_handler(request: Request, exc: NotAuthorizedError) -> JSONResponse:
     return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(AccountPendingError)
+async def account_pending_handler(request: Request, exc: AccountPendingError) -> JSONResponse:
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(AccountRejectedError)
+async def account_rejected_handler(request: Request, exc: AccountRejectedError) -> JSONResponse:
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(UserNotPendingError)
+async def user_not_pending_handler(request: Request, exc: UserNotPendingError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 @app.exception_handler(UserNotFoundError)

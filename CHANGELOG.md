@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.48.0 build 0059] — 2026-08-03 — Admin-godkendelse af ny bruger-registrering (feature #66)
+
+Tilmelding var hidtil helt åben — enhver der kendte URL'en fik fuld adgang med det samme. Ny bruger får nu `status: pending` ved registrering (undtagen den allerførste bruger nogensinde, som stadig bootstrapper sig selv til `active` admin — ellers ville ingen kunne logge ind og godkende dem, jf. CLAUDE.md regel 16's lockout-princip). En `pending`-bruger kan logge ind og se sin egen status, men er blokeret fra alt andet (nyt 403 via `get_current_user`, som næsten alle endpoints allerede afhænger af); en `rejected`-bruger forbliver blokeret med en tydelig besked.
+
+Admin godkender/afviser fra "Brugere"-listen på Indstillinger (nyt `PATCH /api/users/{id}/status`) — kun tilladt mens brugeren rent faktisk er `pending`, så et forkert klik ikke kan låse en allerede-aktiv bruger ude. Begge handlinger audit-logges (feature #65). Eksisterende brugere migreres automatisk til `status: active` ved opstart (samme mønster som `username_normalized`-migrationen).
+
+12 nye backend-tests, heriblandt en eksplicit regressionstest for at den allerførste bruger altid bootstrapper til `active`. 5 eksisterende tests opdateret (de registrerede en "anden bruger" og forventede fuld adgang med det samme — skal nu godkendes af admin først, som er den korrekte nye adfærd). Live-verificeret med Playwright: fuldt flow fra registrering → "afventer godkendelse"-skærm → admin-godkendelse → adgang.
+
 ## [0.47.0 build 0058] — 2026-08-03 — Audit-log på Indstillinger-siden (feature #65)
 
 Nyt admin-only "Audit-log"-afsnit på Indstillinger, med en løbende, pagineret (`?skip=&limit=`, nyeste først) log over sikkerheds-/data-relevante handlinger: rolle-ændringer, system-nøgle-opdateringer (kun feltnavne logges, aldrig værdier — CLAUDE.md regel 6), OTA-deploy, bibliotek-/system-backup og -gendannelse, samt biograf-planlægning/afvisning (Voldby BIO).

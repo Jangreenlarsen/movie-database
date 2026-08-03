@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.48.0 (build 0059) — 2026-08-03
+
+- Nye brugere skal nu godkendes af en admin før de får adgang (Indstillinger → Brugere). Din egen konto er upåvirket.
+
 ## v0.47.0 (build 0058) — 2026-08-03
 
 - Ny "Audit-log" under Indstillinger (kun admin): se hvem der har ændret roller, opdateret system-nøgler, udløst en opdatering, taget/gendannet backup, eller planlagt/afvist en Voldby BIO-visning — og hvornår.

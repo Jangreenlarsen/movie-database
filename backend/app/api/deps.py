@@ -1,17 +1,22 @@
 from fastapi import Cookie, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.core.errors import NotAuthenticatedError, NotAuthorizedError
+from app.core.errors import (
+    AccountPendingError,
+    AccountRejectedError,
+    NotAuthenticatedError,
+    NotAuthorizedError,
+)
 from app.core.security import decode_access_token
 from app.db import get_database
+from app.models.user import UserStatus
 from app.repositories import user_repository
 
 COOKIE_NAME = "access_token"
 
 
-async def get_current_user(
-    access_token: str | None = Cookie(default=None, alias=COOKIE_NAME),
-    db: AsyncIOMotorDatabase = Depends(get_database),
+async def _resolve_user(
+    access_token: str | None, db: AsyncIOMotorDatabase
 ) -> dict:
     if not access_token:
         raise NotAuthenticatedError()
@@ -24,6 +29,30 @@ async def get_current_user(
     if user is None:
         raise NotAuthenticatedError()
 
+    return user
+
+
+async def get_current_user_any_status(
+    access_token: str | None = Cookie(default=None, alias=COOKIE_NAME),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+) -> dict:
+    """Identity only, no approval-status gate (feature #66) — used
+    exclusively by `GET /api/users/me` so a still-pending or rejected user
+    can at least see their own status instead of getting stuck behind a
+    generic 403 with no way to tell what's wrong."""
+    return await _resolve_user(access_token, db)
+
+
+async def get_current_user(
+    access_token: str | None = Cookie(default=None, alias=COOKIE_NAME),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+) -> dict:
+    user = await _resolve_user(access_token, db)
+    status = user.get("status", UserStatus.ACTIVE.value)
+    if status == UserStatus.PENDING.value:
+        raise AccountPendingError()
+    if status == UserStatus.REJECTED.value:
+        raise AccountRejectedError()
     return user
 
 

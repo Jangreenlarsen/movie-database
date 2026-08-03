@@ -6,6 +6,7 @@ import PrintList from "./pages/PrintList";
 import Statistics from "./pages/Statistics";
 import Cinema from "./pages/Cinema";
 import Login from "./pages/Login";
+import PendingApproval from "./pages/PendingApproval";
 import { api } from "./api/client";
 import "./App.css";
 
@@ -36,6 +37,10 @@ function App() {
 
   if (user === null) {
     return <Login onAuthenticated={setUser} />;
+  }
+
+  if (user.status !== "active") {
+    return <PendingApproval user={user} onLogout={handleLogout} />;
   }
 
   return (

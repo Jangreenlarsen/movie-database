@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.53.4 build 0068] — 2026-08-03 — fix: tydeligere logging af stregkode-opslag (BUGS.md #34)
+
+Jan rapporterede at alle 10-15 nyligt scannede stregkoder fejlede opslag. Produktions-log-undersøgelse afslørede at UPCDatabase.org (feature #69) aldrig blev kaldt — `UPCDATABASE_TOKEN` var kun sat i udviklerens lokale `.env`, aldrig deployet til produktion (`.env` er git-ignoreret, deployes ikke via `git pull`). Samtidig var "intet match"-udfald slet ikke logget eksplicit i nogen af de tre kilder, kun selve HTTP-kaldet.
+
+Tilføjet eksplicit logging (`logger.info`/`logger.warning`) i `upc_client`, `discogs_client`, `upcdatabase_client` for "intet match"/"intet token", samt en opsummerende advarsel i `scan_service.lookup_by_barcode` når alle tre kilder er udtømt uden gæt. Selve nøgle-manglen kræver at Jan selv indsætter den via Indstillinger → System-indstillinger (admin-override, ingen genstart nødvendig).
+
 ## [0.53.3 build 0067] — 2026-08-03 — fix: Voldby BIO-side polish + guest-rolle-justeringer (feature #70/#71/#72)
 
 **Voldby BIO offentlig side**: dato+tid-badge flyttet fra et overlay nederst på plakaten til et normalt element ovenover (Jans ønske: "dato skal stå over film"). Hero-banneret har fået en farverig gradient-baggrund (`--accent`/`--accent-strong`) og en større, federe overskrift — var for fladt/farveløst før.

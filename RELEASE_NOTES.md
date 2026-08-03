@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.53.4 (build 0068) — 2026-08-03
+
+- Bedre logging af stregkode-opslag, så vi hurtigere kan se hvorfor et scan ikke fandt noget. Vigtigt: UPCDatabase-nøglen (den tredje opslags-kilde) mangler stadig at blive sat i produktion — tilføj den under Indstillinger → System-indstillinger.
+
 ## v0.53.3 (build 0067) — 2026-08-03
 
 - Voldby BIO's offentlige side har fået et federe, farverigt banner, og dato/tid står nu tydeligt ovenover hver film i stedet for som et overlay.

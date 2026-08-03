@@ -20,6 +20,7 @@ async def lookup_title(barcode: str) -> str | None:
     reject us" principle as `tmdb_client._require_token`. Never raises:
     nice-to-have prefill, not a critical path."""
     if not settings.upcdatabase_token:
+        logger.info("UPCDatabase.org: intet token konfigureret, springer opslag over for %s", barcode)
         return None
 
     try:
@@ -38,10 +39,14 @@ async def lookup_title(barcode: str) -> str | None:
 
     data = response.json()
     if not data.get("success"):
+        logger.info("UPCDatabase.org: intet match for %s", barcode)
         return None
 
     raw_title = data.get("title")
     if not raw_title:
+        logger.info("UPCDatabase.org: match uden titel-felt for %s", barcode)
         return None
 
-    return clean_bracketed_title(raw_title)
+    title = clean_bracketed_title(raw_title)
+    logger.info("UPCDatabase.org: %s -> %r", barcode, title)
+    return title

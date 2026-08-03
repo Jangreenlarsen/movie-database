@@ -44,10 +44,14 @@ async def lookup_title(barcode: str) -> str | None:
 
     results = response.json().get("results") or []
     if not results:
+        logger.info("Discogs: intet match for %s", barcode)
         return None
 
     raw_title = results[0].get("title")
     if not raw_title:
+        logger.info("Discogs: match uden titel-felt for %s", barcode)
         return None
 
-    return clean_bracketed_title(_strip_artist_prefix(raw_title))
+    title = clean_bracketed_title(_strip_artist_prefix(raw_title))
+    logger.info("Discogs: %s -> %r", barcode, title)
+    return title

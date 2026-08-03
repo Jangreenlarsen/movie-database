@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import Chip from "../components/Chip";
+import Combobox from "../components/Combobox";
 import MovieLookupForm from "../components/MovieLookupForm";
 import "./Library.css";
 
@@ -81,6 +82,8 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
   const [movies, setMovies] = useState([]);
   const [status, setStatus] = useState("loading");
   const [allTags, setAllTags] = useState([]);
+  const [allOwners, setAllOwners] = useState([]);
+  const [allLocations, setAllLocations] = useState([]);
   const [attributeOptions, setAttributeOptions] = useState({
     formats: [],
     audio_types: [],
@@ -121,6 +124,8 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
 
   useEffect(() => {
     api.listTags().then(setAllTags).catch(() => {});
+    api.listOwners().then(setAllOwners).catch(() => {});
+    api.listLocations().then(setAllLocations).catch(() => {});
     api.attributeOptions().then(setAttributeOptions).catch(() => {});
     api
       .getSerialNumberConfig()
@@ -568,7 +573,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
       )}
 
       {status === "ready" && movies.length > 0 && (
-        <ul className="movie-grid">
+        <ul className={`movie-grid movie-grid--${user.settings.card_size ?? "medium"}`}>
           {movies.map((movie) => (
             <li key={movie.id} className="movie-card" onClick={() => setActiveMovie(movie)}>
               {!movie.is_wishlist && (
@@ -631,12 +636,16 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
           movie={activeMovie}
           user={user}
           allTags={allTags}
+          allOwners={allOwners}
+          allLocations={allLocations}
           attributeOptions={attributeOptions}
           serialPaddingWidth={serialPaddingWidth}
           onClose={() => setActiveMovie(null)}
           onChanged={() => {
             refresh();
             api.listTags().then(setAllTags).catch(() => {});
+            api.listOwners().then(setAllOwners).catch(() => {});
+            api.listLocations().then(setAllLocations).catch(() => {});
           }}
           onFilterByPerson={(type, name) => {
             setPersonFilter({ type, name });
@@ -651,6 +660,9 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
 function MovieDetailModal({
   movie,
   user,
+  allTags,
+  allOwners,
+  allLocations,
   attributeOptions,
   serialPaddingWidth,
   onClose,
@@ -670,6 +682,12 @@ function MovieDetailModal({
     movie.personal_rating != null ? String(movie.personal_rating) : ""
   );
   const [personalNote, setPersonalNote] = useState(movie.personal_note ?? "");
+
+  function addTag(tag) {
+    const current = tagsInput.split(",").map((t) => t.trim()).filter(Boolean);
+    if (current.some((t) => t.toLowerCase() === tag.toLowerCase())) return;
+    setTagsInput([...current, tag].join(", "));
+  }
   const [watched, setWatched] = useState(movie.watched);
   const [watchedAt, setWatchedAt] = useState(
     movie.watched_at ? movie.watched_at.slice(0, 10) : ""
@@ -908,20 +926,33 @@ function MovieDetailModal({
           <div>
             <div className="modal-section-label">Tags</div>
             <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} />
+            {allTags.length > 0 && (
+              <div className="chip-row" style={{ marginTop: 8 }}>
+                {allTags.map((tag) => (
+                  <Chip key={tag} label={tag} onClick={() => addTag(tag)} />
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
             <div className="modal-section-label">Lokation</div>
-            <input
+            <Combobox
               value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              onChange={setLocation}
+              options={allLocations}
               placeholder="Stue, reol 2..."
             />
           </div>
 
           <div>
             <div className="modal-section-label">Ejer</div>
-            <input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="Hvem ejer filmen..." />
+            <Combobox
+              value={owner}
+              onChange={setOwner}
+              options={allOwners}
+              placeholder="Hvem ejer filmen..."
+            />
           </div>
 
           {movie.registered_by && (

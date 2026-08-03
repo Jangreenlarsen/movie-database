@@ -100,7 +100,7 @@ function App() {
         {tab === "wishlist" && <Library user={user} onSettingsChanged={setUser} wishlist />}
         {tab === "print" && <PrintList />}
         {tab === "stats" && <Statistics />}
-        {tab === "settings" && <Settings user={user} />}
+        {tab === "settings" && <Settings user={user} onSettingsChanged={setUser} />}
       </main>
 
       <footer className="app-footer">

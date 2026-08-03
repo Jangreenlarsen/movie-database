@@ -53,6 +53,9 @@ class SortPreset(BaseModel):
     watched: bool | None = None
 
 
+CardSize = Literal["small", "medium", "large"]
+
+
 class UserSettings(BaseModel):
     sort_field: str | None = None
     sort_direction: str | None = None
@@ -66,6 +69,12 @@ class UserSettings(BaseModel):
     tv_visible_fields: VisibleFields = Field(default_factory=VisibleFields)
     tv_sort_levels: list[SortLevel] = Field(default_factory=list)
     tv_sort_presets: list[SortPreset] = Field(default_factory=list)
+    # Poster-kortstørrelse i biblioteksvisningerne (feature #59) — én fælles
+    # indstilling for både Film- og TV-serie-fanen (Jans bekræftede valg
+    # 2026-08-02), i modsætning til visible_fields/sort_* ovenfor som er
+    # bevidst adskilt pr. fane — kortstørrelse er en ren visuel præference,
+    # ikke indholds-specifik.
+    card_size: CardSize = "medium"
 
 
 class UserSettingsUpdate(BaseModel):
@@ -77,6 +86,7 @@ class UserSettingsUpdate(BaseModel):
     tv_visible_fields: VisibleFields | None = None
     tv_sort_levels: list[SortLevel] | None = None
     tv_sort_presets: list[SortPreset] | None = None
+    card_size: CardSize | None = None
 
 
 class UserRegister(BaseModel):

@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.41.0 build 0051] — 2026-08-03 — Combobox for tags/lokation/ejer (feature #58) + valgbar kortstørrelse (feature #59)
+
+**Feature #58**: Tags-, lokations- og ejer-felterne i tilføj-/redigeringsformularerne (scan/manuel-tilføj-panelet, film- og TV-seriens redigeringsvindue) viser nu eksisterende værdier der allerede er i brug, men tillader stadig fri indtastning af en ny værdi.
+- Backend: nye `GET /api/owners`/`GET /api/locations` (nyt `attribute_service.py` + `attributes.py`-router), samlet på tværs af film og TV-serier — samme flade top-niveau-mønster som det eksisterende `/api/tags`. `movie_repository`/`tv_show_repository` fik hver et `distinct_owners`/`distinct_locations`.
+- Frontend: ny genanvendelig `Combobox`-komponent (`components/Combobox.jsx`) — en selvbygget dropdown, **ikke** native `<datalist>`, da iOS Safaris `<datalist>`-understøttelse historisk er svag/inkonsistent og appens primære brug er en installeret iPhone-PWA. Lukker ved klik/tap udenfor (ikke `onBlur`, for at undgå at et tryk på et forslag konkurrerer med en blur-udløst lukning). Viser hele listen ved fokus (uanset feltets nuværende værdi) og filtrerer først når man rent faktisk taster.
+- Tags genbruger den eksisterende tag-liste som klikbare forslags-chips ved siden af det fritekst-felt der allerede fandtes (chips var allerede hentet til redigeringsvinduerne, men aldrig faktisk vist der — nu bragt i brug).
+- Live-verificeret i en rigtig kørende instans (Playwright mod dev-serveren) på både desktop- og mobil-viewport (390px), i tilføj- og redigeringsflowet, for både film og TV-serier.
+
+**Feature #59**: Ny "Kortstørrelse"-sektion i Indstillinger (Lille/Mellem/Stor), én fælles indstilling for både Film- og TV-serie-fanen. Nyt `card_size`-felt på `UserSettings` (backend), ny `movie-grid--small/medium/large`-CSS-klasse (`Library.css`, genbruges af TV-serie-fanen). Live-verificeret: valget slår igennem på begge faner, overlever en fuld genindlæsning, og fungerer på mobil-viewport.
+
 ## [0.40.0 build 0050] — 2026-08-02 — Retter 8 fund fra to-fase-gennemgangen (BUGS.md #24-#31) + TMDb-synk for TV-serier (feature #57)
 
 **Bugfixes:**

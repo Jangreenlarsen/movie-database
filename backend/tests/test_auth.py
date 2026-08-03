@@ -159,6 +159,21 @@ async def test_new_user_has_default_settings(client):
     assert settings["visible_fields"]["rating"] is False
     assert settings["sort_levels"] == []
     assert settings["sort_presets"] == []
+    assert settings["card_size"] == "medium"
+
+
+async def test_card_size_roundtrip_and_rejects_invalid_value(client):
+    """Feature #59 — one shared card-size preference across Film and
+    TV-serier (Jans bekræftede valg 2026-08-02)."""
+    response = await client.patch("/api/users/me/settings", json={"card_size": "large"})
+    assert response.status_code == 200
+    assert response.json()["settings"]["card_size"] == "large"
+
+    me = await client.get("/api/users/me")
+    assert me.json()["settings"]["card_size"] == "large"
+
+    invalid = await client.patch("/api/users/me/settings", json={"card_size": "huge"})
+    assert invalid.status_code == 422
 
 
 async def test_multi_level_sort_and_presets_roundtrip(client):

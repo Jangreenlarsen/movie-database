@@ -648,6 +648,12 @@ function SystemSettingsSection() {
             onSaved={load}
           />
           <ApiKeyRow
+            label="UPCDatabase-token"
+            field="upcdatabase_token"
+            status={statusData.upcdatabase_token}
+            onSaved={load}
+          />
+          <ApiKeyRow
             label="OMDb API-nøgle"
             field="omdb_api_key"
             status={statusData.omdb_api_key}

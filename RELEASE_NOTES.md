@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.44.0 (build 0055) — 2026-08-03
+
+- Stregkode-scanning har fået en ekstra, gratis opslags-kilde (UPCDatabase.org) som forsøges hvis de to andre ikke finder et match — kan forbedre chancen for at finde nordiske/danske DVD-covers. Konfigureres under Indstillinger ligesom de andre API-nøgler.
+
 ## v0.43.0 (build 0054) — 2026-08-03
 
 - Ny fane: **🎬 Voldby BIO**! Ønsk en film eller TV-serie vist ved at trykke "Ønsk visning i Voldby BIO" i dens detaljevindue. Admin kan derefter planlægge dato/tid for de ønskede titler (eller tilføje en visning direkte), hvorefter den dukker op på Voldby BIO-siden for alle — med poster, plot, trailer-link og tidspunkt, ligesom en rigtig biograf-forside.

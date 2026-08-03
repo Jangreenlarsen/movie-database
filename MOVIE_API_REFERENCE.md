@@ -55,7 +55,7 @@ Implementeret i `backend/app/integrations/omdb_client.py`. **Ikke** en erstatnin
 
 ## UPC-opslagstjeneste (stregkode → produkt/titel)
 
-Implementeret i `backend/app/integrations/upc_client.py` mod **UPCitemdb**'s gratis trial-tier (live-verificeret) som primær kilde, med **Discogs** som fallback (se nedenfor) når UPCitemdb ikke finder et match. `scan_service.lookup_by_barcode` prøver dem i rækkefølge — begge integrationer eksponerer samme `lookup_title(barcode) -> str | None`-kontrakt, så en tredje kilde kan tilføjes samme sted uden at ændre service- eller API-laget.
+Implementeret i `backend/app/integrations/upc_client.py` mod **UPCitemdb**'s gratis trial-tier (live-verificeret) som primær kilde, med **Discogs** og derefter **UPCDatabase.org** som fallbacks (se nedenfor) når det forrige led ikke finder et match. `scan_service.lookup_by_barcode` prøver dem i rækkefølge — alle tre integrationer eksponerer samme `lookup_title(barcode) -> str | None`-kontrakt, så en fjerde kilde kan tilføjes samme sted uden at ændre service- eller API-laget.
 
 ### UPCitemdb
 - **Base URL**: `https://api.upcitemdb.com/prod/trial/lookup`
@@ -64,7 +64,7 @@ Implementeret i `backend/app/integrations/upc_client.py` mod **UPCitemdb**'s gra
 - **Response**: `items[]` med bl.a. `title`, `brand`, `images[]`. Titel bruges som gæt til efterfølgende TMDb-søgning — brand/model-navne på DVD-covers er ofte ikke rene filmtitler, så forvent at skulle rense/forkorte strengen (fx fjern "(DVD)", "[Blu-ray]", årstal i parentes) før TMDb-søgning.
 
 ### Fejlhåndtering
-- `code: "INVALID_UPC"` eller tomt `items[]` → intet gæt, falder videre til Discogs (se nedenfor), og derefter til manuel TMDb-søgning (se `/api/movies/tmdb-search` i ARCHITECTURE.md).
+- `code: "INVALID_UPC"` eller tomt `items[]` → intet gæt, falder videre til Discogs, derefter UPCDatabase.org (se nedenfor), og til sidst til manuel TMDb-søgning (se `/api/movies/tmdb-search` i ARCHITECTURE.md).
 - Rate-limit ramt → log som warning, returnér "intet gæt" til frontend i stedet for at fejle hele scan-flowet (UPC-opslag er et *nice-to-have* forudfyld, ikke en kritisk sti).
 
 ### Discogs (fallback, feature #30)
@@ -77,6 +77,16 @@ Implementeret i `backend/app/integrations/discogs_client.py`. Bruges kun når UP
 - **Request**: `GET ?barcode=<stregkode, kun cifre>`
 - **Response**: `results[]`, hvert element har bl.a. `title` (format: `"Artist - Titel"`, hvor "Artist" for film ofte er "Various", et studienavn, eller komponisten — fjernes med `_strip_artist_prefix` før TMDb-søgning) og selve `barcode[]`-listen (til evt. fremtidig krydstjek).
 - **Fejlhåndtering**: samme filosofi som UPCitemdb — enhver fejl (netværk, ikke-200, tomt `results[]`) logges og returnerer `None`, aldrig en kastet exception (nice-to-have forudfyld, ikke kritisk sti).
+
+### UPCDatabase.org (fallback, feature #69)
+
+Implementeret i `backend/app/integrations/upcdatabase_client.py`. Tredje og sidste stregkode-opslags-fallback, forsøgt kun når hverken UPCitemdb eller Discogs finder et match — tilføjet 2026-08-03 efter at have bekræftet (BUGS.md #32) at 4 konkrete danske DVD-stregkoder manglede i alle andre kilder. UPCDatabase.org's egen database har heller ikke haft data for netop de 4 test-stregkoder, men er tilføjet alligevel som et gratis, lavt-risiko ekstra forsøg — kan hjælpe for andre plader/nordiske udgivelser end de specifikt testede.
+
+- **Base URL**: `https://api.upcdatabase.org/product/{barcode}`
+- **Auth**: **Påkrævet** personal API key (`UPCDATABASE_TOKEN` i `.env`, eller admin-sat i UI'et under Indstillinger → System-indstillinger — oprettes med egen konto på https://upcdatabase.org/api) som `Authorization: Bearer <token>`-header. Gratis niveau: 100 opslag/dag. I modsætning til Discogs (hvor token blot hæver rate-limit) springes selve opslaget helt over hvis intet token er sat, i stedet for at forsøge et uautoriseret kald der alligevel vil få 403.
+- **Request**: `GET /{stregkode}` (ren sti-parameter, ingen query-string)
+- **Response**: `{"success": true, "title": "...", ...}` ved match. `success: false` eller manglende `title` → intet gæt.
+- **Fejlhåndtering**: samme filosofi som UPCitemdb/Discogs — manglende token, 404 (intet match), 400 (ugyldig stregkode), 403 (ugyldig nøgle), netværksfejl eller enhver anden ikke-200-status logges og returnerer `None`, aldrig en kastet exception (nice-to-have forudfyld, ikke kritisk sti).
 
 ### Plex (afspilnings-integration, feature #45)
 

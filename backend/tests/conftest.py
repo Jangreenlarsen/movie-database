@@ -36,6 +36,7 @@ def _pin_external_api_keys(monkeypatch):
     monkeypatch.setattr(settings, "tmdb_api_token", "test-tmdb-token")
     monkeypatch.setattr(settings, "upc_api_key", "")
     monkeypatch.setattr(settings, "discogs_token", "")
+    monkeypatch.setattr(settings, "upcdatabase_token", "")
     monkeypatch.setattr(settings, "omdb_api_key", "")
     monkeypatch.setattr(settings, "plex_server_url", "")
     monkeypatch.setattr(settings, "plex_token", "")

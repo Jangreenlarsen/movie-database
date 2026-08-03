@@ -13,14 +13,15 @@ import "./BarcodeScanner.css";
 // actually misread by the user (BUGS.md #19).
 const HINTS = new Map([[DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.UPC_A]]]);
 
-// BUGS.md #35 — a known WebKit/iOS Safari issue: stopping a getUserMedia
-// MediaStream via a scanning library's own `.stop()` isn't always enough
-// to release the <video> element's hardware compositing layer on iOS —
-// it can leave a frozen/black layer behind, which has been observed
-// bleeding into the whole page (not just this small viewfinder box)
-// after the surrounding form unmounts/rerenders (e.g. right after "Gem").
-// Explicitly stopping every track AND clearing `srcObject` (not just
-// calling the library's `controls.stop()`) is the documented workaround.
+// Stopping the camera reliably needs both: (1) the IScannerControls object
+// returned by decodeFromVideoDevice() — the *only* real stop API in
+// @zxing/browser 0.2.1 (there is no `reader.stopContinuousDecode()`; an
+// earlier version of this cleanup called that nonexistent method, which
+// threw a TypeError on every unmount and crashed the whole page on iOS
+// Safari, requiring a manual reload — BUGS.md #35), and (2) explicitly
+// stopping every MediaStream track and clearing `srcObject` on the <video>
+// element, since WebKit doesn't always release the hardware compositing
+// layer from just `controls.stop()` alone.
 function releaseCamera(videoEl) {
   const stream = videoEl?.srcObject;
   if (stream instanceof MediaStream) {
@@ -34,13 +35,13 @@ function releaseCamera(videoEl) {
 
 export default function BarcodeScanner({ onDetected }) {
   const videoRef = useRef(null);
-  const readerRef = useRef(null);
+  const controlsRef = useRef(null);
   const [error, setError] = useState(null);
   const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     return () => {
-      readerRef.current?.stopContinuousDecode();
+      controlsRef.current?.stop();
       releaseCamera(videoRef.current);
     };
   }, []);
@@ -49,7 +50,6 @@ export default function BarcodeScanner({ onDetected }) {
     setError(null);
     setScanning(true);
     const reader = new BrowserMultiFormatReader(HINTS);
-    readerRef.current = reader;
 
     try {
       const controls = await reader.decodeFromVideoDevice(
@@ -64,6 +64,7 @@ export default function BarcodeScanner({ onDetected }) {
           }
         }
       );
+      controlsRef.current = controls;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Kunne ikke tilgå kameraet");
       setScanning(false);

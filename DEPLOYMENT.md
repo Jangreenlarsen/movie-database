@@ -73,6 +73,36 @@ ReadWritePaths=/opt/moviedb /opt/moviedb-deploy.log
 
 **HTTP/3 er slået fra** (`servers { protocols h1 h2 }` i Caddyfile'ens globale block). Caddy annoncerer ellers HTTP/3 (QUIC/**UDP** 443) via en `Alt-Svc`-header, men `ufw` åbner kun **TCP** 443 — browseren forsøger så at opgradere til QUIC, det fejler stille mod den lukkede UDP-port, og det viste sig i Firefox som `SSL_ERROR_INTERNAL_ERROR_ALERT` i stedet for det forventede "usikker forbindelse, fortsæt alligevel"-varsel. Løsningen er enten at slå HTTP/3 fra (valgt her — unødvendigt for en lille LAN-app) eller at åbne UDP 443 i firewallen også.
 
+### Offentligt domæne + automatisk Let's Encrypt-certifikat (feature #74)
+
+Både `movie.ll.lan` og `10.1.130.10` er **kun** nåbare fra hjemmenetværket (intern DNS hhv. ingen router-portviderledning udefra) — hverken Let's Encrypt eller nogen anden public CA kan udstede til et privat IP eller et internt-kun-navn under alle omstændigheder. Jans ønske (2026-08-03) om ægte adgang udefra kræver derfor et **rigtigt, offentligt domænenavn** (DNS hos one.com/Larsen Data, fast offentlig IP bekræftet) og et **tredje** Caddy site-block — helt adskilt fra de to LAN-certifikater ovenfor, som forbliver uændrede.
+
+**Hvorfor HTTP-01 (Caddys indbyggede automatiske HTTPS), ikke DNS-01**: en DNS-01-udfordring ville kræve et Caddy DNS-plugin til one.com (findes ikke som et etableret `caddy-dns`-modul, ville kræve en custom Caddy-build via `xcaddy`), uden nogen fordel her — port 80/443 skal alligevel åbnes udefra for at selve appen kan nås. Caddy 2 (allerede installeret) understøtter HTTP-01/automatisk udstedelse+fornyelse **indbygget uden plugins**: den eneste kode-ændring er at bruge det rigtige domænenavn som site-adresse i stedet for `tls internal` — ingen af feature #73's CSR/PKCS12/trigger-maskineri er involveret, Caddy passer sig selv resten af certifikatets liv (fornyer automatisk ~30 dage før hvert 90-dages Let's Encrypt-certifikat udløber).
+
+**Forudsætninger Jan selv skal sætte op, før Claude rører Caddyfile**:
+1. DNS A-record hos one.com for det valgte navn (fx `movie.<dit-domæne>.dk`) → den faste offentlige IP.
+2. Router-portviderledning: **TCP 80 og 443** → `10.1.130.10:80`/`:443`. **Anbefaling: videresend ikke port 22** — SSH bør forblive LAN/VPN-only, selvom web-appen bliver offentligt tilgængelig.
+
+**Caddyfile-tilføjelsen (afventer Jans "gør det nu"-bekræftelse — IKKE udført endnu)**, et tredje site-block der genbruger den eksisterende `(common)`-snippet (samme mønster som `movie.ll.lan`/`10.1.130.10`), uden `tls internal`:
+
+```caddyfile
+movie.dit-domæne.dk {
+    import common
+}
+```
+
+samt en global `email <jans e-mail>` i Caddyfile'ens øverste `{ ... }`-block (Let's Encrypt-notifikationer, anbefalet). Derefter samme to trin som ved den oprindelige #23-opsætning: `sudo caddy validate --config /etc/caddy/Caddyfile`, så `sudo systemctl reload caddy`.
+
+**Sikkerhedskonsekvens**: login-siden bliver nu synlig for hele internettet, ikke kun LAN. Feature #66's admin-godkendelse af nye registreringer (`pending`-status uden adgang før godkendt) er den primære beskyttelse mod uønskede tilmeldinger og står allerede på plads — ingen kodeændring nødvendig. Den offentlige `/bio`-side (feature #70) er i forvejen designet til at være delbar/offentlig.
+
+**Verifikation efter reload**:
+```bash
+curl -sk https://movie.dit-domæne.dk/api/health   # kør fra UDEN for hjemmenetværket (fx mobildata)
+openssl s_client -connect movie.dit-domæne.dk:443 -servername movie.dit-domæne.dk </dev/null 2>/dev/null | openssl x509 -noout -issuer -dates
+sudo journalctl -u caddy | grep -i "certificate obtained\|acme"
+```
+Udsteder skal vise `Let's Encrypt`, ikke `Caddy Local Authority`. Test bagefter at `movie.ll.lan`/`10.1.130.10` stadig svarer uændret, for at bekræfte at det nye site-block ikke har forstyrret dem.
+
 ## `.env` (produktion)
 
 Ligger i `/opt/moviedb/backend/.env` (git-ignoreret, `chmod 600`, ejes af `jgl`). Indeholder en **unik** `JWT_SECRET_KEY` genereret direkte på serveren (ikke genbrugt fra dev), `TMDB_API_TOKEN`, og `COOKIE_SECURE=true` (rigtig HTTPS i produktion). `DISCOGS_TOKEN` er tom (Discogs-opslag virker uden token, bare med lavere rate-limit — se MOVIE_API_REFERENCE.md).

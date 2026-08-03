@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.46.0 (build 0057) — 2026-08-03
+
+- Gem/slet-knapperne i film-/TV-seriens redigeringsvindue er nu altid synlige — ikke kun når du har scrollet helt ned.
+
 ## v0.45.0 (build 0056) — 2026-08-03
 
 - "Føj til hjemmeskærm" på iPhone giver nu et rigtigt app-ikon i stedet for et tilfældigt skærmbillede af siden.

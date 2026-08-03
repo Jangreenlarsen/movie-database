@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.54.1 (build 0071) — 2026-08-03
+
+- Fundet og rettet den rigtige årsag til sort skærm på iOS ved gem — den forrige rettelse ramte forbi. Test det gerne igen på din iPhone, men denne gang er fejlen faktisk genskabt og bekræftet rettet i test, ikke bare en teori.
+
 ## v0.54.0 (build 0070) — 2026-08-03
 
 - Ny "TLS-certifikat"-sektion på Indstillinger (admin-only): forny produktionens HTTPS-certifikat direkte fra appen — generér en CSR til ekstern signering, eller importér en færdig PKCS12-fil — uden manuel SSH-adgang. Selve installationen kræver stadig dit eget password som bekræftelse, og de sidste systemd-brikker på serveren skal sættes op manuelt én gang, før knappen kan bruges i produktion.

@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.54.1 build 0071] — 2026-08-03 — fix (afventer endelig bekræftelse): ægte rodårsag til sort skærm på iOS fundet og rettet (BUGS.md #35)
+
+Jan testede build 0069's fix live og bekræftede at problemet var uændret — den første teori (WebKit-compositing-lag) var forkert og rettede aldrig den faktiske fejl. Ny undersøgelse fandt den ægte rodårsag ved at læse `@zxing/browser`s (v0.2.1) kildekode direkte: `BarcodeScanner.jsx`s unmount-cleanup kaldte `readerRef.current?.stopContinuousDecode()` — en metode der **slet ikke findes** i denne version af biblioteket. Den valgfri-kædning beskyttede kun mod `readerRef.current` selv værende null, ikke mod at kalde en ikke-eksisterende metode — så linjen kastede en `TypeError` ved hver eneste afmontering af scanneren, herunder præcis når "Gem" lukker tilføj-panelet. Uden nogen error boundary i appen fik denne ufangede fejl hele siden til at gå blank, uden vej tilbage undtagen manuel reload.
+
+Rettet ved roden: `BarcodeScanner.jsx` bruger nu en `controlsRef` (den reelle `IScannerControls` fra `decodeFromVideoDevice()`) og kalder `controlsRef.current?.stop()` i stedet for den opdigtede metode. Tilføjet en ny `ErrorBoundary`-komponent omkring hele appen (`main.jsx`) som sikkerhedsnet mod fremtidige ufangede render-fejl. **Reproduceret og verificeret denne gang** (ikke kun teori) — Playwright med en simuleret kamera-enhed genskabte præcis krasch-sekvensen: den gamle kode kastede den eksakte fejl hver gang, den nye kode kaster intet. Afventer stadig Jans endelige bekræftelse på en rigtig iPhone.
+
 ## [0.54.0 build 0070] — 2026-08-03 — feature: TLS-certifikat-styring i Indstillinger (#73)
 
 Ny admin-only "TLS-certifikat"-sektion på Indstillinger-siden til at forny produktionens `movie.ll.lan`-certifikat (se BUGS.md #23/DEPLOYMENT.md) uden manuel SSH-adgang. To metoder: (1) generér en ECDSA P-256-nøgle + CSR til ekstern signering (fx Jans interne AD CS) og indsæt det signerede certifikat bagefter, eller (2) importér en færdig PKCS12 (.pfx/.p12 med cert+nøgle). Begge veje verificerer at certifikatets offentlige nøgle matcher den ventende private nøgle før noget lægges klar ("staged"). En separat "Installér nu"-knap (kræver eget password, samme mønster som #67's database-reset) udløser den faktiske installation.

@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.53.1 build 0065] — 2026-08-03 — fix: Voldby BIO offentlig side prioriterer programmet (feature #70/#71)
+
+Jans feedback efter at have set den offentlige `/bio`-side: for lidt fyldt ud, og "hvad går i bio" skulle frem. Omstruktureret: en stor, tydelig "🎬 Voldby BIO"-hero-overskrift øverst (i stedet for en lille header-bjælke), programmet ("Hvad går i bio") flyttet op som første sektion, showcase-sektionen (billeder/specs) flyttet ned under en ny "Om Voldby BIO"-overskrift.
+
 ## [0.53.0 build 0064] — 2026-08-03 — Automatisk "Tilføjet af {bruger}"-tag (feature #18)
 
 Enhver ny film/TV-serie får nu automatisk et "Tilføjet af {brugernavn}"-tag ved oprettelse — uanset om det sker via stregkode-scan, manuel TMDb-søgning eller ren manuel indtastning, da alle tre funnel gennem samme `create_movie`/`create_tv_show`-kald. Ny delt `tag_service.added_by_tag(username)` sikrer at ordlyden ikke kan gå ud af trit mellem film og TV-serier. Udvidet til også at gælde TV-serier (ikke kun film som FEATURES.md oprindeligt sagde), for konsistens med hvordan de to ressourcer ellers deler tag-mekanismen.

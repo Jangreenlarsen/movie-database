@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import Chip from "../components/Chip";
 import "./Settings.css";
 
-export default function Settings({ user }) {
+export default function Settings({ user, onSettingsChanged }) {
   const isAdmin = user.role === "admin";
 
   return (
@@ -12,6 +13,7 @@ export default function Settings({ user }) {
       </div>
 
       <AccountSection user={user} />
+      <CardSizeSection cardSize={user.settings.card_size} onSettingsChanged={onSettingsChanged} />
       <SerialNumberSection isAdmin={isAdmin} />
       <DeletedMoviesSection />
       {isAdmin && (
@@ -101,6 +103,56 @@ function AccountSection({ user }) {
           {saving ? "Gemmer..." : "Skift adgangskode"}
         </button>
       </form>
+    </div>
+  );
+}
+
+const CARD_SIZE_OPTIONS = [
+  { value: "small", label: "Lille" },
+  { value: "medium", label: "Mellem" },
+  { value: "large", label: "Stor" },
+];
+
+function CardSizeSection({ cardSize, onSettingsChanged }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  function selectSize(value) {
+    if (value === cardSize) return;
+    setSaving(true);
+    setError(null);
+    api
+      .updateMySettings({ card_size: value })
+      .then(onSettingsChanged)
+      .catch((err) => setError(err.message))
+      .finally(() => setSaving(false));
+  }
+
+  return (
+    <div className="card settings-section">
+      <h2>Kortstørrelse</h2>
+      <p className="muted">
+        Styrer størrelsen på film-/TV-serie-kortene i Film- og TV-serie-fanen. Én fælles
+        indstilling for begge faner.
+      </p>
+
+      <div className="chip-row">
+        {CARD_SIZE_OPTIONS.map((option) => (
+          <Chip
+            key={option.value}
+            label={option.label}
+            active={cardSize === option.value}
+            onClick={() => selectSize(option.value)}
+          />
+        ))}
+      </div>
+
+      {saving && <p className="muted" style={{ marginTop: 8 }}>Gemmer...</p>}
+      {error && (
+        <div className="banner banner-error" style={{ marginTop: 12 }}>
+          {error}
+        </div>
+      )}
     </div>
   );
 }

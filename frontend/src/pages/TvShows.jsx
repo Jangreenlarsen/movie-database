@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import Chip from "../components/Chip";
+import Combobox from "../components/Combobox";
 import MovieLookupForm from "../components/MovieLookupForm";
 import "../pages/Library.css";
 import "./TvShows.css";
@@ -69,6 +70,8 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
   const [shows, setShows] = useState([]);
   const [status, setStatus] = useState("loading");
   const [allTags, setAllTags] = useState([]);
+  const [allOwners, setAllOwners] = useState([]);
+  const [allLocations, setAllLocations] = useState([]);
   const [attributeOptions, setAttributeOptions] = useState({
     formats: [],
     audio_types: [],
@@ -108,6 +111,8 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
 
   useEffect(() => {
     api.listTags().then(setAllTags).catch(() => {});
+    api.listOwners().then(setAllOwners).catch(() => {});
+    api.listLocations().then(setAllLocations).catch(() => {});
     api.tvAttributeOptions().then(setAttributeOptions).catch(() => {});
     api
       .getSerialNumberConfig()
@@ -522,7 +527,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
       )}
 
       {status === "ready" && shows.length > 0 && (
-        <ul className="movie-grid">
+        <ul className={`movie-grid movie-grid--${user.settings.card_size ?? "medium"}`}>
           {shows.map((show) => (
             <li key={show.id} className="movie-card" onClick={() => setActiveShow(show)}>
               {!show.is_wishlist && (
@@ -587,12 +592,17 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
         <TvShowDetailModal
           show={activeShow}
           user={user}
+          allTags={allTags}
+          allOwners={allOwners}
+          allLocations={allLocations}
           attributeOptions={attributeOptions}
           serialPaddingWidth={serialPaddingWidth}
           onClose={() => setActiveShow(null)}
           onChanged={() => {
             refresh();
             api.listTags().then(setAllTags).catch(() => {});
+            api.listOwners().then(setAllOwners).catch(() => {});
+            api.listLocations().then(setAllLocations).catch(() => {});
           }}
         />
       )}
@@ -600,7 +610,17 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
   );
 }
 
-function TvShowDetailModal({ show, user, attributeOptions, serialPaddingWidth, onClose, onChanged }) {
+function TvShowDetailModal({
+  show,
+  user,
+  allTags,
+  allOwners,
+  allLocations,
+  attributeOptions,
+  serialPaddingWidth,
+  onClose,
+  onChanged,
+}) {
   const [tagsInput, setTagsInput] = useState(show.tags.join(", "));
   const [format, setFormat] = useState(show.format ?? "");
   const [audioTypes, setAudioTypes] = useState(show.audio_types);
@@ -618,6 +638,12 @@ function TvShowDetailModal({ show, user, attributeOptions, serialPaddingWidth, o
   const [deleting, setDeleting] = useState(false);
   const [moving, setMoving] = useState(false);
   const [error, setError] = useState(null);
+
+  function addTag(tag) {
+    const current = tagsInput.split(",").map((t) => t.trim()).filter(Boolean);
+    if (current.some((t) => t.toLowerCase() === tag.toLowerCase())) return;
+    setTagsInput([...current, tag].join(", "));
+  }
 
   const canEditSerial = user.role === "admin" || user.username === show.registered_by;
 
@@ -783,16 +809,28 @@ function TvShowDetailModal({ show, user, attributeOptions, serialPaddingWidth, o
           <div>
             <div className="modal-section-label">Tags</div>
             <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} />
+            {allTags.length > 0 && (
+              <div className="chip-row" style={{ marginTop: 8 }}>
+                {allTags.map((tag) => (
+                  <Chip key={tag} label={tag} onClick={() => addTag(tag)} />
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
             <div className="modal-section-label">Lokation</div>
-            <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Stue, reol 2..." />
+            <Combobox
+              value={location}
+              onChange={setLocation}
+              options={allLocations}
+              placeholder="Stue, reol 2..."
+            />
           </div>
 
           <div>
             <div className="modal-section-label">Ejer</div>
-            <input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="Hvem ejer den..." />
+            <Combobox value={owner} onChange={setOwner} options={allOwners} placeholder="Hvem ejer den..." />
           </div>
 
           {show.registered_by && <p className="muted">Registreret af: {show.registered_by}</p>}

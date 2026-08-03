@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import (
+    attributes,
     auth,
     health,
     movies,
@@ -151,6 +152,7 @@ app.include_router(users.router)
 app.include_router(movies.router)
 app.include_router(tv_shows.router)
 app.include_router(tags.router)
+app.include_router(attributes.router)
 app.include_router(scan.router)
 app.include_router(settings_api.router)
 app.include_router(system.router)

@@ -246,6 +246,20 @@ async def find_all_with_tmdb_id(db: AsyncIOMotorDatabase) -> list[dict]:
     return await cursor.to_list(length=10_000)
 
 
+async def distinct_owners(db: AsyncIOMotorDatabase) -> list[str]:
+    """Owner values already in use across the collection — feeds the
+    owner-field combobox (FEATURES.md #58) alongside `tv_show_repository`'s
+    counterpart."""
+    values = await db[COLLECTION].distinct("owner")
+    return [v for v in values if v]
+
+
+async def distinct_locations(db: AsyncIOMotorDatabase) -> list[str]:
+    """Same as `distinct_owners`, for the location field."""
+    values = await db[COLLECTION].distinct("location")
+    return [v for v in values if v]
+
+
 async def set_serial_number(db: AsyncIOMotorDatabase, movie_id: str, serial_number: int) -> None:
     await db[COLLECTION].update_one(
         {"_id": ObjectId(movie_id)}, {"$set": {"serial_number": serial_number}}

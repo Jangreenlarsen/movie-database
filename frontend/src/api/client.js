@@ -73,6 +73,8 @@ export const api = {
   syncMoviesFromTmdb: () => request("/movies/sync-tmdb", { method: "POST" }),
   syncTvShowsFromTmdb: () => request("/tv-shows/sync-tmdb", { method: "POST" }),
   listTags: () => request("/tags"),
+  listOwners: () => request("/owners"),
+  listLocations: () => request("/locations"),
   attributeOptions: () => request("/movies/attribute-options"),
   checkDuplicate: (tmdbId) =>
     request(`/movies/check-duplicate?${new URLSearchParams({ tmdb_id: tmdbId })}`),

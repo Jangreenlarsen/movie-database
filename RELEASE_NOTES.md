@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.41.0 (build 0051) — 2026-08-03
+
+- Tags-, lokations- og ejer-felterne (ved tilføjelse og redigering af film/TV-serier) viser nu forslag ud fra hvad du allerede har brugt — men du kan stadig bare skrive noget nyt. Virker også fra telefonen.
+- Ny indstilling under Indstillinger: "Kortstørrelse" (Lille/Mellem/Stor) — styrer hvor store film-/TV-serie-kortene vises i biblioteket, på begge faner.
+
 ## v0.40.0 (build 0050) — 2026-08-02
 
 - Ny "TMDb-synkronisering"-knap for TV-serier under Indstillinger (admin) — akkurat som filmenes, henter frisk metadata (navn, status, poster, plot, rating, sæson-/episodetal) for alle TV-serier oprettet via TMDb. Dine egne sæson-/episode-markeringer (ejet/set) rører den ikke.

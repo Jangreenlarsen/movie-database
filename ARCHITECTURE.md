@@ -37,6 +37,8 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 | GET    | `/api/movies/{movie_id}/plex`  | Slår filmen op mod brugerens egen Plex-server (admin-konfigureret server-URL+token) og returnerer `{available, play_url}` (feature #45). Aldrig en fejl ved manglende/utilgængelig Plex — `available: false` i stedet. | done |
 | GET    | `/api/movies/collections/{collection_id}` | TMDb's fulde liste af film i en samling (franchise/box-set), krydsrefereret mod brugerens egne film — hver del markeret `owned`/`owned_movie_id`/`owned_is_wishlist` (feature #42). To path-segmenter kolliderer ikke med `/{movie_id}` (kun ét segment). | done |
 | GET    | `/api/tags`                    | Liste alle tags (til autocomplete)                            | done |
+| GET    | `/api/owners`                  | Liste ejer-værdier allerede i brug, samlet på tværs af film og TV-serier (til combobox-forslag, feature #58) | done |
+| GET    | `/api/locations`               | Samme som `/api/owners`, for lokations-feltet                 | done |
 | POST   | `/api/scan/lookup`             | Input: scannet UPC/EAN. Output: titel-gæt + TMDb-kandidater. Prøver UPCitemdb først, herefter Discogs som fallback hvis intet match (se MOVIE_API_REFERENCE.md). 502 hvis TMDb er utilgængelig/token mangler. | done |
 | GET    | `/api/movies/tmdb-search`      | Direkte TMDb-titel-søgning (fallback når scan ikke matcher). Registreret før `/{movie_id}`. | done |
 | GET    | `/api/health`                  | Health check (backend + MongoDB-forbindelse), samt `version`/`build` fra `version.json` (se `app/core/version_info.py`) | done |

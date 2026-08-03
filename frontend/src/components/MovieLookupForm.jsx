@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import BarcodeScanner from "../scanner/BarcodeScanner";
 import { api } from "../api/client";
 import Chip from "./Chip";
+import Combobox from "./Combobox";
 import "./MovieLookupForm.css";
 
 function toggleValue(list, value) {
@@ -34,6 +35,9 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
     audio_types: [],
     media_types: [],
   });
+  const [allTags, setAllTags] = useState([]);
+  const [allOwners, setAllOwners] = useState([]);
+  const [allLocations, setAllLocations] = useState([]);
   const [saveStatus, setSaveStatus] = useState("idle");
   const [saveError, setSaveError] = useState(null);
   const [duplicates, setDuplicates] = useState([]);
@@ -55,7 +59,16 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
 
   useEffect(() => {
     api.attributeOptions().then(setAttributeOptions).catch(() => {});
+    api.listTags().then(setAllTags).catch(() => {});
+    api.listOwners().then(setAllOwners).catch(() => {});
+    api.listLocations().then(setAllLocations).catch(() => {});
   }, []);
+
+  function addTag(tag) {
+    const current = tagsInput.split(",").map((t) => t.trim()).filter(Boolean);
+    if (current.some((t) => t.toLowerCase() === tag.toLowerCase())) return;
+    setTagsInput([...current, tag].join(", "));
+  }
 
   async function handleDetected(code) {
     setBarcode(code);
@@ -389,6 +402,13 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
               placeholder="Julefilm, Set med Anna, 4K..."
               style={{ width: "100%" }}
             />
+            {allTags.length > 0 && (
+              <div className="chip-row" style={{ marginTop: 8 }}>
+                {allTags.map((tag) => (
+                  <Chip key={tag} label={tag} onClick={() => addTag(tag)} />
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
@@ -434,12 +454,12 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
                 <label className="field-label" htmlFor="location-input">
                   Lokation
                 </label>
-                <input
+                <Combobox
                   id="location-input"
                   value={location}
-                  onChange={(e) => setLocation(e.target.value)}
+                  onChange={setLocation}
+                  options={allLocations}
                   placeholder="Stue, reol 2..."
-                  style={{ width: "100%" }}
                 />
               </div>
 
@@ -447,12 +467,12 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
                 <label className="field-label" htmlFor="owner-input">
                   Ejer
                 </label>
-                <input
+                <Combobox
                   id="owner-input"
                   value={owner}
-                  onChange={(e) => setOwner(e.target.value)}
+                  onChange={setOwner}
+                  options={allOwners}
                   placeholder="Hvem ejer den..."
-                  style={{ width: "100%" }}
                 />
               </div>
             </>

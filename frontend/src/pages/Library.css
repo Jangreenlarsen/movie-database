@@ -126,6 +126,24 @@
   gap: 20px;
 }
 
+/* Kortstørrelse (feature #59) — "medium" er samme størrelse som den
+   hidtidige, ikke-valgbare standard ovenfor, defineret her igen så alle
+   tre størrelser er samlet ét sted. */
+.movie-grid--small {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 14px;
+}
+
+.movie-grid--medium {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 20px;
+}
+
+.movie-grid--large {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 24px;
+}
+
 .movie-card {
   position: relative;
   border-radius: var(--radius-md);
@@ -447,6 +465,21 @@
   .skeleton-grid {
     grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
     gap: 12px;
+  }
+
+  .movie-grid--small {
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 8px;
+  }
+
+  .movie-grid--medium {
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 12px;
+  }
+
+  .movie-grid--large {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
   }
 
   .filter-group {

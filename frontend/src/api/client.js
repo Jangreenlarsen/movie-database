@@ -45,6 +45,7 @@ export const api = {
     request(`/users/${userId}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
   updateUserStatus: (userId, status) =>
     request(`/users/${userId}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+  deleteUser: (userId) => request(`/users/${userId}`, { method: "DELETE" }),
   listMovies: (
     {
       q,

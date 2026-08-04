@@ -4,11 +4,12 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
 from app.core.errors import (
+    CannotTargetSelfError,
     InvalidCredentialsError,
+    InvalidUserStatusTransitionError,
     LastAdminError,
     UserNotFoundError,
     UsernameTakenError,
-    UserNotPendingError,
 )
 from app.core.security import hash_password, verify_password
 from app.models.user import (
@@ -137,16 +138,65 @@ async def update_user_role(db: AsyncIOMotorDatabase, user_id: str, role: UserRol
     return to_user_model(updated)
 
 
-async def update_user_status(db: AsyncIOMotorDatabase, user_id: str, status: str) -> User:
-    """Approve (`active`) or reject (`rejected`) a pending registration
-    (feature #66). Only allowed while the target is still `pending` —
-    otherwise a stray click could silently lock out an already-active user
-    (e.g. rejecting an admin by mistake)."""
+
+# Feature #66/#80 — which status transitions are reachable depends on the
+# target's *current* status. "pending" is never a settable target (a user
+# can't be put back into the approval queue), and each of the other three
+# only makes sense coming from a specific starting point — e.g. you can't
+# "activate" a rejected registration, and can't "disable" someone who's
+# still pending approval.
+_VALID_STATUS_TRANSITIONS = {
+    UserStatus.PENDING.value: {UserStatus.ACTIVE.value, UserStatus.REJECTED.value},
+    UserStatus.ACTIVE.value: {UserStatus.DISABLED.value},
+    UserStatus.DISABLED.value: {UserStatus.ACTIVE.value},
+}
+
+
+async def update_user_status(
+    db: AsyncIOMotorDatabase, user_id: str, status: str, requesting_user_id: str
+) -> User:
+    """Approve/reject a pending registration (feature #66), or
+    disable/re-enable an already-active account (feature #80, e.g. someone
+    leaving or a suspected compromised login) — without deleting it."""
     target = await user_repository.find_by_id(db, user_id)
     if target is None:
         raise UserNotFoundError(user_id)
-    if target.get("status", UserStatus.ACTIVE.value) != UserStatus.PENDING.value:
-        raise UserNotPendingError(user_id)
+
+    current_status = target.get("status", UserStatus.ACTIVE.value)
+    if status not in _VALID_STATUS_TRANSITIONS.get(current_status, set()):
+        raise InvalidUserStatusTransitionError(current_status, status)
+
+    if status == UserStatus.DISABLED.value:
+        if user_id == requesting_user_id:
+            raise CannotTargetSelfError()
+        if target.get("role") == UserRole.ADMIN.value:
+            admin_count = await user_repository.count_active_admins(db)
+            if admin_count <= 1:
+                raise LastAdminError()
 
     updated = await user_repository.set_status(db, user_id, status)
     return to_user_model(updated)
+
+
+async def delete_user(db: AsyncIOMotorDatabase, user_id: str, requesting_user_id: str) -> User:
+    """Feature #80 — permanently removes an account (unlike movies/TV-shows
+    there's no soft-delete/archive collection for users; `registered_by`/
+    `owner`/audit-log entries store the username as plain text, so nothing
+    is orphaned by removing the account). Guarded the same way as disabling:
+    can't target yourself, can't remove the last active admin. Returns the
+    now-deleted user (as it was just before removal) so the caller can log
+    its username without a second lookup."""
+    target = await user_repository.find_by_id(db, user_id)
+    if target is None:
+        raise UserNotFoundError(user_id)
+    if user_id == requesting_user_id:
+        raise CannotTargetSelfError()
+    if (
+        target.get("role") == UserRole.ADMIN.value
+        and target.get("status", UserStatus.ACTIVE.value) == UserStatus.ACTIVE.value
+    ):
+        admin_count = await user_repository.count_active_admins(db)
+        if admin_count <= 1:
+            raise LastAdminError()
+    await user_repository.delete(db, user_id)
+    return to_user_model(target)

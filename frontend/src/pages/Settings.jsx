@@ -1494,6 +1494,22 @@ function UsersSection({ currentUserId }) {
     }
   }
 
+  async function deleteUser(targetUser) {
+    if (!window.confirm(`Slet brugeren "${targetUser.username}" permanent? Kan ikke fortrydes.`)) {
+      return;
+    }
+    setUpdatingId(targetUser.id);
+    setError(null);
+    try {
+      await api.deleteUser(targetUser.id);
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
   const pendingCount = users.filter((u) => u.status === "pending").length;
 
   return (
@@ -1520,6 +1536,7 @@ function UsersSection({ currentUserId }) {
               </span>
               {u.status === "pending" && <span className="role-badge">Afventer</span>}
               {u.status === "rejected" && <span className="role-badge">Afvist</span>}
+              {u.status === "disabled" && <span className="role-badge">Deaktiveret</span>}
               {u.status === "active" && (
                 <span className="role-badge">
                   {u.role === "admin" ? "Admin" : u.role === "guest" ? "Guest" : "Standard"}
@@ -1545,16 +1562,47 @@ function UsersSection({ currentUserId }) {
                   </button>
                 </>
               ) : u.status === "active" ? (
-                <select
-                  value={u.role}
-                  disabled={u.id === currentUserId || updatingId === u.id}
-                  onChange={(e) => changeRole(u, e.target.value)}
+                <>
+                  <select
+                    value={u.role}
+                    disabled={u.id === currentUserId || updatingId === u.id}
+                    onChange={(e) => changeRole(u, e.target.value)}
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="standard">Standard</option>
+                    <option value="guest">Guest (read-only)</option>
+                  </select>
+                  {u.id !== currentUserId && (
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={updatingId === u.id}
+                      onClick={() => setStatusFor(u, "disabled")}
+                    >
+                      Deaktivér
+                    </button>
+                  )}
+                </>
+              ) : u.status === "disabled" ? (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={updatingId === u.id}
+                  onClick={() => setStatusFor(u, "active")}
                 >
-                  <option value="admin">Admin</option>
-                  <option value="standard">Standard</option>
-                  <option value="guest">Guest (read-only)</option>
-                </select>
+                  {updatingId === u.id ? "..." : "Genaktivér"}
+                </button>
               ) : null}
+              {u.id !== currentUserId && (
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={updatingId === u.id}
+                  onClick={() => deleteUser(u)}
+                >
+                  Slet
+                </button>
+              )}
             </li>
           ))}
         </ul>

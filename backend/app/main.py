@@ -23,12 +23,15 @@ from app.api import (
 )
 from app.core.config import settings
 from app.core.errors import (
+    AccountDisabledError,
     AccountPendingError,
     AccountRejectedError,
+    CannotTargetSelfError,
     CertKeyMismatchError,
     DeployScriptNotFoundError,
     DuplicateBarcodeError,
     InvalidCredentialsError,
+    InvalidUserStatusTransitionError,
     LastAdminError,
     MovieNotFoundError,
     NoCertStagedError,
@@ -175,8 +178,25 @@ async def account_rejected_handler(request: Request, exc: AccountRejectedError) 
     return JSONResponse(status_code=403, content={"detail": str(exc)})
 
 
+@app.exception_handler(AccountDisabledError)
+async def account_disabled_handler(request: Request, exc: AccountDisabledError) -> JSONResponse:
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
 @app.exception_handler(UserNotPendingError)
 async def user_not_pending_handler(request: Request, exc: UserNotPendingError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(InvalidUserStatusTransitionError)
+async def invalid_user_status_transition_handler(
+    request: Request, exc: InvalidUserStatusTransitionError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(CannotTargetSelfError)
+async def cannot_target_self_handler(request: Request, exc: CannotTargetSelfError) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 

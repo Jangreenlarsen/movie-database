@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.57.0 build 0076] — 2026-08-04 — feature: deaktivér/genaktivér + slet bruger (#80)
+
+Indstillinger → Brugere kan nu **deaktivere** en aktiv bruger (ny `disabled`-status, blokerer login/API præcis som `pending`/`rejected`, men med en tydelig anden fejlbesked så det ikke forveksles med en afvist registrering) og senere **genaktivere** dem — samt **slette** en bruger permanent (ingen soft-delete/arkiv; `registered_by`/`owner`/audit-log gemmer kun brugernavnet som tekst, så intet forældreløses).
+
+Lockout-beskyttelse (CLAUDE.md regel 16) på begge handlinger: kan ikke deaktivere/slette sin egen konto (skal bruge en anden admin-konto), og kan ikke deaktivere/slette den sidste tilbageværende *aktive* admin (`user_repository.count_active_admins`, adskilt fra den eksisterende rolle-nedgraderings-beskyttelse som talte alle admin-roller uanset status). `PATCH /api/users/{id}/status` udvidet med en eksplicit overgangstabel (`auth_service._VALID_STATUS_TRANSITIONS`) i stedet for den tidligere "kun pending"-begrænsning — samme sikkerhed, bredere anvendelse. Ny `DELETE /api/users/{id}`-endpoint. Begge handlinger audit-logges.
+
 ## [0.56.0 build 0075] — 2026-08-04 — feature: scan → rediger-boks (#79), Indstillinger-undermenu (#78), stregkode-kilde-statistik + primær-kilde-valg (#77)
 
 **Scan → rediger-boks (#79)**: efter valg af en TMDb-kandidat under scan/søgning springes der nu til den samme rige rediger-boks som ved redigering af et eksisterende bibliotekskort (`MovieDetailModal`/`TvShowDetailModal`, genbrugt as-is via nye `export`s), i stedet for det tidligere begrænsede inline-felt-sæt (kun tags/format/lyd/medietype/lokation/ejer). Intet gemmes i databasen før brugeren selv trykker "Opret" i boksen — to nye read-only preview-endpoints (`GET /api/movies/tmdb-preview/{id}`, `GET /api/tv-shows/tmdb-full-preview/{id}`) henter fulde TMDb-detaljer uden at oprette noget. Begge rediger-bokse gjort tolerante for et objekt uden `.id` ("kladde"-tilstand): Gem-knappen kalder opret i stedet for opdatér, Slet/Flyt/Plex/Kollektion-sektionerne skjules, og sæson-valget for nye TV-serier sker stadig i det eksisterende trin før boksen åbnes.

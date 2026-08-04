@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.57.0 (build 0076) — 2026-08-04
+
+- Indstillinger → Brugere kan nu deaktivere/genaktivere en bruger og slette en bruger permanent. Kan ikke bruges på din egen konto eller den sidste tilbageværende admin.
+
 ## v0.56.0 (build 0075) — 2026-08-04
 
 - Når du vælger en film/serie under scan eller søgning, springer du nu direkte til den samme fulde rediger-boks som når du redigerer et eksisterende kort — med overview, instruktør, medvirkende og alle felterne, ikke kun det begrænsede sæt fra før. Intet gemmes før du selv trykker "Opret".

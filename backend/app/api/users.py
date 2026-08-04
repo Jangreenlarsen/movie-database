@@ -63,6 +63,13 @@ async def update_user_role(
     return updated
 
 
+_STATUS_AUDIT_ACTIONS = {
+    "active": "user.approved",
+    "rejected": "user.rejected",
+    "disabled": "user.disabled",
+}
+
+
 @router.patch("/{user_id}/status", response_model=User, dependencies=[Depends(require_admin)])
 async def update_user_status(
     user_id: str,
@@ -70,11 +77,27 @@ async def update_user_status(
     current_user: dict = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
-    updated = await auth_service.update_user_status(db, user_id, payload.status)
+    updated = await auth_service.update_user_status(
+        db, user_id, payload.status, str(current_user["_id"])
+    )
+    # "active" covers both approving a pending signup and re-enabling a
+    # disabled account (feature #66/#80) — the audit log's action name is
+    # the same either way, distinguishable from the target's prior status
+    # if ever needed by cross-referencing the log's own history.
     await audit_log_service.record(
         db,
         current_user["username"],
-        "user.approved" if payload.status == "active" else "user.rejected",
+        _STATUS_AUDIT_ACTIONS.get(payload.status, "user.status_changed"),
         updated.username,
     )
     return updated
+
+
+@router.delete("/{user_id}", status_code=204, dependencies=[Depends(require_admin)])
+async def delete_user(
+    user_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    deleted = await auth_service.delete_user(db, user_id, str(current_user["_id"]))
+    await audit_log_service.record(db, current_user["username"], "user.deleted", deleted.username)

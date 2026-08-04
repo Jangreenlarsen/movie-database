@@ -107,6 +107,14 @@ async def count_by_role(db: AsyncIOMotorDatabase, role: str) -> int:
     return await db[COLLECTION].count_documents({"role": role})
 
 
+async def count_active_admins(db: AsyncIOMotorDatabase) -> int:
+    """Feature #80 — unlike `count_by_role`, only counts admins who can
+    actually log in right now (`status: "active"`). Used to guard
+    disable/delete so the last *usable* admin can never be locked out or
+    removed, even if a pending/rejected/disabled "admin" record exists."""
+    return await db[COLLECTION].count_documents({"role": "admin", "status": "active"})
+
+
 async def list_all(db: AsyncIOMotorDatabase) -> list[dict]:
     cursor = db[COLLECTION].find().sort("created_at", 1)
     return await cursor.to_list(length=1000)
@@ -147,3 +155,15 @@ async def set_password_hash(db: AsyncIOMotorDatabase, user_id: str, password_has
     await db[COLLECTION].update_one(
         {"_id": ObjectId(user_id)}, {"$set": {"password_hash": password_hash}}
     )
+
+
+async def delete(db: AsyncIOMotorDatabase, user_id: str) -> bool:
+    """Feature #80 — a genuine hard delete, not a soft-delete/archive like
+    movies/TV-shows: `registered_by`/`owner`/audit-log entries all store the
+    username as a plain string (not a reference to this document), so
+    removing the account leaves that history intact rather than orphaning
+    anything. Returns whether a document was actually removed."""
+    if not ObjectId.is_valid(user_id):
+        return False
+    result = await db[COLLECTION].delete_one({"_id": ObjectId(user_id)})
+    return result.deleted_count > 0

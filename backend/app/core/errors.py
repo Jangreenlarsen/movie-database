@@ -84,6 +84,15 @@ class AccountRejectedError(Exception):
         super().__init__("Din konto er blevet afvist. Kontakt en administrator.")
 
 
+class AccountDisabledError(Exception):
+    """Feature #80 — distinct message from AccountRejectedError, since this
+    means an admin locked an already-active account, not that a
+    registration was declined."""
+
+    def __init__(self):
+        super().__init__("Din konto er blevet deaktiveret af en administrator.")
+
+
 class UserNotPendingError(Exception):
     """Guards approve/reject (feature #66) against being pointed at a user
     who isn't actually pending — e.g. re-clicking reject on an already-active
@@ -94,10 +103,33 @@ class UserNotPendingError(Exception):
         super().__init__(f"User is not pending approval: {user_id}")
 
 
+class InvalidUserStatusTransitionError(Exception):
+    """Feature #80 — guards the broadened status endpoint against nonsensical
+    transitions (e.g. "activating" a rejected user, or "disabling" a
+    pending one) that the plain Literal type on UserStatusUpdate can't
+    express on its own."""
+
+    def __init__(self, current_status: str, requested_status: str):
+        self.current_status = current_status
+        self.requested_status = requested_status
+        super().__init__(
+            f"Kan ikke skifte status fra '{current_status}' til '{requested_status}'."
+        )
+
+
 class UserNotFoundError(Exception):
     def __init__(self, user_id: str):
         self.user_id = user_id
         super().__init__(f"User not found: {user_id}")
+
+
+class CannotTargetSelfError(Exception):
+    """Feature #80 — an admin can't disable/delete their own account via
+    this panel (must use a different admin account), avoiding an easy
+    self-inflicted lockout mistake."""
+
+    def __init__(self):
+        super().__init__("Du kan ikke udføre denne handling på din egen konto.")
 
 
 class LastAdminError(Exception):

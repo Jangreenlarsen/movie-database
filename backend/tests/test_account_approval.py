@@ -131,3 +131,178 @@ async def test_approve_and_reject_are_audit_logged(client):
     actions = {(e["action"], e["detail"]) for e in log.json()["entries"]}
     assert ("user.approved", "auditapprove") in actions
     assert ("user.rejected", "auditreject") in actions
+
+
+# Feature #80 — disable/re-enable an already-active account.
+
+
+async def test_disabling_an_active_user_blocks_them_with_clear_message(client):
+    second, body = await _register("disableme")
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "active"})
+
+    disable = await client.patch(f"/api/users/{body['id']}/status", json={"status": "disabled"})
+    assert disable.status_code == 200
+    assert disable.json()["status"] == "disabled"
+
+    response = await second.get("/api/movies")
+    assert response.status_code == 403
+    assert "deaktiveret" in response.json()["detail"]
+    await second.aclose()
+
+
+async def test_reenabling_a_disabled_user_restores_access(client):
+    second, body = await _register("reenableme")
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "active"})
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "disabled"})
+
+    reenable = await client.patch(f"/api/users/{body['id']}/status", json={"status": "active"})
+    assert reenable.status_code == 200
+    assert reenable.json()["status"] == "active"
+
+    response = await second.get("/api/movies")
+    assert response.status_code == 200
+    await second.aclose()
+
+
+async def test_cannot_disable_a_pending_user(client):
+    """Disabling only applies to an already-active account — a pending
+    registration should be approved/rejected instead (same class of guard
+    as test_cannot_reject_an_already_active_user, just the mirror case)."""
+    _, body = await _register("stillpending")
+    response = await client.patch(f"/api/users/{body['id']}/status", json={"status": "disabled"})
+    assert response.status_code == 409
+
+
+async def test_cannot_activate_a_rejected_user(client):
+    second, body = await _register("stayrejected")
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "rejected"})
+
+    response = await client.patch(f"/api/users/{body['id']}/status", json={"status": "active"})
+    assert response.status_code == 409
+    await second.aclose()
+
+
+async def test_cannot_disable_self(client):
+    me = await client.get("/api/users/me")
+    response = await client.patch(f"/api/users/{me.json()['id']}/status", json={"status": "disabled"})
+    assert response.status_code == 409
+
+
+async def test_cannot_disable_the_last_active_admin(client, db):
+    """The self-guard (test_cannot_disable_self) already blocks the only
+    way to reach this scenario through the API — `require_admin` means
+    whoever calls this endpoint while exactly one active admin exists must
+    *be* that admin. The last-admin check is defense-in-depth for that
+    same lockout class (CLAUDE.md regel 16), so it's exercised directly
+    against the service layer instead, simulating a hypothetical caller
+    distinct from the sole remaining admin."""
+    from bson import ObjectId
+
+    from app.core.errors import LastAdminError
+    from app.services import auth_service
+
+    me = await client.get("/api/users/me")
+    my_id = me.json()["id"]
+
+    fake_other_caller = str(ObjectId())
+    try:
+        await auth_service.update_user_status(db, my_id, "disabled", fake_other_caller)
+        assert False, "expected LastAdminError"
+    except LastAdminError:
+        pass
+
+    still_me = await client.get("/api/users/me")
+    assert still_me.json()["status"] == "active"
+
+
+async def test_disable_and_reenable_are_audit_logged(client):
+    second, body = await _register("auditdisable")
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "active"})
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "disabled"})
+    await second.aclose()
+
+    log = await client.get("/api/audit-log")
+    actions = {(e["action"], e["detail"]) for e in log.json()["entries"]}
+    assert ("user.disabled", "auditdisable") in actions
+
+
+# Feature #80 — permanently delete a user.
+
+
+async def test_admin_can_delete_a_user(client):
+    second, body = await _register("deleteme")
+    await second.aclose()
+
+    response = await client.delete(f"/api/users/{body['id']}")
+    assert response.status_code == 204
+
+    listing = await client.get("/api/users")
+    assert body["id"] not in [u["id"] for u in listing.json()]
+
+
+async def test_deleting_a_user_lets_the_username_be_reused(client):
+    """A hard delete, not a soft one — the username should be free again."""
+    second, body = await _register("reusablename")
+    await second.aclose()
+    await client.delete(f"/api/users/{body['id']}")
+
+    reregistered = await client.post(
+        "/api/auth/register", json={"username": "reusablename", "password": "testpassword123"}
+    )
+    assert reregistered.status_code == 201
+
+
+async def test_deleting_unknown_user_returns_404(client):
+    response = await client.delete("/api/users/000000000000000000000000")
+    assert response.status_code == 404
+
+
+async def test_deleting_user_requires_admin(client):
+    second, body = await _register("notadmindeleter")
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "active"})
+
+    response = await second.delete(f"/api/users/{body['id']}")
+    assert response.status_code == 403
+    await second.aclose()
+
+
+async def test_cannot_delete_self(client):
+    me = await client.get("/api/users/me")
+    response = await client.delete(f"/api/users/{me.json()['id']}")
+    assert response.status_code == 409
+
+    still_there = await client.get("/api/users")
+    assert me.json()["id"] in [u["id"] for u in still_there.json()]
+
+
+async def test_cannot_delete_the_last_active_admin(client, db):
+    """Same reasoning as test_cannot_disable_the_last_active_admin — the
+    self-guard already covers the only real-world path to this scenario,
+    so the service-layer guard is exercised directly."""
+    from bson import ObjectId
+
+    from app.core.errors import LastAdminError
+    from app.services import auth_service
+
+    me = await client.get("/api/users/me")
+    my_id = me.json()["id"]
+
+    fake_other_caller = str(ObjectId())
+    try:
+        await auth_service.delete_user(db, my_id, fake_other_caller)
+        assert False, "expected LastAdminError"
+    except LastAdminError:
+        pass
+
+    still_there = await client.get("/api/users")
+    assert my_id in [u["id"] for u in still_there.json()]
+
+
+async def test_deletion_is_audit_logged(client):
+    second, body = await _register("auditdelete")
+    await second.aclose()
+    await client.delete(f"/api/users/{body['id']}")
+
+    log = await client.get("/api/audit-log")
+    actions = {(e["action"], e["detail"]) for e in log.json()["entries"]}
+    assert ("user.deleted", "auditdelete") in actions

@@ -34,6 +34,13 @@ class UserStatus(str, Enum):
     PENDING = "pending"
     ACTIVE = "active"
     REJECTED = "rejected"
+    # Feature #80 — an admin can lock out an already-active account without
+    # deleting it (e.g. someone leaving, or a suspected compromised login).
+    # Blocks login/API access exactly like PENDING/REJECTED (see
+    # api.deps.get_current_user); distinct from REJECTED so the audit log
+    # and the user's own status message don't conflate "your registration
+    # was declined" with "an admin disabled your account afterwards".
+    DISABLED = "disabled"
 
 
 class VisibleFields(BaseModel):
@@ -144,9 +151,12 @@ class UserRoleUpdate(BaseModel):
 
 
 class UserStatusUpdate(BaseModel):
-    # Only these two are settable via the endpoint — a user can't be set
-    # back to "pending" once approved/rejected.
-    status: Literal["active", "rejected"]
+    # "pending" is never settable via this endpoint — a user can't be put
+    # back into the approval queue. Which of the other three is actually
+    # reachable from the target's *current* status is enforced in
+    # auth_service.update_user_status (feature #66/#80), not here — e.g.
+    # "active" only makes sense coming from "pending" or "disabled".
+    status: Literal["active", "rejected", "disabled"]
 
 
 class User(BaseModel):

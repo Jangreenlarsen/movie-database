@@ -2,6 +2,7 @@ from fastapi import Cookie, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.errors import (
+    AccountDisabledError,
     AccountPendingError,
     AccountRejectedError,
     NotAuthenticatedError,
@@ -53,6 +54,8 @@ async def get_current_user(
         raise AccountPendingError()
     if status == UserStatus.REJECTED.value:
         raise AccountRejectedError()
+    if status == UserStatus.DISABLED.value:
+        raise AccountDisabledError()
     return user
 
 

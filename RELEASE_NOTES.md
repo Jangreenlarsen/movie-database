@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.59.0 (build 0080) — 2026-08-04
+
+- Efter login lander du nu på Voldby BIO-fanen i stedet for filmbiblioteket.
+- Den offentlige, delbare Voldby BIO-side (`/bio`) har fået en "Log ind"-knap — log ind direkte derfra i stedet for selv at skulle finde app'ens forside.
+
 ## v0.58.0 (build 0079) — 2026-08-04
 
 - Ved scanning forudfyldes "Søg manuelt"-feltet nu automatisk med det titel-gæt stregkoden gav — kan du se det er forkert eller ufuldstændigt (fx et manglende bogstav), kan du rette det direkte i feltet og søge igen.

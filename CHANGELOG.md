@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.59.0 build 0080] — 2026-08-04 — feature: login lander på Voldby BIO + login på public bio-side (FEATURES.md #82)
+
+`App.jsx`s standard-fane er ændret fra "library" til "cinema" — gælder både et frisk login og en genindlæst side med en allerede gyldig session-cookie, da begge ender i samme kodesti. Den offentlige, ikke-autentificerede `/bio`-side (feature #70) har desuden fået en ny `PublicLoginToggle`-komponent: en "Log ind"-knap i hero-headeren der åbner en let inline login-formular (kun login, intet register-flow — den fulde tilmelding sker stadig via appens normale "/" -side). Et vellykket login kalder `window.location.assign("/")` (en rigtig navigation, ikke et internt state-skift — appen har ingen router og bruger allerede en ren pathname-check for `/bio`), som lader `App.jsx` tage over med den nu autentificerede bruger, og lander samme sted som al anden login: Voldby BIO. Live-verificeret med Playwright (frisk login, genindlæst session, forkert/korrekt login fra `/bio`, samt mobilviewport for at bekræfte login-panelet ikke overlapper indhold).
+
 ## [0.58.0 build 0079] — 2026-08-04 — feature: redigerbart titel-gæt ved scan (FEATURES.md #81)
 
 "Søg manuelt"-feltet i scan-panelet (`MovieLookupForm.jsx`) forudfyldes nu automatisk med stregkode-opslagets `guessed_title` efter hvert scan/manuelt stregkode-opslag — uanset om det gav TMDb-kandidater eller ej. Giver TMDb nul kandidater, vises en tydelig banner der forklarer at kilden kan have leveret let forkert/ufuldstændig tekst, og peger på feltet nedenfor. Brugeren kan rette teksten direkte (fx indsætte et manglende bogstav) og trykke "Søg" for at prøve igen — genbruger det eksisterende manuelle søge-flow i stedet for ny UI. Komplementær til BUGS.md #39's automatiske støj-oprydning: dækker de tilfælde (ægte tredjeparts-datakorruption, fx et enkelt manglende bogstav fra EAN-Search.org) som ingen automatisk regel kan gætte sig til at rette. Live-verificeret med Playwright (forudfyldning, banner, korrigeret søgning finder det rigtige resultat).

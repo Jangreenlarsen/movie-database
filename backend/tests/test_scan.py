@@ -295,6 +295,83 @@ async def test_scan_lookup_merges_movie_and_tv_candidates(client, monkeypatch):
     assert candidates[1]["title"] == "The Americans"
 
 
+async def test_scan_lookup_retries_tmdb_search_after_dropping_leading_noise_words(client, monkeypatch):
+    """Regression test found 2026-08-04 in production logs: a real scanned
+    barcode resolved to the noisy title "Simply HE The Americans" (a
+    distributor/label prefix EAN-Search.org bakes into the product title),
+    which finds zero TMDb candidates as a whole string but should be found
+    once the leading noise words are progressively dropped."""
+
+    async def fake_lookup_title(barcode):
+        return "Simply HE The Americans"
+
+    async def fake_search_movies(query):
+        return []
+
+    calls = []
+
+    async def fake_search_tv(query):
+        calls.append(query)
+        if query == "The Americans":
+            return [{"tmdb_id": 1409, "title": "The Americans", "year": 2013, "poster_url": None}]
+        return []
+
+    monkeypatch.setattr(upc_client, "lookup_title", fake_lookup_title)
+    monkeypatch.setattr(tmdb_client, "search_movies", fake_search_movies)
+    monkeypatch.setattr(tmdb_client, "search_tv", fake_search_tv)
+
+    response = await client.post("/api/scan/lookup", json={"barcode": "5039036089630"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["guessed_title"] == "Simply HE The Americans"
+    assert len(data["candidates"]) == 1
+    assert data["candidates"][0]["title"] == "The Americans"
+    # Tried the full phrase first, then progressively fewer leading words —
+    # never skips straight to the answer.
+    assert calls == ["Simply HE The Americans", "HE The Americans", "The Americans"]
+
+
+async def test_scan_lookup_gives_up_after_max_leading_words_dropped(client, monkeypatch):
+    """The fallback must not keep dropping words forever — a title still
+    unmatched after _MAX_LEADING_WORDS_TO_DROP words is treated as a
+    genuine miss, not retried into an unrelated short query."""
+
+    async def fake_lookup_title(barcode):
+        return "One Two Three Four Nomatch"
+
+    async def fake_no_matches(query):
+        return []
+
+    monkeypatch.setattr(upc_client, "lookup_title", fake_lookup_title)
+    monkeypatch.setattr(tmdb_client, "search_movies", fake_no_matches)
+    monkeypatch.setattr(tmdb_client, "search_tv", fake_no_matches)
+
+    response = await client.post("/api/scan/lookup", json={"barcode": "5039036089630"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["guessed_title"] == "One Two Three Four Nomatch"
+    assert data["candidates"] == []
+
+
+async def test_search_tmdb_with_fallback_tries_full_query_first(monkeypatch):
+    calls = []
+
+    async def fake_search_movies(query):
+        calls.append(query)
+        return [{"tmdb_id": 1, "title": "X", "year": 2000, "poster_url": None}]
+
+    async def fake_no_tv(query):
+        return []
+
+    monkeypatch.setattr(tmdb_client, "search_movies", fake_search_movies)
+    monkeypatch.setattr(tmdb_client, "search_tv", fake_no_tv)
+
+    movies, tv, matched_query = await scan_service._search_tmdb_with_fallback("The Matrix")
+    assert matched_query == "The Matrix"
+    assert calls == ["The Matrix"]  # stopped at the first (full) query
+    assert movies[0]["tmdb_id"] == 1
+
+
 async def test_create_movie_from_tmdb_id_fetches_metadata(client, monkeypatch):
     async def fake_get_movie_details(tmdb_id):
         assert tmdb_id == 603

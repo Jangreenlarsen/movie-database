@@ -21,13 +21,24 @@ _BOILERPLATE = re.compile(
     re.IGNORECASE,
 )
 
+# A bare "- <number>" (or "– <number>") at the very *end* of a product title
+# is essentially always a disc/season/volume index a retailer tacked on
+# ("The Americans - 6" for Season 6, "Rocky - 2" for disc 2 of a box set),
+# never part of the actual title itself — real titles that end in a number
+# either have no separator ("Blade Runner 2049", "300") or a word before it
+# ("Kill Bill Vol. 1"), so this is safe to strip unconditionally. Found
+# 2026-08-04: EAN-Search.org's "Simply HE The Americans - 6" returned zero
+# TMDb candidates as a whole string.
+_TRAILING_DASH_NUMBER = re.compile(r"\s+[-–]\s*\d+\s*$")
+
 
 def clean_bracketed_title(raw_title: str) -> str:
     """Strips cover/edition suffixes like "(DVD)"/"[Blu-ray]" *and* common
     unbracketed retail boilerplate ("Special Edition", "Complete Series",
-    "Seasons 1-6", bare "DVD"/"Blu-ray", ...) that UPC/Discogs lookups often
-    bake into the product title, so the remainder makes a cleaner TMDb
-    search query."""
+    "Seasons 1-6", bare "DVD"/"Blu-ray", a trailing "- 6" disc/season index,
+    ...) that UPC/Discogs/EAN lookups often bake into the product title, so
+    the remainder makes a cleaner TMDb search query."""
     cleaned = _BRACKETED_SUFFIX.sub(" ", raw_title)
     cleaned = _BOILERPLATE.sub(" ", cleaned)
+    cleaned = _TRAILING_DASH_NUMBER.sub(" ", cleaned)
     return " ".join(cleaned.split()).strip()

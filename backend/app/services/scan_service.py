@@ -59,6 +59,35 @@ async def _lookup_title(barcode: str) -> tuple[str | None, str | None]:
     return None, None
 
 
+# Found 2026-08-04 via production logs: 3 of 4 real scans that day found a
+# genuine title-guess (barcode resolution itself was working perfectly) but
+# still surfaced *nothing*, because TMDb's search is a literal keyword
+# match and a UPC/EAN source's title noise — distributor/label prefixes
+# ("Simply HE The Americans" — real production example) — makes the *full*
+# guessed title match zero candidates even though the real title is right
+# there in it. Retrying with the leftmost word progressively dropped is
+# cheap (TMDb has no meaningful rate limit here) and safe: it only ever
+# *removes* words from the front, so it can't turn one real title into an
+# unrelated one — it can only reveal a title that was already present.
+# Capped at 3 dropped words — real noise prefixes are short ("Simply HE",
+# not five words long); a title needing more than that is more likely a
+# genuine miss than fixable noise.
+_MAX_LEADING_WORDS_TO_DROP = 3
+
+
+async def _search_tmdb_with_fallback(guessed_title: str) -> tuple[list[dict], list[dict], str]:
+    words = guessed_title.split()
+    for start in range(min(len(words), _MAX_LEADING_WORDS_TO_DROP + 1)):
+        query = " ".join(words[start:])
+        if not query:
+            break
+        movies = await tmdb_client.search_movies(query)
+        tv = await tmdb_client.search_tv(query)
+        if movies or tv:
+            return movies, tv, query
+    return [], [], guessed_title
+
+
 async def lookup_by_barcode(barcode: str) -> dict:
     barcode = barcode.strip()
     guessed_title, barcode_source = await _lookup_title(barcode)
@@ -87,16 +116,27 @@ async def lookup_by_barcode(barcode: str) -> dict:
     # own `media_kind` so the frontend can save to the right resource. See
     # BUGS.md #20: a real scanned barcode ("The Americans" boxset) turned
     # out to be a TV series, which the movie-only search could never match.
-    raw_movie_candidates = await tmdb_client.search_movies(guessed_title)
-    raw_tv_candidates = await tmdb_client.search_tv(guessed_title)
+    raw_movie_candidates, raw_tv_candidates, matched_query = await _search_tmdb_with_fallback(
+        guessed_title
+    )
     candidates = [
         MovieCandidate(**candidate, media_kind="movie") for candidate in raw_movie_candidates
     ] + [MovieCandidate(**candidate, media_kind="tv") for candidate in raw_tv_candidates]
+    if candidates and matched_query != guessed_title:
+        logger.info(
+            "Titel-gæt '%s' (stregkode %s) gav ingen TMDb-kandidater, men et afkortet "
+            "forsøg '%s' gjorde",
+            guessed_title,
+            barcode,
+            matched_query,
+        )
     if not candidates:
         logger.info(
-            "Stregkode %s gav titel-gæt '%s', men ingen TMDb-kandidater (hverken film eller TV)",
+            "Stregkode %s gav titel-gæt '%s', men ingen TMDb-kandidater (hverken film eller TV, "
+            "heller ikke efter at have prøvet uden op til %s indledende ord)",
             barcode,
             guessed_title,
+            _MAX_LEADING_WORDS_TO_DROP,
         )
     return {
         "guessed_title": guessed_title,

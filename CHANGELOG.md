@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.58.0 build 0079] — 2026-08-04 — feature: redigerbart titel-gæt ved scan (FEATURES.md #81)
+
+"Søg manuelt"-feltet i scan-panelet (`MovieLookupForm.jsx`) forudfyldes nu automatisk med stregkode-opslagets `guessed_title` efter hvert scan/manuelt stregkode-opslag — uanset om det gav TMDb-kandidater eller ej. Giver TMDb nul kandidater, vises en tydelig banner der forklarer at kilden kan have leveret let forkert/ufuldstændig tekst, og peger på feltet nedenfor. Brugeren kan rette teksten direkte (fx indsætte et manglende bogstav) og trykke "Søg" for at prøve igen — genbruger det eksisterende manuelle søge-flow i stedet for ny UI. Komplementær til BUGS.md #39's automatiske støj-oprydning: dækker de tilfælde (ægte tredjeparts-datakorruption, fx et enkelt manglende bogstav fra EAN-Search.org) som ingen automatisk regel kan gætte sig til at rette. Live-verificeret med Playwright (forudfyldning, banner, korrigeret søgning finder det rigtige resultat).
+
+## [0.57.2 build 0078] — 2026-08-04 — fix: stregkode-titel-støj gav 0 TMDb-kandidater trods vellykket opslag (BUGS.md #39)
+
+Jan rapporterede konstante "ikke fundet"-fejl ved scanning, selvom samme titel slog op uden problemer direkte hos EAN-Search.org. Dyb analyse af produktions-logs viste at selve barcode→titel-opslaget havde 100% succesrate, men 75% af de fundne titel-gæt gav **nul** TMDb-kandidater fordi teksten indeholdt distributør-præfikser og afsluttende disk-/sæson-indeks-numre som TMDb's rene nøgleords-søgning ikke kunne matche igennem (fx "Simply HE The Americans - 6" → 0 kandidater).
+
+To rettelser: `text_cleanup.clean_bracketed_title` fjerner nu en afsluttende `" - <tal>"`/`" – <tal>"` (bevidst afgrænset mod ægte titler som "Blade Runner 2049"/"Kill Bill - Vol. 1"), og en ny `scan_service._search_tmdb_with_fallback` prøver progressivt at droppe op til 3 indledende ord og søge igen hvis den fulde titel gav nul kandidater. Ét specifikt tilfælde ("rmageddon" uden det første "A") blev verificeret som ægte datakorruption hos EAN-Search.org selv, ikke rettbar automatisk — se FEATURES.md #81 for det komplementære UX-fix (redigerbart titel-gæt). Filer: `backend/app/integrations/text_cleanup.py`, `backend/app/services/scan_service.py`, `backend/tests/test_text_cleanup.py`, `backend/tests/test_scan.py`.
+
 ## [0.57.1 build 0077] — 2026-08-04 — fix: 24-timers ur i Voldby BIO-planlægning (BUGS.md #38)
 
 Voldby BIOs planlægnings-tidspunkt-felt (`<input type="datetime-local">`, 3 steder i `Cinema.jsx`) viste AM/PM i stedet for 24-timers ur ved indtastning — en browser/OS-locale-afhængig gengivelse af den native picker, som HTML ikke har nogen attribut til at tvinge til 24-timers format. Erstattet alle tre med en ny `DateTime24Input`-komponent (dato-felt + to hånd-skrevne time/minut-dropdowns, 00-23/00-59) — da vi selv skriver etiketterne, er visningen 24-timers uanset locale. Samme værdiformat bevaret, ingen backend-ændring.

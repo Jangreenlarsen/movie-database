@@ -1,5 +1,13 @@
 # Release Notes
 
+## v0.58.0 (build 0079) — 2026-08-04
+
+- Ved scanning forudfyldes "Søg manuelt"-feltet nu automatisk med det titel-gæt stregkoden gav — kan du se det er forkert eller ufuldstændigt (fx et manglende bogstav), kan du rette det direkte i feltet og søge igen.
+
+## v0.57.2 (build 0078) — 2026-08-04
+
+- Rettet: scanning fandt for ofte "ingen film", selvom stregkode-opslaget faktisk virkede fint — titel-teksten fra kilden indeholdt tit støj (distributør-navn foran, disk-/sæson-nummer bagpå) som gjorde at TMDb-søgningen gav nul resultater. Ryddes nu automatisk op i, og der forsøges igen med kortere udgaver af titlen hvis det stadig ikke virker.
+
 ## v0.57.1 (build 0077) — 2026-08-04
 
 - Tidspunkt-feltet ved planlægning i Voldby BIO viser nu altid 24-timers ur, uanset hvad din computer/telefon ellers er indstillet til.

@@ -48,3 +48,20 @@ def test_collapses_whitespace_and_trims():
 def test_empty_and_plain_titles_are_unaffected():
     assert clean_bracketed_title("The Matrix") == "The Matrix"
     assert clean_bracketed_title("") == ""
+
+
+def test_strips_trailing_dash_number_disc_index():
+    """Regression test found 2026-08-04 in production logs: EAN-Search.org's
+    "Simply HE The Americans - 6" (a disc/season index the retailer tacked
+    on) returned zero TMDb candidates as a whole string."""
+    assert clean_bracketed_title("Simply HE The Americans - 6") == "Simply HE The Americans"
+    assert clean_bracketed_title("Rocky - 2") == "Rocky"
+    assert clean_bracketed_title("Rocky – 2") == "Rocky"
+
+
+def test_does_not_strip_number_that_is_part_of_the_title():
+    """A trailing number with no dash separator, or a word between the dash
+    and the number, is real title content — not a disc/season index."""
+    assert clean_bracketed_title("Blade Runner 2049") == "Blade Runner 2049"
+    assert clean_bracketed_title("300") == "300"
+    assert clean_bracketed_title("Kill Bill - Vol. 1") == "Kill Bill - Vol. 1"

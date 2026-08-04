@@ -2,21 +2,42 @@ import { useEffect, useState } from "react";
 import BarcodeScanner from "../scanner/BarcodeScanner";
 import { api } from "../api/client";
 import Chip from "./Chip";
-import Combobox from "./Combobox";
+import { MovieDetailModal } from "../pages/Library";
+import { TvShowDetailModal } from "../pages/TvShows";
 import "./MovieLookupForm.css";
 
 function toggleValue(list, value) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
+function emptyDraftFields(user, wishlist) {
+  return {
+    tags: [],
+    format: null,
+    audio_types: [],
+    media_type: null,
+    location: "",
+    owner: user?.username ?? "",
+    is_wishlist: wishlist,
+    personal_rating: null,
+    personal_note: null,
+    watched: false,
+    watched_at: null,
+  };
+}
+
 /**
- * Barcode-scan + manual TMDb-search + confirm-and-save flow. Shared by the
- * "Scan film" page (wishlist=false) and the "Ønsker" section's own add-panel
- * (wishlist=true) — same lookup method and data source in both places, only
- * the save target differs (jf. Jans ønske om samme metode/data opslag).
+ * Barcode-scan + manual TMDb-search + vælg-kandidat flow. Shared by the
+ * "Scan film" page (wishlist=false) og "Ønsker"-sektionens eget add-panel
+ * (wishlist=true). Ved valg af en kandidat (feature #79) hentes en fuld,
+ * rent læsende TMDb-forhåndsvisning, og den samme rediger-boks som bruges
+ * for eksisterende bibliotekskort (`MovieDetailModal`/`TvShowDetailModal`)
+ * åbnes i "kladde"-tilstand — intet gemmes i databasen før brugeren selv
+ * trykker "Opret" i boksen.
  */
 export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   const [barcode, setBarcode] = useState(null);
+  const [barcodeSource, setBarcodeSource] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [scanStatus, setScanStatus] = useState("idle");
   const [manualBarcode, setManualBarcode] = useState("");
@@ -24,12 +45,6 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   const [manualStatus, setManualStatus] = useState("idle");
 
   const [selectedCandidate, setSelectedCandidate] = useState(null);
-  const [tagsInput, setTagsInput] = useState("");
-  const [format, setFormat] = useState("");
-  const [audioTypes, setAudioTypes] = useState([]);
-  const [mediaType, setMediaType] = useState("");
-  const [location, setLocation] = useState("");
-  const [owner, setOwner] = useState(user?.username ?? "");
   const [attributeOptions, setAttributeOptions] = useState({
     formats: [],
     audio_types: [],
@@ -38,10 +53,10 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   const [allTags, setAllTags] = useState([]);
   const [allOwners, setAllOwners] = useState([]);
   const [allLocations, setAllLocations] = useState([]);
+  const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
   const [saveStatus, setSaveStatus] = useState("idle");
-  const [saveError, setSaveError] = useState(null);
-  const [duplicates, setDuplicates] = useState([]);
   const [lastSavedKind, setLastSavedKind] = useState("movie");
+  const [duplicates, setDuplicates] = useState([]);
 
   // Sæson-gruppering (feature #53): når en scannet/søgt TV-serie allerede
   // findes, kan brugeren i stedet markere sæson(er) som ejet på den
@@ -50,33 +65,40 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   const [existingTvShow, setExistingTvShow] = useState(null);
   // Sæsonvalg ved oprettelse af en HELT NY serie (feature #54): TMDb's
   // sæson-liste hentes til forhåndsvisning (uden at gemme noget), så
-  // brugeren kan afkrydse hvilke sæsoner udgaven indeholder *før* Gem.
+  // brugeren kan afkrydse hvilke sæsoner udgaven indeholder *før* der
+  // springes videre til rediger-boksen.
   const [previewSeasons, setPreviewSeasons] = useState([]);
   const [selectedSeasonNumbers, setSelectedSeasonNumbers] = useState([]);
   const [groupStatus, setGroupStatus] = useState("idle");
   const [groupError, setGroupError] = useState(null);
   const [groupSavedShowName, setGroupSavedShowName] = useState(null);
 
+  // Feature #79 — den fuldt forhåndsviste TMDb-"kladde" der sendes til
+  // rediger-boksen. `previewStatus === "ready"` er hvad der faktisk styrer
+  // om boksen vises.
+  const [previewData, setPreviewData] = useState(null);
+  const [previewStatus, setPreviewStatus] = useState("idle");
+
   useEffect(() => {
     api.attributeOptions().then(setAttributeOptions).catch(() => {});
     api.listTags().then(setAllTags).catch(() => {});
     api.listOwners().then(setAllOwners).catch(() => {});
     api.listLocations().then(setAllLocations).catch(() => {});
+    api
+      .getSerialNumberConfig()
+      .then((cfg) => setSerialPaddingWidth(cfg.padding_width))
+      .catch(() => {});
   }, []);
-
-  function addTag(tag) {
-    const current = tagsInput.split(",").map((t) => t.trim()).filter(Boolean);
-    if (current.some((t) => t.toLowerCase() === tag.toLowerCase())) return;
-    setTagsInput([...current, tag].join(", "));
-  }
 
   async function handleDetected(code) {
     setBarcode(code);
+    setBarcodeSource(null);
     setManualStatus("idle");
     setScanStatus("looking-up");
     try {
       const result = await api.scanLookup(code);
       setCandidates(result.candidates ?? []);
+      setBarcodeSource(result.barcode_source ?? null);
       setScanStatus("ready");
     } catch {
       setScanStatus("error");
@@ -95,6 +117,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
     if (!manualQuery.trim()) return;
 
     setBarcode(null);
+    setBarcodeSource(null);
     setManualStatus("searching");
     try {
       // Søger både film og TV-serier (feature #49/#50) — samme princip som
@@ -124,6 +147,8 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
     setGroupStatus("idle");
     setGroupError(null);
     setGroupSavedShowName(null);
+    setPreviewData(null);
+    setPreviewStatus("idle");
     if (candidate.media_kind !== "tv") {
       api.checkDuplicate(candidate.tmdb_id).then(setDuplicates).catch(() => {});
       return;
@@ -147,7 +172,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
         } else {
           // Ingen dublet — vis en sæson-vælger til forhåndsvisning, så
           // brugeren kan afkrydse hvilke sæsoner udgaven indeholder inden
-          // den overhovedet oprettes (feature #54).
+          // der springes videre til rediger-boksen (feature #54).
           api.tvTmdbPreview(candidate.tmdb_id).then(setPreviewSeasons).catch(() => {});
         }
       })
@@ -161,53 +186,41 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   function resetFormAfterSave() {
     setSelectedCandidate(null);
     setCandidates([]);
-    setTagsInput("");
-    setFormat("");
-    setAudioTypes([]);
-    setMediaType("");
-    setLocation("");
-    setOwner(user?.username ?? "");
     setBarcode(null);
+    setBarcodeSource(null);
     setDuplicates([]);
     setExistingTvShow(null);
     setPreviewSeasons([]);
     setSelectedSeasonNumbers([]);
     setGroupStatus("idle");
     setGroupError(null);
+    setPreviewData(null);
+    setPreviewStatus("idle");
   }
 
-  async function saveMovie() {
-    setSaveStatus("saving");
-    setSaveError(null);
-    const isTv = selectedCandidate.media_kind === "tv";
+  async function proceedToEdit() {
+    setPreviewStatus("loading");
     try {
-      const create = isTv ? api.createTvShow : api.createMovie;
-      // Selected seasons are marked owned as part of the same creation
-      // request (feature #54), not a follow-up PATCH loop — a partial
-      // failure there used to leave an already-created show behind while
-      // the form stayed open for a retry, risking a duplicate on the next
-      // "Gem" click (BUGS.md #28).
-      await create({
-        tmdb_id: selectedCandidate.tmdb_id,
-        barcode,
-        tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
-        format: format || null,
-        audio_types: audioTypes,
-        media_type: mediaType || null,
-        location: location.trim() || null,
-        owner: owner.trim() || null,
-        is_wishlist: wishlist,
-        ...(isTv && selectedSeasonNumbers.length > 0
-          ? { owned_seasons: selectedSeasonNumbers }
-          : {}),
-      });
-      setSaveStatus("saved");
-      setLastSavedKind(selectedCandidate.media_kind ?? "movie");
-      resetFormAfterSave();
-      onSaved?.();
+      if (selectedCandidate.media_kind === "tv") {
+        const preview = await api.tvTmdbFullPreview(selectedCandidate.tmdb_id);
+        setPreviewData({
+          ...preview,
+          barcode,
+          barcode_source: barcodeSource,
+          ...emptyDraftFields(user, wishlist),
+          seasons: previewSeasons.map((season) => ({
+            ...season,
+            owned: selectedSeasonNumbers.includes(season.season_number),
+            episodes: [],
+          })),
+        });
+      } else {
+        const preview = await api.movieTmdbPreview(selectedCandidate.tmdb_id);
+        setPreviewData({ ...preview, barcode, barcode_source: barcodeSource, ...emptyDraftFields(user, wishlist) });
+      }
+      setPreviewStatus("ready");
     } catch (err) {
-      setSaveStatus("error");
-      setSaveError(err.message);
+      setPreviewStatus("error");
     }
   }
 
@@ -317,7 +330,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
         </div>
       )}
 
-      {selectedCandidate && (
+      {selectedCandidate && previewStatus !== "ready" && (
         <div className="card review-form">
           <div className="review-header">
             <div className="candidate-poster">
@@ -360,7 +373,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
                     er allerede ejet.
                   </>
                 ) : (
-                  "Vælg hvilke sæsoner denne udgave indeholder (fx en boks med flere sæsoner) — de markeres automatisk som ejet med det samme du gemmer."
+                  "Vælg hvilke sæsoner denne udgave indeholder (fx en boks med flere sæsoner) — de markeres automatisk som ejet, klar til at redigere videre."
                 )}
               </p>
               <div className="chip-row">
@@ -391,96 +404,9 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
             </div>
           )}
 
-          <div>
-            <label className="field-label" htmlFor="tags-input">
-              Tags (kommasepareret)
-            </label>
-            <input
-              id="tags-input"
-              value={tagsInput}
-              onChange={(e) => setTagsInput(e.target.value)}
-              placeholder="Julefilm, Set med Anna, 4K..."
-              style={{ width: "100%" }}
-            />
-            {allTags.length > 0 && (
-              <div className="chip-row" style={{ marginTop: 8 }}>
-                {allTags.map((tag) => (
-                  <Chip key={tag} label={tag} onClick={() => addTag(tag)} />
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <span className="field-label">Format</span>
-            <div className="chip-row">
-              {attributeOptions.formats.map((f) => (
-                <Chip key={f} label={f} active={format === f} onClick={() => setFormat(format === f ? "" : f)} />
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <span className="field-label">Medietype</span>
-            <div className="chip-row">
-              {attributeOptions.media_types.map((m) => (
-                <Chip
-                  key={m}
-                  label={m}
-                  active={mediaType === m}
-                  onClick={() => setMediaType(mediaType === m ? "" : m)}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <span className="field-label">Lyd-type</span>
-            <div className="chip-row">
-              {attributeOptions.audio_types.map((audioType) => (
-                <Chip
-                  key={audioType}
-                  label={audioType}
-                  active={audioTypes.includes(audioType)}
-                  onClick={() => setAudioTypes((prev) => toggleValue(prev, audioType))}
-                />
-              ))}
-            </div>
-          </div>
-
-          {!wishlist && (
-            <>
-              <div>
-                <label className="field-label" htmlFor="location-input">
-                  Lokation
-                </label>
-                <Combobox
-                  id="location-input"
-                  value={location}
-                  onChange={setLocation}
-                  options={allLocations}
-                  placeholder="Stue, reol 2..."
-                />
-              </div>
-
-              <div>
-                <label className="field-label" htmlFor="owner-input">
-                  Ejer
-                </label>
-                <Combobox
-                  id="owner-input"
-                  value={owner}
-                  onChange={setOwner}
-                  options={allOwners}
-                  placeholder="Hvem ejer den..."
-                />
-              </div>
-            </>
-          )}
-
-          {saveStatus === "error" && (
+          {previewStatus === "error" && (
             <div className="banner banner-error">
-              {saveError ?? "Kunne ikke gemme. Prøv igen."}
+              Kunne ikke hente fulde detaljer fra TMDb. Prøv igen.
             </div>
           )}
 
@@ -491,19 +417,54 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
             <button
               type="button"
               className="btn btn-primary"
-              onClick={saveMovie}
-              disabled={saveStatus === "saving"}
+              onClick={proceedToEdit}
+              disabled={previewStatus === "loading"}
             >
-              {saveStatus === "saving"
-                ? "Gemmer..."
-                : wishlist
-                  ? "Tilføj til ønskeliste"
-                  : existingTvShow
-                    ? "Opret som ny separat serie"
-                    : "Gem"}
+              {previewStatus === "loading"
+                ? "Henter detaljer..."
+                : existingTvShow
+                  ? "Opret som ny separat serie i stedet"
+                  : "Fortsæt til redigering"}
             </button>
           </div>
         </div>
+      )}
+
+      {previewStatus === "ready" && previewData && selectedCandidate.media_kind === "tv" && (
+        <TvShowDetailModal
+          show={previewData}
+          user={user}
+          allTags={allTags}
+          allOwners={allOwners}
+          allLocations={allLocations}
+          attributeOptions={attributeOptions}
+          serialPaddingWidth={serialPaddingWidth}
+          onClose={resetFormAfterSave}
+          onChanged={() => {
+            setLastSavedKind("tv");
+            setSaveStatus("saved");
+            onSaved?.();
+          }}
+        />
+      )}
+
+      {previewStatus === "ready" && previewData && selectedCandidate.media_kind !== "tv" && (
+        <MovieDetailModal
+          movie={previewData}
+          user={user}
+          allTags={allTags}
+          allOwners={allOwners}
+          allLocations={allLocations}
+          attributeOptions={attributeOptions}
+          serialPaddingWidth={serialPaddingWidth}
+          onClose={resetFormAfterSave}
+          onChanged={() => {
+            setLastSavedKind("movie");
+            setSaveStatus("saved");
+            onSaved?.();
+          }}
+          onFilterByPerson={() => {}}
+        />
       )}
 
       {saveStatus === "saved" && (

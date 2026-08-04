@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.models.scan import BarcodeSource
+
 
 class SerialNumberConfig(BaseModel):
     start_number: int = Field(default=1, ge=1)
@@ -48,6 +50,9 @@ class SystemSettingsStatus(BaseModel):
     # Ikke en hemmelighed (bare en LAN-serveradresse) — returneres derfor med
     # sin faktiske værdi, i modsætning til de øvrige ovenfor (feature #45).
     plex_server_url: str
+    # Heller ikke en hemmelighed — hvilken stregkode-kilde der prøves først
+    # (feature #77), returneres derfor også med sin faktiske værdi.
+    primary_barcode_source: BarcodeSource
 
 
 class SystemSettingsUpdate(BaseModel):
@@ -62,3 +67,4 @@ class SystemSettingsUpdate(BaseModel):
     omdb_api_key: str | None = Field(default=None, max_length=500)
     plex_token: str | None = Field(default=None, max_length=500)
     plex_server_url: str | None = Field(default=None, max_length=500)
+    primary_barcode_source: Literal["", "upcitemdb", "discogs", "upcdatabase", "ean_search"] | None = None

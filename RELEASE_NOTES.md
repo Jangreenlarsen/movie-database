@@ -1,5 +1,15 @@
 # Release Notes
 
+## v0.56.0 (build 0075) — 2026-08-04
+
+- Når du vælger en film/serie under scan eller søgning, springer du nu direkte til den samme fulde rediger-boks som når du redigerer et eksisterende kort — med overview, instruktør, medvirkende og alle felterne, ikke kun det begrænsede sæt fra før. Intet gemmes før du selv trykker "Opret".
+- Indstillinger er delt op i faner (Brugere, Konto, Bibliotek, Backup & gendannelse, Eksterne API-nøgler, Drift) i stedet for én lang side — "Brugere" står først.
+- Statistik viser nu hvilken stregkode-kilde der bruges mest (kun film/serier tilføjet via scan fremover). Ny indstilling i System-indstillinger lader dig vælge hvilken kilde der skal prøves først.
+
+## v0.55.1 (build 0074) — 2026-08-04
+
+- Audit-log i Indstillinger viser nu 10 ad gangen med rigtige "Forrige"/"Næste"-knapper, og dato/tid tydeligt hver for sig.
+
 ## v0.55.0 (build 0073) — 2026-08-04
 
 - Ny "Test forbindelse"-knap ved hver API-nøgle i Indstillinger → System-indstillinger — viser om nøglen faktisk virker, ikke kun om den er gemt. Din UPCDatabase-nøgle var aldrig gemt under det rigtige felt (sandsynligvis indtastet i "UPC API-nøgle" ved en fejl) — det felt er nu fjernet, da det aldrig gjorde noget. Indtast din nøgle igen under "UPCDatabase-token".

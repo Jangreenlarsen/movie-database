@@ -41,8 +41,9 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 | GET    | `/api/locations`               | Samme som `/api/owners`, for lokations-feltet                 | done |
 | GET    | `/api/library/export`          | Højniveau eksport af hele film-/TV-biblioteket som JSON (feature #60). **Kræver admin.** Ikke en fuld system-backup — se `/api/system/backup` | done |
 | POST   | `/api/library/import`          | Erstatter `movies`+`tv_shows`-collections wholesale med en tidligere `/api/library/export`. **Kræver admin.** Destruktiv — frontend kræver bekræftelsesfrase før kaldet | done |
-| POST   | `/api/scan/lookup`             | Input: scannet UPC/EAN. Output: titel-gæt + TMDb-kandidater. Prøver UPCitemdb først, herefter Discogs som fallback hvis intet match (se MOVIE_API_REFERENCE.md). 502 hvis TMDb er utilgængelig/token mangler. | done |
+| POST   | `/api/scan/lookup`             | Input: scannet UPC/EAN. Output: titel-gæt (+ `barcode_source`, feature #77) + TMDb-kandidater. Prøver de fire kilder (UPCitemdb/Discogs/UPCDatabase.org/EAN-Search.org) i den admin-valgte rækkefølge (se note nedenfor). 502 hvis TMDb er utilgængelig/token mangler. | done |
 | GET    | `/api/movies/tmdb-search`      | Direkte TMDb-titel-søgning (fallback når scan ikke matcher). Registreret før `/{movie_id}`. | done |
+| GET    | `/api/movies/tmdb-preview/{tmdb_id}` | Feature #79 — rent læsende, fuld TMDb-forhåndsvisning af en kandidat (samme felter som en oprettet film ville have). Intet oprettes. Bruges til at vise rediger-boksen i "kladde"-tilstand før noget er gemt. | done |
 | GET    | `/api/health`                  | Health check (backend + MongoDB-forbindelse), samt `version`/`build` fra `version.json` (se `app/core/version_info.py`) | done |
 | POST   | `/api/auth/register`           | Opret bruger ({username, password}). 409 hvis brugernavn er taget. Sætter auth-cookie. Feature #66: status er `pending` for alle undtagen den allerførste bruger (som bootstrapper sig selv til `active` admin) — se note nedenfor. | done |
 | POST   | `/api/auth/login`              | Login ({username, password}). 401 ved forkert login. Sætter auth-cookie — lykkes uanset status, så en `pending`/`rejected` bruger stadig kan se deres status via `/api/users/me`. | done |
@@ -84,6 +85,7 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 | GET    | `/api/tv-shows/attribute-options` | Genbruger samme `format`/`audio_types`/`media_types`-enums som film. Registreret før `/{id}`. | planned |
 | GET    | `/api/tv-shows/check-duplicate`| Samme dublet-advarsels-kontrakt som film (feature #38), nøglet på `tmdb_id`. Registreret før `/{id}`. | planned |
 | GET    | `/api/tv-shows/tmdb-search`    | Direkte TMDb-TV-titel-søgning. Registreret før `/{id}`. | planned |
+| GET    | `/api/tv-shows/tmdb-full-preview/{tmdb_id}` | Feature #79 — samme princip som moviesnes `tmdb-preview`, minus sæsoner (dem forhåndsviser den eksisterende `tmdb-preview/{id}` nedenfor stadig separat). | done |
 | PATCH  | `/api/tv-shows/{id}/seasons/{season_number}` | Sæt `owned: bool` for én sæson. Første gang en sæson markeres ejet, hentes dens episode-liste lazily fra TMDb og caches (feature #48) — ikke hentet for alle sæsoner ved oprettelse. | planned |
 | PATCH  | `/api/tv-shows/{id}/seasons/{season_number}/episodes/{episode_number}` | Sæt `watched: bool` (+ valgfri dato) for én episode. | planned |
 | POST   | `/api/scan/lookup`              | *(udvidet, feature #49)* Søger nu TMDb både for film og TV-serier — output inkluderer `media_kind: "movie"\|"tv"` pr. kandidat, så frontend kan gemme i det rigtige bibliotek. | done |
@@ -171,14 +173,23 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 1. Frontend: bruger scanner cover → stregkode (UPC/EAN) læses client-side
 2. Frontend → POST /api/scan/lookup { barcode }
 3. Backend (scan_service):
-   a. integrations/upc_client → slår barcode op → titel-gæt (eller ingen match)
-   a2. Intet match fra UPCitemdb? integrations/discogs_client prøves som fallback (bedre dækning for europæiske EAN-koder)
+   a. Prøver de fire kilder (upc_client/discogs_client/upcdatabase_client/
+      ean_search_client) i den admin-valgte rækkefølge (feature #77,
+      `settings.primary_barcode_source` trukket forrest) — første match
+      vinder, resten er fallback
    b. integrations/tmdb_client → søger TMDb på titel-gæt → kandidat-liste
-   c. returnerer kandidater (poster, år, tmdb_id) til frontend
+   c. returnerer kandidater (poster, år, tmdb_id) + hvilken kilde der
+      matchede (`barcode_source`) til frontend
 4. Frontend: bruger vælger korrekt kandidat (eller søger manuelt via /api/movies/tmdb-search)
-5. Frontend → POST /api/movies { tmdb_id, barcode, tags[] }
-6. Backend (movie_service): henter fuld TMDb-metadata, normaliserer tags,
-   gemmer dokument via repositories/movie_repository → MongoDB
+5. Frontend → GET /api/movies/tmdb-preview/{tmdb_id} — fuld, rent læsende
+   TMDb-forhåndsvisning (feature #79), intet oprettet endnu
+6. Frontend åbner MovieDetailModal i "kladde"-tilstand (samme boks som
+   redigering af et eksisterende kort) med forhåndsvisningen — brugeren
+   redigerer tags/format/lokation/ejer/osv. og trykker selv "Opret"
+7. Frontend → POST /api/movies { tmdb_id, barcode, barcode_source, tags[], ... }
+8. Backend (movie_service): henter fuld TMDb-metadata (igen — preview-kaldet
+   gemte intet), normaliserer tags, gemmer dokument via
+   repositories/movie_repository → MongoDB
 ```
 
 ---
@@ -187,7 +198,7 @@ Alle endpoints er ressource-orienterede og ligger under `/api`. Denne tabel opda
 
 | Collection | Nøgle-felter                                                     | Indexes                                  |
 |------------|-----------------------------------------------------------------------|--------------------------------------------|
-| `movies`   | `serial_number` (fortløbende, immutable, **udelades helt for ønskeliste-poster** — se BUGS.md #29 soft-delete/genbrug), `tmdb_id`, `barcode` (**udelades helt af dokumentet når ikke angivet — se BUGS.md #1**), `title`, `year`, `tags[]` (display-case), `tags_normalized[]` (lowercase, bruges til filtrering), `format` (enum-streng), `audio_types[]` (enum-strenge), `media_type` (enum-streng, Fysisk/Digital), `rating` (0-10, TMDb `vote_average`, kun sat når `tmdb_id` er angivet), `runtime` (minutter, fra TMDb eller manuel), `imdb_url`, `trailer_url`, `location` (fritekst), `owner` (brugernavn, defaulter til `registered_by`), `registered_by` (brugernavn, sat automatisk ved oprettelse, immutable), `is_wishlist` (bool, default false, se feature #28) | text-index på `title`+`overview`, index på `tags_normalized`, `format`, `audio_types`, `media_type`, `year`, `rating`, `runtime`, `location`, `owner`, `registered_by`, `created_at`, `is_wishlist`, unique sparse index på `barcode`, unique **sparse** index på `serial_number` |
+| `movies`   | `serial_number` (fortløbende, immutable, **udelades helt for ønskeliste-poster** — se BUGS.md #29 soft-delete/genbrug), `tmdb_id`, `barcode` (**udelades helt af dokumentet når ikke angivet — se BUGS.md #1**), `barcode_source` (feature #77, **udelades helt** medmindre film blev tilføjet via et ægte stregkode-scan — samme mønster som `barcode`), `title`, `year`, `tags[]` (display-case), `tags_normalized[]` (lowercase, bruges til filtrering), `format` (enum-streng), `audio_types[]` (enum-strenge), `media_type` (enum-streng, Fysisk/Digital), `rating` (0-10, TMDb `vote_average`, kun sat når `tmdb_id` er angivet), `runtime` (minutter, fra TMDb eller manuel), `imdb_url`, `trailer_url`, `location` (fritekst), `owner` (brugernavn, defaulter til `registered_by`), `registered_by` (brugernavn, sat automatisk ved oprettelse, immutable), `is_wishlist` (bool, default false, se feature #28) | text-index på `title`+`overview`, index på `tags_normalized`, `format`, `audio_types`, `media_type`, `year`, `rating`, `runtime`, `location`, `owner`, `registered_by`, `created_at`, `is_wishlist`, unique sparse index på `barcode`, unique **sparse** index på `serial_number` |
 | `tags`     | `name` (første-typede casing), `normalized` (lowercase, unik nøgle)     | unique index på `normalized`                |
 | `counters` | `_id` (fast nøgle `"movie_serial"`), `next_value` (hvad næste film får), `increment`, `padding_width` (kun visning) | — (kun ét dokument, atomisk `$inc`)         |
 | `deleted_movies` | `movie_id` (den oprindelige films `_id`), `serial_number`, `title`, `year`, `format`, `deleted_at`, `deleted_by` (brugernavn) — se `movie_repository.archive_deleted` | index på `deleted_at`                       |

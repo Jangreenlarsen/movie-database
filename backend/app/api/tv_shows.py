@@ -15,6 +15,7 @@ from app.models.tv_show import (
     TvShow,
     TvShowCreate,
     TvShowPage,
+    TvShowPreview,
     TvShowUpdate,
 )
 from app.services import tv_show_service
@@ -72,6 +73,15 @@ async def tmdb_preview(tmdb_id: int):
     anything, same shape `create_tv_show` already builds `seasons[]` from."""
     details = await tmdb_client.get_tv_show_details(tmdb_id)
     return [Season(**season) for season in details["seasons"]]
+
+
+@router.get("/tmdb-full-preview/{tmdb_id}", response_model=TvShowPreview)
+async def tmdb_full_preview(tmdb_id: int):
+    """Feature #79 — fuld, rent læsende TMDb-forhåndsvisning af en kandidat
+    (samme detalje-niveau som en oprettet serie ville have, minus sæsoner —
+    de forhåndsvises stadig separat af `tmdb_preview` ovenfor), til at vise
+    rediger-boksen i "kladde"-tilstand før noget er oprettet."""
+    return await tv_show_service.preview_from_tmdb(tmdb_id)
 
 
 @router.get("/check-duplicate", response_model=list[DuplicateTvShowMatch])

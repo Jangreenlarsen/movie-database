@@ -3,6 +3,11 @@ from typing import Literal
 from pydantic import BaseModel
 
 
+# Feature #77 — hvilken af de fire stregkode-kilder der faktisk matchede,
+# så det kan gemmes på filmen/serien og indgå i Statistik-siden.
+BarcodeSource = Literal["upcitemdb", "discogs", "upcdatabase", "ean_search"]
+
+
 class ScanLookupRequest(BaseModel):
     barcode: str
 
@@ -22,4 +27,5 @@ class MovieCandidate(BaseModel):
 
 class ScanLookupResponse(BaseModel):
     guessed_title: str | None
+    barcode_source: BarcodeSource | None = None
     candidates: list[MovieCandidate]

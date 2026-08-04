@@ -23,6 +23,7 @@ from app.models.tv_show import (
     TvShow,
     TvShowCreate,
     TvShowPage,
+    TvShowPreview,
     TvShowUpdate,
 )
 from app.repositories import tv_show_repository
@@ -35,6 +36,7 @@ def _to_model(document: dict) -> TvShow:
         serial_number=document.get("serial_number"),
         tmdb_id=document.get("tmdb_id"),
         barcode=document.get("barcode"),
+        barcode_source=document.get("barcode_source"),
         name=document["name"],
         year=document.get("year"),
         end_year=document.get("end_year"),
@@ -111,6 +113,30 @@ async def _build_seasons(
     return seasons
 
 
+async def preview_from_tmdb(tmdb_id: int) -> TvShowPreview:
+    """Feature #79 — samme TMDb-opslag+rating-beregning som `create_tv_show`
+    selv bruger, men rent læsende: intet oprettes, og sæsoner udelades
+    bevidst (sæson-valget sker allerede i et tidligere trin via den
+    eksisterende /tmdb-preview/{id}-sæsonliste, feature #54)."""
+    details = await tmdb_client.get_tv_show_details(tmdb_id)
+    return TvShowPreview(
+        tmdb_id=details["tmdb_id"],
+        name=details["name"],
+        year=details["year"],
+        end_year=details["end_year"],
+        status=details["status"],
+        poster_url=details["poster_url"],
+        overview=details["overview"],
+        genres=details["genres"],
+        cast=details["cast"],
+        creators=details["creators"],
+        rating=await _resolve_rating(details),
+        number_of_seasons=details["number_of_seasons"],
+        number_of_episodes=details["number_of_episodes"],
+        imdb_url=details["imdb_url"],
+    )
+
+
 async def create_tv_show(
     db: AsyncIOMotorDatabase, payload: TvShowCreate, registered_by: str
 ) -> TvShow:
@@ -179,6 +205,8 @@ async def create_tv_show(
     trimmed_barcode = payload.barcode.strip() if payload.barcode else ""
     if trimmed_barcode:
         document["barcode"] = trimmed_barcode
+    if payload.barcode_source:
+        document["barcode_source"] = payload.barcode_source
 
     try:
         created = await tv_show_repository.insert(db, document)

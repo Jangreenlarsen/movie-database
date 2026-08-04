@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field, model_validator
 
 from app.models.movie import AudioType, MediaType, MovieFormat
+from app.models.scan import BarcodeSource
 
 
 class Episode(BaseModel):
@@ -31,6 +32,8 @@ class TvShowCreate(BaseModel):
 
     tmdb_id: int | None = None
     barcode: str | None = None
+    # Feature #77 — se MovieCreate.barcode_source's docstring, samme princip.
+    barcode_source: BarcodeSource | None = None
     tags: list[str] = Field(default_factory=list)
     format: MovieFormat | None = None
     audio_types: list[AudioType] = Field(default_factory=list)
@@ -60,6 +63,27 @@ class TvShowCreate(BaseModel):
         return self
 
 
+class TvShowPreview(BaseModel):
+    """Read-only, fuld TMDb-metadata for en kandidat (feature #79) — samme
+    princip som MoviePreview, minus seasons (sæson-valget sker allerede i et
+    tidligere trin via den eksisterende /tmdb-preview/{id}-sæsonliste)."""
+
+    tmdb_id: int
+    name: str | None = None
+    year: int | None = None
+    end_year: int | None = None
+    status: str | None = None
+    poster_url: str | None = None
+    overview: str | None = None
+    genres: list[str] = Field(default_factory=list)
+    cast: list[str] = Field(default_factory=list)
+    creators: list[str] = Field(default_factory=list)
+    rating: float | None = None
+    number_of_seasons: int | None = None
+    number_of_episodes: int | None = None
+    imdb_url: str | None = None
+
+
 class TvShowUpdate(BaseModel):
     name: str | None = None
     year: int | None = None
@@ -86,6 +110,7 @@ class TvShow(BaseModel):
     serial_number: int | None = None
     tmdb_id: int | None = None
     barcode: str | None = None
+    barcode_source: BarcodeSource | None = None
     name: str
     year: int | None = None
     end_year: int | None = None

@@ -106,6 +106,17 @@ export default function Statistics() {
                 <BarList items={stats.top_actors} />
               </div>
             )}
+
+            {stats.barcode_source_breakdown.length > 0 && (
+              <div className="card stat-section">
+                <h2>Stregkode-kilde</h2>
+                <p className="muted" style={{ marginTop: 0 }}>
+                  Kun film/serier tilføjet via et rigtigt stregkode-scan tæller med — dækker film
+                  og TV-serier.
+                </p>
+                <BarList items={stats.barcode_source_breakdown} />
+              </div>
+            )}
           </div>
 
           {stats.total_movies === 0 && (

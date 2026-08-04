@@ -109,6 +109,7 @@ export const api = {
     request("/scan/lookup", { method: "POST", body: JSON.stringify({ barcode }) }),
   tmdbSearch: (query) =>
     request(`/movies/tmdb-search?${new URLSearchParams({ query })}`),
+  movieTmdbPreview: (tmdbId) => request(`/movies/tmdb-preview/${tmdbId}`),
   triggerDeploy: () => request("/system/deploy", { method: "POST" }),
   getDeployStatus: () => request("/system/deploy/status"),
   getSystemSettings: () => request("/settings/system"),
@@ -203,6 +204,7 @@ export const api = {
   tvTmdbSearch: (query) =>
     request(`/tv-shows/tmdb-search?${new URLSearchParams({ query })}`),
   tvTmdbPreview: (tmdbId) => request(`/tv-shows/tmdb-preview/${tmdbId}`),
+  tvTmdbFullPreview: (tmdbId) => request(`/tv-shows/tmdb-full-preview/${tmdbId}`),
   setSeasonOwned: (tvShowId, seasonNumber, owned) =>
     request(`/tv-shows/${tvShowId}/seasons/${seasonNumber}`, {
       method: "PATCH",

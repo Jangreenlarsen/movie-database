@@ -26,8 +26,9 @@ _TEST_CONNECTION_CLIENTS = {
 }
 
 # Rendered as a masked ApiKeyStatus (configured/source only) in GET responses
-# — every overridable key except plex_server_url, which isn't a secret.
-SECRET_KEYS = tuple(key for key in KEYS if key != "plex_server_url")
+# — every overridable key except the two plain, non-secret values below.
+_PLAIN_KEYS = ("plex_server_url", "primary_barcode_source")
+SECRET_KEYS = tuple(key for key in KEYS if key not in _PLAIN_KEYS)
 
 
 async def apply_overrides_on_startup(db: AsyncIOMotorDatabase) -> None:
@@ -52,7 +53,11 @@ async def get_status(db: AsyncIOMotorDatabase) -> SystemSettingsStatus:
         else:
             source = "unset"
         statuses[key] = ApiKeyStatus(configured=bool(value), source=source)
-    return SystemSettingsStatus(**statuses, plex_server_url=settings.plex_server_url)
+    return SystemSettingsStatus(
+        **statuses,
+        plex_server_url=settings.plex_server_url,
+        primary_barcode_source=settings.primary_barcode_source,
+    )
 
 
 async def update_settings(

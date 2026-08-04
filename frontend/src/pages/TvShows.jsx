@@ -661,7 +661,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
   );
 }
 
-function TvShowDetailModal({
+export function TvShowDetailModal({
   show,
   user,
   allTags,
@@ -711,7 +711,7 @@ function TvShowDetailModal({
     setSaving(true);
     setError(null);
     try {
-      await api.updateTvShow(show.id, {
+      const payload = {
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
         format: format || null,
         audio_types: audioTypes,
@@ -722,7 +722,23 @@ function TvShowDetailModal({
         personal_note: personalNote.trim() || null,
         watched,
         watched_at: watched && watchedAt ? watchedAt : null,
-      });
+      };
+      if (show.id) {
+        await api.updateTvShow(show.id, payload);
+      } else {
+        // "Kladde"-tilstand (feature #79) — se MovieDetailModal.save()'s
+        // tilsvarende gren. Sæson-valget skete allerede i et tidligere trin
+        // (MovieLookupForm.jsx), medsendes her som owned_seasons.
+        const ownedSeasonNumbers = seasons.filter((s) => s.owned).map((s) => s.season_number);
+        await api.createTvShow({
+          ...payload,
+          tmdb_id: show.tmdb_id,
+          barcode: show.barcode,
+          barcode_source: show.barcode_source,
+          is_wishlist: show.is_wishlist,
+          ...(ownedSeasonNumbers.length > 0 ? { owned_seasons: ownedSeasonNumbers } : {}),
+        });
+      }
       onChanged();
       onClose();
     } catch (err) {
@@ -802,9 +818,10 @@ function TvShowDetailModal({
               {show.year ?? "År ukendt"}
               {show.end_year && show.end_year !== show.year ? `–${show.end_year}` : ""}
               {show.status && <> · {show.status}</>}
-              {!show.is_wishlist && (
+              {!show.is_wishlist && show.id && (
                 <> · Serienr. {formatSerial(show.serial_number, serialPaddingWidth)}</>
               )}
+              {!show.id && <> · Ikke oprettet endnu</>}
               {show.rating != null && <> · ★ {show.rating.toFixed(1)}</>}
               {show.personal_rating != null && <> · Din: {show.personal_rating}/10</>}
               {show.watched && <> · ✓ Set</>}
@@ -899,7 +916,13 @@ function TvShowDetailModal({
             </>
           ) : (
             <>
-              {!show.is_wishlist && (
+              {!show.id && (
+                <p className="muted">
+                  Ikke oprettet endnu — tryk "Opret" nedenfor for at gemme i biblioteket.
+                  Serienummer tildeles automatisk ved oprettelse.
+                </p>
+              )}
+              {!show.is_wishlist && show.id && (
                 <div>
                   <div className="modal-section-label">Serienummer</div>
                   <p className="muted">
@@ -1026,7 +1049,11 @@ function TvShowDetailModal({
                   <SeasonRow
                     key={season.season_number}
                     season={season}
-                    isGuest={isGuest}
+                    // I "kladde"-tilstand (intet show.id endnu) er sæson-valget
+                    // allerede låst fast fra det forudgående trin i
+                    // MovieLookupForm.jsx — vises read-only her, ligesom for
+                    // en guest, i stedet for at kalde et API der kræver et id.
+                    isGuest={isGuest || !show.id}
                     onToggleOwned={(owned) => setSeasonOwned(season.season_number, owned)}
                     onToggleEpisode={(episodeNumber, ep_watched) =>
                       setEpisodeWatched(season.season_number, episodeNumber, ep_watched)
@@ -1042,21 +1069,23 @@ function TvShowDetailModal({
 
         {isGuest ? (
           <div className="modal-footer">
-            <ScreeningRequestButton mediaKind="tv" id={show.id} />
+            {show.id && <ScreeningRequestButton mediaKind="tv" id={show.id} />}
           </div>
         ) : (
           <div className="modal-footer">
-            <button type="button" className="btn" onClick={remove} disabled={deleting}>
-              {deleting ? "Sletter..." : "Slet serie"}
-            </button>
-            {show.is_wishlist && (
+            {show.id && (
+              <button type="button" className="btn" onClick={remove} disabled={deleting}>
+                {deleting ? "Sletter..." : "Slet serie"}
+              </button>
+            )}
+            {show.id && show.is_wishlist && (
               <button type="button" className="btn" onClick={moveToLibrary} disabled={moving}>
                 {moving ? "Flytter..." : "Flyt til bibliotek"}
               </button>
             )}
-            <ScreeningRequestButton mediaKind="tv" id={show.id} />
+            {show.id && <ScreeningRequestButton mediaKind="tv" id={show.id} />}
             <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
-              {saving ? "Gemmer..." : "Gem ændringer"}
+              {saving ? "Gemmer..." : show.id ? "Gem ændringer" : "Opret"}
             </button>
           </div>
         )}

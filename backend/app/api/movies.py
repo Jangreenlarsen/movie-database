@@ -15,6 +15,7 @@ from app.models.movie import (
     MovieCreate,
     MovieFormat,
     MoviePage,
+    MoviePreview,
     MovieUpdate,
     TmdbSyncResult,
 )
@@ -84,6 +85,14 @@ async def create_movie(
 async def tmdb_search(query: str = Query(...)):
     candidates = await tmdb_client.search_movies(query)
     return [MovieCandidate(**candidate) for candidate in candidates]
+
+
+@router.get("/tmdb-preview/{tmdb_id}", response_model=MoviePreview)
+async def tmdb_preview(tmdb_id: int):
+    """Feature #79 — fuld, rent læsende TMDb-forhåndsvisning af en kandidat
+    (samme detalje-niveau som en oprettet film ville have), til at vise
+    rediger-boksen i "kladde"-tilstand før noget er oprettet."""
+    return await movie_service.preview_from_tmdb(tmdb_id)
 
 
 @router.get("/check-duplicate", response_model=list[DuplicateMatch])

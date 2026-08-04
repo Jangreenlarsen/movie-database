@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     plex_server_url: str = ""
     plex_token: str = ""
 
+    # Hvilken stregkode-kilde der prøves FØRST (feature #77) — resten af de
+    # fire (se scan_service.BARCODE_SOURCES) prøves stadig som fallback i
+    # deres normale rækkefølge, bare med denne trukket forrest. Ikke en
+    # hemmelighed — samme "vis faktisk værdi"-princip som plex_server_url.
+    primary_barcode_source: str = "upcitemdb"
+
     log_level: str = "INFO"
     cors_origins: str = "http://localhost:5173"
 
@@ -84,4 +90,5 @@ ENV_DEFAULT_API_KEYS: dict[str, str] = {
     "omdb_api_key": settings.omdb_api_key,
     "plex_server_url": settings.plex_server_url,
     "plex_token": settings.plex_token,
+    "primary_barcode_source": settings.primary_barcode_source,
 }

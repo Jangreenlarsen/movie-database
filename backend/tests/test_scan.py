@@ -107,6 +107,61 @@ async def test_scan_lookup_falls_back_to_upcdatabase_when_discogs_has_no_match(c
     assert data["candidates"][0]["tmdb_id"] == 603
 
 
+async def test_scan_lookup_reports_which_source_matched(client, monkeypatch):
+    """Regression test for FEATURES.md #77 — the response should carry
+    which of the four sources actually resolved the title, for the
+    Statistics breakdown."""
+
+    async def fake_no_match(barcode):
+        return None
+
+    async def fake_discogs_lookup_title(barcode):
+        return "The Matrix (DVD)"
+
+    async def fake_search_movies(query):
+        return [{"tmdb_id": 603, "title": "The Matrix", "year": 1999, "poster_url": None}]
+
+    monkeypatch.setattr(upc_client, "lookup_title", fake_no_match)
+    monkeypatch.setattr(discogs_client, "lookup_title", fake_discogs_lookup_title)
+    monkeypatch.setattr(tmdb_client, "search_movies", fake_search_movies)
+    monkeypatch.setattr(tmdb_client, "search_tv", _no_tv_matches)
+
+    response = await client.post("/api/scan/lookup", json={"barcode": "5051890012345"})
+    assert response.status_code == 200
+    assert response.json()["barcode_source"] == "discogs"
+
+
+async def test_lookup_title_tries_the_configured_primary_source_first(monkeypatch):
+    """Regression test for FEATURES.md #77 — setting a non-default primary
+    source (here upcdatabase) should try it before UPCitemdb/Discogs, not
+    just as the third fallback."""
+    from app.core.config import settings
+
+    calls = []
+
+    async def fake_upc(barcode):
+        calls.append("upcitemdb")
+        return None
+
+    async def fake_discogs(barcode):
+        calls.append("discogs")
+        return None
+
+    async def fake_upcdatabase(barcode):
+        calls.append("upcdatabase")
+        return "The Matrix (DVD)"
+
+    monkeypatch.setattr(settings, "primary_barcode_source", "upcdatabase")
+    monkeypatch.setattr(upc_client, "lookup_title", fake_upc)
+    monkeypatch.setattr(discogs_client, "lookup_title", fake_discogs)
+    monkeypatch.setattr(upcdatabase_client, "lookup_title", fake_upcdatabase)
+
+    title, source = await scan_service._lookup_title("5051890012345")
+    assert title == "The Matrix (DVD)"
+    assert source == "upcdatabase"
+    assert calls == ["upcdatabase"]  # stopped at the first (primary) match
+
+
 async def test_scan_lookup_falls_back_to_ean_search_when_upcdatabase_has_no_match(client, monkeypatch):
     """Regression test for FEATURES.md #76 — when UPCitemdb, Discogs and
     UPCDatabase.org all miss, EAN-Search.org (Jan's paid account) should be
@@ -192,7 +247,7 @@ async def test_scan_lookup_no_match_even_after_alternate_form(client, monkeypatc
 
     response = await client.post("/api/scan/lookup", json={"barcode": "012569059406"})
     assert response.status_code == 200
-    assert response.json() == {"guessed_title": None, "candidates": []}
+    assert response.json() == {"guessed_title": None, "barcode_source": None, "candidates": []}
 
 
 async def test_scan_lookup_trims_whitespace(client, monkeypatch):

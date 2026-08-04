@@ -711,7 +711,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
   );
 }
 
-function MovieDetailModal({
+export function MovieDetailModal({
   movie,
   user,
   allTags,
@@ -755,6 +755,7 @@ function MovieDetailModal({
   const canEditSerial = user.role === "admin" || user.username === movie.registered_by;
 
   const dirty = useMemo(() => {
+    if (!movie.id) return true; // "kladde"-tilstand — Gem må altid være aktiv (feature #79)
     const tagsChanged =
       tagsInput.split(",").map((t) => t.trim()).filter(Boolean).join(",") !==
       movie.tags.join(",");
@@ -817,11 +818,24 @@ function MovieDetailModal({
         watched,
         watched_at: watched && watchedAt ? watchedAt : null,
       };
-      const nextSerial = Number(serialNumberInput);
-      if (canEditSerial && nextSerial > 0 && nextSerial !== movie.serial_number) {
-        payload.serial_number = nextSerial;
+      if (movie.id) {
+        const nextSerial = Number(serialNumberInput);
+        if (canEditSerial && nextSerial > 0 && nextSerial !== movie.serial_number) {
+          payload.serial_number = nextSerial;
+        }
+        await api.updateMovie(movie.id, payload);
+      } else {
+        // "Kladde"-tilstand (feature #79) — intet er oprettet endnu, dette
+        // ER selve oprettelsen. movie er her et forhåndsvist TMDb-objekt
+        // (se MovieLookupForm.jsx), ikke en gemt film.
+        await api.createMovie({
+          ...payload,
+          tmdb_id: movie.tmdb_id,
+          barcode: movie.barcode,
+          barcode_source: movie.barcode_source,
+          is_wishlist: movie.is_wishlist,
+        });
       }
-      await api.updateMovie(movie.id, payload);
       onChanged();
       onClose();
     } catch (err) {
@@ -871,9 +885,10 @@ function MovieDetailModal({
             <h2>{movie.title}</h2>
             <p className="muted">
               {movie.year ?? "År ukendt"}
-              {!movie.is_wishlist && (
+              {!movie.is_wishlist && movie.id && (
                 <> · Serienr. {formatSerial(movie.serial_number, serialPaddingWidth)}</>
               )}
+              {!movie.id && <> · Ikke oprettet endnu</>}
               {movie.runtime != null && <> · {movie.runtime} min</>}
               {movie.rating != null && <> · ★ {movie.rating.toFixed(1)}</>}
               {movie.personal_rating != null && <> · Din: {movie.personal_rating}/10</>}
@@ -947,11 +962,11 @@ function MovieDetailModal({
             </p>
           )}
 
-          {movie.collection_id && (
+          {movie.id && movie.collection_id && (
             <CollectionSection movie={movie} onChanged={onChanged} />
           )}
 
-          <PlexSection movie={movie} />
+          {movie.id && <PlexSection movie={movie} />}
 
           {isGuest ? (
             <>
@@ -1007,7 +1022,13 @@ function MovieDetailModal({
             </>
           ) : (
             <>
-              {!movie.is_wishlist && (
+              {!movie.id && (
+                <p className="muted">
+                  Ikke oprettet endnu — tryk "Opret" nedenfor for at gemme i biblioteket.
+                  Serienummer tildeles automatisk ved oprettelse.
+                </p>
+              )}
+              {!movie.is_wishlist && movie.id && (
                 <div>
                   <div className="modal-section-label">Serienummer</div>
                   <input
@@ -1155,21 +1176,23 @@ function MovieDetailModal({
           // screening (their one allowed write action) even though the
           // rest of the footer (save/delete/move) stays hidden for them.
           <div className="modal-footer">
-            <ScreeningRequestButton mediaKind="movie" id={movie.id} />
+            {movie.id && <ScreeningRequestButton mediaKind="movie" id={movie.id} />}
           </div>
         ) : (
           <div className="modal-footer">
-            <button type="button" className="btn" onClick={remove} disabled={deleting}>
-              {deleting ? "Sletter..." : "Slet film"}
-            </button>
-            {movie.is_wishlist && (
+            {movie.id && (
+              <button type="button" className="btn" onClick={remove} disabled={deleting}>
+                {deleting ? "Sletter..." : "Slet film"}
+              </button>
+            )}
+            {movie.id && movie.is_wishlist && (
               <button type="button" className="btn" onClick={moveToLibrary} disabled={moving}>
                 {moving ? "Flytter..." : "Flyt til bibliotek"}
               </button>
             )}
-            <ScreeningRequestButton mediaKind="movie" id={movie.id} />
+            {movie.id && <ScreeningRequestButton mediaKind="movie" id={movie.id} />}
             <button type="button" className="btn btn-primary" onClick={save} disabled={!dirty || saving}>
-              {saving ? "Gemmer..." : "Gem ændringer"}
+              {saving ? "Gemmer..." : movie.id ? "Gem ændringer" : "Opret"}
             </button>
           </div>
         )}

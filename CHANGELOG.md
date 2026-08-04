@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.56.0 build 0075] — 2026-08-04 — feature: scan → rediger-boks (#79), Indstillinger-undermenu (#78), stregkode-kilde-statistik + primær-kilde-valg (#77)
+
+**Scan → rediger-boks (#79)**: efter valg af en TMDb-kandidat under scan/søgning springes der nu til den samme rige rediger-boks som ved redigering af et eksisterende bibliotekskort (`MovieDetailModal`/`TvShowDetailModal`, genbrugt as-is via nye `export`s), i stedet for det tidligere begrænsede inline-felt-sæt (kun tags/format/lyd/medietype/lokation/ejer). Intet gemmes i databasen før brugeren selv trykker "Opret" i boksen — to nye read-only preview-endpoints (`GET /api/movies/tmdb-preview/{id}`, `GET /api/tv-shows/tmdb-full-preview/{id}`) henter fulde TMDb-detaljer uden at oprette noget. Begge rediger-bokse gjort tolerante for et objekt uden `.id` ("kladde"-tilstand): Gem-knappen kalder opret i stedet for opdatér, Slet/Flyt/Plex/Kollektion-sektionerne skjules, og sæson-valget for nye TV-serier sker stadig i det eksisterende trin før boksen åbnes.
+
+**Indstillinger-undermenu (#78)**: de 14 sektioner er nu opdelt i 6 kategoriserede faner (Brugere, Konto, Bibliotek, Backup & gendannelse, Eksterne API-nøgler, Drift) i stedet for én lang scroll. **"Brugere" står først** og er default-fanen, jf. Jans bekræftelse. Hver sektions egen rolle-gating er bevaret uændret som et ekstra sikkerhedslag.
+
+**Stregkode-kilde-statistik + primær-kilde-valg (#77)**: Statistik-siden viser nu en ny "Stregkode-kilde"-sektion (film+TV) over hvilken af de fire kilder der oftest resolver et scan — kun film/serier tilføjet via et ægte scan tæller med, et nyt `barcode_source`-felt sat ved oprettelse. Ny admin-indstilling "Primær stregkode-kilde" i System-indstillinger lader Jan vælge hvilken kilde der prøves *først* ved scan (resten følger som fallback i deres normale rækkefølge) — `scan_service._lookup_title` omskrevet til at slå kilder op via modul-reference (ikke en fastfrosset funktionsreference — samme fejlklasse som allerede rettet i `system_settings_service` under #75).
+
+## [0.55.1 build 0074] — 2026-08-04 — fix: Audit-log fik rigtig paginering (10/side) + tydelig dato+tid
+
+Jan bad om at Audit-log-sektionen (feature #65) skulle vise 10 elementer pr. side i stedet for den akkumulerende "Vis flere (X/Y)"-knap (som lastede 50 ad gangen), og have dato og tid tydeligt med. `AuditLogSection` bruger nu rigtig side-for-side paginering (Forrige/Næste + "Side X af Y"), `AUDIT_PAGE_SIZE` sat til 10, og hver linje viser nu dato og klokketid som to separate, tydelige dele i stedet for én sammensat `toLocaleString`-streng. Ingen backend-ændring — `GET /api/audit-log`s eksisterende `?skip=&limit=` dækkede allerede dette.
+
 ## [0.55.0 build 0073] — 2026-08-04 — feature: EAN-Search.org-fallback (#76) + "Test forbindelse" (#75) + fjernet dødt UPC-felt + fix (BUGS.md #37)
 
 Jan flaggede at hans UPCDatabase-nøgle "gemtes gentagne gange med samme dårlige resultat" og at der generelt mangler gennemsigtighed i hvad der virker. Undersøgelse via produktions-database viste at nøglen aldrig var gemt under det rigtige felt — den var højst sandsynligt gentagne gange indtastet i **"UPC API-nøgle"** i stedet for **"UPCDatabase-token"**. Videre undersøgelse afslørede at "UPC API-nøgle" reelt **aldrig blev brugt af nogen aktiv integration** (UPCitemdb's gratis trial-tier kræver ingen nøgle) — feltet er fjernet helt efter Jans bekræftelse.

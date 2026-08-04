@@ -114,6 +114,7 @@ export const api = {
   getSystemSettings: () => request("/settings/system"),
   updateSystemSettings: (payload) =>
     request("/settings/system", { method: "PATCH", body: JSON.stringify(payload) }),
+  testSystemSetting: (key) => request(`/settings/system/test/${key}`, { method: "POST" }),
   exportLibrary: () => request("/library/export"),
   importLibrary: (payload) =>
     request("/library/import", { method: "POST", body: JSON.stringify(payload) }),

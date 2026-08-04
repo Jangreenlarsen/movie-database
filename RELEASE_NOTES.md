@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.55.0 (build 0073) — 2026-08-04
+
+- Ny "Test forbindelse"-knap ved hver API-nøgle i Indstillinger → System-indstillinger — viser om nøglen faktisk virker, ikke kun om den er gemt. Din UPCDatabase-nøgle var aldrig gemt under det rigtige felt (sandsynligvis indtastet i "UPC API-nøgle" ved en fejl) — det felt er nu fjernet, da det aldrig gjorde noget. Indtast din nøgle igen under "UPCDatabase-token".
+- Tilføjet EAN-Search.org som en fjerde stregkode-kilde.
+
 ## v0.54.2 (build 0072) — 2026-08-03
 
 - "Opdatér fra GitHub" viser nu en rolig "Allerede opdateret"-besked med det samme, hvis der intet nyt er at hente, i stedet for en alarmerende fejl efter to minutters ventetid. Kræver et lille manuelt trin på serveren, før den nye besked virker — spørg Claude når du er klar.

@@ -67,6 +67,25 @@ def _raise_for_status(response: httpx.Response) -> None:
         ) from exc
 
 
+async def test_connection() -> tuple[bool, str]:
+    """Feature #75 — TMDb's own /authentication endpoint is the canonical
+    way to validate a v3 read-access token."""
+    if not settings.tmdb_api_token:
+        return False, "Ingen TMDb-nøgle sat"
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(f"{BASE_URL}/authentication", headers=_headers())
+    except httpx.HTTPError as exc:
+        return False, f"Netværksfejl: {exc}"
+
+    if response.status_code == 200:
+        return True, "Virker"
+    if response.status_code == 401:
+        return False, "TMDb afviste nøglen (ugyldig)"
+    return False, f"Uventet svar (HTTP {response.status_code})"
+
+
 def _to_candidate(item: dict) -> dict:
     return {
         "tmdb_id": item["id"],

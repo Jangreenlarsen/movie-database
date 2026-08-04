@@ -39,7 +39,19 @@ async def lookup_title(barcode: str) -> str | None:
 
     data = response.json()
     if not data.get("success"):
-        logger.info("UPCDatabase.org: intet match for %s", barcode)
+        # BUGS.md #37 — et ugyldigt token giver også HTTP 200 med
+        # "success": false, ligesom et ægte "ingen match"-udfald. Kun den
+        # ugyldige-token-variant har et "apikey"-felt i error-objektet —
+        # uden denne skelnen ville et tastefejl-ramt/udløbet token aldrig
+        # blive synligt, bare se ud som endnu en "intet match"-linje.
+        if "apikey" in (data.get("error") or {}):
+            logger.warning(
+                "UPCDatabase.org afviste token'et for %s: %s",
+                barcode,
+                data["error"].get("message"),
+            )
+        else:
+            logger.info("UPCDatabase.org: intet match for %s", barcode)
         return None
 
     raw_title = data.get("title")
@@ -50,3 +62,34 @@ async def lookup_title(barcode: str) -> str | None:
     title = clean_bracketed_title(raw_title)
     logger.info("UPCDatabase.org: %s -> %r", barcode, title)
     return title
+
+
+# Kendt gyldig EAN-13 (ikke filmrelateret — bruges kun til at bekræfte at
+# selve token'et accepteres, ikke om koden findes) — feature #75.
+_TEST_BARCODE = "5901234123457"
+
+
+async def test_connection() -> tuple[bool, str]:
+    """Laver et rigtigt opslag mod det aktuelt aktive token og afgør om
+    UPCDatabase.org rent faktisk accepterer det — se `lookup_title`s
+    "apikey"-skelnen (BUGS.md #37) for hvorfor et simpelt success-tjek ikke
+    er nok."""
+    if not settings.upcdatabase_token:
+        return False, "Intet token sat"
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f"{BASE_URL}/{_TEST_BARCODE}",
+                headers={"Authorization": f"Bearer {settings.upcdatabase_token}"},
+            )
+    except httpx.HTTPError as exc:
+        return False, f"Netværksfejl: {exc}"
+
+    if response.status_code != 200:
+        return False, f"Uventet svar (HTTP {response.status_code})"
+
+    data = response.json()
+    if "apikey" in (data.get("error") or {}):
+        return False, f"Token afvist: {data['error'].get('message')}"
+    return True, "Virker"

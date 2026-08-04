@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.55.0 build 0073] — 2026-08-04 — feature: EAN-Search.org-fallback (#76) + "Test forbindelse" (#75) + fjernet dødt UPC-felt + fix (BUGS.md #37)
+
+Jan flaggede at hans UPCDatabase-nøgle "gemtes gentagne gange med samme dårlige resultat" og at der generelt mangler gennemsigtighed i hvad der virker. Undersøgelse via produktions-database viste at nøglen aldrig var gemt under det rigtige felt — den var højst sandsynligt gentagne gange indtastet i **"UPC API-nøgle"** i stedet for **"UPCDatabase-token"**. Videre undersøgelse afslørede at "UPC API-nøgle" reelt **aldrig blev brugt af nogen aktiv integration** (UPCitemdb's gratis trial-tier kræver ingen nøgle) — feltet er fjernet helt efter Jans bekræftelse.
+
+For at løse gennemsigtigheds-problemet varigt: ny **"Test forbindelse"**-knap ved hver af de fem resterende eksterne nøgler (TMDb, Discogs, UPCDatabase, EAN-Search, OMDb) i Indstillinger → System-indstillinger. Laver et rigtigt, minimalt testkald mod den aktuelt aktive nøgle og viser om den faktisk virker — ny `POST /api/settings/system/test/{key}`-endpoint (admin-only), hver integrations-klient ejer sin egen `test_connection()`.
+
+Samtidig tilføjet **EAN-Search.org** som fjerde og sidste stregkode-opslags-fallback (efter UPCitemdb, Discogs, UPCDatabase.org) — Jans egen betalte konto, købt i håb om bedre dansk/nordisk EAN-dækning.
+
+**BUGS.md #37** (fundet under arbejdet): `upcdatabase_client.py` behandlede et ugyldigt token identisk med et ægte "intet match" (begge giver HTTP 200 med `success: false`) — kun et ekstra `error.apikey`-felt i svaret skelner dem. Rettet, og samme skelnen bygget ind i den nye `ean_search_client.py` fra starten.
+
 ## [0.54.2 build 0072] — 2026-08-03 — fix: "Opdatér fra GitHub" viste fejl selv når intet var galt (BUGS.md #36)
 
 Jan ramte en alarmerende "Kunne ikke bekræfte at opdateringen er fuldført endnu"-besked ved et klik hvor produktionen allerede var opdateret. Rodårsag: `deploy.sh` kørte altid hele pipelinen uanset om `git pull` fandt noget nyt, og frontend'ens eneste succes-kriterie var at `/api/health`s build-nummer ændrede sig — hvilket det aldrig gør når der intet nyt er at hente, så pollingen ramte garanteret timeout.

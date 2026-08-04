@@ -50,6 +50,62 @@ async def test_lookup_title_returns_none_on_invalid_key(monkeypatch):
     assert await upcdatabase_client.lookup_title("5051890012345") is None
 
 
+async def test_lookup_title_returns_none_on_invalid_key_reported_as_200(monkeypatch):
+    """Regression test for BUGS.md #37 — UPCDatabase.org reports an invalid
+    token as HTTP 200 with `success: false` and an `error.apikey` field,
+    identical in shape to a genuine "no match" except for that one field.
+    Must still return None (never raise), but the caller-visible behavior
+    is what's being guarded — the distinct log line is asserted separately
+    if ever needed; this just locks in that both variants degrade safely."""
+
+    async def fake_get(self, url, headers=None):
+        return httpx.Response(
+            200,
+            json={
+                "success": False,
+                "error": {
+                    "message": "Your API Key is invalid. Please check the format.",
+                    "apikey": "bad-token",
+                },
+            },
+            request=httpx.Request("GET", url),
+        )
+
+    monkeypatch.setattr(settings, "upcdatabase_token", "bad-token")
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+    assert await upcdatabase_client.lookup_title("5051890012345") is None
+
+
+async def test_test_connection_reports_ok_on_success(monkeypatch):
+    async def fake_get(self, url, headers=None):
+        return httpx.Response(200, json={"success": True, "title": "x"}, request=httpx.Request("GET", url))
+
+    monkeypatch.setattr(settings, "upcdatabase_token", "test-token")
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+    ok, message = await upcdatabase_client.test_connection()
+    assert ok is True
+
+
+async def test_test_connection_reports_failure_on_rejected_token(monkeypatch):
+    async def fake_get(self, url, headers=None):
+        return httpx.Response(
+            200,
+            json={"success": False, "error": {"message": "invalid", "apikey": "bad"}},
+            request=httpx.Request("GET", url),
+        )
+
+    monkeypatch.setattr(settings, "upcdatabase_token", "bad-token")
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+    ok, message = await upcdatabase_client.test_connection()
+    assert ok is False
+
+
+async def test_test_connection_reports_failure_when_no_token_set(monkeypatch):
+    monkeypatch.setattr(settings, "upcdatabase_token", "")
+    ok, message = await upcdatabase_client.test_connection()
+    assert ok is False
+
+
 async def test_lookup_title_never_raises_on_http_error(monkeypatch):
     async def fake_get(self, url, headers=None):
         raise httpx.ConnectTimeout("boom")

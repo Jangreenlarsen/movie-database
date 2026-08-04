@@ -1,6 +1,7 @@
 from httpx import ASGITransport, AsyncClient
 
 from app.core.config import ENV_DEFAULT_API_KEYS, settings
+from app.integrations import tmdb_client
 from app.main import app
 
 
@@ -49,27 +50,27 @@ async def test_setting_a_key_activates_it_immediately_without_leaking_value(clie
 
 
 async def test_clearing_a_custom_key_reverts_to_env_default(client, monkeypatch):
-    monkeypatch.setattr(settings, "upc_api_key", "original-env-key")
-    monkeypatch.setitem(ENV_DEFAULT_API_KEYS, "upc_api_key", "original-env-key")
+    monkeypatch.setattr(settings, "discogs_token", "original-env-key")
+    monkeypatch.setitem(ENV_DEFAULT_API_KEYS, "discogs_token", "original-env-key")
 
-    first = await client.patch("/api/settings/system", json={"upc_api_key": "override-key"})
-    assert first.json()["upc_api_key"]["source"] == "custom"
-    assert settings.upc_api_key == "override-key"
+    first = await client.patch("/api/settings/system", json={"discogs_token": "override-key"})
+    assert first.json()["discogs_token"]["source"] == "custom"
+    assert settings.discogs_token == "override-key"
 
-    second = await client.patch("/api/settings/system", json={"upc_api_key": ""})
-    assert second.json()["upc_api_key"] == {"configured": True, "source": "env"}
-    assert settings.upc_api_key == "original-env-key"
+    second = await client.patch("/api/settings/system", json={"discogs_token": ""})
+    assert second.json()["discogs_token"] == {"configured": True, "source": "env"}
+    assert settings.discogs_token == "original-env-key"
 
 
 async def test_omitted_fields_are_left_untouched(client, monkeypatch):
     monkeypatch.setattr(settings, "tmdb_api_token", "existing-tmdb")
-    monkeypatch.setattr(settings, "upc_api_key", "existing-upc")
+    monkeypatch.setattr(settings, "omdb_api_key", "existing-omdb")
 
     response = await client.patch("/api/settings/system", json={"discogs_token": "new-discogs"})
 
     assert response.status_code == 200
     assert settings.tmdb_api_token == "existing-tmdb"
-    assert settings.upc_api_key == "existing-upc"
+    assert settings.omdb_api_key == "existing-omdb"
     assert settings.discogs_token == "new-discogs"
 
 
@@ -116,17 +117,17 @@ async def test_clearing_override_survives_a_key_missing_from_env_defaults(client
     added to OVERRIDABLE_KEYS/SystemSettingsUpdate without also adding it to
     ENV_DEFAULT_API_KEYS in config.py, clearing its override used to raise
     a bare KeyError (-> 500) instead of degrading gracefully."""
-    monkeypatch.setattr(settings, "upc_api_key", "original-env-key")
-    monkeypatch.setitem(ENV_DEFAULT_API_KEYS, "upc_api_key", "original-env-key")
+    monkeypatch.setattr(settings, "discogs_token", "original-env-key")
+    monkeypatch.setitem(ENV_DEFAULT_API_KEYS, "discogs_token", "original-env-key")
 
-    first = await client.patch("/api/settings/system", json={"upc_api_key": "override-key"})
-    assert first.json()["upc_api_key"]["source"] == "custom"
+    first = await client.patch("/api/settings/system", json={"discogs_token": "override-key"})
+    assert first.json()["discogs_token"]["source"] == "custom"
 
-    monkeypatch.delitem(ENV_DEFAULT_API_KEYS, "upc_api_key")
+    monkeypatch.delitem(ENV_DEFAULT_API_KEYS, "discogs_token")
 
-    second = await client.patch("/api/settings/system", json={"upc_api_key": ""})
+    second = await client.patch("/api/settings/system", json={"discogs_token": ""})
     assert second.status_code == 200
-    assert settings.upc_api_key == ""
+    assert settings.discogs_token == ""
 
 
 async def test_plex_server_url_is_returned_with_its_actual_value(client, monkeypatch):
@@ -142,3 +143,43 @@ async def test_plex_server_url_is_returned_with_its_actual_value(client, monkeyp
 
     get_response = await client.get("/api/settings/system")
     assert get_response.json()["plex_server_url"] == "http://192.168.1.50:32400"
+
+
+# Feature #75 — "Test forbindelse".
+
+
+async def test_test_connection_requires_admin(client):
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as standard_client:
+        await standard_client.post(
+            "/api/auth/register", json={"username": "notadmin3", "password": "testpassword123"}
+        )
+        response = await standard_client.post("/api/settings/system/test/tmdb_api_token")
+        assert response.status_code == 403
+
+
+async def test_test_connection_rejects_unknown_key(client):
+    response = await client.post("/api/settings/system/test/plex_token")
+    assert response.status_code == 422
+
+
+async def test_test_connection_dispatches_to_the_right_client(client, monkeypatch):
+    async def fake_test_connection():
+        return True, "Virker"
+
+    monkeypatch.setattr(tmdb_client, "test_connection", fake_test_connection)
+
+    response = await client.post("/api/settings/system/test/tmdb_api_token")
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "message": "Virker"}
+
+
+async def test_test_connection_reports_failure_message(client, monkeypatch):
+    async def fake_test_connection():
+        return False, "TMDb afviste nøglen (ugyldig)"
+
+    monkeypatch.setattr(tmdb_client, "test_connection", fake_test_connection)
+
+    response = await client.post("/api/settings/system/test/tmdb_api_token")
+    assert response.status_code == 200
+    assert response.json() == {"ok": False, "message": "TMDb afviste nøglen (ugyldig)"}

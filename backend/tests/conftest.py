@@ -34,9 +34,9 @@ def _pin_external_api_keys(monkeypatch):
     `omdb_client`/`plex_client` at all and rely on their real, unmocked
     "no key configured" fallback to avoid making a genuine network call."""
     monkeypatch.setattr(settings, "tmdb_api_token", "test-tmdb-token")
-    monkeypatch.setattr(settings, "upc_api_key", "")
     monkeypatch.setattr(settings, "discogs_token", "")
     monkeypatch.setattr(settings, "upcdatabase_token", "")
+    monkeypatch.setattr(settings, "ean_search_api_key", "")
     monkeypatch.setattr(settings, "omdb_api_key", "")
     monkeypatch.setattr(settings, "plex_server_url", "")
     monkeypatch.setattr(settings, "plex_token", "")

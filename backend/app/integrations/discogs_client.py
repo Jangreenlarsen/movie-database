@@ -55,3 +55,27 @@ async def lookup_title(barcode: str) -> str | None:
     title = clean_bracketed_title(_strip_artist_prefix(raw_title))
     logger.info("Discogs: %s -> %r", barcode, title)
     return title
+
+
+async def test_connection() -> tuple[bool, str]:
+    """Feature #75 — Discogs works fine without a token (just a lower rate
+    limit), so an empty token isn't itself a failure; but a genuinely wrong
+    token is rejected with a 401, which is reported clearly."""
+    if not settings.discogs_token:
+        return True, "Intet token sat — Discogs virker stadig, blot med lavere rate-limit"
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                BASE_URL,
+                params={"q": "test", "token": settings.discogs_token},
+                headers={"User-Agent": USER_AGENT},
+            )
+    except httpx.HTTPError as exc:
+        return False, f"Netværksfejl: {exc}"
+
+    if response.status_code == 401:
+        return False, "Discogs afviste token'et (ugyldigt)"
+    if response.status_code != 200:
+        return False, f"Uventet svar (HTTP {response.status_code})"
+    return True, "Virker"

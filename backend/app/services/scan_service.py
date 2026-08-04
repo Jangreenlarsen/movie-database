@@ -1,6 +1,12 @@
 import logging
 
-from app.integrations import discogs_client, tmdb_client, upc_client, upcdatabase_client
+from app.integrations import (
+    discogs_client,
+    ean_search_client,
+    tmdb_client,
+    upc_client,
+    upcdatabase_client,
+)
 from app.models.scan import MovieCandidate
 
 logger = logging.getLogger("moviedb")
@@ -31,6 +37,10 @@ async def _lookup_title(barcode: str) -> str | None:
         # Third fallback, added for Nordic/Danish DVD/Blu-ray barcodes that
         # neither of the above two typically catalogue (BUGS.md #32).
         guessed_title = await upcdatabase_client.lookup_title(barcode)
+    if not guessed_title:
+        # Fourth and last fallback (feature #76) — Jan's own paid account,
+        # tried for the same Nordic/Danish coverage reason as UPCDatabase.org.
+        guessed_title = await ean_search_client.lookup_title(barcode)
     return guessed_title
 
 
@@ -45,13 +55,13 @@ async def lookup_by_barcode(barcode: str) -> dict:
 
     if not guessed_title:
         # BUGS.md #34 — this WARNING is the one clear line to grep for when
-        # diagnosing "scan finder ingen film": it means all three sources
-        # (UPCitemdb, Discogs, UPCDatabase.org — see the INFO line each one
-        # already logged for its own miss) came back empty, not that the
-        # request itself failed.
+        # diagnosing "scan finder ingen film": it means all four sources
+        # (UPCitemdb, Discogs, UPCDatabase.org, EAN-Search.org — see the
+        # INFO/WARNING line each one already logged for its own miss/reject)
+        # came back empty, not that the request itself failed.
         logger.warning(
             "Intet titel-gæt fundet for stregkode %s (forsøgt mod UPCitemdb, Discogs, "
-            "UPCDatabase.org, inkl. alternativ UPC/EAN-form)",
+            "UPCDatabase.org, EAN-Search.org, inkl. alternativ UPC/EAN-form)",
             barcode,
         )
         return {"guessed_title": None, "candidates": []}

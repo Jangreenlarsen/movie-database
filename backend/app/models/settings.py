@@ -25,11 +25,24 @@ class ApiKeyStatus(BaseModel):
     source: KeySource
 
 
+# De eneste nøgler der har et rigtigt eksternt testkald bag sig (feature #75)
+# — Plex har sin egen tilgængeligheds-tjek pr. film og er bevidst udeladt
+# her, for ikke at duplikere den mekanisme.
+TestableApiKey = Literal[
+    "tmdb_api_token", "discogs_token", "upcdatabase_token", "ean_search_api_key", "omdb_api_key"
+]
+
+
+class ApiKeyTestResult(BaseModel):
+    ok: bool
+    message: str
+
+
 class SystemSettingsStatus(BaseModel):
     tmdb_api_token: ApiKeyStatus
-    upc_api_key: ApiKeyStatus
     discogs_token: ApiKeyStatus
     upcdatabase_token: ApiKeyStatus
+    ean_search_api_key: ApiKeyStatus
     omdb_api_key: ApiKeyStatus
     plex_token: ApiKeyStatus
     # Ikke en hemmelighed (bare en LAN-serveradresse) — returneres derfor med
@@ -43,9 +56,9 @@ class SystemSettingsUpdate(BaseModel):
     new custom value."""
 
     tmdb_api_token: str | None = Field(default=None, max_length=500)
-    upc_api_key: str | None = Field(default=None, max_length=500)
     discogs_token: str | None = Field(default=None, max_length=500)
     upcdatabase_token: str | None = Field(default=None, max_length=500)
+    ean_search_api_key: str | None = Field(default=None, max_length=500)
     omdb_api_key: str | None = Field(default=None, max_length=500)
     plex_token: str | None = Field(default=None, max_length=500)
     plex_server_url: str | None = Field(default=None, max_length=500)

@@ -4,10 +4,54 @@
 }
 
 .cinema-public-hero {
+  position: relative;
   padding: 56px 24px 44px;
   text-align: center;
   background: linear-gradient(135deg, var(--accent-strong), var(--accent));
   color: var(--accent-contrast);
+}
+
+.cinema-public-login-toggle {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: var(--accent-contrast);
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cinema-public-login-toggle:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.cinema-public-login-panel {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  width: 260px;
+  max-width: calc(100% - 40px);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+  text-align: left;
+  z-index: 1;
+}
+
+.cinema-public-login-panel .auth-form {
+  gap: 10px;
+}
+
+.cinema-public-login-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .cinema-public-hero h1 {

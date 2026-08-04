@@ -12,7 +12,10 @@ import { api } from "./api/client";
 import "./App.css";
 
 function App() {
-  const [tab, setTab] = useState("library");
+  // Jans ønske 2026-08-04: efter login lander man på Voldby BIO i stedet
+  // for filmbiblioteket — gælder både et frisk login og en genindlæst side
+  // med en allerede gyldig session, da begge ender her.
+  const [tab, setTab] = useState("cinema");
   const [user, setUser] = useState(undefined); // undefined = checking, null = logged out
   const [versionInfo, setVersionInfo] = useState(null);
 

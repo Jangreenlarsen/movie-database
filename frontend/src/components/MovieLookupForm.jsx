@@ -43,6 +43,14 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   const [manualBarcode, setManualBarcode] = useState("");
   const [manualQuery, setManualQuery] = useState("");
   const [manualStatus, setManualStatus] = useState("idle");
+  // Titel-gættet fra stregkode-opslaget (feature #81) — vist til brugeren
+  // som en redigerbar tekst, fordi kilderne (især EAN-Search.org) nogle
+  // gange returnerer let korrupt eller støjfyldt tekst (fx "rmageddon" uden
+  // det første "A"), som ingen automatisk oprydning kan gætte sig til at
+  // rette. `manualQuery` forudfyldes med gættet, så brugeren kan se og rette
+  // det direkte i "Søg manuelt"-feltet i stedet for at skulle skrive hele
+  // titlen fra bunden.
+  const [guessedTitle, setGuessedTitle] = useState(null);
 
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [attributeOptions, setAttributeOptions] = useState({
@@ -99,6 +107,11 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
       const result = await api.scanLookup(code);
       setCandidates(result.candidates ?? []);
       setBarcodeSource(result.barcode_source ?? null);
+      setGuessedTitle(result.guessed_title ?? null);
+      // Forudfylder "Søg manuelt"-feltet med gættet, uanset om det gav
+      // kandidater eller ej — brugeren kan rette teksten (fx en manglende
+      // bogstav fra kilden) og trykke "Søg" for at prøve igen.
+      setManualQuery(result.guessed_title ?? "");
       setScanStatus("ready");
     } catch {
       setScanStatus("error");
@@ -118,6 +131,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
 
     setBarcode(null);
     setBarcodeSource(null);
+    setGuessedTitle(null);
     setManualStatus("searching");
     try {
       // Søger både film og TV-serier (feature #49/#50) — samme princip som
@@ -188,6 +202,8 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
     setCandidates([]);
     setBarcode(null);
     setBarcodeSource(null);
+    setGuessedTitle(null);
+    setManualQuery("");
     setDuplicates([]);
     setExistingTvShow(null);
     setPreviewSeasons([]);
@@ -269,13 +285,26 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
             Opslag fejlede. Prøv igen, eller søg manuelt på titel nedenfor.
           </div>
         )}
-        {scanStatus === "ready" && candidates.length === 0 && !manualQuery && (
+        {scanStatus === "ready" && candidates.length === 0 && !guessedTitle && (
           <div className="banner banner-info">Intet match fundet — søg manuelt på titel i stedet.</div>
+        )}
+        {scanStatus === "ready" && candidates.length === 0 && guessedTitle && (
+          <div className="banner banner-info">
+            Stregkoden gav titel-gættet "{guessedTitle}", men det matchede intet på TMDb — kilden kan have
+            leveret en let forkert eller ufuldstændig tekst. Ret teksten i feltet nedenfor (fx et manglende
+            bogstav) og søg igen.
+          </div>
         )}
       </div>
 
       <div className="card scan-card">
         <h2>Søg manuelt (TMDb)</h2>
+        {guessedTitle && (
+          <p className="muted" style={{ marginTop: 0 }}>
+            Forudfyldt med titel-gættet fra stregkode-scanningen — ret teksten hvis den ser forkert eller
+            ufuldstændig ud, og tryk "Søg".
+          </p>
+        )}
         <form className="manual-search-form" onSubmit={searchManually}>
           <input
             value={manualQuery}

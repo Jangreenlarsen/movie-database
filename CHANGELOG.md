@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.58.0 build 0079] — 2026-08-04 — feature: redigerbart titel-gæt ved scan (FEATURES.md #81)
+
+"Søg manuelt"-feltet i scan-panelet (`MovieLookupForm.jsx`) forudfyldes nu automatisk med stregkode-opslagets `guessed_title` efter hvert scan/manuelt stregkode-opslag — uanset om det gav TMDb-kandidater eller ej. Giver TMDb nul kandidater, vises en tydelig banner der forklarer at kilden kan have leveret let forkert/ufuldstændig tekst, og peger på feltet nedenfor. Brugeren kan rette teksten direkte (fx indsætte et manglende bogstav) og trykke "Søg" for at prøve igen — genbruger det eksisterende manuelle søge-flow i stedet for ny UI. Komplementær til BUGS.md #39's automatiske støj-oprydning: dækker de tilfælde (ægte tredjeparts-datakorruption, fx et enkelt manglende bogstav fra EAN-Search.org) som ingen automatisk regel kan gætte sig til at rette. Live-verificeret med Playwright (forudfyldning, banner, korrigeret søgning finder det rigtige resultat).
+
 ## [0.57.2 build 0078] — 2026-08-04 — fix: stregkode-titel-støj gav 0 TMDb-kandidater trods vellykket opslag (BUGS.md #39)
 
 Jan rapporterede konstante "ikke fundet"-fejl ved scanning, selvom samme titel slog op uden problemer direkte hos EAN-Search.org. Dyb analyse af produktions-logs viste at selve barcode→titel-opslaget havde 100% succesrate, men 75% af de fundne titel-gæt gav **nul** TMDb-kandidater fordi teksten indeholdt distributør-præfikser og afsluttende disk-/sæson-indeks-numre som TMDb's rene nøgleords-søgning ikke kunne matche igennem (fx "Simply HE The Americans - 6" → 0 kandidater).

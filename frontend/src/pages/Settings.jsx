@@ -1013,26 +1013,30 @@ const AUDIT_ACTION_LABELS = {
   "screening.scheduled": "Visning planlagt",
 };
 
-const AUDIT_PAGE_SIZE = 50;
+const AUDIT_PAGE_SIZE = 10;
 
 function AuditLogSection() {
   const [entries, setEntries] = useState([]);
   const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
   const [status, setStatus] = useState("loading");
 
-  function load(skip) {
-    setStatus(skip === 0 ? "loading" : "loading-more");
+  function load(pageIndex) {
+    setStatus("loading");
     api
-      .listAuditLog({ skip, limit: AUDIT_PAGE_SIZE })
+      .listAuditLog({ skip: pageIndex * AUDIT_PAGE_SIZE, limit: AUDIT_PAGE_SIZE })
       .then((data) => {
-        setEntries((prev) => (skip === 0 ? data.entries : [...prev, ...data.entries]));
+        setEntries(data.entries);
         setTotal(data.total);
+        setPage(pageIndex);
         setStatus("ready");
       })
       .catch(() => setStatus("error"));
   }
 
   useEffect(() => load(0), []);
+
+  const totalPages = Math.max(1, Math.ceil(total / AUDIT_PAGE_SIZE));
 
   return (
     <div className="card settings-section">
@@ -1057,7 +1061,8 @@ function AuditLogSection() {
               </span>
               <span className="muted">{entry.actor}</span>
               <span className="muted">
-                {new Date(entry.created_at).toLocaleString("da-DK")}
+                {new Date(entry.created_at).toLocaleDateString("da-DK")}{" "}
+                {new Date(entry.created_at).toLocaleTimeString("da-DK")}
               </span>
             </li>
           ))}
@@ -1068,15 +1073,28 @@ function AuditLogSection() {
         <p className="muted">Ingen registrerede handlinger endnu.</p>
       )}
 
-      {entries.length < total && (
-        <button
-          type="button"
-          className="btn"
-          onClick={() => load(entries.length)}
-          disabled={status === "loading-more"}
-        >
-          {status === "loading-more" ? "Indlæser..." : `Vis flere (${entries.length}/${total})`}
-        </button>
+      {total > AUDIT_PAGE_SIZE && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 12 }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => load(page - 1)}
+            disabled={page === 0 || status === "loading"}
+          >
+            ← Forrige
+          </button>
+          <span className="muted">
+            Side {page + 1} af {totalPages}
+          </span>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => load(page + 1)}
+            disabled={page + 1 >= totalPages || status === "loading"}
+          >
+            Næste →
+          </button>
+        </div>
       )}
     </div>
   );

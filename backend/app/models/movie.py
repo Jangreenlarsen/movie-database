@@ -3,6 +3,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.models.scan import BarcodeSource
+
 
 class MovieFormat(str, Enum):
     """Short labels (v0.22.0), digital split into quality tiers — see
@@ -45,6 +47,10 @@ class MovieCreate(BaseModel):
 
     tmdb_id: int | None = None
     barcode: str | None = None
+    # Feature #77 — hvilken stregkode-kilde der matchede, hvis oprettelsen
+    # kommer fra et rigtigt scan (aldrig sat ved manuel titel-søgning eller
+    # direkte tmdb_id-oprettelse) — bruges kun til Statistik-sidens breakdown.
+    barcode_source: BarcodeSource | None = None
     tags: list[str] = Field(default_factory=list)
     format: MovieFormat | None = None
     audio_types: list[AudioType] = Field(default_factory=list)
@@ -69,6 +75,27 @@ class MovieCreate(BaseModel):
         if self.tmdb_id is None and not self.title:
             raise ValueError("Enten tmdb_id eller title skal angives")
         return self
+
+
+class MoviePreview(BaseModel):
+    """Read-only, fuld TMDb-metadata for en kandidat (feature #79) — bruges
+    til at forhåndsvise rediger-boksen ("kladde"-tilstand) uden at oprette
+    noget i databasen endnu. Samme felter som `create_movie` selv gemmer."""
+
+    tmdb_id: int
+    title: str | None = None
+    year: int | None = None
+    poster_url: str | None = None
+    overview: str | None = None
+    genres: list[str] = Field(default_factory=list)
+    cast: list[str] = Field(default_factory=list)
+    director: str | None = None
+    rating: float | None = None
+    runtime: int | None = None
+    imdb_url: str | None = None
+    trailer_url: str | None = None
+    collection_id: int | None = None
+    collection_name: str | None = None
 
 
 class MovieUpdate(BaseModel):
@@ -101,6 +128,7 @@ class Movie(BaseModel):
     serial_number: int | None = None
     tmdb_id: int | None = None
     barcode: str | None = None
+    barcode_source: BarcodeSource | None = None
     title: str
     year: int | None = None
     poster_url: str | None = None
@@ -171,6 +199,9 @@ class CollectionStats(BaseModel):
     format_breakdown: list[NamedCount]
     top_directors: list[NamedCount]
     top_actors: list[NamedCount]
+    # Feature #77 — kun film/serier tilføjet via et rigtigt stregkode-scan
+    # tæller med (se MovieCreate.barcode_source's docstring); dækker film+TV.
+    barcode_source_breakdown: list[NamedCount]
 
 
 class TmdbSyncResult(BaseModel):

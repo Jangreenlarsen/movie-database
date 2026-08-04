@@ -55,7 +55,7 @@ Implementeret i `backend/app/integrations/omdb_client.py`. **Ikke** en erstatnin
 
 ## UPC-opslagstjeneste (stregkode → produkt/titel)
 
-Implementeret i `backend/app/integrations/upc_client.py` mod **UPCitemdb**'s gratis trial-tier (live-verificeret) som primær kilde, med **Discogs**, derefter **UPCDatabase.org**, og til sidst **EAN-Search.org** som fallbacks (se nedenfor) når det forrige led ikke finder et match. `scan_service.lookup_by_barcode` prøver dem i rækkefølge — alle fire integrationer eksponerer samme `lookup_title(barcode) -> str | None`-kontrakt, så en femte kilde kan tilføjes samme sted uden at ændre service- eller API-laget.
+Implementeret i `backend/app/integrations/upc_client.py` mod **UPCitemdb**'s gratis trial-tier (live-verificeret) som standard-primær kilde, med **Discogs**, **UPCDatabase.org** og **EAN-Search.org** som fallbacks (se nedenfor) i den rækkefølge når det forrige led ikke finder et match. **Feature #77 (2026-08-04)**: hvilken kilde der prøves *først* er nu admin-konfigurerbar (`primary_barcode_source` i Indstillinger → System-indstillinger — "Primær stregkode-kilde") — de øvrige tre følger stadig som fallback i deres normale rækkefølge, blot med den valgte trukket forrest. `scan_service._lookup_title` prøver dem i den beregnede rækkefølge og returnerer hvilken kilde der matchede (`barcode_source`) — alle fire integrationer eksponerer samme `lookup_title(barcode) -> str | None`-kontrakt, så en femte kilde kan tilføjes samme sted uden at ændre service- eller API-laget.
 
 ### UPCitemdb
 - **Base URL**: `https://api.upcitemdb.com/prod/trial/lookup`

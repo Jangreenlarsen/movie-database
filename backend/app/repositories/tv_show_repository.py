@@ -115,6 +115,14 @@ async def find_all_raw(db: AsyncIOMotorDatabase) -> list[dict]:
     return await db[COLLECTION].find({}).to_list(length=None)
 
 
+async def find_all_library_tv_shows(db: AsyncIOMotorDatabase) -> list[dict]:
+    """All non-wishlist TV shows, uncapped — mirrors
+    movie_repository.find_all_library_movies, used by the Statistik-side's
+    stregkode-kilde-breakdown (feature #77), which covers film+TV."""
+    cursor = db[COLLECTION].find({"is_wishlist": {"$ne": True}})
+    return await cursor.to_list(length=None)
+
+
 async def replace_all(db: AsyncIOMotorDatabase, documents: list[dict]) -> None:
     """Wholesale replace of the collection — see movie_repository's
     counterpart for the same not-a-transaction caveat."""

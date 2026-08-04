@@ -17,6 +17,7 @@ OVERRIDABLE_KEYS = (
     "omdb_api_key",
     "plex_server_url",
     "plex_token",
+    "primary_barcode_source",
 )
 
 

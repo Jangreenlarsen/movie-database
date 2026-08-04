@@ -1,5 +1,6 @@
 import logging
 
+from app.core.config import settings
 from app.integrations import (
     discogs_client,
     ean_search_client,
@@ -10,6 +11,25 @@ from app.integrations import (
 from app.models.scan import MovieCandidate
 
 logger = logging.getLogger("moviedb")
+
+# Feature #77 — de fire kilder i deres normale (standard-primær) rækkefølge.
+# Modul-referencer, ikke funktions-referencer — så .lookup_title slås op
+# friskt ved hvert kald, og fx test-monkeypatching af en klients funktion
+# efter modulets indlæsning stadig respekteres (samme fejlklasse som
+# system_settings_service._TEST_CONNECTION_CLIENTS allerede undgår).
+# `_ordered_sources` trækker den admin-valgte primære kilde forrest; resten
+# følger stadig denne rækkefølge som fallback.
+BARCODE_SOURCES = (
+    ("upcitemdb", upc_client),
+    ("discogs", discogs_client),
+    ("upcdatabase", upcdatabase_client),
+    ("ean_search", ean_search_client),
+)
+
+
+def _ordered_sources():
+    primary = settings.primary_barcode_source
+    return sorted(BARCODE_SOURCES, key=lambda item: item[0] != primary)
 
 
 def _alternate_upc_ean_form(barcode: str) -> str | None:
@@ -26,32 +46,27 @@ def _alternate_upc_ean_form(barcode: str) -> str | None:
     return None
 
 
-async def _lookup_title(barcode: str) -> str | None:
-    guessed_title = await upc_client.lookup_title(barcode)
-    if not guessed_title:
-        # UPCitemdb's trial tier is US-retail-centric and often misses
-        # European EAN-13 movie barcodes — Discogs' community-catalogued
-        # database has better international DVD/Blu-ray coverage.
-        guessed_title = await discogs_client.lookup_title(barcode)
-    if not guessed_title:
-        # Third fallback, added for Nordic/Danish DVD/Blu-ray barcodes that
-        # neither of the above two typically catalogue (BUGS.md #32).
-        guessed_title = await upcdatabase_client.lookup_title(barcode)
-    if not guessed_title:
-        # Fourth and last fallback (feature #76) — Jan's own paid account,
-        # tried for the same Nordic/Danish coverage reason as UPCDatabase.org.
-        guessed_title = await ean_search_client.lookup_title(barcode)
-    return guessed_title
+async def _lookup_title(barcode: str) -> tuple[str | None, str | None]:
+    """Tries each source in the admin's configured order (feature #77),
+    stopping at the first match. Returns (title, source_name) — source_name
+    is None alongside a None title, and is one of BARCODE_SOURCES' keys
+    otherwise, used to record which source resolved this barcode (#77's
+    Statistics breakdown)."""
+    for name, client in _ordered_sources():
+        title = await client.lookup_title(barcode)
+        if title:
+            return title, name
+    return None, None
 
 
 async def lookup_by_barcode(barcode: str) -> dict:
     barcode = barcode.strip()
-    guessed_title = await _lookup_title(barcode)
+    guessed_title, barcode_source = await _lookup_title(barcode)
 
     if not guessed_title:
         alternate = _alternate_upc_ean_form(barcode)
         if alternate:
-            guessed_title = await _lookup_title(alternate)
+            guessed_title, barcode_source = await _lookup_title(alternate)
 
     if not guessed_title:
         # BUGS.md #34 — this WARNING is the one clear line to grep for when
@@ -64,7 +79,7 @@ async def lookup_by_barcode(barcode: str) -> dict:
             "UPCDatabase.org, EAN-Search.org, inkl. alternativ UPC/EAN-form)",
             barcode,
         )
-        return {"guessed_title": None, "candidates": []}
+        return {"guessed_title": None, "barcode_source": None, "candidates": []}
 
     # Searches both TMDb databases (feature #49) — a scanned barcode's
     # product could be either. Movies are listed first (the original,
@@ -83,4 +98,8 @@ async def lookup_by_barcode(barcode: str) -> dict:
             barcode,
             guessed_title,
         )
-    return {"guessed_title": guessed_title, "candidates": candidates}
+    return {
+        "guessed_title": guessed_title,
+        "barcode_source": barcode_source,
+        "candidates": candidates,
+    }

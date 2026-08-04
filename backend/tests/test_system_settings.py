@@ -145,6 +145,47 @@ async def test_plex_server_url_is_returned_with_its_actual_value(client, monkeyp
     assert get_response.json()["plex_server_url"] == "http://192.168.1.50:32400"
 
 
+# Feature #77 — primær stregkode-kilde.
+
+
+async def test_primary_barcode_source_defaults_to_upcitemdb(client):
+    response = await client.get("/api/settings/system")
+    assert response.json()["primary_barcode_source"] == "upcitemdb"
+
+
+async def test_primary_barcode_source_is_returned_with_its_actual_value(client, monkeypatch):
+    """Not a secret — should round-trip as plain text, like plex_server_url."""
+    response = await client.patch(
+        "/api/settings/system", json={"primary_barcode_source": "upcdatabase"}
+    )
+    assert response.status_code == 200
+    assert response.json()["primary_barcode_source"] == "upcdatabase"
+
+    from app.core.config import settings
+
+    assert settings.primary_barcode_source == "upcdatabase"
+
+
+async def test_primary_barcode_source_rejects_unknown_value(client):
+    response = await client.patch(
+        "/api/settings/system", json={"primary_barcode_source": "not-a-real-source"}
+    )
+    assert response.status_code == 422
+
+
+async def test_clearing_primary_barcode_source_reverts_to_default(client, monkeypatch):
+    from app.core.config import ENV_DEFAULT_API_KEYS, settings
+
+    monkeypatch.setitem(ENV_DEFAULT_API_KEYS, "primary_barcode_source", "upcitemdb")
+
+    await client.patch("/api/settings/system", json={"primary_barcode_source": "discogs"})
+    assert settings.primary_barcode_source == "discogs"
+
+    response = await client.patch("/api/settings/system", json={"primary_barcode_source": ""})
+    assert response.status_code == 200
+    assert settings.primary_barcode_source == "upcitemdb"
+
+
 # Feature #75 — "Test forbindelse".
 
 

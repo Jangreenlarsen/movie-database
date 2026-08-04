@@ -24,12 +24,13 @@ from app.models.movie import (
     Movie,
     MovieCreate,
     MoviePage,
+    MoviePreview,
     MovieUpdate,
     NamedCount,
     TmdbSyncResult,
 )
 from app.models.settings import SerialNumberConfig, SerialNumberConfigUpdate
-from app.repositories import movie_repository
+from app.repositories import movie_repository, tv_show_repository
 from app.services import tag_service
 
 
@@ -39,6 +40,7 @@ def _to_model(document: dict) -> Movie:
         serial_number=document.get("serial_number"),
         tmdb_id=document.get("tmdb_id"),
         barcode=document.get("barcode"),
+        barcode_source=document.get("barcode_source"),
         title=document["title"],
         year=document.get("year"),
         poster_url=document.get("poster_url"),
@@ -77,6 +79,30 @@ async def _resolve_rating(details: dict) -> float | None:
     entirely."""
     imdb_rating = await omdb_client.get_imdb_rating(details.get("imdb_id"))
     return imdb_rating if imdb_rating is not None else details["rating"]
+
+
+async def preview_from_tmdb(tmdb_id: int) -> MoviePreview:
+    """Feature #79 — samme TMDb-opslag+rating-beregning som `create_movie`
+    selv bruger, men rent læsende: intet oprettes. Lader scan-flowet vise
+    den fulde rediger-boks for en kandidat, før brugeren har bekræftet
+    noget som helst."""
+    details = await tmdb_client.get_movie_details(tmdb_id)
+    return MoviePreview(
+        tmdb_id=details["tmdb_id"],
+        title=details["title"],
+        year=details["year"],
+        poster_url=details["poster_url"],
+        overview=details["overview"],
+        genres=details["genres"],
+        cast=details["cast"],
+        director=details["director"],
+        rating=await _resolve_rating(details),
+        runtime=details["runtime"],
+        imdb_url=details["imdb_url"],
+        trailer_url=details["trailer_url"],
+        collection_id=details["collection_id"],
+        collection_name=details["collection_name"],
+    )
 
 
 async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registered_by: str) -> Movie:
@@ -143,6 +169,10 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registere
     trimmed_barcode = payload.barcode.strip() if payload.barcode else ""
     if trimmed_barcode:
         document["barcode"] = trimmed_barcode
+    # Feature #77 — samme "udelad frem for null"-mønster som barcode selv:
+    # kun ægte scan-matches sætter dette, aldrig manuel/tmdb-direkte oprettelse.
+    if payload.barcode_source:
+        document["barcode_source"] = payload.barcode_source
 
     try:
         created = await movie_repository.insert(db, document)
@@ -247,6 +277,16 @@ async def get_collection_info(db: AsyncIOMotorDatabase, collection_id: int) -> C
     )
 
 
+# Feature #77 — samme fire nøgler som scan_service.BARCODE_SOURCES, mappet
+# til de menneskelæsbare navne Statistik-siden viser.
+_BARCODE_SOURCE_LABELS = {
+    "upcitemdb": "UPCitemdb",
+    "discogs": "Discogs",
+    "upcdatabase": "UPCDatabase.org",
+    "ean_search": "EAN-Search.org",
+}
+
+
 async def get_collection_stats(db: AsyncIOMotorDatabase) -> CollectionStats:
     """Aggregated statistics over the whole library (wishlist excluded) —
     computed in Python over a single find() rather than a Mongo aggregation
@@ -255,6 +295,8 @@ async def get_collection_stats(db: AsyncIOMotorDatabase) -> CollectionStats:
     notes on mongomock's sparse-index/arrayFilters inconsistencies — the
     same caution applies to untested pipeline stages)."""
     documents = await movie_repository.find_all_library_movies(db)
+    # Feature #77 — dækker film+TV, se find_all_library_tv_shows.
+    tv_documents = await tv_show_repository.find_all_library_tv_shows(db)
 
     total_movies = len(documents)
     watched_count = sum(1 for doc in documents if doc.get("watched"))
@@ -264,6 +306,7 @@ async def get_collection_stats(db: AsyncIOMotorDatabase) -> CollectionStats:
     format_counter: Counter[str] = Counter()
     director_counter: Counter[str] = Counter()
     actor_counter: Counter[str] = Counter()
+    barcode_source_counter: Counter[str] = Counter()
 
     for doc in documents:
         genre_counter.update(doc.get("genres", []))
@@ -274,6 +317,12 @@ async def get_collection_stats(db: AsyncIOMotorDatabase) -> CollectionStats:
             format_counter[doc["format"]] += 1
         if doc.get("director"):
             director_counter[doc["director"]] += 1
+        if doc.get("barcode_source"):
+            barcode_source_counter[doc["barcode_source"]] += 1
+
+    for doc in tv_documents:
+        if doc.get("barcode_source"):
+            barcode_source_counter[doc["barcode_source"]] += 1
 
     return CollectionStats(
         total_movies=total_movies,
@@ -297,6 +346,10 @@ async def get_collection_stats(db: AsyncIOMotorDatabase) -> CollectionStats:
         ],
         top_actors=[
             NamedCount(name=name, count=count) for name, count in actor_counter.most_common(10)
+        ],
+        barcode_source_breakdown=[
+            NamedCount(name=_BARCODE_SOURCE_LABELS.get(key, key), count=count)
+            for key, count in sorted(barcode_source_counter.items(), key=lambda item: -item[1])
         ],
     )
 

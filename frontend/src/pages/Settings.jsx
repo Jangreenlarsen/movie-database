@@ -3,9 +3,27 @@ import { api } from "../api/client";
 import Chip from "../components/Chip";
 import "./Settings.css";
 
+// Feature #78 — kategoriseret undermenu i stedet for én lang scroll.
+// "Brugere" står bevidst først (Jans bekræftelse 2026-08-04). Et faneblad
+// vises kun hvis mindst én af dets sektioner rent faktisk er synlig for den
+// aktuelle rolle — de enkelte sektioners egen isAdmin/isGuest-gating
+// bevares uændret nedenfor som et ekstra sikkerhedslag.
+function settingsTabs(isAdmin, isGuest) {
+  return [
+    { id: "brugere", label: "Brugere", visible: isAdmin },
+    { id: "konto", label: "Konto", visible: true },
+    { id: "bibliotek", label: "Bibliotek", visible: !isGuest },
+    { id: "backup", label: "Backup & gendannelse", visible: isAdmin },
+    { id: "noegler", label: "Eksterne API-nøgler", visible: isAdmin },
+    { id: "drift", label: "Drift", visible: isAdmin },
+  ].filter((tab) => tab.visible);
+}
+
 export default function Settings({ user, onSettingsChanged }) {
   const isAdmin = user.role === "admin";
   const isGuest = user.role === "guest";
+  const tabs = settingsTabs(isAdmin, isGuest);
+  const [activeTab, setActiveTab] = useState(tabs[0]?.id ?? "konto");
 
   return (
     <section>
@@ -13,38 +31,74 @@ export default function Settings({ user, onSettingsChanged }) {
         <h1>Indstillinger</h1>
       </div>
 
-      <AccountSection user={user} />
-      <CardSizeSection cardSize={user.settings.card_size} onSettingsChanged={onSettingsChanged} />
-      {/* Feature #72: begge rører kun film-/TV-data en guest ikke må
-          redigere/slette alligevel — ikke relevante at vise. */}
-      {!isGuest && <SerialNumberSection isAdmin={isAdmin} />}
-      {!isGuest && <DeletedMoviesSection />}
-      {isAdmin && (
-        <TmdbSyncSection
-          title="TMDb-synkronisering (film)"
-          description="Henter frisk metadata (titel, år, poster, plot, genrer, medvirkende, rating, spilletid) fra TMDb for alle film der er oprettet via TMDb, og opdaterer det lokalt gemte. Dine egne oplysninger (tags, format, lyd-type, lokation, ejer, serienummer) rører den ikke. Kan tage et øjeblik afhængig af antal film."
-          buttonLabel="Opdatér alle film fra TMDb"
-          itemLabel="film"
-          syncFn={api.syncMoviesFromTmdb}
-        />
+      <div className="tabs" style={{ marginBottom: 20 }}>
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={activeTab === tab.id ? "active" : ""}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "brugere" && isAdmin && (
+        <>
+          <UsersSection currentUserId={user.id} />
+          <AuditLogSection />
+        </>
       )}
-      {isAdmin && (
-        <TmdbSyncSection
-          title="TMDb-synkronisering (TV-serier)"
-          description="Henter frisk metadata (navn, år, status, poster, plot, genrer, medvirkende, rating, sæson-/episodetal) fra TMDb for alle TV-serier der er oprettet via TMDb. Dine egne oplysninger (tags, format, lokation, ejer, serienummer) samt hvilke sæsoner du ejer og hvilke episoder du har set rører den ikke."
-          buttonLabel="Opdatér alle TV-serier fra TMDb"
-          itemLabel="TV-serier"
-          syncFn={api.syncTvShowsFromTmdb}
-        />
+
+      {activeTab === "konto" && (
+        <>
+          <AccountSection user={user} />
+          <CardSizeSection cardSize={user.settings.card_size} onSettingsChanged={onSettingsChanged} />
+        </>
       )}
-      {isAdmin && <LibraryBackupSection />}
-      {isAdmin && <SystemBackupSection />}
-      {isAdmin && <DatabaseResetSection />}
-      {isAdmin && <SystemSettingsSection />}
-      {isAdmin && <DeploySection />}
-      {isAdmin && <TlsCertSection />}
-      {isAdmin && <UsersSection currentUserId={user.id} />}
-      {isAdmin && <AuditLogSection />}
+
+      {activeTab === "bibliotek" && !isGuest && (
+        <>
+          <SerialNumberSection isAdmin={isAdmin} />
+          <DeletedMoviesSection />
+          {isAdmin && (
+            <TmdbSyncSection
+              title="TMDb-synkronisering (film)"
+              description="Henter frisk metadata (titel, år, poster, plot, genrer, medvirkende, rating, spilletid) fra TMDb for alle film der er oprettet via TMDb, og opdaterer det lokalt gemte. Dine egne oplysninger (tags, format, lyd-type, lokation, ejer, serienummer) rører den ikke. Kan tage et øjeblik afhængig af antal film."
+              buttonLabel="Opdatér alle film fra TMDb"
+              itemLabel="film"
+              syncFn={api.syncMoviesFromTmdb}
+            />
+          )}
+          {isAdmin && (
+            <TmdbSyncSection
+              title="TMDb-synkronisering (TV-serier)"
+              description="Henter frisk metadata (navn, år, status, poster, plot, genrer, medvirkende, rating, sæson-/episodetal) fra TMDb for alle TV-serier der er oprettet via TMDb. Dine egne oplysninger (tags, format, lokation, ejer, serienummer) samt hvilke sæsoner du ejer og hvilke episoder du har set rører den ikke."
+              buttonLabel="Opdatér alle TV-serier fra TMDb"
+              itemLabel="TV-serier"
+              syncFn={api.syncTvShowsFromTmdb}
+            />
+          )}
+        </>
+      )}
+
+      {activeTab === "backup" && isAdmin && (
+        <>
+          <LibraryBackupSection />
+          <SystemBackupSection />
+          <DatabaseResetSection />
+        </>
+      )}
+
+      {activeTab === "noegler" && isAdmin && <SystemSettingsSection />}
+
+      {activeTab === "drift" && isAdmin && (
+        <>
+          <DeploySection />
+          <TlsCertSection />
+        </>
+      )}
     </section>
   );
 }
@@ -951,6 +1005,10 @@ function SystemSettingsSection() {
 
       {loadStatus === "ready" && statusData && (
         <>
+          <PrimaryBarcodeSourceRow
+            currentValue={statusData.primary_barcode_source}
+            onSaved={load}
+          />
           <ApiKeyRow
             label="TMDb API-token"
             field="tmdb_api_token"
@@ -1096,6 +1154,49 @@ function AuditLogSection() {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+const BARCODE_SOURCE_LABELS = {
+  upcitemdb: "UPCitemdb",
+  discogs: "Discogs",
+  upcdatabase: "UPCDatabase.org",
+  ean_search: "EAN-Search.org",
+};
+
+function PrimaryBarcodeSourceRow({ currentValue, onSaved }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function handleChange(event) {
+    const value = event.target.value;
+    setSaving(true);
+    setError(null);
+    try {
+      await api.updateSystemSettings({ primary_barcode_source: value });
+      onSaved();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="serial-config-form" style={{ marginBottom: 16 }}>
+      <label>
+        Primær stregkode-kilde —{" "}
+        <span className="muted">prøves først ved scan, de øvrige tre som fallback bagefter</span>
+        <select value={currentValue ?? "upcitemdb"} onChange={handleChange} disabled={saving}>
+          {Object.entries(BARCODE_SOURCE_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      {error && <div className="banner banner-error">{error}</div>}
     </div>
   );
 }

@@ -117,6 +117,16 @@
   max-width: 320px;
 }
 
+.datetime24-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.datetime24-input select {
+  width: 62px;
+}
+
 .cinema-requests {
   display: flex;
   flex-direction: column;

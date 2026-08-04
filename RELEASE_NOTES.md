@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.57.1 (build 0077) — 2026-08-04
+
+- Tidspunkt-feltet ved planlægning i Voldby BIO viser nu altid 24-timers ur, uanset hvad din computer/telefon ellers er indstillet til.
+
 ## v0.57.0 (build 0076) — 2026-08-04
 
 - Indstillinger → Brugere kan nu deaktivere/genaktivere en bruger og slette en bruger permanent. Kan ikke bruges på din egen konto eller den sidste tilbageværende admin.

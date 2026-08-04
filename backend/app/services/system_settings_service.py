@@ -1,10 +1,29 @@
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import ENV_DEFAULT_API_KEYS, settings
-from app.models.settings import ApiKeyStatus, SystemSettingsStatus, SystemSettingsUpdate
+from app.integrations import discogs_client, ean_search_client, omdb_client, tmdb_client, upcdatabase_client
+from app.models.settings import (
+    ApiKeyStatus,
+    ApiKeyTestResult,
+    SystemSettingsStatus,
+    SystemSettingsUpdate,
+    TestableApiKey,
+)
 from app.repositories import system_settings_repository
 
 KEYS = system_settings_repository.OVERRIDABLE_KEYS
+
+# Feature #75 — hver testbar nøgle mappet til sin integrations-klient (ikke
+# funktionen selv — et modul-reference gør at .test_connection() slås op
+# friskt ved hvert kald, så fx test-monkeypatching af klientens funktion
+# efter modulets indlæsning stadig respekteres).
+_TEST_CONNECTION_CLIENTS = {
+    "tmdb_api_token": tmdb_client,
+    "discogs_token": discogs_client,
+    "upcdatabase_token": upcdatabase_client,
+    "ean_search_api_key": ean_search_client,
+    "omdb_api_key": omdb_client,
+}
 
 # Rendered as a masked ApiKeyStatus (configured/source only) in GET responses
 # — every overridable key except plex_server_url, which isn't a secret.
@@ -55,3 +74,13 @@ async def update_settings(
         setattr(settings, key, value if value != "" else ENV_DEFAULT_API_KEYS.get(key, ""))
 
     return await get_status(db)
+
+
+async def test_connection(key: TestableApiKey) -> ApiKeyTestResult:
+    """Feature #75 — laver et rigtigt, minimalt testkald mod den aktuelt
+    aktive nøgle og rapporterer om den faktisk virker, ikke kun om den er
+    gemt. Opstod af at en gemt-men-forkert nøgle (fx tastet i forkert felt,
+    eller udløbet) ellers er usynlig indtil et helt scan/synk fejler i
+    praksis — se BUGS.md #34/#36-tråden."""
+    ok, message = await _TEST_CONNECTION_CLIENTS[key].test_connection()
+    return ApiKeyTestResult(ok=ok, message=message)

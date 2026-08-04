@@ -48,3 +48,29 @@ async def get_imdb_rating(imdb_id: str | None) -> float | None:
         return float(raw_rating)
     except ValueError:
         return None
+
+
+# Shawshank Redemption — en kendt, stabil IMDb-id, kun brugt til at bekræfte
+# at nøglen accepteres (feature #75).
+_TEST_IMDB_ID = "tt0111161"
+
+
+async def test_connection() -> tuple[bool, str]:
+    if not settings.omdb_api_key:
+        return False, "Ingen OMDb-nøgle sat"
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                BASE_URL, params={"i": _TEST_IMDB_ID, "apikey": settings.omdb_api_key}
+            )
+    except httpx.HTTPError as exc:
+        return False, f"Netværksfejl: {exc}"
+
+    if response.status_code != 200:
+        return False, f"Uventet svar (HTTP {response.status_code})"
+
+    data = response.json()
+    if data.get("Response") == "False":
+        return False, f"OMDb afviste nøglen: {data.get('Error')}"
+    return True, "Virker"

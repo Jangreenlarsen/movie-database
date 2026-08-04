@@ -958,12 +958,6 @@ function SystemSettingsSection() {
             onSaved={load}
           />
           <ApiKeyRow
-            label="UPC API-nøgle"
-            field="upc_api_key"
-            status={statusData.upc_api_key}
-            onSaved={load}
-          />
-          <ApiKeyRow
             label="Discogs-token"
             field="discogs_token"
             status={statusData.discogs_token}
@@ -973,6 +967,12 @@ function SystemSettingsSection() {
             label="UPCDatabase-token"
             field="upcdatabase_token"
             status={statusData.upcdatabase_token}
+            onSaved={load}
+          />
+          <ApiKeyRow
+            label="EAN-Search.org-token"
+            field="ean_search_api_key"
+            status={statusData.ean_search_api_key}
             onSaved={load}
           />
           <ApiKeyRow
@@ -993,6 +993,7 @@ function SystemSettingsSection() {
             field="plex_token"
             status={statusData.plex_token}
             onSaved={load}
+            testable={false}
           />
         </>
       )}
@@ -1124,16 +1125,19 @@ function PlainSettingRow({ label, field, hint, currentValue, onSaved }) {
   );
 }
 
-function ApiKeyRow({ label, field, status, onSaved }) {
+function ApiKeyRow({ label, field, status, onSaved, testable = true }) {
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
+  const [testStatus, setTestStatus] = useState("idle");
+  const [testResult, setTestResult] = useState(null);
 
   async function submit(newValue) {
     setSaving(true);
     setError(null);
     setSaved(false);
+    setTestResult(null);
     try {
       await api.updateSystemSettings({ [field]: newValue });
       setValue("");
@@ -1143,6 +1147,19 @@ function ApiKeyRow({ label, field, status, onSaved }) {
       setError(err.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function testConnection() {
+    setTestStatus("testing");
+    setTestResult(null);
+    try {
+      const result = await api.testSystemSetting(field);
+      setTestResult(result);
+    } catch (err) {
+      setTestResult({ ok: false, message: err.message });
+    } finally {
+      setTestStatus("idle");
     }
   }
 
@@ -1175,6 +1192,11 @@ function ApiKeyRow({ label, field, status, onSaved }) {
 
       {error && <div className="banner banner-error">{error}</div>}
       {saved && <div className="banner banner-info">Gemt!</div>}
+      {testResult && (
+        <div className={`banner ${testResult.ok ? "banner-info" : "banner-error"}`}>
+          {testResult.ok ? "✓" : "✗"} {testResult.message}
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 8 }}>
         <button type="submit" className="btn btn-primary" disabled={saving || !value}>
@@ -1183,6 +1205,16 @@ function ApiKeyRow({ label, field, status, onSaved }) {
         {status.source === "custom" && (
           <button type="button" className="btn" onClick={() => submit("")} disabled={saving}>
             Ryd (brug .env igen)
+          </button>
+        )}
+        {testable && (
+          <button
+            type="button"
+            className="btn"
+            onClick={testConnection}
+            disabled={testStatus === "testing" || !status.configured}
+          >
+            {testStatus === "testing" ? "Tester..." : "Test forbindelse"}
           </button>
         )}
       </div>

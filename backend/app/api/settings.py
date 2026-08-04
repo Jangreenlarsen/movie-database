@@ -4,10 +4,12 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.api.deps import get_current_user, require_admin
 from app.db import get_database
 from app.models.settings import (
+    ApiKeyTestResult,
     SerialNumberConfig,
     SerialNumberConfigUpdate,
     SystemSettingsStatus,
     SystemSettingsUpdate,
+    TestableApiKey,
 )
 from app.services import audit_log_service, movie_service, system_settings_service
 
@@ -51,3 +53,15 @@ async def update_system_settings(
             db, current_user["username"], "system_settings.updated", ", ".join(changed_keys)
         )
     return result
+
+
+@router.post(
+    "/system/test/{key}",
+    response_model=ApiKeyTestResult,
+    dependencies=[Depends(require_admin)],
+)
+async def test_system_setting(key: TestableApiKey):
+    """Feature #75 — `key` er begrænset til `TestableApiKey`s Literal, så
+    FastAPI selv afviser (422) ethvert andet felt-navn end de fem der
+    faktisk har et testkald bag sig."""
+    return await system_settings_service.test_connection(key)

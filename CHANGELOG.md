@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.57.1 build 0077] — 2026-08-04 — fix: 24-timers ur i Voldby BIO-planlægning (BUGS.md #38)
+
+Voldby BIOs planlægnings-tidspunkt-felt (`<input type="datetime-local">`, 3 steder i `Cinema.jsx`) viste AM/PM i stedet for 24-timers ur ved indtastning — en browser/OS-locale-afhængig gengivelse af den native picker, som HTML ikke har nogen attribut til at tvinge til 24-timers format. Erstattet alle tre med en ny `DateTime24Input`-komponent (dato-felt + to hånd-skrevne time/minut-dropdowns, 00-23/00-59) — da vi selv skriver etiketterne, er visningen 24-timers uanset locale. Samme værdiformat bevaret, ingen backend-ændring.
+
 ## [0.57.0 build 0076] — 2026-08-04 — feature: deaktivér/genaktivér + slet bruger (#80)
 
 Indstillinger → Brugere kan nu **deaktivere** en aktiv bruger (ny `disabled`-status, blokerer login/API præcis som `pending`/`rejected`, men med en tydelig anden fejlbesked så det ikke forveksles med en afvist registrering) og senere **genaktivere** dem — samt **slette** en bruger permanent (ingen soft-delete/arkiv; `registered_by`/`owner`/audit-log gemmer kun brugernavnet som tekst, så intet forældreløses).

@@ -4,6 +4,56 @@ import CinemaShowcase from "../components/CinemaShowcase";
 import { formatDateHeading, formatTime, groupByDate } from "../utils/cinemaFormat";
 import "./Cinema.css";
 
+const HOURS = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0"));
+const MINUTES = Array.from({ length: 60 }, (_, m) => String(m).padStart(2, "0"));
+
+// A plain `<input type="datetime-local">`'s time portion renders in
+// whatever 12h/AM-PM-or-24h format the browser/OS locale happens to use —
+// there's no HTML attribute to force 24-hour display, and Jan's Windows
+// locale shows AM/PM (2026-08-04). Hour/minute `<select>`s render exactly
+// the labels we write ourselves, so they're 24-hour regardless of locale.
+// `value`/`onChange` still speak the same "YYYY-MM-DDTHH:MM" string the
+// rest of this file (and the API) already uses for `scheduled_at`.
+function DateTime24Input({ value, onChange }) {
+  const [datePart, timePart] = value ? value.split("T") : ["", ""];
+  const [hour, minute] = timePart ? timePart.split(":") : ["", ""];
+
+  function emit(nextDate, nextHour, nextMinute) {
+    onChange(nextDate && nextHour && nextMinute ? `${nextDate}T${nextHour}:${nextMinute}` : "");
+  }
+
+  return (
+    <span className="datetime24-input">
+      <input
+        type="date"
+        value={datePart}
+        onChange={(e) => emit(e.target.value, hour || "00", minute || "00")}
+      />
+      <select value={hour} onChange={(e) => emit(datePart, e.target.value, minute || "00")}>
+        <option value="" disabled>
+          Time
+        </option>
+        {HOURS.map((h) => (
+          <option key={h} value={h}>
+            {h}
+          </option>
+        ))}
+      </select>
+      <span aria-hidden="true">:</span>
+      <select value={minute} onChange={(e) => emit(datePart, hour || "00", e.target.value)}>
+        <option value="" disabled>
+          Min
+        </option>
+        {MINUTES.map((m) => (
+          <option key={m} value={m}>
+            {m}
+          </option>
+        ))}
+      </select>
+    </span>
+  );
+}
+
 export default function Cinema({ user }) {
   const isAdmin = user.role === "admin";
   const [screenings, setScreenings] = useState([]);
@@ -157,11 +207,7 @@ function ScreeningCard({ screening, isAdmin, onChanged }) {
 
         {isAdmin && editing && (
           <div className="cinema-card-admin-actions cinema-card-edit-form">
-            <input
-              type="datetime-local"
-              value={scheduledAt}
-              onChange={(e) => setScheduledAt(e.target.value)}
-            />
+            <DateTime24Input value={scheduledAt} onChange={setScheduledAt} />
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -297,11 +343,7 @@ function RequestRow({ request, onChanged }) {
         </div>
       ) : (
         <div className="cinema-request-actions cinema-card-edit-form">
-          <input
-            type="datetime-local"
-            value={scheduledAt}
-            onChange={(e) => setScheduledAt(e.target.value)}
-          />
+          <DateTime24Input value={scheduledAt} onChange={setScheduledAt} />
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (valgfri)" />
           <button type="button" className="btn btn-primary" onClick={schedule} disabled={!scheduledAt || busy}>
             {busy ? "Planlægger..." : "Bekræft"}
@@ -399,11 +441,7 @@ function DirectAddSection({ onChanged }) {
       {selected && (
         <div className="cinema-card-edit-form" style={{ marginTop: 10 }}>
           <strong>{selected.title}</strong>
-          <input
-            type="datetime-local"
-            value={scheduledAt}
-            onChange={(e) => setScheduledAt(e.target.value)}
-          />
+          <DateTime24Input value={scheduledAt} onChange={setScheduledAt} />
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (valgfri)" />
           <button
             type="button"

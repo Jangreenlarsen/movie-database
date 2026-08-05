@@ -29,6 +29,7 @@ from app.core.errors import (
     CannotTargetSelfError,
     CertKeyMismatchError,
     DeployScriptNotFoundError,
+    InvalidBackupError,
     DuplicateBarcodeError,
     InvalidCredentialsError,
     InvalidUserStatusTransitionError,
@@ -208,6 +209,11 @@ async def user_not_found_handler(request: Request, exc: UserNotFoundError) -> JS
 @app.exception_handler(LastAdminError)
 async def last_admin_handler(request: Request, exc: LastAdminError) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(InvalidBackupError)
+async def invalid_backup_handler(request: Request, exc: InvalidBackupError) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
 @app.exception_handler(DeployScriptNotFoundError)

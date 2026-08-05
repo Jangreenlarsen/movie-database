@@ -90,29 +90,38 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
+  const [settingsError, setSettingsError] = useState(null);
+
+  // BUGS.md #45 — see the identical helper in Library.jsx: a failed settings
+  // save must be shown, not swallowed, since the UI reflects the change from
+  // local state regardless of whether it was actually persisted.
+  function persistSettings(patch) {
+    setSettingsError(null);
+    return api
+      .updateMySettings(patch)
+      .then(onSettingsChanged)
+      .catch((err) => setSettingsError(err.message));
+  }
 
   function persistVisibleFields(nextVisible) {
-    api
-      .updateMySettings({
-        tv_visible_fields: {
-          year: nextVisible.year,
-          tags: nextVisible.tags,
-          format: nextVisible.format,
-          audio_types: nextVisible.audioTypes,
-          media_type: nextVisible.mediaType,
-          rating: nextVisible.rating,
-        },
-      })
-      .then(onSettingsChanged)
-      .catch(() => {});
+    persistSettings({
+      tv_visible_fields: {
+        year: nextVisible.year,
+        tags: nextVisible.tags,
+        format: nextVisible.format,
+        audio_types: nextVisible.audioTypes,
+        media_type: nextVisible.mediaType,
+        rating: nextVisible.rating,
+      },
+    });
   }
 
   function persistSortLevels(nextLevels) {
-    api.updateMySettings({ tv_sort_levels: nextLevels }).then(onSettingsChanged).catch(() => {});
+    persistSettings({ tv_sort_levels: nextLevels });
   }
 
   function persistSortPresets(nextPresets) {
-    api.updateMySettings({ tv_sort_presets: nextPresets }).then(onSettingsChanged).catch(() => {});
+    persistSettings({ tv_sort_presets: nextPresets });
   }
 
   useEffect(() => {
@@ -180,7 +189,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
   ]);
 
   function persistPageSize(nextPageSize) {
-    api.updateMySettings({ page_size: nextPageSize }).then(onSettingsChanged).catch(() => {});
+    persistSettings({ page_size: nextPageSize });
   }
 
   function refresh() {
@@ -544,6 +553,12 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
           {Array.from({ length: 10 }).map((_, i) => (
             <div key={i} className="skeleton-card" />
           ))}
+        </div>
+      )}
+
+      {settingsError && (
+        <div className="banner banner-error">
+          Dine visningsindstillinger blev ikke gemt: {settingsError}
         </div>
       )}
 

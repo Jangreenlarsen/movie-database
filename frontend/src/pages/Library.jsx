@@ -102,30 +102,42 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
+  const [settingsError, setSettingsError] = useState(null);
+
+  // BUGS.md #45 — these saves used to end in a bare `.catch(() => {})`. The
+  // UI updates from local state either way, so a failed save (session
+  // expired, backend down) left the user believing their named sort preset
+  // or page size had been stored — the loss only surfaced on next reload.
+  // Every settings write now goes through here so the failure is actually
+  // shown (CLAUDE.md regel 16, "Fejlbeskeder til brugeren").
+  function persistSettings(patch) {
+    setSettingsError(null);
+    return api
+      .updateMySettings(patch)
+      .then(onSettingsChanged)
+      .catch((err) => setSettingsError(err.message));
+  }
 
   function persistVisibleFields(nextVisible) {
-    api
-      .updateMySettings({
-        visible_fields: {
-          year: nextVisible.year,
-          tags: nextVisible.tags,
-          format: nextVisible.format,
-          audio_types: nextVisible.audioTypes,
-          media_type: nextVisible.mediaType,
-          rating: nextVisible.rating,
-          runtime: nextVisible.runtime,
-        },
-      })
-      .then(onSettingsChanged)
-      .catch(() => {});
+    persistSettings({
+      visible_fields: {
+        year: nextVisible.year,
+        tags: nextVisible.tags,
+        format: nextVisible.format,
+        audio_types: nextVisible.audioTypes,
+        media_type: nextVisible.mediaType,
+        rating: nextVisible.rating,
+        runtime: nextVisible.runtime,
+      },
+    });
   }
 
   function persistSortLevels(nextLevels) {
-    api.updateMySettings({ sort_levels: nextLevels }).then(onSettingsChanged).catch(() => {});
+    persistSettings({ sort_levels: nextLevels });
   }
 
   function persistSortPresets(nextPresets) {
-    api.updateMySettings({ sort_presets: nextPresets }).then(onSettingsChanged).catch(() => {});
+    persistSettings({ sort_presets: nextPresets });
   }
 
   useEffect(() => {
@@ -199,7 +211,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
   ]);
 
   function persistPageSize(nextPageSize) {
-    api.updateMySettings({ page_size: nextPageSize }).then(onSettingsChanged).catch(() => {});
+    persistSettings({ page_size: nextPageSize });
   }
 
   function refresh() {
@@ -583,6 +595,12 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
           <button type="button" className="btn" onClick={() => setPersonFilter(null)}>
             Ryd ✕
           </button>
+        </div>
+      )}
+
+      {settingsError && (
+        <div className="banner banner-error">
+          Dine visningsindstillinger blev ikke gemt: {settingsError}
         </div>
       )}
 

@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.errors import InvalidBackupError
 from app.core.mongo_json import from_json_safe, to_json_safe
 from app.core.version_info import VERSION_INFO
 from app.models.backup import DatabaseResetResult, SystemBackup, SystemRestoreResult
@@ -59,12 +60,41 @@ async def _replace_raw_collection(db: AsyncIOMotorDatabase, name: str, documents
         await db[name].insert_many(documents)
 
 
+def _assert_restorable(backup: SystemBackup) -> None:
+    """BUGS.md #41 — a restore is delete-everything-then-insert, so an
+    payload that merely *parses* is not enough: every collection field on
+    `SystemBackup` defaults to an empty list, which meant a truncated,
+    corrupted or wrong-file upload passed validation and then silently
+    destroyed every collection, reporting 200 OK with zero counts.
+
+    Requiring at least one active admin is the invariant that matters:
+    it rejects both the entirely-empty payload and the subtler case of a
+    users list containing only pending/rejected/disabled accounts, either of
+    which would leave nobody able to administer (or undo) the restore. It
+    never rejects a genuine backup — any real snapshot necessarily contains
+    the active admin who took it. An empty *library* stays perfectly legal;
+    restoring a backup made before any films were added is a valid thing to
+    want. Raised before the first delete, so a rejected restore is a no-op."""
+    has_active_admin = any(
+        doc.get("role") == "admin" and doc.get("status", "active") == "active"
+        for doc in backup.users
+    )
+    if not has_active_admin:
+        raise InvalidBackupError(
+            "Filen indeholder ingen aktiv admin-bruger og ser derfor ikke ud til at være "
+            "en gyldig system-backup. Gendannelsen er afbrudt, og intet er slettet — "
+            "kontrollér at du valgte den rigtige fil, og at den ikke er beskadiget."
+        )
+
+
 async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> SystemRestoreResult:
     """Wholesale-replaces every included collection with the backup's
     contents. Not transactional (standalone MongoDB, no replica set) — a
     failure partway through leaves some collections restored and others
     not; processed in a fixed order so a partial failure is at least
     predictable. `system_settings` is untouched (see `create_backup`)."""
+    _assert_restorable(backup)
+
     movies = [from_json_safe(doc) for doc in backup.movies]
     tv_shows = [from_json_safe(doc) for doc in backup.tv_shows]
     deleted_movies = [from_json_safe(doc) for doc in backup.deleted_movies]

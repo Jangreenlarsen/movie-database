@@ -137,6 +137,19 @@ class LastAdminError(Exception):
         super().__init__("Cannot remove the last remaining admin")
 
 
+class InvalidBackupError(Exception):
+    """BUGS.md #41 — refuses a restore payload that would leave the system
+    with no admin able to log in. Every collection list on `SystemBackup`
+    has an empty-list default, so a truncated, corrupt or simply wrong file
+    used to validate cleanly and then wipe every collection (restore is
+    delete-all-then-insert), returning 200 OK with zero counts. Checked
+    *before* anything is deleted, so a rejected restore leaves the existing
+    data completely untouched."""
+
+    def __init__(self, reason: str):
+        super().__init__(reason)
+
+
 class DeployScriptNotFoundError(Exception):
     def __init__(self, path: str):
         self.path = path

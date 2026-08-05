@@ -7,6 +7,19 @@ COLLECTION = "screening_requests"
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     await db[COLLECTION].create_index([("media_kind", 1), ("movie_id", 1), ("tv_show_id", 1)])
     await db[COLLECTION].create_index("status")
+    # BUGS.md #44 — `request_screening` does find-then-insert, so two users
+    # requesting the same title at the same moment could both conclude "no
+    # request exists yet" and each create one. Scoped to `status: "pending"`
+    # via a partial filter on purpose: only ONE pending request per title may
+    # exist, while any number of previously declined/scheduled ones may
+    # coexist as history — a plain unique index would make declining a
+    # second request for a title collide with the first declined one.
+    await db[COLLECTION].create_index(
+        [("media_kind", 1), ("movie_id", 1), ("tv_show_id", 1)],
+        unique=True,
+        partialFilterExpression={"status": "pending"},
+        name="uniq_pending_request_per_title",
+    )
 
 
 async def find_pending_for_title(
@@ -57,6 +70,15 @@ async def find_all(db: AsyncIOMotorDatabase, status: str | None = None) -> list[
 async def find_pending_for_user(db: AsyncIOMotorDatabase, username: str) -> list[dict]:
     cursor = db[COLLECTION].find({"status": "pending", "requested_by.username": username})
     return await cursor.to_list(length=500)
+
+
+async def delete_for_title(db: AsyncIOMotorDatabase, media_kind: str, title_id: str) -> int:
+    """BUGS.md #43 — companion to `screening_repository.delete_for_title`:
+    removes every request pointing at a movie/TV show being deleted, so the
+    admin's pending list doesn't accumulate untitled ghost rows."""
+    field = "movie_id" if media_kind == "movie" else "tv_show_id"
+    result = await db[COLLECTION].delete_many({"media_kind": media_kind, field: title_id})
+    return result.deleted_count
 
 
 async def set_status(db: AsyncIOMotorDatabase, request_id: str, status: str, updated_at) -> dict | None:

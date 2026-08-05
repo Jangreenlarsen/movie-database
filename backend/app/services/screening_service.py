@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo.errors import DuplicateKeyError
 
 from app.core.errors import ScreeningNotFoundError, ScreeningRequestNotFoundError
 from app.models.screening import (
@@ -105,8 +106,21 @@ async def request_screening(
             "created_at": now,
             "updated_at": now,
         }
-        created = await screening_request_repository.insert(db, document)
-        return await _to_request_model(db, created)
+        try:
+            created = await screening_request_repository.insert(db, document)
+            return await _to_request_model(db, created)
+        except DuplicateKeyError:
+            # BUGS.md #44 — someone else created the pending request for this
+            # same title between our find and our insert. The new partial
+            # unique index turns that race into a catchable error instead of
+            # a silent duplicate; fall through and join the request that won,
+            # exactly as if it had existed all along (same recovery pattern
+            # as tag_service's fix for BUGS.md #7).
+            existing = await screening_request_repository.find_pending_for_title(
+                db, media_kind, movie_id, tv_show_id
+            )
+            if existing is None:
+                raise
 
     updated = await screening_request_repository.add_requester(
         db, str(existing["_id"]), {"username": username, "requested_at": now}
@@ -138,6 +152,20 @@ async def create_screening(
     db: AsyncIOMotorDatabase, payload: ScreeningCreate, created_by: str
 ) -> Screening:
     now = datetime.now(timezone.utc)
+
+    # BUGS.md #42 — validate the linked request BEFORE inserting anything.
+    # This used to run after the insert, so scheduling against a stale
+    # request_id (admin with two tabs open, or a request declined in the
+    # meantime) returned 404 while the screening had *already* been created
+    # and was live in the Voldby BIO programme. Pressing "Planlæg" again
+    # then produced a second one. Same "half-finished creation invites a
+    # duplicate" class as BUGS.md #28, which was fixed for TV-show creation
+    # but never generalised to here.
+    if payload.request_id:
+        existing = await screening_request_repository.find_by_id(db, payload.request_id)
+        if existing is None:
+            raise ScreeningRequestNotFoundError(payload.request_id)
+
     document = {
         "media_kind": payload.media_kind,
         "movie_id": payload.movie_id,
@@ -150,9 +178,6 @@ async def create_screening(
     created = await screening_repository.insert(db, document)
 
     if payload.request_id:
-        existing = await screening_request_repository.find_by_id(db, payload.request_id)
-        if existing is None:
-            raise ScreeningRequestNotFoundError(payload.request_id)
         await screening_request_repository.set_status(db, payload.request_id, "scheduled", now)
 
     return await _to_screening_model(db, created)

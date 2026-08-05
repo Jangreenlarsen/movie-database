@@ -30,7 +30,12 @@ from app.models.movie import (
     TmdbSyncResult,
 )
 from app.models.settings import SerialNumberConfig, SerialNumberConfigUpdate
-from app.repositories import movie_repository, tv_show_repository
+from app.repositories import (
+    movie_repository,
+    screening_repository,
+    screening_request_repository,
+    tv_show_repository,
+)
 from app.services import tag_service
 
 
@@ -463,6 +468,15 @@ async def delete_movie(db: AsyncIOMotorDatabase, movie_id: str, deleted_by: str)
     deleted = await movie_repository.delete(db, movie_id)
     if not deleted:
         raise MovieNotFoundError(movie_id)
+
+    # BUGS.md #43 — screenings/requests reference the movie by id and resolve
+    # their title/poster at read time, so leaving them behind turns them into
+    # untitled ghost cards in the Voldby BIO programme (including the public
+    # /bio page). `reset_library` already clears both collections for exactly
+    # this reason when wiping the whole library; single-item deletion has to
+    # do the same for its own title.
+    await screening_repository.delete_for_title(db, "movie", movie_id)
+    await screening_request_repository.delete_for_title(db, "movie", movie_id)
 
 
 async def list_deleted_movies(db: AsyncIOMotorDatabase) -> list[DeletedMovie]:

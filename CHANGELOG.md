@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.60.0 build 0082] — 2026-08-05 — feature: "Opret bruger" i login-badgen på /bio (FEATURES.md #83)
+
+`PublicLoginToggle` i `CinemaPublic.jsx` har fået samme to-tilstands-mønster som appens egen `Login.jsx`: badgen åbner stadig i log ind-tilstand, men et "Ingen konto? **Opret bruger**"-skift nederst i boksen veksler til registrering (og tilbage igen). En besøgende der har fået biograf-linket delt kan dermed oprette sin konto direkte fra `/bio` i stedet for først at skulle finde frem til appens forside. `autoComplete` skifter korrekt mellem `current-password`/`new-password`, og `minLength={8}` håndhæves i registreringstilstand som på forsiden.
+
+Nye konti er uændret underlagt feature #66's admin-godkendelse — begge tilstande navigerer til `/` bagefter, hvor `App.jsx` så viser enten appen (log ind) eller "afventer godkendelse"-siden (ny konto). Derfor bevidst samme redirect i begge tilfælde frem for en særskilt kvitteringsbesked i badgen. Live-verificeret med Playwright: skift til registreringstilstand, oprettelse af en konto der ikke er systemets første lander korrekt på godkendelses-siden, og en for kort adgangskode afvises uden at forlade `/bio`.
+
 ## [0.59.1 build 0081] — 2026-08-05 — fix: 7 fund fra to-fase-gennemgangen (BUGS.md #40-#46)
 
 Rettelser af alle syv fund fra kodekvalitets-gennemgangen samme dag. To af dem var kritiske.

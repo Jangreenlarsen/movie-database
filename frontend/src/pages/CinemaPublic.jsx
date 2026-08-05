@@ -78,17 +78,34 @@ export default function CinemaPublic() {
 // (samme feature #82's anden halvdel: login lander altid der).
 function PublicLoginToggle() {
   const [open, setOpen] = useState(false);
+  // Feature #83 — samme to-tilstands-mønster som appens egen Login.jsx, så
+  // en besøgende der har fået biograf-linket delt også kan oprette sin konto
+  // her i stedet for først at skulle finde appens forside.
+  const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  function switchMode(nextMode) {
+    setMode(nextMode);
+    setError(null);
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      await api.login(username, password);
+      if (mode === "login") {
+        await api.login(username, password);
+      } else {
+        // Nye konti er `pending` (feature #66) — App.jsx viser så
+        // "afventer godkendelse"-siden efter navigationen, præcis som når
+        // man registrerer fra forsiden. Derfor samme redirect i begge
+        // tilstande frem for en særskilt kvitteringsbesked her.
+        await api.register(username, password);
+      }
       window.location.assign("/");
     } catch (err) {
       setError(err.message);
@@ -126,7 +143,8 @@ function PublicLoginToggle() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            minLength={mode === "register" ? 8 : undefined}
             required
           />
         </label>
@@ -136,8 +154,31 @@ function PublicLoginToggle() {
             Annullér
           </button>
           <button type="submit" className="btn btn-primary" disabled={submitting}>
-            {submitting ? "Logger ind..." : "Log ind"}
+            {submitting
+              ? mode === "login"
+                ? "Logger ind..."
+                : "Opretter..."
+              : mode === "login"
+                ? "Log ind"
+                : "Opret bruger"}
           </button>
+        </div>
+        <div className="auth-switch">
+          {mode === "login" ? (
+            <>
+              Ingen konto?{" "}
+              <button type="button" onClick={() => switchMode("register")}>
+                Opret bruger
+              </button>
+            </>
+          ) : (
+            <>
+              Har du allerede en konto?{" "}
+              <button type="button" onClick={() => switchMode("login")}>
+                Log ind
+              </button>
+            </>
+          )}
         </div>
       </form>
     </div>

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.60.0 (build 0082) — 2026-08-05
+
+- "Log ind"-knappen på den offentlige Voldby BIO-side kan nu også bruges til at **oprette en bruger** — praktisk når du deler biograf-linket med nogen der ikke har en konto endnu. Nye konti skal stadig godkendes af dig under Indstillinger → Brugere.
+
 ## v0.59.1 (build 0081) — 2026-08-05
 
 Rettelser fra en gennemgang af al kode skrevet siden den forrige gennemgang. To af fundene var alvorlige:

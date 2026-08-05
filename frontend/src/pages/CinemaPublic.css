@@ -11,10 +11,15 @@
   color: var(--accent-contrast);
 }
 
+/* Rendered as a <button> for the login/opret panel and as an <a> for the
+   "Åbn biblioteket" variant (feature #84), so this has to look identical
+   either way — hence the explicit inline-block/text-decoration resets that
+   a bare button wouldn't need. */
 .cinema-public-login-toggle {
   position: absolute;
   top: 16px;
   right: 20px;
+  display: inline-block;
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.45);
   color: var(--accent-contrast);
@@ -22,7 +27,14 @@
   border-radius: 999px;
   font-size: 0.85rem;
   font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
   cursor: pointer;
+}
+
+.cinema-public-login-toggle:hover {
+  color: var(--accent-contrast);
+  text-decoration: none;
 }
 
 .cinema-public-login-toggle:hover {

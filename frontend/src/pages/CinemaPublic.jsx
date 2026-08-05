@@ -18,7 +18,7 @@ import "./Login.css";
 // poster grid instead of being grouped under full per-day headings — with
 // mostly one screening per day, date-grouping just produced a long single
 // column of near-empty rows.
-export default function CinemaPublic() {
+export default function CinemaPublic({ user = null }) {
   const [screenings, setScreenings] = useState([]);
   const [status, setStatus] = useState("loading");
 
@@ -35,7 +35,7 @@ export default function CinemaPublic() {
   return (
     <div className="cinema-public-page">
       <header className="cinema-public-hero">
-        <PublicLoginToggle />
+        <PublicLoginToggle user={user} />
         <h1>🎬 Voldby BIO</h1>
         <p className="cinema-public-tagline">Hjemmebiografen — se hvad der går i bio herunder.</p>
       </header>
@@ -76,7 +76,7 @@ export default function CinemaPublic() {
 // ren pathname-check for /bio, jf. kommentaren i App.jsx) — der tager
 // App.jsx over med den nu autentificerede bruger, landet på Voldby BIO
 // (samme feature #82's anden halvdel: login lander altid der).
-function PublicLoginToggle() {
+function PublicLoginToggle({ user }) {
   const [open, setOpen] = useState(false);
   // Feature #83 — samme to-tilstands-mønster som appens egen Login.jsx, så
   // en besøgende der har fået biograf-linket delt også kan oprette sin konto
@@ -111,6 +111,20 @@ function PublicLoginToggle() {
       setError(err.message);
       setSubmitting(false);
     }
+  }
+
+  // Feature #84 — someone already signed in shouldn't be offered a login
+  // form on what is now also the site's front page; send them into the app
+  // instead. `user` is `undefined` while the session check is still in
+  // flight, which correctly falls through to the login badge — the public
+  // page must never block on that lookup (see App.jsx), and the badge
+  // simply upgrades itself once the session resolves.
+  if (user) {
+    return (
+      <a className="cinema-public-login-toggle" href="/">
+        Åbn biblioteket →
+      </a>
+    );
   }
 
   if (!open) {

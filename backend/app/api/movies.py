@@ -102,7 +102,12 @@ async def check_duplicate(
     return await movie_service.check_tmdb_duplicates(db, tmdb_id)
 
 
-@router.get("/stats", response_model=CollectionStats)
+# BUGS.md #46 — FEATURES.md #72 hides Statistik and "Slettede film" from the
+# guest role, but that was only ever enforced by not rendering the tab/section.
+# Both endpoints now refuse guests server-side too, so the rule holds for a
+# direct API call as well (CLAUDE.md regel 16: enforce in the backend, never
+# only as a UI convenience that is trivial to bypass).
+@router.get("/stats", response_model=CollectionStats, dependencies=[Depends(require_not_guest)])
 async def get_stats(db: AsyncIOMotorDatabase = Depends(get_database)):
     return await movie_service.get_collection_stats(db)
 
@@ -123,7 +128,9 @@ async def attribute_options() -> dict:
     }
 
 
-@router.get("/deleted", response_model=list[DeletedMovie])
+@router.get(
+    "/deleted", response_model=list[DeletedMovie], dependencies=[Depends(require_not_guest)]
+)
 async def list_deleted_movies(db: AsyncIOMotorDatabase = Depends(get_database)):
     return await movie_service.list_deleted_movies(db)
 

@@ -1,5 +1,20 @@
 # Release Notes
 
+## v0.60.0 (build 0082) — 2026-08-05
+
+- "Log ind"-knappen på den offentlige Voldby BIO-side kan nu også bruges til at **oprette en bruger** — praktisk når du deler biograf-linket med nogen der ikke har en konto endnu. Nye konti skal stadig godkendes af dig under Indstillinger → Brugere.
+
+## v0.59.1 (build 0081) — 2026-08-05
+
+Rettelser fra en gennemgang af al kode skrevet siden den forrige gennemgang. To af fundene var alvorlige:
+
+- **Vigtigt:** det var muligt at fjerne admin-rettigheder fra den sidste admin der rent faktisk kunne logge ind, hvis der lå en deaktiveret admin-konto i systemet — resultatet ville være at *ingen* kunne komme til admin-funktionerne igen uden indgreb direkte i databasen. Beskyttelsen tæller nu kun admins der faktisk kan logge ind.
+- **Vigtigt:** "Gendan system-backup" accepterede en beskadiget eller forkert valgt fil og slettede i så fald hele databasen — film, TV-serier, tags og brugere — og meldte tilbage at det gik godt. Gendannelsen afvises nu med en forklaring *før* der slettes noget, hvis filen ikke ligner en gyldig backup.
+- Planlægning af en visning ud fra en anmodning der ikke længere findes (fx to faner åbne) oprettede visningen alligevel og viste så en fejl — tryk igen og du havde to. Nu oprettes der intet, hvis noget er galt.
+- Sletter du en film eller serie, forsvinder dens biograf-visninger og -ønsker nu med den, i stedet for at blive stående som tomme kort i Voldby BIO — også på den offentlige side.
+- Hvis dine visningsindstillinger (sortering, gemte visninger, antal pr. side) ikke kunne gemmes, skete der før ingenting synligt, så du troede de var gemt. Nu vises fejlen.
+- Guest-konti kan ikke længere hente statistik og listen over slettede film ved at gå uden om menuen.
+
 ## v0.59.0 (build 0080) — 2026-08-04
 
 - Efter login lander du nu på Voldby BIO-fanen i stedet for filmbiblioteket.

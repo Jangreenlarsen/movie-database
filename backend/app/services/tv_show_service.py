@@ -26,7 +26,11 @@ from app.models.tv_show import (
     TvShowPreview,
     TvShowUpdate,
 )
-from app.repositories import tv_show_repository
+from app.repositories import (
+    screening_repository,
+    screening_request_repository,
+    tv_show_repository,
+)
 from app.services import tag_service
 
 
@@ -372,6 +376,11 @@ async def delete_tv_show(db: AsyncIOMotorDatabase, tv_show_id: str, deleted_by: 
     deleted = await tv_show_repository.delete(db, tv_show_id)
     if not deleted:
         raise TvShowNotFoundError(tv_show_id)
+
+    # BUGS.md #43 — same dangling-reference cleanup as movie deletion; see
+    # `movie_service.delete_movie` for why this is necessary.
+    await screening_repository.delete_for_title(db, "tv", tv_show_id)
+    await screening_request_repository.delete_for_title(db, "tv", tv_show_id)
 
 
 async def list_deleted_tv_shows(db: AsyncIOMotorDatabase) -> list[DeletedTvShow]:

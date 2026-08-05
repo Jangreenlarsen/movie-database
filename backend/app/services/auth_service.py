@@ -128,9 +128,18 @@ async def update_user_role(db: AsyncIOMotorDatabase, user_id: str, role: UserRol
     if target is None:
         raise UserNotFoundError(user_id)
 
+    # BUGS.md #40 — the guard must count admins who can actually LOG IN, not
+    # every document that merely has `role: "admin"`. Since feature #80 a
+    # disabled (or pending/rejected) admin still carries the admin role while
+    # being unable to authenticate at all, so counting those made the guard
+    # believe a spare admin existed and allowed the last *usable* one to be
+    # demoted — an unrecoverable lockout, since `register`'s bootstrap only
+    # re-grants admin when `users` is completely empty. Demoting an already
+    # non-active admin stays allowed: it can't reduce the usable-admin count.
     is_demoting_admin = target.get("role") == UserRole.ADMIN.value and role != UserRole.ADMIN
-    if is_demoting_admin:
-        admin_count = await user_repository.count_by_role(db, UserRole.ADMIN.value)
+    target_is_active = target.get("status", UserStatus.ACTIVE.value) == UserStatus.ACTIVE.value
+    if is_demoting_admin and target_is_active:
+        admin_count = await user_repository.count_active_admins(db)
         if admin_count <= 1:
             raise LastAdminError()
 

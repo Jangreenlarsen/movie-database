@@ -103,15 +103,18 @@ async def count(db: AsyncIOMotorDatabase) -> int:
     return await db[COLLECTION].count_documents({})
 
 
-async def count_by_role(db: AsyncIOMotorDatabase, role: str) -> int:
-    return await db[COLLECTION].count_documents({"role": role})
-
-
 async def count_active_admins(db: AsyncIOMotorDatabase) -> int:
-    """Feature #80 — unlike `count_by_role`, only counts admins who can
-    actually log in right now (`status: "active"`). Used to guard
-    disable/delete so the last *usable* admin can never be locked out or
-    removed, even if a pending/rejected/disabled "admin" record exists."""
+    """Counts only admins who can actually log in right now (`status:
+    "active"`) — the single source of truth for every last-admin lockout
+    guard (role demotion, disable, delete).
+
+    A status-blind `count_by_role("admin")` used to exist alongside this and
+    was what the role-demotion guard called; it was removed in the BUGS.md
+    #40 fix rather than left available, because "has the admin role" and
+    "can actually administer the system" stopped being the same thing the
+    moment feature #80 introduced the `disabled` status, and any future
+    caller reaching for the status-blind count would silently reintroduce
+    the same unrecoverable lockout."""
     return await db[COLLECTION].count_documents({"role": "admin", "status": "active"})
 
 

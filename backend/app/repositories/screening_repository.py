@@ -39,3 +39,16 @@ async def delete(db: AsyncIOMotorDatabase, screening_id: str) -> bool:
         return False
     result = await db[COLLECTION].delete_one({"_id": ObjectId(screening_id)})
     return result.deleted_count > 0
+
+
+async def delete_for_title(
+    db: AsyncIOMotorDatabase, media_kind: str, title_id: str
+) -> int:
+    """BUGS.md #43 — removes every screening pointing at a movie/TV show
+    that's being deleted. Title/poster are resolved by reference at read
+    time (never copied onto the screening), so a screening left behind after
+    its title is gone renders as an empty ghost card — including on the
+    public, shareable /bio page. Returns how many were removed."""
+    field = "movie_id" if media_kind == "movie" else "tv_show_id"
+    result = await db[COLLECTION].delete_many({"media_kind": media_kind, field: title_id})
+    return result.deleted_count

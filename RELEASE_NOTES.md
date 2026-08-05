@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.61.0 (build 0083) — 2026-08-05
+
+- Voldby BIO er nu appens forside: er du ikke logget ind, møder du biograf-siden med program og billeder i stedet for en tom login-boks. Samme side som det link du deler ud.
+- Er du allerede logget ind og åbner biograf-linket, står der nu "Åbn biblioteket →" i stedet for "Log ind".
+- Den almindelige login-side findes stadig på `/login`, hvis du hellere vil gå direkte dertil.
+
 ## v0.60.0 (build 0082) — 2026-08-05
 
 - "Log ind"-knappen på den offentlige Voldby BIO-side kan nu også bruges til at **oprette en bruger** — praktisk når du deler biograf-linket med nogen der ikke har en konto endnu. Nye konti skal stadig godkendes af dig under Indstillinger → Brugere.

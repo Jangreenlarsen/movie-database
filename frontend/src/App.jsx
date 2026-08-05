@@ -37,22 +37,38 @@ function App() {
 
   // Feature #70 — /bio is a public, no-login page (shareable outside the
   // app), checked before any auth state so it never waits on or requires
-  // a login check. No router library: this is the only route that needs
-  // to exist outside the tab-based authenticated app, so a plain pathname
-  // check is simpler than pulling in react-router for one page. Caddy's
+  // a login check. No router library: these are the only routes that need
+  // to exist outside the tab-based authenticated app, so plain pathname
+  // checks are simpler than pulling in react-router. Caddy's
   // `try_files {path} /index.html` (see DEPLOYMENT.md) and Vite's dev
   // server both already serve index.html for any unmatched path, so a
-  // direct/shared link to /bio works without further server config.
+  // direct/shared link works without further server config.
+  //
+  // `user` is passed through (possibly still `undefined` while the session
+  // check is in flight) purely so the login badge can offer "Åbn
+  // biblioteket" to someone already signed in — the page itself renders
+  // immediately either way, which is the whole point of this early return.
   if (window.location.pathname.startsWith("/bio")) {
-    return <CinemaPublic />;
+    return <CinemaPublic user={user} />;
+  }
+
+  // Feature #84 — the full login page keeps its own URL so it isn't
+  // orphaned by the landing-page change below, and so there's still a
+  // direct link for "just let me sign in".
+  if (window.location.pathname.startsWith("/login")) {
+    return <Login onAuthenticated={setUser} />;
   }
 
   if (user === undefined) {
     return null;
   }
 
+  // Feature #84 — Voldby BIO is the public front door: a logged-out visitor
+  // to "/" gets the cinema page (programme, showcase, and the login/opret
+  // badge) rather than a bare login form, so the shared /bio link and the
+  // site root are the same shop window.
   if (user === null) {
-    return <Login onAuthenticated={setUser} />;
+    return <CinemaPublic user={null} />;
   }
 
   if (user.status !== "active") {

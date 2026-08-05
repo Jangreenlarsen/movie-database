@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.61.0 build 0083] — 2026-08-05 — feature: Voldby BIO som appens offentlige forside (FEATURES.md #84)
+
+En ikke-indlogget besøgende på `/` møder nu biograf-siden — program, "Om Voldby BIO" og login/opret-badgen — i stedet for en bar login-boks. Det delte `/bio`-link og site-roden er dermed ét og samme udstillingsvindue, i stedet for to forskellige indgange hvor den ene kun viste et loginfelt.
+
+Badgen tilpasser sig hvem der kigger: er man allerede logget ind, viser den "Åbn biblioteket →" (en `<a>` ind i appen) frem for "Log ind" — før i tiden fik en indlogget bruger på `/bio` tilbudt at logge ind igen. `user` sendes med ned til `CinemaPublic`, men siden renderer uændret med det samme uden at afvente session-tjekket; badgen opgraderer bare sig selv når `api.me()` er kommet tilbage, så det offentlige link aldrig blokerer på et auth-opslag. Den fulde login-side er flyttet til `/login` frem for at blive slettet, så den hverken bliver død kode eller efterlader appen uden en direkte login-URL.
+
+Live-verificeret med Playwright i alle fire tilstande: udlogget `/` (landing vises, ingen bar login-boks), `/login` (fuld login-side virker stadig), indlogget `/` (appen, landet på Voldby BIO-fanen) og indlogget `/bio` ("Åbn biblioteket" vist, "Log ind" skjult, og knappen fører ind i appen).
+
 ## [0.60.0 build 0082] — 2026-08-05 — feature: "Opret bruger" i login-badgen på /bio (FEATURES.md #83)
 
 `PublicLoginToggle` i `CinemaPublic.jsx` har fået samme to-tilstands-mønster som appens egen `Login.jsx`: badgen åbner stadig i log ind-tilstand, men et "Ingen konto? **Opret bruger**"-skift nederst i boksen veksler til registrering (og tilbage igen). En besøgende der har fået biograf-linket delt kan dermed oprette sin konto direkte fra `/bio` i stedet for først at skulle finde frem til appens forside. `autoComplete` skifter korrekt mellem `current-password`/`new-password`, og `minLength={8}` håndhæves i registreringstilstand som på forsiden.

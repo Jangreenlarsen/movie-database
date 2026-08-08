@@ -2,6 +2,28 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.67.0 build 0096] — 2026-08-08 — feature: importér eksisterende Plex-bibliotek ind i portalen (FEATURES.md #90)
+
+Jans spørgsmål: kan vi få det Plex allerede har ind i portalen? Ja — og det meste af arbejdet var gjort i feature #88.
+
+Importen genbruger #88's biblioteks-index, så der ikke laves nye Plex-kald ud over ét pr. importeret TV-serie. Matchningen af "har vi den allerede?" er den *omvendte* retning af badget, og løses af samme kode: `_library_as_index()` pakker vores egne dokumenter i nøjagtig samme index-form som Plex-indexet, så `_match` kan bruges begge veje. To separate implementeringer ville uundgåeligt drive fra hinanden, og så kunne badget og importen være uenige om hvad der er samme film.
+
+Forhåndsvisning og udførelse er samme endpoint med forskellig `dry_run`, af samme grund: havde forhåndsvisningen sin egen gennemgang, kunne den vise noget andet end det der faktisk skete. `dry_run` er default `true` — en import kan oprette hundredvis af poster, og der er ingen fortryd-knap bagefter ud over at slette dem igen.
+
+Plex-elementer uden TMDb-id (ældre agenter giver kun IMDb-id eller ingenting) slås op på TMDb via titel og importeres **kun** ved præcis ét resultat med samme normaliserede titel og samme år. Jans valg blandt tre forelagte muligheder: hellere rapportere titlen som umatchet, end lade et gæt blive til data der ser lige så rigtig ud som resten af biblioteket. De umatchede listes i panelet, så de kan tilføjes manuelt.
+
+TV-serier får de sæsoner der faktisk ligger i Plex markeret som ejede — ellers ville en importeret serie lande med alt markeret "ikke ejet" selvom den står på serveren. Det kræver `/library/metadata/{ratingKey}/children`, som `/all` ikke leverer, men kun for serier der rent faktisk importeres.
+
+Alt importeret får taget `Plex-import` (kan ændres eller tømmes i panelet), så resultatet kan filtreres frem i biblioteket og rulles tilbage hvis det ikke blev som forventet.
+
+Batch-forudsætningerne tjekkes før løkken (CLAUDE.md regel 16): både manglende Plex-konfiguration og manglende TMDb-token ville få hvert eneste element til at fejle af samme grund — en oplysning man skal have én gang, ikke hundrede. Et TMDb-rate-limit stopper hele importen med det samme frem for at hamre en allerede-throttlet API; det allerede oprettede springes over næste gang, så importen bare kan køres igen.
+
+Rettet under udvikling: panelets resultat-blok forsvandt mens importen kørte, fordi render-betingelsen kun dækkede `preview` og `done`. Man stod dermed uden feedback under et kald der kan tage minutter for et stort bibliotek.
+
+Dokumentation: MOVIE_API_REFERENCE.md har fået den konkrete fremgangsmåde til at finde sit Plex-token (web-UI'ets "Get Info → View XML", samt `Preferences.xml` på serveren) — Jans spørgsmål samme dag, hvor der før kun stod en henvisning til Plex' egen vejledning.
+
+Berørte filer: `backend/app/models/plex.py`, `backend/app/integrations/plex_client.py`, `backend/app/services/plex_service.py`, `backend/app/api/plex.py`, `backend/tests/test_plex.py`, `frontend/src/api/client.js`, `frontend/src/pages/Settings.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`, `MOVIE_API_REFERENCE.md`, `FEATURES.md`, `version.json`.
+
 ## [0.66.0 build 0095] — 2026-08-08 — feature: resten af brugerfladen oversat, #89 færdig (FEATURES.md #89, del 3-4/4)
 
 Sidste del af sprogvalget: TV-serier, Indstillinger (den største enkeltfil, ~1.800 linjer), Statistik, Print, Voldby BIO — både den indloggede fane og den offentlige `/bio` — samt visnings-ønske-boksen, biograf-showcasen og scanneren. I alt 472 nøgler i hvert af de to kataloger; hele brugerfladen er dækket, og featuren er markeret `done`.

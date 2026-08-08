@@ -100,6 +100,7 @@ export default function Settings({ user, onSettingsChanged }) {
         <>
           <SystemSettingsSection />
           <PlexDiagnosticsSection />
+          <PlexImportSection />
         </>
       )}
 
@@ -1284,6 +1285,179 @@ function PlexDiagnosticsSection() {
 
 // Backendens handlings-koder mappet til oversættelsesnøgler. En ukendt kode
 // (fx en nyere backend mod en ældre frontend) falder tilbage til koden selv.
+/**
+ * Feature #90 — importér det Plex allerede har.
+ *
+ * Altid forhåndsvisning før udførelse: en import kan oprette hundredvis af
+ * poster, og der er ingen fortryd-knap bagefter ud over at slette dem igen.
+ * Begge trin rammer samme endpoint med forskellig `dry_run`, så det viste og
+ * det udførte ikke kan drive fra hinanden.
+ */
+function PlexImportSection() {
+  const t = useT();
+  const [includeMovies, setIncludeMovies] = useState(true);
+  const [includeShows, setIncludeShows] = useState(true);
+  const [tag, setTag] = useState("Plex-import");
+  const [status, setStatus] = useState("idle"); // idle | previewing | preview | importing | done | error
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+
+  function call(dryRun) {
+    setStatus(dryRun ? "previewing" : "importing");
+    setError(null);
+    api
+      .importFromPlex({
+        dry_run: dryRun,
+        include_movies: includeMovies,
+        include_shows: includeShows,
+        tag,
+      })
+      .then((result) => {
+        setData(result);
+        // Backend svarer 200 med ok:false ved manglende konfiguration — det
+        // er ikke en netværksfejl, men skal stadig vises som en fejl her.
+        if (!result.ok) {
+          setError(result.error);
+          setStatus("error");
+          return;
+        }
+        setStatus(dryRun ? "preview" : "done");
+      })
+      .catch((err) => {
+        setError(err.message);
+        setStatus("error");
+      });
+  }
+
+  const busy = status === "previewing" || status === "importing";
+
+  return (
+    <div className="card settings-section">
+      <h2>{t("plexImport.heading")}</h2>
+      <p className="muted">{t("plexImport.description")}</p>
+
+      <div className="chip-row" style={{ marginBottom: 12 }}>
+        <Chip
+          label={t("plexImport.includeMovies")}
+          active={includeMovies}
+          onClick={() => setIncludeMovies((v) => !v)}
+        />
+        <Chip
+          label={t("plexImport.includeShows")}
+          active={includeShows}
+          onClick={() => setIncludeShows((v) => !v)}
+        />
+      </div>
+
+      <div className="serial-config-form" style={{ marginBottom: 12 }}>
+        <label>
+          {t("plexImport.tagLabel")} — <span className="muted">{t("plexImport.tagHint")}</span>
+          <input value={tag} onChange={(e) => setTag(e.target.value)} maxLength={60} />
+        </label>
+      </div>
+
+      <button
+        type="button"
+        className="btn"
+        onClick={() => call(true)}
+        disabled={busy || (!includeMovies && !includeShows)}
+      >
+        {t(status === "previewing" ? "plexImport.previewing" : "plexImport.preview")}
+      </button>
+
+      {status === "error" && (
+        <div className="banner banner-error" style={{ marginTop: 12 }}>
+          {error}
+        </div>
+      )}
+
+      {/* "importing" er med her: uden den forsvandt hele blokken mens
+          importen kørte, så man stod uden feedback under et kald der kan
+          tage minutter for et stort bibliotek. */}
+      {(status === "preview" || status === "importing" || status === "done") && data && (
+        <div className="plex-diagnostics">
+          {data.imported.length === 0 && data.unmatched.length === 0 ? (
+            <div className="banner banner-info">{t("plexImport.nothingToImport")}</div>
+          ) : (
+            <div className="banner banner-info">
+              {t(status === "preview" ? "plexImport.previewSummary" : "plexImport.doneSummary", {
+                count: data.imported.length,
+                present: data.already_present,
+              })}
+            </div>
+          )}
+
+          {data.stopped_early && (
+            <div className="banner banner-error">{t("plexImport.rateLimited")}</div>
+          )}
+
+          {(status === "preview" || status === "importing") && data.imported.length > 0 && (
+            <>
+              <p className="muted" style={{ margin: 0 }}>
+                {t("plexImport.confirmHint")}
+              </p>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button type="button" className="btn btn-primary" onClick={() => call(false)} disabled={busy}>
+                  {t(status === "importing" ? "plexImport.running" : "plexImport.run", {
+                    count: data.imported.length,
+                  })}
+                </button>
+                <button type="button" className="btn" onClick={() => setStatus("idle")} disabled={busy}>
+                  {t("plexImport.cancel")}
+                </button>
+              </div>
+            </>
+          )}
+
+          {data.imported.length > 0 && (
+            <ul className="plex-diag-unmatched">
+              {data.imported.map((item) => (
+                <li key={`${item.kind}-${item.tmdb_id}`}>
+                  {item.title}
+                  {item.year ? ` (${item.year})` : ""}
+                  {item.resolved_via === "tmdb_search" && (
+                    <span className="muted"> — {t("plexImport.viaSearch")}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {data.unmatched.length > 0 && (
+            <>
+              <h3>{t("plexImport.unmatchedHeading", { count: data.unmatched.length })}</h3>
+              <p className="muted">{t("plexImport.unmatchedHint")}</p>
+              <ul className="plex-diag-unmatched">
+                {data.unmatched.map((item, i) => (
+                  <li key={`${item.title}-${i}`}>
+                    {item.title}
+                    {item.year ? ` (${item.year})` : ""}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {data.failed.length > 0 && (
+            <>
+              <h3>{t("plexImport.failedHeading", { count: data.failed.length })}</h3>
+              <p className="muted">{t("plexImport.failedHint")}</p>
+              <ul className="plex-diag-unmatched">
+                {data.failed.map((item, i) => (
+                  <li key={`${item.title}-${i}`}>
+                    {item.title}
+                    {item.reason ? <span className="muted"> — {item.reason}</span> : null}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const AUDIT_ACTION_KEYS = {
   "user.role_changed": "audit.action.roleChanged",
   "system_settings.updated": "audit.action.settingsUpdated",
@@ -1294,6 +1468,7 @@ const AUDIT_ACTION_KEYS = {
   "library_backup.imported": "audit.action.libraryImported",
   "screening_request.declined": "audit.action.requestDeclined",
   "screening.scheduled": "audit.action.screeningScheduled",
+  "plex.imported": "audit.action.plexImported",
 };
 
 const AUDIT_PAGE_SIZE = 10;

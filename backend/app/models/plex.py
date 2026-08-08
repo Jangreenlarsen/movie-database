@@ -56,6 +56,55 @@ class PlexUnmatchedItem(BaseModel):
     tmdb_id: int | None = None
 
 
+class PlexImportRequest(BaseModel):
+    """Feature #90. `dry_run` er default `True`: en import kan oprette
+    hundredvis af poster, så standarden er at vise hvad der *ville* ske.
+    Selve udførelsen kræver et eksplicit `dry_run: false`."""
+
+    dry_run: bool = True
+    include_movies: bool = True
+    include_shows: bool = True
+    # Sættes på alt importeret, så resultatet kan filtreres frem i
+    # biblioteket og rulles tilbage igen hvis det ikke blev som forventet.
+    # Tom streng = intet tag.
+    tag: str = Field(default="Plex-import", max_length=60)
+
+
+class PlexImportItem(BaseModel):
+    kind: PlexKind
+    title: str
+    year: int | None = None
+    tmdb_id: int | None = None
+    # Hvordan TMDb-id'et blev fundet: direkte fra Plex' guid, eller via en
+    # titel-søgning på TMDb. Det sidste er det svageste led i importen, så
+    # det skal kunne ses på hvert enkelt element i forhåndsvisningen.
+    resolved_via: Literal["plex_guid", "tmdb_search"] | None = None
+    # Kun sat når elementet ikke kunne importeres.
+    reason: str | None = None
+
+
+class PlexImportResult(BaseModel):
+    dry_run: bool
+    ok: bool
+    error: str | None = None
+    # Alt Plex har, som vi ikke har i forvejen, og som kunne opløses til et
+    # TMDb-id. Ved dry_run er det forslaget; ellers er det det udførte.
+    imported: list[PlexImportItem] = Field(default_factory=list)
+    # Fandtes allerede i biblioteket — talt, ikke listet, da det typisk er
+    # hele den eksisterende samling og ikke noget man skal handle på.
+    already_present: int = 0
+    # Kunne ikke opløses til en entydig TMDb-titel. Listes, fordi det er
+    # præcis dem man selv skal tilføje bagefter.
+    unmatched: list[PlexImportItem] = Field(default_factory=list)
+    # Opløst fint, men selve oprettelsen fejlede (TMDb nede for netop den
+    # titel, en database-fejl). Adskilt fra `unmatched`, som er en anden
+    # slags problem med en anden løsning.
+    failed: list[PlexImportItem] = Field(default_factory=list)
+    # True hvis TMDb rate-limitede os undervejs og batchen blev afbrudt —
+    # resten kan hentes ved at køre importen igen om lidt.
+    stopped_early: bool = False
+
+
 class PlexDiagnostics(BaseModel):
     """Feature #88's fejlsøgnings-endpoint. Svarer på de tre spørgsmål man
     reelt stiller når badges mangler: (1) kan vi overhovedet nå serveren,

@@ -22,16 +22,23 @@ from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
-from app.integrations import plex_client
+from app.core.errors import TmdbNotFoundError, TmdbRateLimitedError, TmdbUnavailableError
+from app.integrations import plex_client, tmdb_client
 from app.integrations.plex_client import PlexFetchResult, PlexItem
+from app.models.movie import MovieCreate
 from app.models.plex import (
     PlexAvailability,
     PlexAvailabilityMap,
     PlexDiagnostics,
+    PlexImportItem,
+    PlexImportRequest,
+    PlexImportResult,
     PlexSectionInfo,
     PlexUnmatchedItem,
 )
+from app.models.tv_show import TvShowCreate
 from app.repositories import movie_repository, tv_show_repository
+from app.services import movie_service, tv_show_service
 
 logger = logging.getLogger("moviedb")
 
@@ -228,6 +235,195 @@ async def _library_docs(db: AsyncIOMotorDatabase, kind: str) -> list[dict]:
     if kind == "movie":
         return await movie_repository.find_all_for_plex_match(db)
     return await tv_show_repository.find_all_for_plex_match(db)
+
+
+def _library_as_index(docs: list[dict], kind: str) -> _Index:
+    """Vores eget bibliotek pakket i *samme* index-form som Plex-indexet
+    (feature #90).
+
+    Formålet er at kunne stille det omvendte spørgsmål — "har vi allerede
+    denne Plex-film?" — gennem præcis den samme `_match`, som feature #88
+    bruger til "ligger vores film i Plex?". To separate implementeringer
+    ville uundgåeligt drive fra hinanden, og så ville badget og importen
+    kunne være uenige om hvad der er samme film. `PlexItem` genbruges som
+    ren container; `rating_key` bærer her vores eget dokument-id."""
+    items = [
+        PlexItem(
+            kind=kind,
+            rating_key=str(doc["_id"]),
+            title=_doc_title(doc, kind) or "",
+            year=doc.get("year"),
+            tmdb_id=doc.get("tmdb_id"),
+            imdb_id=None,
+        )
+        for doc in docs
+    ]
+    return _build_index(PlexFetchResult(ok=True, items=items))
+
+
+async def _resolve_tmdb_id(kind: str, title: str, year: int | None) -> int | None:
+    """TMDb-id for et Plex-element der ikke selv havde et (ældre agenter).
+
+    Kun et entydigt match tæller: præcis ét søgeresultat med samme
+    normaliserede titel *og* samme årstal. Jans valg 2026-08-08 — hellere
+    rapportere titlen som umatchet end lade et gæt blive til data der ser
+    lige så rigtig ud som resten af biblioteket."""
+    if not title:
+        return None
+
+    search = tmdb_client.search_movies if kind == "movie" else tmdb_client.search_tv
+    candidates = await search(title)
+
+    normalized = normalize_title(title)
+    matches = [
+        candidate
+        for candidate in candidates
+        if normalize_title(candidate.get("title")) == normalized
+        and candidate.get("year") is not None
+        and candidate["year"] == year
+    ]
+    return matches[0]["tmdb_id"] if len(matches) == 1 else None
+
+
+async def _create_imported(
+    db: AsyncIOMotorDatabase, item: PlexItem, tmdb_id: int, tags: list[str], registered_by: str
+) -> None:
+    if item.kind == "movie":
+        await movie_service.create_movie(
+            db, MovieCreate(tmdb_id=tmdb_id, tags=tags), registered_by
+        )
+        return
+
+    # Sæsoner Plex faktisk har, så en importeret serie ikke lander med alt
+    # markeret som "ikke ejet" selvom den ligger på serveren.
+    owned_seasons = await plex_client.fetch_show_seasons(item.rating_key)
+    await tv_show_service.create_tv_show(
+        db,
+        TvShowCreate(tmdb_id=tmdb_id, tags=tags, owned_seasons=owned_seasons),
+        registered_by,
+    )
+
+
+async def import_from_plex(
+    db: AsyncIOMotorDatabase, request: PlexImportRequest, registered_by: str
+) -> PlexImportResult:
+    """Opretter alt det Plex har, som portalen ikke har i forvejen.
+
+    Batch-forudsætningerne tjekkes *før* løkken (CLAUDE.md regel 16): både
+    en manglende Plex-konfiguration og et manglende TMDb-token ville få hvert
+    eneste element til at fejle af samme grund, hvilket er en oplysning man
+    skal have én gang — ikke hundrede.
+
+    `dry_run` deler kode med den rigtige import med vilje. Havde
+    forhåndsvisningen sin egen gennemgang, kunne de to nå at være uenige om
+    hvad der ville ske."""
+    if not plex_client.is_configured():
+        return PlexImportResult(
+            dry_run=request.dry_run,
+            ok=False,
+            error="Plex er ikke konfigureret — sæt server-URL og token under Indstillinger.",
+        )
+
+    if not settings.tmdb_api_token:
+        return PlexImportResult(
+            dry_run=request.dry_run,
+            ok=False,
+            error=(
+                "Ingen TMDb-token sat — importen henter al metadata fra TMDb og kan "
+                "ikke oprette noget uden."
+            ),
+        )
+
+    index = await _get_index(force_refresh=request.dry_run)
+    if not index.result.ok:
+        return PlexImportResult(dry_run=request.dry_run, ok=False, error=index.result.error)
+
+    result = PlexImportResult(dry_run=request.dry_run, ok=True)
+    tags = [request.tag.strip()] if request.tag.strip() else []
+
+    kinds = []
+    if request.include_movies:
+        kinds.append("movie")
+    if request.include_shows:
+        kinds.append("show")
+
+    for kind in kinds:
+        library_index = _library_as_index(await _library_docs(db, kind), kind)
+
+        for item in [entry for entry in index.result.items if entry.kind == kind]:
+            existing, _ = _match(library_index, kind, item.tmdb_id, item.title, item.year)
+            if existing is not None:
+                result.already_present += 1
+                continue
+
+            tmdb_id = item.tmdb_id
+            resolved_via = "plex_guid"
+            if tmdb_id is None:
+                try:
+                    tmdb_id = await _resolve_tmdb_id(kind, item.title, item.year)
+                except TmdbRateLimitedError:
+                    result.stopped_early = True
+                    break
+                except TmdbUnavailableError as exc:
+                    # 429 kommer ad denne vej fra search_movies/search_tv
+                    # (se tmdb_client), så rate-limit skal genkendes her også
+                    # frem for at blive talt som en almindelig fejl.
+                    if "rate-limit" in str(exc).lower():
+                        result.stopped_early = True
+                        break
+                    result.failed.append(
+                        PlexImportItem(kind=kind, title=item.title, year=item.year, reason=str(exc))
+                    )
+                    continue
+                resolved_via = "tmdb_search"
+
+            if tmdb_id is None:
+                result.unmatched.append(
+                    PlexImportItem(
+                        kind=kind,
+                        title=item.title,
+                        year=item.year,
+                        reason="Intet entydigt TMDb-match på titel og år",
+                    )
+                )
+                continue
+
+            entry = PlexImportItem(
+                kind=kind,
+                title=item.title,
+                year=item.year,
+                tmdb_id=tmdb_id,
+                resolved_via=resolved_via,
+            )
+
+            if request.dry_run:
+                result.imported.append(entry)
+                continue
+
+            try:
+                await _create_imported(db, item, tmdb_id, tags, registered_by)
+            except TmdbRateLimitedError:
+                result.stopped_early = True
+                break
+            except (TmdbNotFoundError, TmdbUnavailableError) as exc:
+                entry.reason = str(exc)
+                result.failed.append(entry)
+                continue
+            result.imported.append(entry)
+
+        if result.stopped_early:
+            break
+
+    logger.info(
+        "Plex-import (%s): %s oprettet, %s fandtes i forvejen, %s umatchede, %s fejlede%s",
+        "forhåndsvisning" if request.dry_run else "udført",
+        len(result.imported),
+        result.already_present,
+        len(result.unmatched),
+        len(result.failed),
+        " (afbrudt af rate-limit)" if result.stopped_early else "",
+    )
+    return result
 
 
 async def get_diagnostics(db: AsyncIOMotorDatabase, force_refresh: bool = True) -> PlexDiagnostics:

@@ -120,6 +120,16 @@ Badget slås til pr. bruger under **Vis felter → Plex** i Bibliotek og TV-seri
 3. **Film- og TV-bibliotekerne skal bruge en agent der giver TMDb-id'er** — "Plex Movie" og "Plex TV Series" (de nyere agenter) gør det. Bruger et bibliotek en ældre agent (`com.plexapp.agents.imdb` m.fl.), findes der ingen TMDb-id'er at matche entydigt på, og matchningen falder tilbage på titel+år. Det virker, men er mindre sikkert. Fejlsøgnings-panelets kolonne "Med TMDb-id" viser præcis hvor mange elementer i hver sektion der har ét.
 4. **Ingen indstilling i Plex skal ændres** ud over det. Der skrives aldrig til Plex — integrationen er udelukkende læsende.
 
+#### Sådan finder du dit Plex-token
+
+1. Åbn Plex i browseren (`http://<din-plex-server>:32400/web`), klik på en vilkårlig film eller serie.
+2. **⋮** → **Get Info** → **View XML** nede i venstre hjørne.
+3. Der åbner en fane med XML — værdien efter `X-Plex-Token=` i adresselinjen er tokenet.
+
+Alternativt direkte på serveren: `PlexOnlineToken`-attributten i `Preferences.xml` (Linux: `/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Preferences.xml`; Windows: `%LOCALAPPDATA%\Plex Media Server\Preferences.xml`).
+
+Det er et **konto**-token, ikke et server-token: det giver adgang til præcis de biblioteker den konto kan se. Bruger du en begrænset/delt konto, kommer `/library/sections` tilbage tom, hvilket fejlsøgnings-panelet melder eksplicit.
+
 #### Endpoints der bruges
 
 - `GET /` — `friendlyName`, `version` og `machineIdentifier` (sidstnævnte indgår i afspilnings-linket).
@@ -135,6 +145,10 @@ I faldende sikkerhed, og hvilken regel der ramte følger med i svarets `matched_
 3. **Normaliseret titel alene** — kun når den er entydig i Plex. To film der begge hedder "Batman" giver bevidst *intet* match frem for et tilfældigt af dem.
 
 Film og TV-serier matches aldrig på tværs af hinanden.
+
+#### Import (feature #90)
+
+`POST /api/plex/import` opretter alt Plex har som portalen ikke har. Samme matchning som ovenfor, blot i modsat retning — se ARCHITECTURE.md. Plex-elementer uden TMDb-id slås op via `/search/movie` eller `/search/tv` og importeres kun ved præcis ét resultat med samme normaliserede titel og samme år. TV-serier henter derudover `/library/metadata/{ratingKey}/children` for at markere de sæsoner der ligger på serveren som ejede. Der skrives aldrig til Plex — også importen er ren læsning.
 
 - **Fejlhåndtering**: samme filosofi som UPC/Discogs — manglende konfiguration, en utilgængelig server eller intet match giver et tomt resultat med en læsbar `error`, aldrig en kastet exception. Et 401-svar rapporteres eksplicit som "token afvist" i stedet for at blive til "ingen match".
 

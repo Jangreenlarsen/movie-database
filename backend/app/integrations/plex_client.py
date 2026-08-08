@@ -285,6 +285,50 @@ async def fetch_library() -> PlexFetchResult:
     )
 
 
+async def fetch_show_seasons(rating_key: str) -> list[int]:
+    """Sæson-numrene der faktisk ligger på Plex-serveren for én serie
+    (feature #90). `/library/sections/{key}/all` returnerer kun selve
+    serierne, ikke deres sæsoner, så dette er et ekstra kald — men kun for
+    de serier der rent faktisk importeres, ikke for hele biblioteket.
+
+    Sæson 0 (Plex' "Specials") springes over: den svarer til TMDb's
+    special-sæson, som appens egen sæson-model heller ikke regner med.
+    Returnerer en tom liste ved enhver fejl — en serie uden sæson-markering
+    er stadig værd at importere."""
+    if not is_configured():
+        return []
+
+    try:
+        async with _client() as client:
+            response = await client.get(
+                f"{_base_url()}/library/metadata/{rating_key}/children", headers=_headers()
+            )
+    except httpx.HTTPError as exc:
+        logger.warning("Plex: sæsoner for %s kunne ikke hentes: %s", rating_key, exc)
+        return []
+
+    if response.status_code != 200:
+        logger.warning(
+            "Plex: sæsoner for %s gav HTTP %s", rating_key, response.status_code
+        )
+        return []
+
+    try:
+        children = response.json().get("MediaContainer", {}).get("Metadata", []) or []
+    except ValueError:
+        logger.warning("Plex: sæson-svar for %s var ikke JSON", rating_key)
+        return []
+
+    seasons = []
+    for child in children:
+        index = child.get("index")
+        # `index` er sæsonnummeret. Plex udelader det på enkelte poster
+        # (fx en "All episodes"-samling), som ikke er en rigtig sæson.
+        if isinstance(index, int) and index > 0:
+            seasons.append(index)
+    return sorted(set(seasons))
+
+
 def build_play_url(rating_key: str, machine_identifier: str) -> str:
     return (
         f"{_base_url()}/web/index.html#!/server/{machine_identifier}"

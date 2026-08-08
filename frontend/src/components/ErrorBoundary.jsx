@@ -6,6 +6,13 @@ import { Component } from "react";
 // vide man skal genindlæse manuelt — set på iOS ved BUGS.md #35, hvor
 // rodårsagen nu er rettet, men denne fanger alle fremtidige tilfælde af
 // samme klasse fejl.
+//
+// Feature #89: bevidst ikke oversat. Denne komponent ligger uden om
+// `I18nProvider` (main.jsx) — den skal netop kunne fange en fejl i selve
+// App/provideren — så der er hverken en context at læse sproget fra eller
+// en garanti for at brugerens indstillinger nåede at blive hentet. En
+// hardkodet dansk besked er ærligere end at gætte sproget i det ene
+// tilfælde hvor alt andet er gået galt.
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props);

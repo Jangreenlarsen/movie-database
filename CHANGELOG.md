@@ -2,6 +2,22 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.66.0 build 0093] — 2026-08-08 — feature: i18n-motor + sprogvalg, første sider oversat (FEATURES.md #89, del 1/4)
+
+Første del af sprogvalget: motoren, indstillingen og de skærme der ikke kræver de tre store sider. Resten af brugerfladen følger i de næste commits — featuren står som `in-progress` indtil alt er dækket.
+
+`src/i18n/` er ~60 linjer egen kode frem for react-i18next (Jans valg blandt tre forelagte muligheder). To sprog, ingen lazy-loading af sprogfiler og kun "én/flere"-flertal retfærdiggør ikke 40 kB ekstra i en bundle der allerede advarer om sin størrelse. Nøglerne er flade og punktum-adskilte (`"app.nav.movies"`), ikke indlejrede objekter — så en nøgle man har foran sig i JSX kan søges direkte i sprogfilen som præcis den streng.
+
+Dansk er kildesproget og dermed også fallback: en nøgle der endnu ikke er oversat viser dansk tekst i stedet for en rå nøgle midt i brugerfladen. Findes nøglen slet ikke i noget katalog, vises nøglen selv — grimt med vilje, så en manglende oversættelse er til at få øje på frem for at gemme sig som tom tekst.
+
+Sproget gemmes i `UserSettings.language` (`da`/`en`, valideret i backend), ikke i browseren. Jans valg: det skal følge med mellem iPhone og PC frem for at skulle vælges forfra på hver enhed. Konsekvensen er at de to skærme uden en indlogget bruger — login og den offentlige `/bio` — bliver på dansk; der er ingen bruger at læse sproget fra på det tidspunkt.
+
+`ErrorBoundary` er bevidst ikke oversat. Den ligger uden om `I18nProvider` i main.jsx — den skal netop kunne fange en fejl i selve App/provideren — så der er hverken en context at læse sproget fra eller nogen garanti for at brugerens indstillinger nåede at blive hentet. En hardkodet dansk besked er ærligere end at gætte sproget i det ene tilfælde hvor alt andet er gået galt.
+
+Oversat i denne omgang: app-header/navigation, login, "afventer godkendelse", ønskeliste-fanerne og paginering. Sprogvælgeren ligger under Indstillinger → Konto ved siden af kortstørrelse, da begge er personlige præferencer og ikke system-indstillinger.
+
+Berørte filer: `frontend/src/i18n/index.jsx` (ny), `frontend/src/i18n/da.json` (ny), `frontend/src/i18n/en.json` (ny), `frontend/src/App.jsx`, `frontend/src/pages/Login.jsx`, `frontend/src/pages/PendingApproval.jsx`, `frontend/src/pages/Wishlist.jsx`, `frontend/src/pages/Settings.jsx`, `frontend/src/components/Pagination.jsx`, `frontend/src/components/ErrorBoundary.jsx`, `backend/app/models/user.py`, `backend/tests/test_auth.py`, `FEATURES.md`, `version.json`.
+
 ## [0.65.0 build 0092] — 2026-08-08 — feature: portalen kontrollerer selv Plex, badge på kortene (FEATURES.md #88)
 
 Feature #45's "Tjek Plex"-knap er væk. Den sad i detaljevinduet, skulle trykkes pr. film, og svarede kun på den ene film man stod i. Jans ønske: portalen skal selv vide det, og det skal være et badge man kan tilvælge under "Vis felter".

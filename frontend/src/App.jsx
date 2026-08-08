@@ -10,8 +10,16 @@ import CinemaPublic from "./pages/CinemaPublic";
 import Login from "./pages/Login";
 import PendingApproval from "./pages/PendingApproval";
 import { api } from "./api/client";
+import { I18nProvider, SOURCE_LANGUAGE, useT } from "./i18n";
 import "./App.css";
 
+/**
+ * Feature #89 — sproget kommer fra brugerens egne indstillinger, så det
+ * følger med på tværs af enheder. De offentlige skærme (Voldby BIO på /bio
+ * og login) har ingen bruger at læse fra og bliver derfor på kildesproget;
+ * det er den bevidste konsekvens af at gemme sproget i databasen frem for
+ * i browseren (Jans valg 2026-08-08).
+ */
 function App() {
   // Jans ønske 2026-08-04: efter login lander man på Voldby BIO i stedet
   // for filmbiblioteket — gælder både et frisk login og en genindlæst side
@@ -82,6 +90,24 @@ function App() {
   const isGuest = user.role === "guest";
 
   return (
+    <I18nProvider language={user.settings?.language ?? SOURCE_LANGUAGE}>
+      <AppShell
+        user={user}
+        isGuest={isGuest}
+        tab={tab}
+        setTab={setTab}
+        setUser={setUser}
+        versionInfo={versionInfo}
+        onLogout={handleLogout}
+      />
+    </I18nProvider>
+  );
+}
+
+function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }) {
+  const t = useT();
+
+  return (
     <div className="app">
       <header className="app-header">
         <div className="app-header-inner">
@@ -89,41 +115,41 @@ function App() {
             <span className="brand-mark" aria-hidden="true">
               🎬
             </span>
-            Film &amp; TV-bibliotek
+            {t("app.brand")}
           </div>
           <nav className="tabs">
             <button
               className={tab === "library" ? "active" : ""}
               onClick={() => setTab("library")}
             >
-              Film
+              {t("app.nav.movies")}
             </button>
             <button
               className={tab === "tv" ? "active" : ""}
               onClick={() => setTab("tv")}
             >
-              TV-serier
+              {t("app.nav.tv")}
             </button>
             {!isGuest && (
               <button
                 className={tab === "wishlist" ? "active" : ""}
                 onClick={() => setTab("wishlist")}
               >
-                Ønsker
+                {t("app.nav.wishlist")}
               </button>
             )}
             <button
               className={tab === "cinema" ? "active" : ""}
               onClick={() => setTab("cinema")}
             >
-              🎬 Voldby BIO
+              {t("app.nav.cinema")}
             </button>
             {!isGuest && (
               <button
                 className={tab === "print" ? "active" : ""}
                 onClick={() => setTab("print")}
               >
-                Print
+                {t("app.nav.print")}
               </button>
             )}
             {!isGuest && (
@@ -131,20 +157,20 @@ function App() {
                 className={tab === "stats" ? "active" : ""}
                 onClick={() => setTab("stats")}
               >
-                Statistik
+                {t("app.nav.stats")}
               </button>
             )}
             <button
               className={tab === "settings" ? "active" : ""}
               onClick={() => setTab("settings")}
             >
-              Indstillinger
+              {t("app.nav.settings")}
             </button>
           </nav>
           <div className="header-user">
             <span className="muted">{user.username}</span>
-            <button type="button" className="btn" onClick={handleLogout}>
-              Log ud
+            <button type="button" className="btn" onClick={onLogout}>
+              {t("app.logout")}
             </button>
           </div>
         </div>

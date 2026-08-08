@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.66.0 (build 0093) — 2026-08-08
+
+- **Du kan nu vælge engelsk som sprog.** Indstillinger → Konto → Sprog. Valget gemmes på din bruger, så det følger med uanset om du åbner appen på telefonen eller på PC'en.
+- Denne version dækker menuen, login og ønskeliste-fanerne. Film-, TV-serie-, Indstillings- og BIO-siderne oversættes i de næste opdateringer — indtil da står de på dansk.
+- Login-siden og den offentlige BIO-side forbliver på dansk: der er ingen bruger at læse sprogvalget fra, før du er logget ind.
+
 ## v0.65.0 (build 0092) — 2026-08-08
 
 - **Appen tjekker nu selv om en film eller serie ligger i din Plex.** Den gamle "Tjek Plex"-knap, du skulle trykke på inde i hver enkelt film, er væk. I stedet slår appen hele biblioteket op på én gang.

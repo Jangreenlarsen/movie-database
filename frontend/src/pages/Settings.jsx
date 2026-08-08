@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import Chip from "../components/Chip";
+import { LANGUAGES, useT } from "../i18n";
 import "./Settings.css";
 
 // Feature #78 — kategoriseret undermenu i stedet for én lang scroll.
@@ -55,6 +56,7 @@ export default function Settings({ user, onSettingsChanged }) {
         <>
           <AccountSection user={user} />
           <CardSizeSection cardSize={user.settings.card_size} onSettingsChanged={onSettingsChanged} />
+          <LanguageSection language={user.settings.language} onSettingsChanged={onSettingsChanged} />
         </>
       )}
 
@@ -220,6 +222,53 @@ function CardSizeSection({ cardSize, onSettingsChanged }) {
       {error && (
         <div className="banner banner-error" style={{ marginTop: 12 }}>
           {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Feature #89 — sprogvalget. Ligger under "Konto" sammen med kortstørrelse:
+ * begge er personlige præferencer, ikke system-indstillinger, og gælder kun
+ * den bruger der er logget ind.
+ */
+function LanguageSection({ language, onSettingsChanged }) {
+  const t = useT();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  function selectLanguage(code) {
+    if (code === language) return;
+    setSaving(true);
+    setError(null);
+    api
+      .updateMySettings({ language: code })
+      .then(onSettingsChanged)
+      .catch((err) => setError(err.message))
+      .finally(() => setSaving(false));
+  }
+
+  return (
+    <div className="card settings-section">
+      <h2>{t("language.heading")}</h2>
+      <p className="muted">{t("language.description")}</p>
+
+      <div className="chip-row">
+        {LANGUAGES.map((option) => (
+          <Chip
+            key={option.code}
+            label={option.label}
+            active={language === option.code}
+            onClick={() => selectLanguage(option.code)}
+          />
+        ))}
+      </div>
+
+      {saving && <p className="muted" style={{ marginTop: 8 }}>{t("common.saving")}</p>}
+      {error && (
+        <div className="banner banner-error" style={{ marginTop: 12 }}>
+          {t("language.saveError", { message: error })}
         </div>
       )}
     </div>

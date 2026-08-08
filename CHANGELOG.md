@@ -2,6 +2,20 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.64.1 build 0090] — 2026-08-08 — fix: print satte ikke film og TV-serier på hver sin side (BUGS.md #49)
+
+Hensigten var der allerede: `.print-section-break { break-before: page; }` sad på "TV-serier"-overskriften. Den havde bare aldrig nogen effekt, fordi `.app` er en `display: flex`-column og `.app-main` dermed et flex-item — browsere fragmenterer ikke pålideligt inde i flex-layout, så et sideskift længere nede i træet ignoreres. Reglen sad desuden på en `<h2>` midt i et fælles fragment frem for på et selvstændigt blok-element.
+
+`@media print` sætter nu `.app`/`.app-main`/`.print-page` til `display: block`, så kæden ned til sideskiftet er almindelig blok-layout. Film og TV-serier pakkes hver i sin `<section className="print-section">`, og sideskiftet flyttes til `.print-page-break` på TV-sektionen. Er film-listen tom (fx efter en søgning der kun rammer serier), sættes sideskiftet ikke — ellers ville udskriften starte med en blank side.
+
+Både `break-before: page` og det forældede `page-break-before: always` sættes. Safari er browseren på den iPhone appen primært bruges fra, og honorerer fortsat de gamle egenskaber mere pålideligt end de moderne.
+
+Samtidig to ting der først mærkes når en liste fylder mere end én side: kolonne-overskrifterne gentages nu øverst på hver side (`thead { display: table-header-group }`), og en enkelt række knækkes ikke længere midt over ved et sideskift.
+
+Ikke verificeret på papir/PDF her — ændringen er ren print-CSS, som ikke kan efterprøves fra terminalen. Jan bedes tjekke med browserens print-forhåndsvisning.
+
+Berørte filer: `frontend/src/pages/PrintList.jsx`, `frontend/src/pages/PrintList.css`, `BUGS.md`, `version.json`.
+
 ## [0.64.0 build 0089] — 2026-08-08 — feature: kompakt redigerings-/detaljevindue (FEATURES.md #87)
 
 Film- og TV-vinduet var en lodret stak af ti enkeltfelter, hvor de fleste kun rummede en dropdown eller et tal — meget scroll for meget lidt indhold. Korte felter parres nu to og to i en `.modal-field-row` (CSS grid): Serienummer+Set-status, Lokation+Ejer, Format+Medietype, Din rating+Registreret af.

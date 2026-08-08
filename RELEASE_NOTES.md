@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.64.1 (build 0090) — 2026-08-08
+
+- **Print: film og TV-serier kommer nu på hver sin side.** Det var meningen før, men sideskiftet blev ignoreret af browseren — nu virker det.
+- Løber en liste over flere sider, gentages kolonne-overskrifterne øverst på hver side, og en filmlinje bliver ikke længere skåret midt over ved sideskiftet.
+
 ## v0.64.0 (build 0089) — 2026-08-08
 
 - **Redigerings-vinduet for film og serier er blevet kompakt.** Korte felter står nu side om side — Serienummer og Set-status, Lokation og Ejer, Format og Medietype — i stedet for hver sin linje. Tags, lyd-type og din note bruger stadig fuld bredde, og ligger nu samlet nederst. Meget mindre at scrolle igennem.

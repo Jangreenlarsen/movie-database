@@ -98,15 +98,45 @@ Implementeret i `backend/app/integrations/ean_search_client.py`. Fjerde og sidst
 - **Response**: en JSON-liste. Match: `[{"ean": "...", "name": "Artist, Titel", ...}]` — `name` bruges som titel-gæt. Intet match: tom liste `[]`. Ugyldigt token: `[{"error": "Invalid token"}]`.
 - **Fejlhåndtering**: samme "skelnen mellem afvist token og ægte tomhed"-princip som UPCDatabase.org (BUGS.md #37) — et `error`-felt i svaret logges som `WARNING`, en tom liste som almindelig `INFO`-"intet match". Netværksfejl/ikke-200-status logges og returnerer `None`, aldrig en kastet exception.
 
-### Plex (afspilnings-integration, feature #45)
+### Plex (tilgængeligheds-integration, feature #45 → omlagt i feature #88)
 
-Implementeret i `backend/app/integrations/plex_client.py`. **Ikke** en metadata-kilde som TMDb/UPC/Discogs — bruges udelukkende til at tjekke om en film brugeren allerede har katalogiseret *også* er tilgængelig i deres egen, selv-hostede Plex-server, og i så fald linke direkte til at afspille den der. Kataloget er stadig ikke en medieserver (bevidst fravalgt, se BUGS.md/session-noter) — dette er en tynd bro til en Plex-installation brugeren allerede kører.
+Implementeret i `backend/app/integrations/plex_client.py` + `app/services/plex_service.py`. **Ikke** en metadata-kilde som TMDb/UPC/Discogs — bruges udelukkende til at afgøre om noget brugeren allerede har katalogiseret *også* ligger i deres egen, selv-hostede Plex-server, og i så fald linke direkte til at afspille det der. Kataloget er stadig ikke en medieserver (bevidst fravalgt) — dette er en tynd bro til en Plex-installation brugeren allerede kører.
 
-- **Base URL**: brugerens egen Plex-server (`PLEX_SERVER_URL` i `.env`, eller admin-sat i UI'et under Indstillinger → System-indstillinger — **ikke** en hemmelighed, vises med sin faktiske værdi i modsætning til de øvrige nøgler, se ARCHITECTURE.md). Typisk en LAN-adresse, fx `http://192.168.1.50:32400`.
-- **Auth**: `X-Plex-Token`-header (`PLEX_TOKEN`, findes via Plex's "Finding an authentication token" i deres support-docs — ikke det samme som en Plex-konto-adgangskode). Behandles som de øvrige API-nøgler: skriv-kun, aldrig eksponeret til frontend.
-- **Opslag**: `GET /identity` (henter `machineIdentifier`, bruges i afspilnings-deep-linket) og `GET /search?query=<titel>` (kandidat-liste). Matcher først på TMDb-id via kandidaternes `Guid[].id` (format `tmdb://<id>` — kun til stede for visse agent-versioner), ellers på præcist titel+år.
+#### Konfiguration i denne app
+
+| Indstilling | Hvor | Påkrævet | Beskrivelse |
+|---|---|---|---|
+| `PLEX_SERVER_URL` | `.env` eller Indstillinger → System-indstillinger | **ja** | LAN-adressen på Plex-serveren, fx `http://192.168.1.50:32400`. Ikke en hemmelighed — vises med sin faktiske værdi (se ARCHITECTURE.md). |
+| `PLEX_TOKEN` | `.env` eller Indstillinger → System-indstillinger | **ja** | `X-Plex-Token`. Skriv-kun, aldrig eksponeret til frontend. |
+| `PLEX_CACHE_TTL_SECONDS` | `.env` (default `300`) | nej | Hvor længe det hentede Plex-index genbruges. `0` slår cachen fra (ét fuldt hent pr. sideindlæsning — frarådes). |
+| `PLEX_VERIFY_SSL` | `.env` (default `true`) | nej | Sæt `false` hvis URL'en er `https://` mod en rå LAN-IP: Plex' certifikater udstedes til `*.plex.direct` og validerer derfor ikke. Trafikken er stadig krypteret, værtsnavnet bare ikke verificeret. Er ikke nødvendig ved `http://`. |
+
+Badget slås til pr. bruger under **Vis felter → Plex** i Bibliotek og TV-serier (fra som standard). Fejlsøgning: Indstillinger → Nøgler → **Plex-forbindelse (fejlsøgning)**.
+
+#### Hvad der skal være på plads i selve Plex
+
+1. **Et token med adgang til bibliotekerne.** Findes via Plex' egen vejledning "Finding an authentication token / X-Plex-Token" — det er *ikke* Plex-konto-adgangskoden. Et token fra en delt/begrænset bruger ser kun de biblioteker den bruger har adgang til; `/library/sections` returnerer så en tom liste, hvilket fejlsøgnings-panelet melder eksplicit.
+2. **Serveren skal kunne nås fra backend-værten** på den angivne adresse/port (typisk 32400). "Remote access" behøver ikke være slået til — al trafik går over LAN.
+3. **Film- og TV-bibliotekerne skal bruge en agent der giver TMDb-id'er** — "Plex Movie" og "Plex TV Series" (de nyere agenter) gør det. Bruger et bibliotek en ældre agent (`com.plexapp.agents.imdb` m.fl.), findes der ingen TMDb-id'er at matche entydigt på, og matchningen falder tilbage på titel+år. Det virker, men er mindre sikkert. Fejlsøgnings-panelets kolonne "Med TMDb-id" viser præcis hvor mange elementer i hver sektion der har ét.
+4. **Ingen indstilling i Plex skal ændres** ud over det. Der skrives aldrig til Plex — integrationen er udelukkende læsende.
+
+#### Endpoints der bruges
+
+- `GET /` — `friendlyName`, `version` og `machineIdentifier` (sidstnævnte indgår i afspilnings-linket).
+- `GET /library/sections` — sektionslisten; kun `type: "movie"` og `type: "show"` bruges.
+- `GET /library/sections/{key}/all?includeGuids=1` — alle elementer i en sektion, hentet sidevist med `X-Plex-Container-Start`/`-Size` (500 ad gangen, maks. 40 sider). `includeGuids=1` er det der overhovedet får `Guid`-listen med; uden den er der ingen TMDb-id'er at matche på.
 - **Afspilnings-link**: `{server}/web/index.html#!/server/{machineIdentifier}/details?key=%2Flibrary%2Fmetadata%2F{ratingKey}` — Plex-serverens egen indbyggede web-UI, ikke `app.plex.tv` (undgår internet-/plex.tv-konto-afhængighed, matcher "selv-hostet på hjemmenetværk"-modellen resten af appen bruger).
-- **Fejlhåndtering**: samme filosofi som UPC/Discogs — manglende konfiguration, en utilgængelig server, eller intet match returnerer alle `None`/`{"available": false}`, aldrig en kastet exception. **Ikke live-verificeret** mod en rigtig Plex-server endnu (ingen adgang under udvikling) — Plex's præcise GUID-format kan variere afhængig af hvilken metadata-agent brugerens bibliotek bruger; verificér title+år-fallback'et virker som forventet ved første rigtige brug.
+
+#### Matchning
+
+I faldende sikkerhed, og hvilken regel der ramte følger med i svarets `matched_by`:
+1. **TMDb-id** fra elementets `Guid`-liste (`tmdb://603`) eller en legacy-agents `guid`-streng (`com.plexapp.agents.themoviedb://603`).
+2. **Normaliseret titel + år**, med ±1 års tolerance (Plex følger ofte den lokale udgivelse, TMDb premieren). Normalisering = små bogstaver, accenter og tegnsætning væk, indledende artikel (`the`/`den`/`et`/…) væk.
+3. **Normaliseret titel alene** — kun når den er entydig i Plex. To film der begge hedder "Batman" giver bevidst *intet* match frem for et tilfældigt af dem.
+
+Film og TV-serier matches aldrig på tværs af hinanden.
+
+- **Fejlhåndtering**: samme filosofi som UPC/Discogs — manglende konfiguration, en utilgængelig server eller intet match giver et tomt resultat med en læsbar `error`, aldrig en kastet exception. Et 401-svar rapporteres eksplicit som "token afvist" i stedet for at blive til "ingen match".
 
 ---
 

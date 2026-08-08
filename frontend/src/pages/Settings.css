@@ -65,3 +65,71 @@
     gap: 8px;
   }
 }
+
+/* Feature #88 — Plex-fejlsøgningens output. Nøgletal i et grid der falder
+   til én kolonne på telefon, og en sektions-tabel der scroller vandret i
+   sin egen boks frem for at presse siden bred. */
+.plex-diagnostics {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.plex-diagnostics h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.plex-diag-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.plex-diag-grid dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.plex-diag-grid dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.plex-diag-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  display: block;
+  overflow-x: auto;
+}
+
+.plex-diag-table th,
+.plex-diag-table td {
+  text-align: left;
+  padding: 6px 10px 6px 0;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.plex-diag-table th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.plex-diag-unmatched {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 0.88rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

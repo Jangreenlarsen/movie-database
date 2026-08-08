@@ -1,13 +1,11 @@
 .movie-seasons-badge {
-  /* Right-anchored with a fixed edge offset, like the other corner badges
-     (.movie-format-badge/.movie-watched-badge) — scales correctly across
-     all card sizes (feature #59). The previous centered-plus-fixed-px-nudge
-     approach looked fine at one card size but drifted badly at the others,
-     since the nudge was a constant fraction of a *varying* poster width. */
-  position: absolute;
-  z-index: 2;
-  bottom: 34px;
-  right: 8px;
+  /* Feature #88 — sidder nu i .movie-badge-stack (Library.css) sammen med
+     Plex- og Set-badget, i stedet for sin egen absolutte `bottom: 34px`.
+     Den hardkodede offset var netop et badge højt: da Plex-badget kom til,
+     ville et tredje badge skulle kende de to andres højde for at undgå at
+     lande oven i dem. Stakken løser rækkefølgen uden faste tal, og bevarer
+     den kant-forankring feature #59 indførte (fast afstand til hjørnet,
+     ikke en andel af en varierende posterbredde). */
   background: rgba(0, 0, 0, 0.55);
   color: #fff;
   font-size: 0.68rem;

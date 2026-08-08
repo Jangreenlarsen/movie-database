@@ -124,6 +124,13 @@ async def find_all_raw(db: AsyncIOMotorDatabase) -> list[dict]:
     return await db[COLLECTION].find({}).to_list(length=None)
 
 
+async def find_all_for_plex_match(db: AsyncIOMotorDatabase) -> list[dict]:
+    """TV-siden af feature #88 — spejler movie_repository.find_all_for_plex_match,
+    bortset fra titel-feltet, som her hedder `name`."""
+    cursor = db[COLLECTION].find({}, {"_id": 1, "tmdb_id": 1, "name": 1, "year": 1})
+    return await cursor.to_list(length=None)
+
+
 async def find_all_library_tv_shows(db: AsyncIOMotorDatabase) -> list[dict]:
     """All non-wishlist TV shows, uncapped — mirrors
     movie_repository.find_all_library_movies, used by the Statistik-side's

@@ -4,6 +4,8 @@ import Chip from "../components/Chip";
 import Combobox from "../components/Combobox";
 import MovieLookupForm from "../components/MovieLookupForm";
 import Pagination from "../components/Pagination";
+import { PlexCardBadge, PlexPlayLink } from "../components/PlexAvailability";
+import { usePlexAvailability } from "../components/usePlexAvailability";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import "../pages/Library.css";
 import "./TvShows.css";
@@ -52,6 +54,7 @@ const VISIBLE_FIELD_OPTIONS = [
   { key: "audioTypes", label: "Lyd-type" },
   { key: "mediaType", label: "Medietype" },
   { key: "rating", label: "Rating" },
+  { key: "plex", label: "Plex" },
 ];
 
 const DEFAULT_VISIBLE_FIELDS = {
@@ -61,6 +64,7 @@ const DEFAULT_VISIBLE_FIELDS = {
   audioTypes: false,
   mediaType: false,
   rating: false,
+  plex: false,
 };
 
 function visibleFieldsFromSettings(settings) {
@@ -72,6 +76,7 @@ function visibleFieldsFromSettings(settings) {
     audioTypes: vf.audio_types ?? DEFAULT_VISIBLE_FIELDS.audioTypes,
     mediaType: vf.media_type ?? DEFAULT_VISIBLE_FIELDS.mediaType,
     rating: vf.rating ?? DEFAULT_VISIBLE_FIELDS.rating,
+    plex: vf.plex ?? DEFAULT_VISIBLE_FIELDS.plex,
   };
 }
 
@@ -121,6 +126,8 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
   const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
   const [settingsError, setSettingsError] = useState(null);
   const [savedMovie, setSavedMovie] = useState(false);
+  // Feature #88 — "show" er Plex' eget navn for en TV-serie-sektion.
+  const plex = usePlexAvailability("show");
 
   // BUGS.md #45 — see the identical helper in Library.jsx: a failed settings
   // save must be shown, not swallowed, since the UI reflects the change from
@@ -142,6 +149,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
         audio_types: nextVisible.audioTypes,
         media_type: nextVisible.mediaType,
         rating: nextVisible.rating,
+        plex: nextVisible.plex,
       },
     });
   }
@@ -714,16 +722,19 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
                 {visibleFields.rating && show.rating != null && (
                   <div className="movie-rating-badge">★ {show.rating.toFixed(1)}</div>
                 )}
-                {show.watched && (
-                  <div className="movie-watched-badge" title="Set">
-                    ✓ Set
-                  </div>
-                )}
-                {show.number_of_seasons > 0 && (
-                  <div className="movie-seasons-badge" title="Ejede sæsoner ud af serien totalt">
-                    {show.seasons.filter((s) => s.owned).length}/{show.number_of_seasons} sæsoner
-                  </div>
-                )}
+                <div className="movie-badge-stack">
+                  {visibleFields.plex && <PlexCardBadge availability={plex.items[show.id]} />}
+                  {show.number_of_seasons > 0 && (
+                    <div className="movie-seasons-badge" title="Ejede sæsoner ud af serien totalt">
+                      {show.seasons.filter((s) => s.owned).length}/{show.number_of_seasons} sæsoner
+                    </div>
+                  )}
+                  {show.watched && (
+                    <div className="movie-watched-badge" title="Set">
+                      ✓ Set
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="movie-info">
                 <div className="movie-title">{show.name}</div>
@@ -781,6 +792,8 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
           allLocations={allLocations}
           attributeOptions={attributeOptions}
           serialPaddingWidth={serialPaddingWidth}
+          plex={plex}
+          plexAvailability={plex.items[activeShow.id]}
           onClose={() => setActiveShow(null)}
           onChanged={() => {
             refresh();
@@ -802,6 +815,9 @@ export function TvShowDetailModal({
   allLocations,
   attributeOptions,
   serialPaddingWidth,
+  // Feature #88 — valgfri, se den identiske note i Library.MovieDetailModal.
+  plex,
+  plexAvailability,
   onClose,
   onChanged,
 }) {
@@ -996,6 +1012,8 @@ export function TvShowDetailModal({
               <strong>Medvirkende:</strong> {show.cast.join(", ")}
             </p>
           )}
+
+          {show.id && <PlexPlayLink availability={plexAvailability} plex={plex} />}
 
           {isGuest ? (
             <>

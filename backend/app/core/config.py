@@ -31,6 +31,17 @@ class Settings(BaseSettings):
     plex_server_url: str = ""
     plex_token: str = ""
 
+    # Feature #88 — hele Plex-biblioteket hentes i ét hug og caches, i stedet
+    # for ét opslag pr. film. TTL'en er afvejningen mellem "badges er friske
+    # efter du lige har lagt en film i Plex" og "biblioteksvisningen belaster
+    # ikke Plex-serveren ved hver eneste sideskift". 0 slår cachen fra.
+    plex_cache_ttl_seconds: int = 300
+    # Plex' egne certifikater udstedes til *.plex.direct og validerer derfor
+    # ikke mod en rå LAN-IP over https. Sæt til false hvis plex_server_url
+    # peger på https:// med et selvsigneret/ikke-matchende certifikat —
+    # trafikken er stadig krypteret, men værtsnavnet verificeres ikke.
+    plex_verify_ssl: bool = True
+
     # Hvilken stregkode-kilde der prøves FØRST (feature #77) — resten af de
     # fire (se scan_service.BARCODE_SOURCES) prøves stadig som fallback i
     # deres normale rækkefølge, bare med denne trukket forrest. Ikke en

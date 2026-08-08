@@ -2,6 +2,28 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.65.0 build 0092] — 2026-08-08 — feature: portalen kontrollerer selv Plex, badge på kortene (FEATURES.md #88)
+
+Feature #45's "Tjek Plex"-knap er væk. Den sad i detaljevinduet, skulle trykkes pr. film, og svarede kun på den ene film man stod i. Jans ønske: portalen skal selv vide det, og det skal være et badge man kan tilvælge under "Vis felter".
+
+Det er ikke bare en flytning af knappen. #45 slog op via `/search?query=<titel>` — ét HTTP-kald pr. film. Et badge på hvert kort ville med den fremgangsmåde koste 50 Plex-kald pr. biblioteksside. `plex_client` henter derfor nu hele Plex-bibliotekets index i ét hug (`/` for server-info, `/library/sections`, og `/library/sections/{key}/all?includeGuids=1` sidevist pr. sektion), og `plex_service` cacher det i hukommelsen (`PLEX_CACHE_TTL_SECONDS`, default 300) og matcher vores egne dokumenter lokalt. Én asyncio-lås om hentningen, så to faner der åbnes samtidig ikke starter hver sit fulde hent.
+
+Matchningen sker i faldende sikkerhed, og hvilken regel der ramte følger med i svarets `matched_by`: TMDb-id → normaliseret titel+år (±1 år, da Plex ofte følger den lokale udgivelse hvor TMDb bruger premieren) → normaliseret titel alene, men kun når den er entydig i Plex. To film der begge hedder "Batman" giver bevidst intet match frem for et tilfældigt af dem — et forkert badge er værre end intet badge. Film og TV-serier matches aldrig på tværs af hinanden.
+
+GUID-læsningen håndterer nu både nyere agenters `Guid`-liste (`tmdb://603`) og ældre agenters enkelte `guid`-streng (`com.plexapp.agents.imdb://tt0133093`). #45 læste kun den første, hvilket betød at et helt bibliotek på en legacy-agent faldt tilbage på titel-matchning uden at det var synligt nogen steder.
+
+Fejlsøgnings-panelet (Indstillinger → Nøgler, admin) er der netop for den slags. "Hvorfor har mine film ikke badges?" har fem forskellige svar — forbindelsen, token'et, en sektion der ikke blev fundet, en agent uden TMDb-id'er, eller titler der bare ikke matcher — og panelet skiller dem ad: server-navn/-version, sektions-tabel med guid-dækning pr. sektion, hvor mange af *vores* film/serier der matchede og hvordan, samt en stikprøve af de umatchede. `GET /api/plex/diagnostics` henter altid friskt uden om cachen, så en netop rettet URL/token afprøves med det samme.
+
+Cachen ryddes automatisk når en admin ændrer en `plex_*`-indstilling. Uden det ville en rettet URL se ud til ikke at virke indtil TTL'en løb ud, hvilket er præcis det forkerte signal at give i det øjeblik.
+
+To nye, valgfri indstillinger: `PLEX_CACHE_TTL_SECONDS` (default 300, `0` slår cachen fra) og `PLEX_VERIFY_SSL` (default `true`; sæt `false` ved `https://` mod en rå LAN-IP, da Plex' certifikater udstedes til `*.plex.direct`). Hvad der skal være på plads i selve Plex — token med biblioteksadgang, netværksadgang til port 32400, og helst "Plex Movie"/"Plex TV Series"-agenterne for TMDb-id'er — er dokumenteret i MOVIE_API_REFERENCE.md. Der skrives aldrig til Plex; integrationen er udelukkende læsende.
+
+Badget er fra som standard (`VisibleFields.plex`), da det kun giver mening for den der faktisk har en Plex-server. "Afspil i Plex"-linket i detaljevinduet vises derimod uanset badge-indstillingen — status er alligevel hentet, og linket er det man reelt skal bruge derinde.
+
+Sidegevinst: TV-kortets sæson-badge havde en hardkodet `bottom: 34px` — netop "ét badge højt". Et tredje badge ville skulle kende de to andres højde for ikke at lande oven i dem. Alle tre (Plex/Sæsoner/Set) sidder nu i en `.movie-badge-stack`, som løser rækkefølgen uden faste tal.
+
+Berørte filer: `backend/app/integrations/plex_client.py`, `backend/app/services/plex_service.py`, `backend/app/models/plex.py`, `backend/app/api/plex.py` (ny), `backend/app/api/movies.py`, `backend/app/main.py`, `backend/app/core/config.py`, `backend/app/models/user.py`, `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/app/services/system_settings_service.py`, `backend/tests/test_plex.py`, `backend/.env.example`, `frontend/src/components/PlexAvailability.jsx` (ny), `frontend/src/components/usePlexAvailability.js` (ny), `frontend/src/api/client.js`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/Library.css`, `frontend/src/pages/TvShows.jsx`, `frontend/src/pages/TvShows.css`, `frontend/src/pages/Settings.jsx`, `frontend/src/pages/Settings.css`, `ARCHITECTURE.md`, `MOVIE_API_REFERENCE.md`, `FEATURES.md`, `version.json`.
+
 ## [0.64.2 build 0091] — 2026-08-08 — fix: sæson-vælgeren talte om "ejerskab" på ønskelisten (BUGS.md #50)
 
 Scanner man en TV-serie ind på ønskelisten, stod der "Vælg hvilke sæsoner du **ejer**" og "de markeres automatisk som **ejet**" — om noget man per definition ikke ejer endnu. Samme fejl i grupperings-grenen ("markeres som ejet på den eksisterende serie", "allerede ejet") og i begge knapper, som talte om "serie" hvor det var et ønske.

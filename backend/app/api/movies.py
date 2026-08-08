@@ -19,9 +19,8 @@ from app.models.movie import (
     MovieUpdate,
     TmdbSyncResult,
 )
-from app.models.plex import PlexAvailability
 from app.models.scan import MovieCandidate
-from app.services import movie_service, plex_service
+from app.services import movie_service
 
 router = APIRouter(prefix="/api/movies", tags=["movies"], dependencies=[Depends(get_current_user)])
 
@@ -145,12 +144,6 @@ async def sync_movies_from_tmdb(db: AsyncIOMotorDatabase = Depends(get_database)
 @router.get("/{movie_id}", response_model=Movie)
 async def get_movie(movie_id: str, db: AsyncIOMotorDatabase = Depends(get_database)):
     return await movie_service.get_movie(db, movie_id)
-
-
-@router.get("/{movie_id}/plex", response_model=PlexAvailability)
-async def get_plex_availability(movie_id: str, db: AsyncIOMotorDatabase = Depends(get_database)):
-    movie = await movie_service.get_movie(db, movie_id)
-    return await plex_service.check_availability(movie.tmdb_id, movie.title, movie.year)
 
 
 @router.patch("/{movie_id}", response_model=Movie)

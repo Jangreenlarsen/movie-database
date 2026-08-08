@@ -4,6 +4,8 @@ import Chip from "../components/Chip";
 import Combobox from "../components/Combobox";
 import MovieLookupForm from "../components/MovieLookupForm";
 import Pagination from "../components/Pagination";
+import { PlexCardBadge, PlexPlayLink } from "../components/PlexAvailability";
+import { usePlexAvailability } from "../components/usePlexAvailability";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import "./Library.css";
 
@@ -62,6 +64,7 @@ const VISIBLE_FIELD_OPTIONS = [
   { key: "mediaType", label: "Medietype" },
   { key: "rating", label: "Rating" },
   { key: "runtime", label: "Spilletid" },
+  { key: "plex", label: "Plex" },
 ];
 
 const DEFAULT_VISIBLE_FIELDS = {
@@ -72,6 +75,7 @@ const DEFAULT_VISIBLE_FIELDS = {
   mediaType: false,
   rating: false,
   runtime: false,
+  plex: false,
 };
 
 function visibleFieldsFromSettings(settings) {
@@ -84,6 +88,7 @@ function visibleFieldsFromSettings(settings) {
     mediaType: vf.media_type ?? DEFAULT_VISIBLE_FIELDS.mediaType,
     rating: vf.rating ?? DEFAULT_VISIBLE_FIELDS.rating,
     runtime: vf.runtime ?? DEFAULT_VISIBLE_FIELDS.runtime,
+    plex: vf.plex ?? DEFAULT_VISIBLE_FIELDS.plex,
   };
 }
 
@@ -144,6 +149,8 @@ export default function Library({ user, onSettingsChanged, wishlist = false, onG
   const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
   const [settingsError, setSettingsError] = useState(null);
   const [savedTvShow, setSavedTvShow] = useState(false);
+  // Feature #88 — hele bibliotekets Plex-status i ét kald, slået op pr. kort.
+  const plex = usePlexAvailability("movie");
 
   // BUGS.md #45 — these saves used to end in a bare `.catch(() => {})`. The
   // UI updates from local state either way, so a failed save (session
@@ -169,6 +176,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false, onG
         media_type: nextVisible.mediaType,
         rating: nextVisible.rating,
         runtime: nextVisible.runtime,
+        plex: nextVisible.plex,
       },
     });
   }
@@ -785,11 +793,14 @@ export default function Library({ user, onSettingsChanged, wishlist = false, onG
                 {visibleFields.rating && movie.rating != null && (
                   <div className="movie-rating-badge">★ {movie.rating.toFixed(1)}</div>
                 )}
-                {movie.watched && (
-                  <div className="movie-watched-badge" title="Set">
-                    ✓ Set
-                  </div>
-                )}
+                <div className="movie-badge-stack">
+                  {visibleFields.plex && <PlexCardBadge availability={plex.items[movie.id]} />}
+                  {movie.watched && (
+                    <div className="movie-watched-badge" title="Set">
+                      ✓ Set
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="movie-info">
                 <div className="movie-title">{movie.title}</div>
@@ -847,6 +858,8 @@ export default function Library({ user, onSettingsChanged, wishlist = false, onG
           allLocations={allLocations}
           attributeOptions={attributeOptions}
           serialPaddingWidth={serialPaddingWidth}
+          plex={plex}
+          plexAvailability={plex.items[activeMovie.id]}
           onClose={() => setActiveMovie(null)}
           onChanged={() => {
             refresh();
@@ -872,6 +885,10 @@ export function MovieDetailModal({
   allLocations,
   attributeOptions,
   serialPaddingWidth,
+  // Feature #88 — valgfri: MovieLookupForm genbruger dette vindue til en
+  // netop scannet film, hvor der endnu ikke findes nogen Plex-status at vise.
+  plex,
+  plexAvailability,
   onClose,
   onChanged,
   onFilterByPerson,
@@ -1119,7 +1136,7 @@ export function MovieDetailModal({
             <CollectionSection movie={movie} onChanged={onChanged} />
           )}
 
-          {movie.id && <PlexSection movie={movie} />}
+          {movie.id && <PlexPlayLink availability={plexAvailability} plex={plex} />}
 
           {isGuest ? (
             <>
@@ -1379,36 +1396,6 @@ export function MovieDetailModal({
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function PlexSection({ movie }) {
-  const [status, setStatus] = useState("idle"); // idle | checking | found | not-found | error
-
-  function check() {
-    setStatus("checking");
-    api
-      .getPlexAvailability(movie.id)
-      .then((data) => setStatus(data.available ? { found: data.play_url } : "not-found"))
-      .catch(() => setStatus("error"));
-  }
-
-  return (
-    <div>
-      {status === "idle" && (
-        <button type="button" className="btn" onClick={check}>
-          Tjek Plex
-        </button>
-      )}
-      {status === "checking" && <p className="muted">Tjekker Plex...</p>}
-      {status === "not-found" && <p className="muted">Ikke fundet i Plex.</p>}
-      {status === "error" && <p className="muted">Kunne ikke tjekke Plex lige nu.</p>}
-      {status?.found && (
-        <a href={status.found} target="_blank" rel="noreferrer" className="btn btn-primary">
-          ▶ Afspil i Plex
-        </a>
-      )}
     </div>
   );
 }

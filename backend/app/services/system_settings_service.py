@@ -10,6 +10,7 @@ from app.models.settings import (
     TestableApiKey,
 )
 from app.repositories import system_settings_repository
+from app.services import plex_service
 
 KEYS = system_settings_repository.OVERRIDABLE_KEYS
 
@@ -77,6 +78,13 @@ async def update_settings(
         # override degrades to "no .env fallback" instead of a raw 500
         # (BUGS.md #30).
         setattr(settings, key, value if value != "" else ENV_DEFAULT_API_KEYS.get(key, ""))
+
+    # Feature #88 — det cachede Plex-biblioteks-index blev hentet med de
+    # *gamle* credentials. Uden denne rydning ville en admin der retter en
+    # forkert URL/token stadig se det gamle (typisk tomme) resultat indtil
+    # TTL'en løb ud, og med rimelighed konkludere at rettelsen ikke virkede.
+    if any(key.startswith("plex_") for key in updates):
+        plex_service.invalidate_cache()
 
     return await get_status(db)
 

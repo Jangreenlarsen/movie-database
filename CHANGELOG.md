@@ -2,6 +2,20 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.62.1 build 0087] — 2026-08-08 — fix: fritekst-søgningen ramte ikke skuespiller/instruktør/genre (BUGS.md #48)
+
+Man kunne kun afgrænse på en person ved at åbne en films detaljevindue og trykke på et navn (feature #41's `?cast=`/`?director=`). Skrev man navnet i søgefeltet, fandt det ingenting — `?q=` gik gennem et Mongo-`$text`-index der kun dækkede `title`+`overview` (film) og `name`+`overview` (TV). Søgefeltets egen placeholder ("Søg på titel, skuespiller, genre...") og CLAUDE.md regel 7 har hele tiden lovet mere end implementeringen leverede.
+
+`$text` er erstattet af et felt-eksplicit regex-match i ny `repositories/text_search.py`, delt af begge repositories. Søgeteksten splittes i ord; hvert ord skal matche mindst ét felt (film: titel, overview, cast, director, genres — TV: name, overview, cast, creators, genres), og alle ord skal matche. Det gør "pacino heat" til en søgning der finder Heat selvom navn og titel står i hver sit felt, mens "pacino" alene finder alt med ham. Regex-metategn escapes, så en søgning på "(2019)" behandles som tekst.
+
+Sidegevinst: `$text` matcher kun hele ord, hvilket er direkte upraktisk i et felt der søger for hvert tastetryk — "Paci" gav nul resultater indtil "Pacino" stod færdigt. Delstrengs-matchet indsnævrer nu mens man skriver.
+
+Trade-off'et er bevidst: et regex-scan er langsommere end et text-index og har ingen relevans-rangering. Biblioteket er en privat samling i hundred-/tusindtals-størrelsen, og resultaterne vises i brugerens egen valgte sortering — ikke efter score — så ingen af delene mærkes her. De nu ubrugte text-indexes droppes ved opstart (`drop_legacy_text_index`) frem for at ligge og koste skrivetid ved hver dokument-opdatering.
+
+Søgningen var **helt utestet** før nu, og kunne ikke testes: mongomock implementerer ikke `$text` (`NotImplementedError`), så ingen test i suiten rammer `?q=` overhovedet — samme klasse blind vinkel som BUGS.md #31. Regex-varianten er testbar, og ny `test_search.py` dækker 13 tilfælde: cast, instruktør, genre, titel/overview-regression, case-insensitivitet, delstrenge, flere ord på tværs af felter, intet-match, regex-metategn, kombination med tag-filter, TV-cast, og at en tom søgning ikke filtrerer noget fra. Hele suiten: 437 passed.
+
+Berørte filer: `backend/app/repositories/text_search.py` (ny), `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/tests/test_search.py` (ny), `ARCHITECTURE.md`, `BUGS.md`, `version.json`.
+
 ## [0.62.0 build 0086] — 2026-08-08 — test: #85's testfil, udeladt ved en fejl i build 0085
 
 `backend/tests/test_screening_requests.py` blev ikke staget i b0085 (`git add`-mønsteret dækkede `backend/app`, ikke `backend/tests`), så feature #85's 7 regressionstests lå kun lokalt. Ingen kode- eller adfærdsændring — filen er præcis den der blev kørt grøn før b0085.

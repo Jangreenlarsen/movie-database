@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.62.1 (build 0087) — 2026-08-08
+
+- **Søgefeltet finder nu også skuespillere, instruktører og genrer.** Før kunne du kun ramme titel og handling — vil du se alt med Al Pacino, skriv bare "pacino" i søgefeltet, i stedet for først at åbne en film og trykke på navnet.
+- Søgningen indsnævrer nu mens du skriver: "paci" er nok, du behøver ikke skrive hele navnet færdigt.
+- Flere ord kombineres: "pacino heat" finder filmen selvom det ene er en skuespiller og det andet en titel.
+
 ## v0.62.0 (build 0085) — 2026-08-08
 
 - **"Ønsk visning i Voldby BIO" spørger nu hvornår.** Knappen sender ikke længere med det samme — den åbner en lille boks hvor man kan skrive en besked ("Gerne en fredag aften — så laver jeg popcorn!") og vælge et ønsket tidspunkt. Begge dele er valgfri: åbn og tryk "Send ønske", så er det som før.

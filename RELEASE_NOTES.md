@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.71.1 (build 0101) — 2026-08-08
+
+- **Rettet: TV-serier fra Plex blev sprunget over ved import.** Kunne Plex ikke fortælle hvilken opløsning en serie ligger i, blev den slet ikke oprettet — og dukkede derfor aldrig op under TV-serier. Det ramte serier langt oftere end film, fordi deres opløsning kræver et ekstra opslag pr. serie.
+- Nu importeres de i stedet med formatet **Digital-HD**, og forhåndsvisningen skriver "format ukendt i Plex" på dem, så du kan rette dem der skulle have været UHD eller SD.
+- Kør importen igen for at hente de serier der blev sprunget over — det du allerede har, springes over som altid.
+
 ## v0.71.0 (build 0100) — 2026-08-08
 
 - **Digitale udgaver får nu også serienummer** — med præfikset `D#`. Der er tre rækker der tælles hver for sig: `M#` til fysiske film, `T#` til fysiske TV-serier og `D#` til alt digitalt. `#` læses som "nr.", så `M#0042` er film nr. 42.

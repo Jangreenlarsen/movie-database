@@ -2,6 +2,22 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.71.1 build 0101] — 2026-08-08 — fix: TV-serier fra Plex blev sprunget over ved import (BUGS.md #52)
+
+Jans fejlmelding: TV-serier importeret fra Plex dukkede ikke op under TV-serier.
+
+Som ved BUGS.md #51 var første skridt at afgøre om placeringen var forkert. En rundtur-test — importér en Plex-serie, hent derefter `/api/tv-shows` — bestod: importen lagde serien korrekt i `tv_shows`. Så det var ikke dér, det gik galt.
+
+Årsagen var samspillet mellem to features fra tidligere samme dag. Feature #92 gjorde `format` påkrævet på en biblioteks-post, og #91 udledte det af Plex' `videoResolution`. Kunne opløsningen ikke afgøres, blev elementet sprunget over og kun listet som "kunne ikke matches".
+
+Det rammer TV-serier systematisk. En films opløsning står i det sektions-svar der alligevel hentes, så den er praktisk talt altid til stede. En series opløsning ligger derimod kun på episoderne og kræver et ekstra kald pr. serie — og enhver fejl dér, en langsom server, en serie uden hentede episoder, et uventet svar, kostede hele importen af den serie. Resultatet var en import der så ud til at virke, men hvor en hel kategori manglede.
+
+Afvejningen er nu vendt om. Elementet importeres med `Digital-HD` som fallback og markeres `format_is_fallback`. Det er ikke et gæt på må og få: `movie_repository._FORMAT_LABEL_MIGRATIONS` bruger allerede præcis den fallback for gamle "Digital"-poster uden kvalitetstrin, og HD er langt den almindeligste. Et enkelt felt der måske skal rettes er bedre end en titel der aldrig når ind i portalen — især når formatet ikke indgår i nogen anden beslutning: serienummer-serien afgøres af `media_type`, ikke af `format`.
+
+Forhåndsvisningen skriver "format ukendt i Plex — sat til Digital-HD" på de berørte, så de kan efterses bagefter.
+
+Berørte filer: `backend/app/services/plex_service.py`, `backend/app/models/plex.py`, `backend/tests/test_plex.py`, `frontend/src/pages/Settings.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `BUGS.md`, `version.json`.
+
 ## [0.71.0 build 0100] — 2026-08-08 — feature: D#-serie til digitale udgaver (#93) + samlet optælling i app-hovedet (#94)
 
 To ønsker fra Jan i samme omgang.

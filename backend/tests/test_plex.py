@@ -574,10 +574,11 @@ async def test_import_preview_shows_movie_format_without_creating(client, monkey
     assert body["imported"][0]["format"] == "Digital-STD"
 
 
-async def test_import_skips_item_without_resolution(client, monkeypatch):
-    """Feature #92 gjorde format påkrævet på en biblioteks-post. Kan Plex
-    ikke oplyse opløsningen, kan formatet ikke udledes — og så rapporteres
-    titlen frem for at gætte et format på plads."""
+async def test_import_falls_back_to_hd_when_resolution_is_unknown(client, monkeypatch):
+    """BUGS.md #52 — kan Plex ikke oplyse opløsningen, importeres elementet
+    alligevel med fallback-formatet og markeres som sådan. Før blev det
+    sprunget over, hvilket betød at en hel kategori stiltiende aldrig nåede
+    ind i portalen."""
     _configure(monkeypatch)
     created = []
     _patch_create(monkeypatch, created)
@@ -587,14 +588,16 @@ async def test_import_skips_item_without_resolution(client, monkeypatch):
     )
 
     body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
-    assert created == []
-    assert [item["title"] for item in body["unmatched"]] == ["Uden Opløsning"]
-    assert "opløsning" in body["unmatched"][0]["reason"]
+    assert created == [("movie", 12, ["Plex-import"])]
+    assert body["unmatched"] == []
+    assert body["imported"][0]["format"] == "Digital-HD"
+    assert body["imported"][0]["format_is_fallback"] is True
 
 
-async def test_import_skips_show_without_resolution(client, monkeypatch):
-    """Samme regel for serier, bare opdaget et trin senere — opløsningen
-    kendes først når episoderne er hentet."""
+async def test_import_show_falls_back_to_hd_when_episodes_have_no_resolution(client, monkeypatch):
+    """Serier rammes hårdest af den manglende opløsning: den kræver et ekstra
+    kald pr. serie, og enhver fejl der ville før koste hele importen af
+    serien."""
     _configure(monkeypatch)
     created = []
     _patch_create(monkeypatch, created)
@@ -606,8 +609,22 @@ async def test_import_skips_show_without_resolution(client, monkeypatch):
     _patch_library(monkeypatch, _fake_library([PlexItem("show", "7", "Fargo", 2014, 60622, None)]))
 
     body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
-    assert created == []
-    assert [item["title"] for item in body["unmatched"]] == ["Fargo"]
+    assert created == [("show", 60622, ["Plex-import"], [1])]
+    assert body["unmatched"] == []
+
+
+async def test_known_resolution_is_not_marked_as_fallback(client, monkeypatch):
+    _configure(monkeypatch)
+    created = []
+    _patch_create(monkeypatch, created)
+    _patch_library(
+        monkeypatch,
+        _fake_library([PlexItem("movie", "1", "Skarp Film", 2000, 12, None, resolution="4k")]),
+    )
+
+    body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
+    assert body["imported"][0]["format"] == "Digital-UHD"
+    assert body["imported"][0]["format_is_fallback"] is False
 
 
 async def test_import_show_takes_format_and_seasons_from_episodes(client, monkeypatch):
@@ -828,3 +845,82 @@ async def test_availability_reports_error_instead_of_empty_when_fetch_failed(cli
     assert body["ok"] is False
     assert body["error"]
     assert body["items"] == {}
+
+
+def _patch_tv_details(monkeypatch, name="Fargo"):
+    async def fake_get_tv_show_details(tv_id):
+        return {
+            "tmdb_id": tv_id,
+            "name": name,
+            "year": 2014,
+            "end_year": None,
+            "status": "Ended",
+            "poster_url": None,
+            "overview": None,
+            "genres": [],
+            "cast": [],
+            "creators": [],
+            "rating": None,
+            "number_of_seasons": 2,
+            "number_of_episodes": 20,
+            "imdb_url": None,
+            "seasons": [
+                {"season_number": 1, "name": "Sæson 1", "episode_count": 10},
+                {"season_number": 2, "name": "Sæson 2", "episode_count": 10},
+            ],
+        }
+
+    monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
+
+
+async def test_imported_tv_show_appears_under_tv_shows(client, monkeypatch):
+    """Jans fejlmelding 2026-08-08: TV-serier importeret fra Plex dukkede
+    ikke op under TV-serier. Rundtur: importér en serie, og hent derefter
+    TV-listen."""
+    _configure(monkeypatch)
+    _patch_tv_details(monkeypatch)
+
+    async def fake_fetch_show_details(rating_key):
+        return PlexShowDetails(seasons=[1, 2], resolution="1080")
+
+    monkeypatch.setattr(plex_client, "fetch_show_details", fake_fetch_show_details)
+    _patch_library(monkeypatch, _fake_library([PlexItem("show", "7", "Fargo", 2014, 60622, None)]))
+
+    body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
+    assert body["ok"] is True, body
+    assert len(body["imported"]) == 1, body
+
+    listed = (await client.get("/api/tv-shows")).json()
+    assert [show["name"] for show in listed["items"]] == ["Fargo"]
+
+
+async def test_show_without_episode_resolution_still_reaches_tv_shows(client, monkeypatch):
+    """BUGS.md #52 — Jans fejlmelding. Kunne opløsningen ikke afgøres, blev
+    serien før slet ikke oprettet, og dukkede derfor aldrig op under
+    TV-serier. Nu importeres den med fallback-formatet."""
+    _configure(monkeypatch)
+    _patch_tv_details(monkeypatch)
+
+    async def fake_fetch_show_details(rating_key):
+        return PlexShowDetails(seasons=[1], resolution=None)
+
+    monkeypatch.setattr(plex_client, "fetch_show_details", fake_fetch_show_details)
+    _patch_library(monkeypatch, _fake_library([PlexItem("show", "7", "Fargo", 2014, 60622, None)]))
+
+    body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
+    listed = (await client.get("/api/tv-shows")).json()
+
+    assert body["unmatched"] == []
+    assert [show["name"] for show in listed["items"]] == ["Fargo"]
+    assert listed["items"][0]["format"] == "Digital-HD"
+
+
+async def test_dry_run_preview_includes_tv_shows(client, monkeypatch):
+    """Forhåndsvisningen må ikke udelade serier — så ville man tro at der
+    intet var at importere."""
+    _configure(monkeypatch)
+    _patch_library(monkeypatch, _fake_library([PlexItem("show", "7", "Fargo", 2014, 60622, None)]))
+
+    body = (await client.post("/api/plex/import", json={"dry_run": True})).json()
+    assert [item["title"] for item in body["imported"]] == ["Fargo"]
+    assert body["imported"][0]["kind"] == "show"

@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.64.0 (build 0089) — 2026-08-08
+
+- **Redigerings-vinduet for film og serier er blevet kompakt.** Korte felter står nu side om side — Serienummer og Set-status, Lokation og Ejer, Format og Medietype — i stedet for hver sin linje. Tags, lyd-type og din note bruger stadig fuld bredde, og ligger nu samlet nederst. Meget mindre at scrolle igennem.
+- På telefon stiller felterne sig automatisk under hinanden igen, så intet bliver mast sammen.
+
 ## v0.63.0 (build 0088) — 2026-08-08
 
 - **Du kan nu se på knapperne om der er valgt noget.** "Sortér", "Filtrér" og "Vis felter" lyser op når de afviger fra standard — med et tal for hvor mange filtre der er aktive, og en prik når sortering eller viste felter er ændret. Ingen grund til at åbne alle tre paneler for at finde ud af hvorfor listen ser mærkelig ud.

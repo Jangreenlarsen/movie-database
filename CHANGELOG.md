@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.64.0 build 0089] — 2026-08-08 — feature: kompakt redigerings-/detaljevindue (FEATURES.md #87)
+
+Film- og TV-vinduet var en lodret stak af ti enkeltfelter, hvor de fleste kun rummede en dropdown eller et tal — meget scroll for meget lidt indhold. Korte felter parres nu to og to i en `.modal-field-row` (CSS grid): Serienummer+Set-status, Lokation+Ejer, Format+Medietype, Din rating+Registreret af.
+
+De felter der reelt bruger bredden — Tags med sin chip-liste, Lyd-type-chips og Din note — står fortsat alene og er flyttet ned under parrene, så det korte og faste samles øverst og det lange ligger samlet nedenunder. "Registreret af" var før en løs `<p class="muted">`-linje midt i stakken; den er nu et rigtigt felt med label, hvilket både giver rating en sidemakker og gør vinduet mere ensartet.
+
+Ændringen er lavet i *begge* grene af vinduet — redigerings-udgaven og guest-rollens read-only-udgave. De to render den samme felt-liste hver for sig, så en ændring kun ét sted ville have ladet dem drive fra hinanden.
+
+Under 560px falder rækkerne tilbage til én kolonne: to kolonner på en telefon ville presse dropdowns og datofelter sammen, og appens primære brug er netop en installeret iPhone-PWA. `align-items: start` sikrer at et felt med hjælpetekst under sig (serienummerets "bytter automatisk plads"-note) ikke strækker sin sidemakker.
+
+Berørte filer: `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/pages/Library.css`, `FEATURES.md`, `version.json`.
+
 ## [0.63.0 build 0088] — 2026-08-08 — feature: nulstil + tydelig markering af Sortér/Filtrér/Vis felter (FEATURES.md #86)
 
 Jans problem: "det er svært at se om der er tilvalgt noget på de tre funktioner". Man skulle åbne hvert panel for at finde ud af om noget var valgt — kun "Filtrér" viste et tal, og selv det var forkert.

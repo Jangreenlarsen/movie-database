@@ -526,6 +526,40 @@
   flex-shrink: 0;
 }
 
+/* Feature #87 — to korte felter side om side i redigerings-/visnings-
+   vinduet, i stedet for én lang lodret stak. `align-items: start` så et felt
+   med hjælpetekst under sig (fx serienummer) ikke strækker sidemakkeren.
+   Falder til én kolonne på en telefon, hvor to kolonner ville presse
+   dropdowns og datofelter sammen. */
+.modal-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+  align-items: start;
+}
+
+.modal-field-row > div {
+  min-width: 0;
+}
+
+/* Dropdowns og combobox-felter fylder deres egen kolonne ud, så de to
+   kolonner flugter. Tal-felterne (serienummer/rating) har bevidst deres egen
+   faste bredde og er undtaget. */
+.modal-field-row select,
+.modal-field-row .combobox {
+  width: 100%;
+}
+
+.modal-field-row p {
+  margin: 0;
+}
+
+@media (max-width: 560px) {
+  .modal-field-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 640px) {
   .movie-grid,
   .skeleton-grid {

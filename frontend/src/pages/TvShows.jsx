@@ -999,48 +999,63 @@ export function TvShowDetailModal({
 
           {isGuest ? (
             <>
-              {!show.is_wishlist && (
+              {/* Feature #87 — samme gruppering som i film-vinduet: korte
+                  felter to og to, kun de brede står alene. */}
+              <div className="modal-field-row">
+                {!show.is_wishlist && (
+                  <div>
+                    <div className="modal-section-label">Serienummer</div>
+                    <p>{formatSerial(show.serial_number, serialPaddingWidth)}</p>
+                  </div>
+                )}
                 <div>
-                  <div className="modal-section-label">Serienummer</div>
-                  <p>{formatSerial(show.serial_number, serialPaddingWidth)}</p>
+                  <div className="modal-section-label">Set-status (hele serien)</div>
+                  <p>
+                    {show.watched
+                      ? `✓ Set${show.watched_at ? ` d. ${new Date(show.watched_at).toLocaleDateString("da-DK")}` : ""}`
+                      : "Ikke set"}
+                  </p>
                 </div>
-              )}
+              </div>
               <div>
                 <div className="modal-section-label">Tags</div>
                 <p>{show.tags.length > 0 ? show.tags.join(", ") : "Ingen tags"}</p>
               </div>
-              <div>
-                <div className="modal-section-label">Lokation</div>
-                <p>{show.location || "—"}</p>
+              <div className="modal-field-row">
+                <div>
+                  <div className="modal-section-label">Lokation</div>
+                  <p>{show.location || "—"}</p>
+                </div>
+                <div>
+                  <div className="modal-section-label">Ejer</div>
+                  <p>{show.owner || "—"}</p>
+                </div>
               </div>
-              <div>
-                <div className="modal-section-label">Ejer</div>
-                <p>{show.owner || "—"}</p>
+              <div className="modal-field-row">
+                <div>
+                  <div className="modal-section-label">Format</div>
+                  <p>{show.format || "Ikke angivet"}</p>
+                </div>
+                <div>
+                  <div className="modal-section-label">Medietype</div>
+                  <p>{show.media_type || "Ikke angivet"}</p>
+                </div>
               </div>
-              {show.registered_by && <p className="muted">Registreret af: {show.registered_by}</p>}
-              <div>
-                <div className="modal-section-label">Format</div>
-                <p>{show.format || "Ikke angivet"}</p>
-              </div>
-              <div>
-                <div className="modal-section-label">Medietype</div>
-                <p>{show.media_type || "Ikke angivet"}</p>
+              <div className="modal-field-row">
+                <div>
+                  <div className="modal-section-label">Din rating</div>
+                  <p>{show.personal_rating != null ? `${show.personal_rating}/10` : "—"}</p>
+                </div>
+                {show.registered_by && (
+                  <div>
+                    <div className="modal-section-label">Registreret af</div>
+                    <p>{show.registered_by}</p>
+                  </div>
+                )}
               </div>
               <div>
                 <div className="modal-section-label">Lyd-type</div>
                 <p>{show.audio_types.length > 0 ? show.audio_types.join(", ") : "—"}</p>
-              </div>
-              <div>
-                <div className="modal-section-label">Set-status (hele serien)</div>
-                <p>
-                  {show.watched
-                    ? `✓ Set${show.watched_at ? ` d. ${new Date(show.watched_at).toLocaleDateString("da-DK")}` : ""}`
-                    : "Ikke set"}
-                </p>
-              </div>
-              <div>
-                <div className="modal-section-label">Din rating</div>
-                <p>{show.personal_rating != null ? `${show.personal_rating}/10` : "—"}</p>
               </div>
               <div>
                 <div className="modal-section-label">Din note</div>
@@ -1055,16 +1070,35 @@ export function TvShowDetailModal({
                   Serienummer tildeles automatisk ved oprettelse.
                 </p>
               )}
-              {!show.is_wishlist && show.id && (
+              {/* Feature #87 — se den identiske gruppering i Library.jsx. */}
+              <div className="modal-field-row">
+                {!show.is_wishlist && show.id && (
+                  <div>
+                    <div className="modal-section-label">Serienummer</div>
+                    <p className="muted" style={{ margin: 0 }}>
+                      {canEditSerial
+                        ? "Redigér serienummeret via API'et om nødvendigt."
+                        : `Kun en admin eller ${show.registered_by ?? "den der registrerede serien"} kan ændre serienummeret.`}
+                    </p>
+                  </div>
+                )}
+
                 <div>
-                  <div className="modal-section-label">Serienummer</div>
-                  <p className="muted">
-                    {canEditSerial
-                      ? "Redigér serienummeret via API'et om nødvendigt."
-                      : `Kun en admin eller ${show.registered_by ?? "den der registrerede serien"} kan ændre serienummeret.`}
-                  </p>
+                  <div className="modal-section-label">Set-status (hele serien)</div>
+                  <label className="watched-toggle">
+                    <input type="checkbox" checked={watched} onChange={toggleWatched} />
+                    Set
+                  </label>
+                  {watched && (
+                    <input
+                      type="date"
+                      value={watchedAt}
+                      onChange={(e) => setWatchedAt(e.target.value)}
+                      style={{ marginTop: 6, display: "block" }}
+                    />
+                  )}
                 </div>
-              )}
+              </div>
 
               <div>
                 <div className="modal-section-label">Tags</div>
@@ -1078,45 +1112,70 @@ export function TvShowDetailModal({
                 )}
               </div>
 
-              <div>
-                <div className="modal-section-label">Lokation</div>
-                <Combobox
-                  value={location}
-                  onChange={setLocation}
-                  options={allLocations}
-                  placeholder="Stue, reol 2..."
-                />
+              <div className="modal-field-row">
+                <div>
+                  <div className="modal-section-label">Lokation</div>
+                  <Combobox
+                    value={location}
+                    onChange={setLocation}
+                    options={allLocations}
+                    placeholder="Stue, reol 2..."
+                  />
+                </div>
+
+                <div>
+                  <div className="modal-section-label">Ejer</div>
+                  <Combobox value={owner} onChange={setOwner} options={allOwners} placeholder="Hvem ejer den..." />
+                </div>
               </div>
 
-              <div>
-                <div className="modal-section-label">Ejer</div>
-                <Combobox value={owner} onChange={setOwner} options={allOwners} placeholder="Hvem ejer den..." />
+              <div className="modal-field-row">
+                <div>
+                  <div className="modal-section-label">Format</div>
+                  <select value={format} onChange={(e) => setFormat(e.target.value)}>
+                    <option value="">Ikke angivet</option>
+                    {attributeOptions.formats.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <div className="modal-section-label">Medietype</div>
+                  <select value={mediaType} onChange={(e) => setMediaType(e.target.value)}>
+                    <option value="">Ikke angivet</option>
+                    {attributeOptions.media_types.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              {show.registered_by && <p className="muted">Registreret af: {show.registered_by}</p>}
+              <div className="modal-field-row">
+                <div>
+                  <div className="modal-section-label">Din rating (1-10)</div>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={personalRating}
+                    onChange={(e) => setPersonalRating(e.target.value)}
+                    style={{ width: 80 }}
+                  />
+                </div>
 
-              <div>
-                <div className="modal-section-label">Format</div>
-                <select value={format} onChange={(e) => setFormat(e.target.value)}>
-                  <option value="">Ikke angivet</option>
-                  {attributeOptions.formats.map((f) => (
-                    <option key={f} value={f}>
-                      {f}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <div className="modal-section-label">Medietype</div>
-                <select value={mediaType} onChange={(e) => setMediaType(e.target.value)}>
-                  <option value="">Ikke angivet</option>
-                  {attributeOptions.media_types.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
+                {show.registered_by && (
+                  <div>
+                    <div className="modal-section-label">Registreret af</div>
+                    <p className="muted" style={{ margin: 0 }}>
+                      {show.registered_by}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -1131,34 +1190,6 @@ export function TvShowDetailModal({
                     />
                   ))}
                 </div>
-              </div>
-
-              <div>
-                <div className="modal-section-label">Set-status (hele serien)</div>
-                <label className="watched-toggle">
-                  <input type="checkbox" checked={watched} onChange={toggleWatched} />
-                  Set
-                </label>
-                {watched && (
-                  <input
-                    type="date"
-                    value={watchedAt}
-                    onChange={(e) => setWatchedAt(e.target.value)}
-                    style={{ marginLeft: 10 }}
-                  />
-                )}
-              </div>
-
-              <div>
-                <div className="modal-section-label">Din rating (1-10)</div>
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={personalRating}
-                  onChange={(e) => setPersonalRating(e.target.value)}
-                  style={{ width: 80 }}
-                />
               </div>
 
               <div>

@@ -15,6 +15,7 @@ from app.core.errors import (
 )
 from app.integrations import omdb_client, tmdb_client
 from app.models.movie import TmdbSyncResult
+from app.models.movie import MediaType
 from app.models.tv_show import (
     DeletedTvShow,
     DuplicateTvShowMatch,
@@ -141,6 +142,14 @@ async def preview_from_tmdb(tmdb_id: int) -> TvShowPreview:
     )
 
 
+def _should_have_serial_number(is_wishlist: bool, media_type) -> bool:
+    """Feature #92 — spejler movie_service._should_have_serial_number; se
+    dens docstring for begrundelsen."""
+    if is_wishlist:
+        return False
+    return media_type == MediaType.PHYSICAL
+
+
 async def create_tv_show(
     db: AsyncIOMotorDatabase, payload: TvShowCreate, registered_by: str
 ) -> TvShow:
@@ -203,7 +212,10 @@ async def create_tv_show(
         "created_at": now,
         "updated_at": now,
     }
-    if not payload.is_wishlist:
+    # Feature #92 — kun fysiske udgaver nummereres, se den identiske regel og
+    # begrundelse i movie_service. TV-serier har sin egen nummer-serie
+    # (`tv_show_serial`-tælleren), adskilt fra filmenes.
+    if _should_have_serial_number(payload.is_wishlist, payload.media_type):
         document["serial_number"] = await tv_show_repository.next_serial_number(db)
 
     trimmed_barcode = payload.barcode.strip() if payload.barcode else ""
@@ -340,9 +352,14 @@ async def update_tv_show(
 
     requested_serial = fields.pop("serial_number", None)
     requested_wishlist = fields.pop("is_wishlist", None)
+    requested_media_type = fields.get("media_type")
 
     current_doc = None
-    if requested_serial is not None or requested_wishlist is not None:
+    if (
+        requested_serial is not None
+        or requested_wishlist is not None
+        or requested_media_type is not None
+    ):
         current_doc = await tv_show_repository.find_by_id(db, tv_show_id)
         if current_doc is None:
             raise TvShowNotFoundError(tv_show_id)
@@ -350,14 +367,27 @@ async def update_tv_show(
     if requested_wishlist is not None:
         was_wishlist = current_doc.get("is_wishlist", False)
         fields["is_wishlist"] = requested_wishlist
+        media_type = requested_media_type or current_doc.get("media_type")
         if was_wishlist and not requested_wishlist:
-            fields["serial_number"] = await tv_show_repository.next_serial_number(db)
+            if _should_have_serial_number(False, media_type):
+                fields["serial_number"] = await tv_show_repository.next_serial_number(db)
         elif not was_wishlist and requested_wishlist:
             _assert_can_edit_serial_number(current_user, current_doc)
             await tv_show_repository.clear_serial_number(db, tv_show_id)
     elif requested_serial is not None:
         _assert_can_edit_serial_number(current_user, current_doc)
         await _reassign_serial_number(db, tv_show_id, current_doc, requested_serial)
+    elif requested_media_type is not None:
+        # Feature #92 — reglen håndhæves begge veje, se movie_service.
+        should_have = _should_have_serial_number(
+            current_doc.get("is_wishlist", False), requested_media_type
+        )
+        has_now = current_doc.get("serial_number") is not None
+        if should_have and not has_now:
+            fields["serial_number"] = await tv_show_repository.next_serial_number(db)
+        elif not should_have and has_now:
+            _assert_can_edit_serial_number(current_user, current_doc)
+            await tv_show_repository.clear_serial_number(db, tv_show_id)
 
     fields["updated_at"] = datetime.now(timezone.utc)
 

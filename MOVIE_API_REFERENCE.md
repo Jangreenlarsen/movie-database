@@ -150,6 +150,17 @@ Film og TV-serier matches aldrig på tværs af hinanden.
 
 `POST /api/plex/import` opretter alt Plex har som portalen ikke har. Samme matchning som ovenfor, blot i modsat retning — se ARCHITECTURE.md. Plex-elementer uden TMDb-id slås op via `/search/movie` eller `/search/tv` og importeres kun ved præcis ét resultat med samme normaliserede titel og samme år. TV-serier henter derudover `/library/metadata/{ratingKey}/children` for at markere de sæsoner der ligger på serveren som ejede. Der skrives aldrig til Plex — også importen er ren læsning.
 
+Importerede poster får `media_type: Digital` (feature #91) og `format` udledt af Plex' `videoResolution`:
+
+| Plex-værdi | Format i portalen |
+|---|---|
+| `4k`, `2160`, `2160p` | `Digital-UHD` |
+| `1080`, `720` (og alt ≥ 720) | `Digital-HD` |
+| `576`, `480`, `sd` | `Digital-STD` |
+| ukendt/manglende | tomt (gættes ikke) |
+
+For film står opløsningen i `Media[].videoResolution` allerede i `/all`-svaret. For serier findes den kun på episoderne, så `/library/metadata/{ratingKey}/allLeaves` bruges — det ene kald leverer både sæsonnumre (`parentIndex`) og episodernes opløsning. En serie med blandede opløsninger får den **hyppigste**, ikke den højeste: ét 4K-afsnit ud af tres gør ikke serien til en UHD-udgave. Ties brydes til fordel for højere kvalitet.
+
 - **Fejlhåndtering**: samme filosofi som UPC/Discogs — manglende konfiguration, en utilgængelig server eller intet match giver et tomt resultat med en læsbar `error`, aldrig en kastet exception. Et 401-svar rapporteres eksplicit som "token afvist" i stedet for at blive til "ingen match".
 
 ---

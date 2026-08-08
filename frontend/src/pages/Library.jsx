@@ -8,6 +8,7 @@ import { PlexCardBadge, PlexPlayLink } from "../components/PlexAvailability";
 import { usePlexAvailability } from "../components/usePlexAvailability";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import { useLocale, useT } from "../i18n";
+import { MOVIE_SERIAL_PREFIX, formatSerial } from "../utils/serialNumber";
 import "./Library.css";
 
 // Feature #89 — `labelKey` frem for en færdig `label`: listen er et
@@ -107,10 +108,6 @@ function SearchIcon() {
 
 function toggleValue(list, value) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
-}
-
-function formatSerial(serialNumber, paddingWidth) {
-  return `#${String(serialNumber).padStart(paddingWidth, "0")}`;
 }
 
 /**
@@ -791,9 +788,12 @@ export default function Library({ user, onSettingsChanged, wishlist = false, onG
         <ul className={`movie-grid movie-grid--${user.settings.card_size ?? "medium"}`}>
           {movies.map((movie) => (
             <li key={movie.id} className="movie-card" onClick={() => setActiveMovie(movie)}>
-              {!movie.is_wishlist && (
+              {/* Feature #92 — betinget af nummeret selv, ikke af
+                  ønskeliste-flaget: en digital biblioteks-post har heller
+                  ikke noget nummer at vise. */}
+              {movie.serial_number != null && (
                 <div className="movie-serial">
-                  {formatSerial(movie.serial_number, serialPaddingWidth)}
+                  {formatSerial(movie.serial_number, serialPaddingWidth, MOVIE_SERIAL_PREFIX)}
                 </div>
               )}
               {movie.format && <div className="movie-format-badge">{movie.format}</div>}
@@ -941,6 +941,11 @@ export function MovieDetailModal({
 
   const canEditSerial = user.role === "admin" || user.username === movie.registered_by;
 
+  // Feature #92 — en biblioteks-post skal have både medietype og format før
+  // den kan gemmes; backend afviser den ellers (MovieCreate-validatoren).
+  // Ønskelisten er undtaget: man ejer ikke det man ønsker sig endnu.
+  const missingClassification = !movie.is_wishlist && (!mediaType || !format);
+
   const dirty = useMemo(() => {
     if (!movie.id) return true; // "kladde"-tilstand — Gem må altid være aktiv (feature #79)
     const tagsChanged =
@@ -1072,11 +1077,15 @@ export function MovieDetailModal({
             <h2>{movie.title}</h2>
             <p className="muted">
               {movie.year ?? t("detail.yearUnknown")}
-              {!movie.is_wishlist && movie.id && (
+              {movie.serial_number != null && (
                 <>
                   {" · "}
                   {t("detail.serialShort", {
-                    serial: formatSerial(movie.serial_number, serialPaddingWidth),
+                    serial: formatSerial(
+                      movie.serial_number,
+                      serialPaddingWidth,
+                      MOVIE_SERIAL_PREFIX
+                    ),
                   })}
                 </>
               )}
@@ -1171,10 +1180,12 @@ export function MovieDetailModal({
                   telefon), så vinduet ikke bliver en lang scroll af
                   enkeltlinjer. Kun Tags/note/lyd-type får fuld bredde. */}
               <div className="modal-field-row">
-                {!movie.is_wishlist && (
+                {movie.serial_number != null && (
                   <div>
                     <div className="modal-section-label">{t("field.serialNumber")}</div>
-                    <p>{formatSerial(movie.serial_number, serialPaddingWidth)}</p>
+                    <p>
+                      {formatSerial(movie.serial_number, serialPaddingWidth, MOVIE_SERIAL_PREFIX)}
+                    </p>
                   </div>
                 )}
                 <div>
@@ -1243,7 +1254,7 @@ export function MovieDetailModal({
               {/* Feature #87 — se den tilsvarende gruppering i guest-visningen
                   ovenfor: korte felter to og to, kun de brede står alene. */}
               <div className="modal-field-row">
-                {!movie.is_wishlist && movie.id && (
+                {movie.serial_number != null && (
                   <div>
                     <div className="modal-section-label">{t("field.serialNumber")}</div>
                     <input
@@ -1396,6 +1407,9 @@ export function MovieDetailModal({
           )}
 
           {error && <div className="banner banner-error">{error}</div>}
+          {missingClassification && (
+            <div className="banner banner-info">{t("detail.classificationRequired")}</div>
+          )}
         </div>
 
         {isGuest ? (
@@ -1418,7 +1432,12 @@ export function MovieDetailModal({
               </button>
             )}
             {movie.id && <ScreeningRequestButton mediaKind="movie" id={movie.id} username={user.username} />}
-            <button type="button" className="btn btn-primary" onClick={save} disabled={!dirty || saving}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={save}
+              disabled={!dirty || saving || missingClassification}
+            >
               {saving
                 ? t("common.saving")
                 : t(movie.id ? "detail.saveChanges" : "detail.create")}

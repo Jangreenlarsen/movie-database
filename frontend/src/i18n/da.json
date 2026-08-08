@@ -472,7 +472,7 @@
   "users.reactivate": "Genaktivér",
   "users.confirmDelete": "Slet brugeren \"{username}\" permanent? Kan ikke fortrydes.",
   "plexImport.heading": "Importér fra Plex",
-  "plexImport.description": "Opretter alt det din Plex-server har, som portalen ikke har i forvejen. Metadata hentes fra TMDb, ikke fra Plex — så importerede film og serier ser ud som alt andet i biblioteket. Film og serier du allerede har, springes over.",
+  "plexImport.description": "Opretter alt det din Plex-server har, som portalen ikke har i forvejen. Metadata hentes fra TMDb, ikke fra Plex — så importerede film og serier ser ud som alt andet i biblioteket. Medietype sættes til Digital, og formatet udledes af opløsningen i Plex (4K → Digital-UHD, 720/1080 → Digital-HD, resten → Digital-STD). Film og serier du allerede har, springes over.",
   "plexImport.includeMovies": "Film",
   "plexImport.includeShows": "TV-serier",
   "plexImport.tagLabel": "Tag på importerede",
@@ -492,5 +492,7 @@
   "plexImport.unmatchedHint": "Plex har ingen TMDb-id på disse, og en søgning på titel og år gav ikke præcis ét svar. De importeres ikke — tilføj dem manuelt via scan eller TMDb-søgning, hvis du vil have dem med.",
   "plexImport.failedHeading": "Fejlede ({count})",
   "plexImport.failedHint": "Disse blev genkendt, men kunne ikke oprettes. Prøv importen igen — det er typisk en midlertidig TMDb-fejl.",
-  "audit.action.plexImported": "Importeret fra Plex"
+  "audit.action.plexImported": "Importeret fra Plex",
+  "plexImport.formatPending": "format afgøres ved import",
+  "detail.classificationRequired": "Medietype og format skal vælges, før den kan gemmes i biblioteket. Medietypen afgør om den får et serienummer — kun fysiske udgaver nummereres."
 }

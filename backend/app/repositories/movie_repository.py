@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 
 from bson import ObjectId
@@ -12,6 +13,8 @@ COUNTERS_COLLECTION = "counters"
 SERIAL_COUNTER_ID = "movie_serial"
 DEFAULT_SERIAL_CONFIG = {"next_value": 1, "increment": 1, "padding_width": 0}
 MAX_SERIAL_ASSIGN_ATTEMPTS = 10_000
+
+logger = logging.getLogger("moviedb")
 
 # Whitelist mapping API-facing sort keys -> actual document fields, so an
 # arbitrary/unindexed field can never be requested via the query string.
@@ -92,7 +95,34 @@ async def _migrate_format_labels(db: AsyncIOMotorDatabase) -> None:
         await collection.update_many({"format": old_label}, {"$set": {"format": new_label}})
 
 
+async def _migrate_digital_serial_numbers(db: AsyncIOMotorDatabase) -> None:
+    """Feature #92 — fjerner serienumre fra digitale poster (Jans valg
+    2026-08-08: ryd op i det der allerede ligger).
+
+    Serienummeret svarer til en plads i den fysiske samling; en digital kopi
+    har ingen. Nøglen fjernes helt frem for at sættes til null — samme
+    "absent, not null"-mønster som resten af koden, så det sparse unikke
+    index aldrig ser to poster kollidere på ingenting. De frigivne numre kan
+    derefter genbruges af nye fysiske poster.
+
+    Rører kun poster hvor `media_type` eksplicit er "Digital". En post uden
+    medietype er fra før reglen fandtes, og kan lige så godt være en fysisk
+    udgave hvor feltet bare aldrig blev udfyldt — at fjerne dens nummer ville
+    slette noget Jan kan have skrevet på et cover."""
+    result = await db[COLLECTION].update_many(
+        {"media_type": "Digital", "serial_number": {"$exists": True}},
+        {"$unset": {"serial_number": ""}},
+    )
+    if result.modified_count:
+        logger.info(
+            "%s: fjernede serienummer fra %s digitale poster (feature #92)",
+            COLLECTION,
+            result.modified_count,
+        )
+
+
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
+    await _migrate_digital_serial_numbers(db)
     collection = db[COLLECTION]
     await _migrate_audio_type_labels(db)
     await _migrate_format_labels(db)

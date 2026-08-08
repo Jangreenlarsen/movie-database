@@ -15,6 +15,7 @@ filosofi som UPC/Discogs-opslagene (MOVIE_API_REFERENCE.md).
 
 import logging
 import re
+from collections import Counter
 from dataclasses import dataclass, field
 
 import httpx
@@ -47,6 +48,18 @@ class PlexItem:
     year: int | None
     tmdb_id: int | None
     imdb_id: str | None
+    # Feature #91 — Plex' egen `videoResolution` ("4k", "1080", "720", "sd"
+    # …). Kun sat for film: en serie har ingen opløsning i sig selv, den
+    # ligger på episoderne (se fetch_show_details).
+    resolution: str | None = None
+
+
+@dataclass
+class PlexShowDetails:
+    """Det der kun kan hentes pr. serie, ikke fra sektions-listen."""
+
+    seasons: list[int]
+    resolution: str | None
 
 
 @dataclass
@@ -122,6 +135,44 @@ def _guid_ids(item: dict) -> tuple[int | None, str | None]:
             imdb_id = imdb_match.group(1)
 
     return tmdb_id, imdb_id
+
+
+# Groft kvalitets-rangement, kun brugt til at bryde stemmelighed mellem to
+# lige hyppige opløsninger i en serie. Ukendte værdier ender bagerst.
+def _resolution_rank(resolution: str) -> int:
+    value = resolution.strip().lower()
+    if value in ("4k", "2160", "2160p"):
+        return 4
+    digits = re.match(r"(\d+)", value)
+    if digits:
+        return 3 if int(digits.group(1)) >= 720 else 2
+    return 1 if value == "sd" else 0
+
+
+def _dominant_resolution(resolutions: list[str]) -> str | None:
+    """Den opløsning der bedst repræsenterer en serie (feature #91).
+
+    Den *hyppigste*, ikke den højeste: ét enkelt 4K-afsnit ud af tres gør
+    ikke serien til en UHD-udgave. Står to opløsninger lige, vinder den
+    højere kvalitet."""
+    if not resolutions:
+        return None
+    counts = Counter(resolutions)
+    return max(counts, key=lambda value: (counts[value], _resolution_rank(value)))
+
+
+def _resolution(item: dict) -> str | None:
+    """Plex' `videoResolution` for et element (feature #91).
+
+    Ligger på `Media[]` — den liste over fysiske filer der hører til
+    elementet. Har man flere udgaver af samme film liggende (fx en 1080p og
+    en 4K), er der flere `Media`-poster; den første er Plex' egen foretrukne.
+    """
+    for media in item.get("Media") or []:
+        value = media.get("videoResolution")
+        if value:
+            return str(value)
+    return None
 
 
 async def _fetch_server_info(client: httpx.AsyncClient) -> tuple[dict | None, str | None]:
@@ -265,6 +316,7 @@ async def fetch_library() -> PlexFetchResult:
                         year=raw.get("year"),
                         tmdb_id=tmdb_id,
                         imdb_id=imdb_id,
+                        resolution=_resolution(raw),
                     )
                 )
             sections.append(section)
@@ -285,48 +337,57 @@ async def fetch_library() -> PlexFetchResult:
     )
 
 
-async def fetch_show_seasons(rating_key: str) -> list[int]:
-    """Sæson-numrene der faktisk ligger på Plex-serveren for én serie
-    (feature #90). `/library/sections/{key}/all` returnerer kun selve
-    serierne, ikke deres sæsoner, så dette er et ekstra kald — men kun for
-    de serier der rent faktisk importeres, ikke for hele biblioteket.
+async def fetch_show_details(rating_key: str) -> PlexShowDetails:
+    """Sæsoner og opløsning for én serie — det `/all` ikke kan svare på.
+
+    Feature #90 spurgte oprindeligt `/children`, som lister seriens sæsoner
+    direkte. Feature #91 skal også bruge opløsningen, og den findes kun på
+    episoderne. `/allLeaves` returnerer alle seriens episoder i ét kald, hver
+    med `parentIndex` (sæsonnummeret) og sin egen `Media` — så begge svar
+    kommer nu ud af det samme ene kald, i stedet for at skulle bruge to.
+
+    En sæson der ikke har nogen episoder liggende, optræder heller ikke her —
+    hvilket er præcis det rigtige svar på "hvilke sæsoner har jeg?".
 
     Sæson 0 (Plex' "Specials") springes over: den svarer til TMDb's
     special-sæson, som appens egen sæson-model heller ikke regner med.
-    Returnerer en tom liste ved enhver fejl — en serie uden sæson-markering
+
+    Enhver fejl giver tomme sæsoner og ingen opløsning — en serie uden dem
     er stadig værd at importere."""
+    empty = PlexShowDetails(seasons=[], resolution=None)
     if not is_configured():
-        return []
+        return empty
 
     try:
         async with _client() as client:
             response = await client.get(
-                f"{_base_url()}/library/metadata/{rating_key}/children", headers=_headers()
+                f"{_base_url()}/library/metadata/{rating_key}/allLeaves", headers=_headers()
             )
     except httpx.HTTPError as exc:
-        logger.warning("Plex: sæsoner for %s kunne ikke hentes: %s", rating_key, exc)
-        return []
+        logger.warning("Plex: episoder for %s kunne ikke hentes: %s", rating_key, exc)
+        return empty
 
     if response.status_code != 200:
-        logger.warning(
-            "Plex: sæsoner for %s gav HTTP %s", rating_key, response.status_code
-        )
-        return []
+        logger.warning("Plex: episoder for %s gav HTTP %s", rating_key, response.status_code)
+        return empty
 
     try:
-        children = response.json().get("MediaContainer", {}).get("Metadata", []) or []
+        episodes = response.json().get("MediaContainer", {}).get("Metadata", []) or []
     except ValueError:
-        logger.warning("Plex: sæson-svar for %s var ikke JSON", rating_key)
-        return []
+        logger.warning("Plex: episode-svar for %s var ikke JSON", rating_key)
+        return empty
 
-    seasons = []
-    for child in children:
-        index = child.get("index")
-        # `index` er sæsonnummeret. Plex udelader det på enkelte poster
-        # (fx en "All episodes"-samling), som ikke er en rigtig sæson.
-        if isinstance(index, int) and index > 0:
-            seasons.append(index)
-    return sorted(set(seasons))
+    seasons = set()
+    resolutions: list[str] = []
+    for episode in episodes:
+        season_number = episode.get("parentIndex")
+        if isinstance(season_number, int) and season_number > 0:
+            seasons.add(season_number)
+        resolution = _resolution(episode)
+        if resolution:
+            resolutions.append(resolution)
+
+    return PlexShowDetails(seasons=sorted(seasons), resolution=_dominant_resolution(resolutions))
 
 
 def build_play_url(rating_key: str, machine_identifier: str) -> str:

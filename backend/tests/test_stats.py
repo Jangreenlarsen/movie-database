@@ -11,7 +11,7 @@ async def test_empty_library_has_zeroed_stats(client):
 
 
 async def test_wishlist_movies_are_excluded_from_stats(client):
-    await client.post("/api/movies", json={"title": "In Library", "runtime": 100})
+    await client.post("/api/movies", json={"title": "In Library", "runtime": 100, "media_type": "Fysisk", "format": "DVD"})
     await client.post(
         "/api/movies", json={"title": "On Wishlist", "runtime": 200, "is_wishlist": True}
     )
@@ -23,8 +23,8 @@ async def test_wishlist_movies_are_excluded_from_stats(client):
 
 
 async def test_runtime_and_watched_counts(client):
-    a = await client.post("/api/movies", json={"title": "A", "runtime": 90})
-    b = await client.post("/api/movies", json={"title": "B", "runtime": 120})
+    a = await client.post("/api/movies", json={"title": "A", "runtime": 90, "media_type": "Fysisk", "format": "DVD"})
+    b = await client.post("/api/movies", json={"title": "B", "runtime": 120, "media_type": "Fysisk", "format": "DVD"})
     await client.patch(f"/api/movies/{a.json()['id']}", json={"watched": True})
 
     response = await client.get("/api/movies/stats")
@@ -37,10 +37,10 @@ async def test_runtime_and_watched_counts(client):
 
 async def test_genre_and_format_breakdown(client):
     await client.post(
-        "/api/movies", json={"title": "A", "genres": ["Action", "Drama"], "format": "BD"}
+        "/api/movies", json={"title": "A", "genres": ["Action", "Drama"], "format": "BD", "media_type": "Fysisk"}
     )
-    await client.post("/api/movies", json={"title": "B", "genres": ["Action"], "format": "BD"})
-    await client.post("/api/movies", json={"title": "C", "genres": ["Drama"], "format": "DVD"})
+    await client.post("/api/movies", json={"title": "B", "genres": ["Action"], "format": "BD", "media_type": "Fysisk"})
+    await client.post("/api/movies", json={"title": "C", "genres": ["Drama"], "format": "DVD", "media_type": "Fysisk"})
 
     response = await client.get("/api/movies/stats")
     data = response.json()
@@ -53,9 +53,9 @@ async def test_genre_and_format_breakdown(client):
 
 
 async def test_decade_breakdown_groups_by_decade_start(client):
-    await client.post("/api/movies", json={"title": "A", "year": 1994})
-    await client.post("/api/movies", json={"title": "B", "year": 1999})
-    await client.post("/api/movies", json={"title": "C", "year": 2001})
+    await client.post("/api/movies", json={"title": "A", "year": 1994, "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "B", "year": 1999, "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "C", "year": 2001, "media_type": "Fysisk", "format": "DVD"})
 
     response = await client.get("/api/movies/stats")
     data = response.json()
@@ -67,11 +67,11 @@ async def test_decade_breakdown_groups_by_decade_start(client):
 async def test_top_directors_and_actors(client):
     await client.post(
         "/api/movies",
-        json={"title": "A", "director": "Denis Villeneuve", "cast": ["Timothee Chalamet"]},
+        json={"title": "A", "director": "Denis Villeneuve", "cast": ["Timothee Chalamet"], "media_type": "Fysisk", "format": "DVD"},
     )
     await client.post(
         "/api/movies",
-        json={"title": "B", "director": "Denis Villeneuve", "cast": ["Timothee Chalamet", "Zendaya"]},
+        json={"title": "B", "director": "Denis Villeneuve", "cast": ["Timothee Chalamet", "Zendaya"], "media_type": "Fysisk", "format": "DVD"},
     )
 
     response = await client.get("/api/movies/stats")
@@ -84,7 +84,7 @@ async def test_top_directors_and_actors(client):
 
 
 async def test_movies_without_year_or_runtime_do_not_break_stats(client):
-    await client.post("/api/movies", json={"title": "No metadata at all"})
+    await client.post("/api/movies", json={"title": "No metadata at all", "media_type": "Fysisk", "format": "DVD"})
     response = await client.get("/api/movies/stats")
     assert response.status_code == 200
     data = response.json()

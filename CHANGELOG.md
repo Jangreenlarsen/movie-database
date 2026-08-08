@@ -2,6 +2,48 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.69.0 build 0098] — 2026-08-08 — feature: serienumre kun til fysiske udgaver, M#/T#-præfiks (FEATURES.md #92)
+
+Jans krav: kun fysiske film og serier skal have serienummer, film skal have præfikset `M#` og serier `T#`, og de to skal tælles hver for sig.
+
+Det sidste var allerede på plads — `movie_serial` og `tv_show_serial` har været adskilte tællere siden TV-serier blev en selvstændig ressource. Det nye er præfikset, der gør M#0001 og T#0001 til to synligt forskellige udgaver i stedet for to poster der begge hedder "#0001".
+
+Den egentlige ændring er hvem der overhovedet får et nummer. Et serienummer svarer til en plads på en hylde, så en digital kopi får ingen — og forbruger dermed heller ikke et nummer, så serien ikke får huller af noget der aldrig har stået nogen steder.
+
+For at gøre den beslutning entydig er **medietype og format nu påkrævet** ved oprettelse af en biblioteks-post. Det var Jans svar på hvad der skulle ske med de mange eksisterende poster uden medietype: gør det umuligt at oprette flere af dem. Ønskelisten er undtaget — man ejer ikke det man ønsker sig endnu, så der er hverken en fysisk udgave at beskrive eller et nummer at tildele.
+
+Kravet håndhæves i backend (`MovieCreate`/`TvShowCreate`-validatorer), ikke kun i UI'et. CLAUDE.md regel 16 siger det direkte om den slags regler: en regel der kun findes i frontend er triviel at omgå og gælder ikke for andre klienter. Rediger-vinduets gem-knap er spærret med en forklarende besked, så kravet mødes før man trykker frem for at blive mødt af en 422.
+
+Reglen håndhæves begge veje (Jans valg): skifter en fysisk udgave til digital, frigives dens nummer til genbrug; går den den anden vej, tildeles et nyt. Uden det ville reglen kun holde på oprettelses-tidspunktet, og der kunne ligge digitale poster med numre bagefter.
+
+En engangs-migrering ved opstart fjerner serienumre fra eksisterende poster med medietype Digital (Jans valg: ryd op i det der allerede ligger). Poster helt **uden** medietype røres bevidst ikke — de er fra før reglen fandtes og kan lige så godt være fysiske udgaver hvor feltet aldrig blev udfyldt; at fjerne deres nummer ville slette noget der kan stå skrevet på et cover.
+
+Konsekvens for Plex-importen: importerede poster er digitale og får derfor ingen numre. Kan Plex ikke oplyse en opløsning, kan det nu påkrævede format ikke udledes, og titlen rapporteres i stedet for at blive oprettet uden — samme princip som det entydige TMDb-match i feature #90.
+
+To ting fundet undervejs: de tre `formatSerial`-kopier i Library/TvShows/PrintList var allerede begyndt at drive fra hinanden (kun PrintList håndterede et manglende nummer), og er nu samlet i `utils/serialNumber.js`. Og serienummer-badget var betinget af ønskeliste-flaget frem for af nummeret selv — hvilket ville have vist "M#NaN" på enhver digital biblioteks-post.
+
+Testene: 239 oprettelses-payloads i suiten skulle klassificeres for at afspejle det nye krav, og tre tests af ønskeliste→bibliotek-flytning skulle have medietypen med, da flytningen ellers ikke længere tildeler et nummer. `test_serial_number_rules.py` (17 tests) dækker selve reglerne, begge retninger og migreringen.
+
+Berørte filer: `backend/app/models/movie.py`, `backend/app/models/tv_show.py`, `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`, `backend/app/services/plex_service.py`, `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/tests/test_serial_number_rules.py` (ny) + 30 eksisterende testfiler, `frontend/src/utils/serialNumber.js` (ny), `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/pages/PrintList.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`, `FEATURES.md`, `version.json`.
+
+## [0.68.0 build 0097] — 2026-08-08 — feature: Plex-import udfylder selv medietype og format (FEATURES.md #91)
+
+Jans ønske: importerede film og serier skal selv få medietype "Digital", og formatet skal følge om de ligger i 4K, HD eller SD på Plex.
+
+Værdierne fandtes allerede. `MovieFormat` fik i v0.22.0 splittet "digital" i kvalitetstrin (`Digital-UHD`/`Digital-HD`/`Digital-STD`), og `MediaType.DIGITAL` har været der hele tiden — så importerede poster bruger præcis samme vokabular som håndoprettede, ikke et parallelt sæt Plex-etiketter.
+
+For film kostede det ingenting: opløsningen står allerede i `Media[].videoResolution` i det `/all`-svar feature #88 i forvejen henter. Formatet kan derfor vises i forhåndsvisningen uden et eneste ekstra kald.
+
+For serier ligger opløsningen kun på episoderne. Sæson-opslaget fra feature #90 er derfor lagt om fra `/children` til `/allLeaves`, som returnerer alle seriens episoder med både `parentIndex` (sæsonnummeret) og deres egen `Media`. Samme antal kald som før, men nu med begge svar — i stedet for at skulle bruge to.
+
+En serie med blandede opløsninger får den **hyppigste**, ikke den højeste. Ét enkelt 4K-afsnit ud af tres gør ikke serien til en UHD-udgave. Står to lige, vinder den højere kvalitet.
+
+En ukendt eller manglende opløsning giver et tomt format frem for et gæt — men medietypen sættes stadig til Digital, da den følger af at ligge på en medieserver og ikke af opløsningen.
+
+Gælder **kun** ved import. Eksisterende posters format røres ikke: har man en fysisk DVD der *også* ligger på Plex, ville en tilbagevirkende opdatering overskrive et format man selv har indtastet med noget forkert.
+
+Berørte filer: `backend/app/integrations/plex_client.py`, `backend/app/services/plex_service.py`, `backend/app/models/plex.py`, `backend/tests/test_plex.py`, `frontend/src/pages/Settings.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `MOVIE_API_REFERENCE.md`, `FEATURES.md`, `version.json`.
+
 ## [0.67.0 build 0096] — 2026-08-08 — feature: importér eksisterende Plex-bibliotek ind i portalen (FEATURES.md #90)
 
 Jans spørgsmål: kan vi få det Plex allerede har ind i portalen? Ja — og det meste af arbejdet var gjort i feature #88.

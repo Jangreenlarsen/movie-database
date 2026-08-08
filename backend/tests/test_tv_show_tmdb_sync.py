@@ -57,7 +57,7 @@ async def test_sync_refreshes_tmdb_fields_without_touching_user_data(client, mon
 
     create = await client.post(
         "/api/tv-shows",
-        json={"tmdb_id": 1396, "tags": ["Favorite"], "format": "DVD", "location": "Stuen"},
+        json={"tmdb_id": 1396, "tags": ["Favorite"], "format": "DVD", "location": "Stuen", "media_type": "Fysisk"},
     )
     show_id = create.json()["id"]
     serial_number = create.json()["serial_number"]
@@ -103,7 +103,7 @@ async def test_sync_preserves_season_ownership_and_episode_watched_status(client
     monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_initial_details)
     monkeypatch.setattr(tmdb_client, "get_season_details", fake_season_details)
 
-    create = await client.post("/api/tv-shows", json={"tmdb_id": 1396})
+    create = await client.post("/api/tv-shows", json={"tmdb_id": 1396, "media_type": "Fysisk", "format": "DVD"})
     show_id = create.json()["id"]
     await client.patch(f"/api/tv-shows/{show_id}/seasons/1", json={"owned": True})
     await client.patch(f"/api/tv-shows/{show_id}/seasons/1/episodes/3", json={"watched": True})
@@ -150,7 +150,7 @@ async def test_sync_adds_newly_announced_season_as_unowned(client, monkeypatch):
         return _fake_tv_details(tv_id)
 
     monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_initial_details)
-    create = await client.post("/api/tv-shows", json={"tmdb_id": 1396})
+    create = await client.post("/api/tv-shows", json={"tmdb_id": 1396, "media_type": "Fysisk", "format": "DVD"})
     show_id = create.json()["id"]
 
     async def fake_renewed_details(tv_id):
@@ -181,7 +181,7 @@ async def test_sync_adds_newly_announced_season_as_unowned(client, monkeypatch):
 
 
 async def test_sync_skips_manually_created_tv_shows(client, monkeypatch):
-    await client.post("/api/tv-shows", json={"name": "No TMDb Link"})
+    await client.post("/api/tv-shows", json={"name": "No TMDb Link", "media_type": "Fysisk", "format": "DVD"})
 
     called = {"n": 0}
 
@@ -210,8 +210,8 @@ async def test_sync_continues_past_a_single_show_failure(client, monkeypatch):
         return _fake_tv_details(tv_id, name=f"Show {tv_id}")
 
     monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_initial_details)
-    await client.post("/api/tv-shows", json={"tmdb_id": 1})
-    await client.post("/api/tv-shows", json={"tmdb_id": 2})
+    await client.post("/api/tv-shows", json={"tmdb_id": 1, "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/tv-shows", json={"tmdb_id": 2, "media_type": "Fysisk", "format": "DVD"})
 
     async def flaky_details(tv_id):
         if tv_id == 1:
@@ -236,9 +236,9 @@ async def test_sync_stops_early_on_rate_limit_instead_of_failing_every_show(clie
         return _fake_tv_details(tv_id, name=f"Show {tv_id}")
 
     monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_initial_details)
-    await client.post("/api/tv-shows", json={"tmdb_id": 1})
-    await client.post("/api/tv-shows", json={"tmdb_id": 2})
-    await client.post("/api/tv-shows", json={"tmdb_id": 3})
+    await client.post("/api/tv-shows", json={"tmdb_id": 1, "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/tv-shows", json={"tmdb_id": 2, "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/tv-shows", json={"tmdb_id": 3, "media_type": "Fysisk", "format": "DVD"})
 
     call_count = {"n": 0}
 
@@ -267,7 +267,7 @@ async def test_sync_short_circuits_when_token_missing(client, monkeypatch):
         return _fake_tv_details(tv_id)
 
     monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_initial_details)
-    await client.post("/api/tv-shows", json={"tmdb_id": 99})
+    await client.post("/api/tv-shows", json={"tmdb_id": 99, "media_type": "Fysisk", "format": "DVD"})
 
     called = {"n": 0}
 

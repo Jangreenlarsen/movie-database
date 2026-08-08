@@ -46,7 +46,7 @@ async def test_sync_refreshes_tmdb_fields_without_touching_user_data(client, mon
 
     create = await client.post(
         "/api/movies",
-        json={"tmdb_id": 42, "tags": ["Favorite"], "format": "DVD", "location": "Stuen"},
+        json={"tmdb_id": 42, "tags": ["Favorite"], "format": "DVD", "location": "Stuen", "media_type": "Fysisk"},
     )
     movie_id = create.json()["id"]
     serial_number = create.json()["serial_number"]
@@ -82,7 +82,7 @@ async def test_sync_refreshes_tmdb_fields_without_touching_user_data(client, mon
 
 
 async def test_sync_skips_manually_created_movies(client, monkeypatch):
-    await client.post("/api/movies", json={"title": "No TMDb Link"})
+    await client.post("/api/movies", json={"title": "No TMDb Link", "media_type": "Fysisk", "format": "DVD"})
 
     called = {"n": 0}
 
@@ -111,8 +111,8 @@ async def test_sync_continues_past_a_single_movie_failure(client, monkeypatch):
         return _fake_details(tmdb_id, title=f"Movie {tmdb_id}")
 
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_initial_details)
-    await client.post("/api/movies", json={"tmdb_id": 1})
-    await client.post("/api/movies", json={"tmdb_id": 2})
+    await client.post("/api/movies", json={"tmdb_id": 1, "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"tmdb_id": 2, "media_type": "Fysisk", "format": "DVD"})
 
     async def flaky_details(tmdb_id):
         if tmdb_id == 1:
@@ -141,9 +141,9 @@ async def test_sync_stops_early_on_rate_limit_instead_of_failing_every_movie(cli
         return _fake_details(tmdb_id, title=f"Movie {tmdb_id}")
 
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_initial_details)
-    await client.post("/api/movies", json={"tmdb_id": 1})
-    await client.post("/api/movies", json={"tmdb_id": 2})
-    await client.post("/api/movies", json={"tmdb_id": 3})
+    await client.post("/api/movies", json={"tmdb_id": 1, "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"tmdb_id": 2, "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"tmdb_id": 3, "media_type": "Fysisk", "format": "DVD"})
 
     call_count = {"n": 0}
 
@@ -176,7 +176,7 @@ async def test_sync_short_circuits_when_token_missing(client, monkeypatch):
         return _fake_details(tmdb_id)
 
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_initial_details)
-    await client.post("/api/movies", json={"tmdb_id": 99})
+    await client.post("/api/movies", json={"tmdb_id": 99, "media_type": "Fysisk", "format": "DVD"})
 
     called = {"n": 0}
 

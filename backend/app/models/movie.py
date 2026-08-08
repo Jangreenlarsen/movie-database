@@ -76,6 +76,34 @@ class MovieCreate(BaseModel):
             raise ValueError("Enten tmdb_id eller title skal angives")
         return self
 
+    @model_validator(mode="after")
+    def require_media_type_and_format_for_library(self) -> "MovieCreate":
+        """Feature #92 — en post i biblioteket skal have både medietype og
+        format (Jans krav 2026-08-08).
+
+        Det er ikke bare en datakvalitets-regel: medietypen afgør om posten
+        overhovedet får et serienummer, og den beslutning kan ikke træffes
+        på et tomt felt. Håndhæves i backend frem for kun i UI'et, jf.
+        CLAUDE.md regel 16 — en regel der kun findes i frontend er triviel
+        at omgå og gælder ikke for andre klienter.
+
+        Ønskelisten er undtaget: man ejer ikke det man ønsker sig endnu, så
+        der er hverken en fysisk udgave at beskrive eller et serienummer at
+        tildele."""
+        if self.is_wishlist:
+            return self
+        missing = []
+        if self.media_type is None:
+            missing.append("media_type")
+        if self.format is None:
+            missing.append("format")
+        if missing:
+            raise ValueError(
+                f"{' og '.join(missing)} skal angives for en film i biblioteket "
+                "(kun ønskelisten er undtaget)"
+            )
+        return self
+
 
 class MoviePreview(BaseModel):
     """Read-only, fuld TMDb-metadata for en kandidat (feature #79) — bruges

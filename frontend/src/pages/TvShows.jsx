@@ -8,6 +8,7 @@ import { PlexCardBadge, PlexPlayLink } from "../components/PlexAvailability";
 import { usePlexAvailability } from "../components/usePlexAvailability";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import { useLocale, useT } from "../i18n";
+import { TV_SERIAL_PREFIX, formatSerial } from "../utils/serialNumber";
 import "../pages/Library.css";
 import "./TvShows.css";
 
@@ -85,10 +86,6 @@ function visibleFieldsFromSettings(settings) {
 
 function toggleValue(list, value) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
-}
-
-function formatSerial(serialNumber, paddingWidth) {
-  return `#${String(serialNumber).padStart(paddingWidth, "0")}`;
 }
 
 /**
@@ -725,8 +722,11 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
         <ul className={`movie-grid movie-grid--${user.settings.card_size ?? "medium"}`}>
           {shows.map((show) => (
             <li key={show.id} className="movie-card" onClick={() => setActiveShow(show)}>
-              {!show.is_wishlist && (
-                <div className="movie-serial">{formatSerial(show.serial_number, serialPaddingWidth)}</div>
+              {/* Feature #92 — se den identiske note i Library.jsx. */}
+              {show.serial_number != null && (
+                <div className="movie-serial">
+                  {formatSerial(show.serial_number, serialPaddingWidth, TV_SERIAL_PREFIX)}
+                </div>
               )}
               {show.format && <div className="movie-format-badge">{show.format}</div>}
               <div className="movie-poster">
@@ -869,6 +869,9 @@ export function TvShowDetailModal({
 
   const canEditSerial = user.role === "admin" || user.username === show.registered_by;
 
+  // Feature #92 — se den identiske regel i Library.MovieDetailModal.
+  const missingClassification = !show.is_wishlist && (!mediaType || !format);
+
   function toggleWatched() {
     setWatched((prev) => {
       const next = !prev;
@@ -988,11 +991,11 @@ export function TvShowDetailModal({
               {show.year ?? t("detail.yearUnknown")}
               {show.end_year && show.end_year !== show.year ? `–${show.end_year}` : ""}
               {show.status && <> · {show.status}</>}
-              {!show.is_wishlist && show.id && (
+              {show.serial_number != null && (
                 <>
                   {" · "}
                   {t("detail.serialShort", {
-                    serial: formatSerial(show.serial_number, serialPaddingWidth),
+                    serial: formatSerial(show.serial_number, serialPaddingWidth, TV_SERIAL_PREFIX),
                   })}
                 </>
               )}
@@ -1048,10 +1051,12 @@ export function TvShowDetailModal({
               {/* Feature #87 — samme gruppering som i film-vinduet: korte
                   felter to og to, kun de brede står alene. */}
               <div className="modal-field-row">
-                {!show.is_wishlist && (
+                {show.serial_number != null && (
                   <div>
                     <div className="modal-section-label">{t("field.serialNumber")}</div>
-                    <p>{formatSerial(show.serial_number, serialPaddingWidth)}</p>
+                    <p>
+                      {formatSerial(show.serial_number, serialPaddingWidth, TV_SERIAL_PREFIX)}
+                    </p>
                   </div>
                 )}
                 <div>
@@ -1119,7 +1124,7 @@ export function TvShowDetailModal({
               )}
               {/* Feature #87 — se den identiske gruppering i Library.jsx. */}
               <div className="modal-field-row">
-                {!show.is_wishlist && show.id && (
+                {show.serial_number != null && (
                   <div>
                     <div className="modal-section-label">{t("field.serialNumber")}</div>
                     <p className="muted" style={{ margin: 0 }}>
@@ -1283,6 +1288,9 @@ export function TvShowDetailModal({
           )}
 
           {error && <div className="banner banner-error">{error}</div>}
+          {missingClassification && (
+            <div className="banner banner-info">{t("detail.classificationRequired")}</div>
+          )}
         </div>
 
         {isGuest ? (
@@ -1302,7 +1310,12 @@ export function TvShowDetailModal({
               </button>
             )}
             {show.id && <ScreeningRequestButton mediaKind="tv" id={show.id} username={user.username} />}
-            <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={save}
+              disabled={saving || missingClassification}
+            >
               {saving
                 ? t("common.saving")
                 : t(show.id ? "detail.saveChanges" : "detail.create")}

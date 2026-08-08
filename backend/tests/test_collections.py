@@ -30,7 +30,7 @@ def _fake_collection(collection_id, parts):
 
 
 async def test_movie_without_collection_has_null_fields(client):
-    response = await client.post("/api/movies", json={"title": "Standalone"})
+    response = await client.post("/api/movies", json={"title": "Standalone", "media_type": "Fysisk", "format": "DVD"})
     assert response.json()["collection_id"] is None
     assert response.json()["collection_name"] is None
 
@@ -40,7 +40,7 @@ async def test_movie_stores_collection_from_tmdb(client, monkeypatch):
         return _fake_details(tmdb_id, "Part One", collection_id=99, collection_name="Some Trilogy")
 
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
-    response = await client.post("/api/movies", json={"tmdb_id": 1})
+    response = await client.post("/api/movies", json={"tmdb_id": 1, "media_type": "Fysisk", "format": "DVD"})
     assert response.json()["collection_id"] == 99
     assert response.json()["collection_name"] == "Some Trilogy"
 
@@ -50,7 +50,7 @@ async def test_collection_endpoint_marks_owned_and_missing_parts(client, monkeyp
         return _fake_details(tmdb_id, f"Part {tmdb_id}", collection_id=99, collection_name="Some Trilogy")
 
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
-    created = await client.post("/api/movies", json={"tmdb_id": 1})
+    created = await client.post("/api/movies", json={"tmdb_id": 1, "media_type": "Fysisk", "format": "DVD"})
     owned_movie_id = created.json()["id"]
 
     async def fake_get_collection(collection_id):
@@ -105,7 +105,7 @@ async def test_sync_refreshes_collection_fields(client, monkeypatch):
         return _fake_details(tmdb_id, "Movie", collection_id=None, collection_name=None)
 
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_initial)
-    created = await client.post("/api/movies", json={"tmdb_id": 1})
+    created = await client.post("/api/movies", json={"tmdb_id": 1, "media_type": "Fysisk", "format": "DVD"})
     assert created.json()["collection_id"] is None
 
     async def fake_refreshed(tmdb_id):

@@ -79,6 +79,11 @@ class PlexImportItem(BaseModel):
     # titel-søgning på TMDb. Det sidste er det svageste led i importen, så
     # det skal kunne ses på hvert enkelt element i forhåndsvisningen.
     resolved_via: Literal["plex_guid", "tmdb_search"] | None = None
+    # Feature #91 — formatet udledt af Plex' opløsning. For film kendes det
+    # allerede i forhåndsvisningen (opløsningen står i sektions-listen); for
+    # serier ligger den på episoderne og hentes først ved selve importen, så
+    # her er feltet tomt indtil da.
+    format: str | None = None
     # Kun sat når elementet ikke kunne importeres.
     reason: str | None = None
 

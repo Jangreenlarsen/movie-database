@@ -2,6 +2,24 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.68.0 build 0097] — 2026-08-08 — feature: Plex-import udfylder selv medietype og format (FEATURES.md #91)
+
+Jans ønske: importerede film og serier skal selv få medietype "Digital", og formatet skal følge om de ligger i 4K, HD eller SD på Plex.
+
+Værdierne fandtes allerede. `MovieFormat` fik i v0.22.0 splittet "digital" i kvalitetstrin (`Digital-UHD`/`Digital-HD`/`Digital-STD`), og `MediaType.DIGITAL` har været der hele tiden — så importerede poster bruger præcis samme vokabular som håndoprettede, ikke et parallelt sæt Plex-etiketter.
+
+For film kostede det ingenting: opløsningen står allerede i `Media[].videoResolution` i det `/all`-svar feature #88 i forvejen henter. Formatet kan derfor vises i forhåndsvisningen uden et eneste ekstra kald.
+
+For serier ligger opløsningen kun på episoderne. Sæson-opslaget fra feature #90 er derfor lagt om fra `/children` til `/allLeaves`, som returnerer alle seriens episoder med både `parentIndex` (sæsonnummeret) og deres egen `Media`. Samme antal kald som før, men nu med begge svar — i stedet for at skulle bruge to.
+
+En serie med blandede opløsninger får den **hyppigste**, ikke den højeste. Ét enkelt 4K-afsnit ud af tres gør ikke serien til en UHD-udgave. Står to lige, vinder den højere kvalitet.
+
+En ukendt eller manglende opløsning giver et tomt format frem for et gæt — men medietypen sættes stadig til Digital, da den følger af at ligge på en medieserver og ikke af opløsningen.
+
+Gælder **kun** ved import. Eksisterende posters format røres ikke: har man en fysisk DVD der *også* ligger på Plex, ville en tilbagevirkende opdatering overskrive et format man selv har indtastet med noget forkert.
+
+Berørte filer: `backend/app/integrations/plex_client.py`, `backend/app/services/plex_service.py`, `backend/app/models/plex.py`, `backend/tests/test_plex.py`, `frontend/src/pages/Settings.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `MOVIE_API_REFERENCE.md`, `FEATURES.md`, `version.json`.
+
 ## [0.67.0 build 0096] — 2026-08-08 — feature: importér eksisterende Plex-bibliotek ind i portalen (FEATURES.md #90)
 
 Jans spørgsmål: kan vi få det Plex allerede har ind i portalen? Ja — og det meste af arbejdet var gjort i feature #88.

@@ -472,7 +472,7 @@
   "users.reactivate": "Reactivate",
   "users.confirmDelete": "Delete the user \"{username}\" permanently? This cannot be undone.",
   "plexImport.heading": "Import from Plex",
-  "plexImport.description": "Creates everything your Plex server has that the portal does not already have. Metadata comes from TMDb, not from Plex — so imported movies and shows look like everything else in the library. Anything you already have is skipped.",
+  "plexImport.description": "Creates everything your Plex server has that the portal does not already have. Metadata comes from TMDb, not from Plex — so imported movies and shows look like everything else in the library. Media type is set to Digital, and the format is derived from the resolution in Plex (4K → Digital-UHD, 720/1080 → Digital-HD, the rest → Digital-STD). Anything you already have is skipped.",
   "plexImport.includeMovies": "Movies",
   "plexImport.includeShows": "TV shows",
   "plexImport.tagLabel": "Tag on imported items",
@@ -492,5 +492,6 @@
   "plexImport.unmatchedHint": "Plex has no TMDb id for these, and searching on title and year did not give exactly one answer. They are not imported — add them manually via scan or TMDb search if you want them.",
   "plexImport.failedHeading": "Failed ({count})",
   "plexImport.failedHint": "These were recognised but could not be created. Try the import again — it is usually a temporary TMDb error.",
-  "audit.action.plexImported": "Imported from Plex"
+  "audit.action.plexImported": "Imported from Plex",
+  "plexImport.formatPending": "format decided on import"
 }

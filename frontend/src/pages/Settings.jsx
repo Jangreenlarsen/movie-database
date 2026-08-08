@@ -1415,6 +1415,14 @@ function PlexImportSection() {
                 <li key={`${item.kind}-${item.tmdb_id}`}>
                   {item.title}
                   {item.year ? ` (${item.year})` : ""}
+                  {/* Feature #91 — formatet kendes for film allerede i
+                      forhåndsvisningen; for serier ligger opløsningen på
+                      episoderne og hentes først ved selve importen. */}
+                  {item.format ? (
+                    <span className="muted"> — {item.format}</span>
+                  ) : item.kind === "show" ? (
+                    <span className="muted"> — {t("plexImport.formatPending")}</span>
+                  ) : null}
                   {item.resolved_via === "tmdb_search" && (
                     <span className="muted"> — {t("plexImport.viaSearch")}</span>
                   )}

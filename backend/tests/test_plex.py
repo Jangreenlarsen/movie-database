@@ -2,7 +2,13 @@ import pytest
 
 from app.core.config import settings
 from app.integrations import plex_client, tmdb_client
-from app.integrations.plex_client import PlexFetchResult, PlexItem, PlexSectionResult
+from app.integrations.plex_client import (
+    PlexFetchResult,
+    PlexItem,
+    PlexSectionResult,
+    PlexShowDetails,
+)
+from app.models.movie import MediaType, MovieFormat
 from app.services import plex_service
 
 
@@ -423,10 +429,10 @@ async def test_import_marks_seasons_owned_from_plex(client, monkeypatch):
     created = []
     _patch_create(monkeypatch, created)
 
-    async def fake_fetch_show_seasons(rating_key):
-        return [1, 2, 3]
+    async def fake_fetch_show_details(rating_key):
+        return PlexShowDetails(seasons=[1, 2, 3], resolution=None)
 
-    monkeypatch.setattr(plex_client, "fetch_show_seasons", fake_fetch_show_seasons)
+    monkeypatch.setattr(plex_client, "fetch_show_details", fake_fetch_show_details)
     _patch_library(monkeypatch, _fake_library([PlexItem("show", "7", "Fargo", 2014, 60622, None)]))
 
     await client.post("/api/plex/import", json={"dry_run": False})
@@ -490,3 +496,119 @@ async def test_import_empty_tag_creates_without_tag(client, monkeypatch):
 
     await client.post("/api/plex/import", json={"dry_run": False, "tag": "   "})
     assert created == [("movie", 603, [])]
+
+
+# --- medietype og format ud fra opløsning (feature #91) ---------------------
+
+
+def test_format_for_resolution_maps_plex_values():
+    assert plex_service.format_for_resolution("4k") == MovieFormat.DIGITAL_UHD
+    assert plex_service.format_for_resolution("2160") == MovieFormat.DIGITAL_UHD
+    assert plex_service.format_for_resolution("1080") == MovieFormat.DIGITAL_HD
+    assert plex_service.format_for_resolution("720") == MovieFormat.DIGITAL_HD
+    assert plex_service.format_for_resolution("576") == MovieFormat.DIGITAL_STD
+    assert plex_service.format_for_resolution("480") == MovieFormat.DIGITAL_STD
+    assert plex_service.format_for_resolution("sd") == MovieFormat.DIGITAL_STD
+
+
+def test_format_for_resolution_handles_suffixed_and_odd_values():
+    assert plex_service.format_for_resolution("1080p") == MovieFormat.DIGITAL_HD
+    assert plex_service.format_for_resolution(" 4K ") == MovieFormat.DIGITAL_UHD
+    # Ukendt streng må ikke gætte et format på plads.
+    assert plex_service.format_for_resolution("mystisk") is None
+    assert plex_service.format_for_resolution(None) is None
+    assert plex_service.format_for_resolution("") is None
+
+
+def test_dominant_resolution_picks_most_common_not_highest():
+    """Ét 4K-afsnit ud af mange gør ikke serien til en UHD-udgave."""
+    assert plex_client._dominant_resolution(["1080", "1080", "1080", "4k"]) == "1080"
+
+
+def test_dominant_resolution_breaks_tie_towards_higher_quality():
+    assert plex_client._dominant_resolution(["1080", "4k"]) == "4k"
+    assert plex_client._dominant_resolution(["480", "1080"]) == "1080"
+
+
+def test_dominant_resolution_without_data():
+    assert plex_client._dominant_resolution([]) is None
+
+
+def test_resolution_read_from_first_media_entry():
+    assert plex_client._resolution({"Media": [{"videoResolution": "4k"}]}) == "4k"
+    # Første post uden opløsning skal ikke skygge for en senere der har en.
+    assert plex_client._resolution({"Media": [{}, {"videoResolution": "1080"}]}) == "1080"
+    assert plex_client._resolution({}) is None
+    assert plex_client._resolution({"Media": []}) is None
+
+
+async def test_import_sets_digital_media_type_and_format_from_resolution(client, monkeypatch):
+    _configure(monkeypatch)
+    captured = []
+    from app.services import movie_service
+
+    async def fake_create_movie(db, payload, registered_by):
+        captured.append((payload.media_type, payload.format))
+
+    monkeypatch.setattr(movie_service, "create_movie", fake_create_movie)
+    _patch_library(
+        monkeypatch,
+        _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None, resolution="4k")]),
+    )
+
+    body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
+    assert captured == [(MediaType.DIGITAL, MovieFormat.DIGITAL_UHD)]
+    assert body["imported"][0]["format"] == "Digital-UHD"
+
+
+async def test_import_preview_shows_movie_format_without_creating(client, monkeypatch):
+    """Filmens opløsning står allerede i sektions-listen, så formatet kan
+    vises i forhåndsvisningen uden et eneste ekstra kald."""
+    _configure(monkeypatch)
+    _patch_library(
+        monkeypatch,
+        _fake_library([PlexItem("movie", "1", "Gammel Film", 1975, 11, None, resolution="480")]),
+    )
+
+    body = (await client.post("/api/plex/import", json={"dry_run": True})).json()
+    assert body["imported"][0]["format"] == "Digital-STD"
+
+
+async def test_import_without_resolution_leaves_format_empty(client, monkeypatch):
+    """Medietypen er stadig Digital — den følger af at ligge på en
+    medieserver, ikke af opløsningen."""
+    _configure(monkeypatch)
+    captured = []
+    from app.services import movie_service
+
+    async def fake_create_movie(db, payload, registered_by):
+        captured.append((payload.media_type, payload.format))
+
+    monkeypatch.setattr(movie_service, "create_movie", fake_create_movie)
+    _patch_library(
+        monkeypatch,
+        _fake_library([PlexItem("movie", "1", "Uden Opløsning", 2000, 12, None)]),
+    )
+
+    await client.post("/api/plex/import", json={"dry_run": False})
+    assert captured == [(MediaType.DIGITAL, None)]
+
+
+async def test_import_show_takes_format_and_seasons_from_episodes(client, monkeypatch):
+    _configure(monkeypatch)
+    captured = []
+    from app.services import tv_show_service
+
+    async def fake_create_tv_show(db, payload, registered_by):
+        captured.append((payload.media_type, payload.format, payload.owned_seasons))
+
+    async def fake_fetch_show_details(rating_key):
+        return PlexShowDetails(seasons=[1, 2], resolution="1080")
+
+    monkeypatch.setattr(tv_show_service, "create_tv_show", fake_create_tv_show)
+    monkeypatch.setattr(plex_client, "fetch_show_details", fake_fetch_show_details)
+    _patch_library(monkeypatch, _fake_library([PlexItem("show", "7", "Fargo", 2014, 60622, None)]))
+
+    body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
+    assert captured == [(MediaType.DIGITAL, MovieFormat.DIGITAL_HD, [1, 2])]
+    assert body["imported"][0]["format"] == "Digital-HD"

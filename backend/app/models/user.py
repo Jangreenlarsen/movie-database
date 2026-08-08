@@ -51,6 +51,10 @@ class VisibleFields(BaseModel):
     media_type: bool = False
     rating: bool = False
     runtime: bool = False
+    # Feature #88 — "ligger i Plex"-badget. Fra som standard: det er en
+    # oplysning der kun giver mening for dem der faktisk har en Plex-server,
+    # og et badge der aldrig kan blive sandt er kun støj for alle andre.
+    plex: bool = False
 
 
 class SortLevel(BaseModel):

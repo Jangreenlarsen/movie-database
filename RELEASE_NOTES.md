@@ -1,5 +1,14 @@
 # Release Notes
 
+## v0.65.0 (build 0092) — 2026-08-08
+
+- **Appen tjekker nu selv om en film eller serie ligger i din Plex.** Den gamle "Tjek Plex"-knap, du skulle trykke på inde i hver enkelt film, er væk. I stedet slår appen hele biblioteket op på én gang.
+- **Plex-badge på kortene.** Slå det til under "Vis felter" → "Plex" — i både Bibliotek og TV-serier, hver for sig. Så står der "Plex" på posteren for alt du kan streame. Fra som standard.
+- Hold musen over badget for at se *hvordan* den blev genkendt — på TMDb-id (sikkert) eller på titel (mindre sikkert).
+- "▶ Afspil i Plex" står stadig i detaljevinduet når filmen findes derinde, men nu uden at du først skal trykke "tjek". Findes den ikke, står der det.
+- **Nyt fejlsøgnings-panel** under Indstillinger → Nøgler (admin): "Test Plex-forbindelse". Viser om der er hul igennem, hvilke Plex-biblioteker der blev fundet, hvor mange af dine film og serier der kunne matches — og en liste over dem der ikke kunne, så du kan se hvorfor.
+- Serier med ældre Plex-metadata bliver nu også genkendt. Før blev de tavst sprunget over.
+
 ## v0.64.2 (build 0091) — 2026-08-08
 
 - Scanner du en TV-serie ind på **ønskelisten**, står der ikke længere "vælg hvilke sæsoner du ejer" — nu står der at du vælger hvilke sæsoner ønsket dækker. Knapperne taler også om "ønske" i stedet for "serie".

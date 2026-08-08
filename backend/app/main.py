@@ -12,6 +12,7 @@ from app.api import (
     health,
     library_backup,
     movies,
+    plex,
     scan,
     screening_requests,
     screenings,
@@ -252,6 +253,7 @@ app.include_router(tv_shows.router)
 app.include_router(tags.router)
 app.include_router(attributes.router)
 app.include_router(scan.router)
+app.include_router(plex.router)
 app.include_router(settings_api.router)
 app.include_router(system.router)
 app.include_router(library_backup.router)

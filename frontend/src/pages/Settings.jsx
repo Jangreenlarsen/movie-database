@@ -91,7 +91,12 @@ export default function Settings({ user, onSettingsChanged }) {
         </>
       )}
 
-      {activeTab === "noegler" && isAdmin && <SystemSettingsSection />}
+      {activeTab === "noegler" && isAdmin && (
+        <>
+          <SystemSettingsSection />
+          <PlexDiagnosticsSection />
+        </>
+      )}
 
       {activeTab === "drift" && isAdmin && (
         <>
@@ -1054,6 +1059,172 @@ function SystemSettingsSection() {
             testable={false}
           />
         </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Feature #88 — fejlsøgning af den automatiske Plex-kontrol.
+ *
+ * Uden den er "hvorfor har mine film ikke Plex-badges?" et sort hul: det kan
+ * være forbindelsen, token'et, en sektion der ikke blev fundet, en Plex-agent
+ * uden TMDb-id'er, eller titler der bare ikke matcher. Panelet skiller de
+ * fem ad, og viser konkret hvilke af *dine* film der ikke kunne matches.
+ */
+function PlexDiagnosticsSection() {
+  const [status, setStatus] = useState("idle"); // idle | running | done | error
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+
+  function run() {
+    setStatus("running");
+    setError(null);
+    api
+      .getPlexDiagnostics()
+      .then((result) => {
+        setData(result);
+        setStatus("done");
+      })
+      .catch((err) => {
+        setError(err.message);
+        setStatus("error");
+      });
+  }
+
+  const noTmdbGuids =
+    data?.ok && data.sections.length > 0 && data.sections.every((s) => s.with_tmdb_guid === 0);
+
+  return (
+    <div className="card settings-section">
+      <h2>Plex-forbindelse (fejlsøgning)</h2>
+      <p className="muted">
+        Tester forbindelsen til Plex og viser hvor mange af dine film og TV-serier der kan matches.
+        Henter altid friskt uden om cachen, så en netop rettet URL eller token afprøves med det
+        samme. Badget på kortene slås til pr. bruger under "Vis felter" i Bibliotek og TV-serier.
+      </p>
+
+      <button type="button" className="btn btn-primary" onClick={run} disabled={status === "running"}>
+        {status === "running" ? "Tester..." : "Test Plex-forbindelse"}
+      </button>
+
+      {status === "error" && <div className="banner banner-error">{error}</div>}
+
+      {status === "done" && data && (
+        <div className="plex-diagnostics">
+          {data.ok ? (
+            <div className="banner banner-info">
+              ✓ Forbundet til {data.server_name ?? "Plex"} (version {data.server_version ?? "?"}) på{" "}
+              {data.duration_ms} ms.
+            </div>
+          ) : (
+            <div className="banner banner-error">{data.error}</div>
+          )}
+
+          <dl className="plex-diag-grid">
+            <div>
+              <dt>Server-URL</dt>
+              <dd>{data.server_url || <span className="muted">ikke sat</span>}</dd>
+            </div>
+            <div>
+              <dt>Token</dt>
+              <dd>{data.token_configured ? "sat" : <span className="muted">ikke sat</span>}</dd>
+            </div>
+            {data.ok && (
+              <>
+                <div>
+                  <dt>Film i Plex</dt>
+                  <dd>{data.plex_movie_count}</dd>
+                </div>
+                <div>
+                  <dt>Serier i Plex</dt>
+                  <dd>{data.plex_show_count}</dd>
+                </div>
+                <div>
+                  <dt>Film matchet</dt>
+                  <dd>
+                    {data.matched_movies} af {data.library_movie_count}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Serier matchet</dt>
+                  <dd>
+                    {data.matched_shows} af {data.library_show_count}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Matchet på TMDb-id</dt>
+                  <dd>{data.matched_by_tmdb}</dd>
+                </div>
+                <div>
+                  <dt>Matchet på titel</dt>
+                  <dd>{data.matched_by_title}</dd>
+                </div>
+              </>
+            )}
+          </dl>
+
+          {data.ok && data.sections.length === 0 && (
+            <div className="banner banner-error">
+              Plex svarede, men der blev ikke fundet nogen film- eller TV-biblioteker. Har token'ets
+              konto adgang til bibliotekerne?
+            </div>
+          )}
+
+          {noTmdbGuids && (
+            <div className="banner banner-info">
+              Bemærk: ingen af elementerne i Plex har et TMDb-id. Sektionerne bruger sandsynligvis en
+              ældre agent — matchning falder derfor tilbage på titel og år, hvilket er mindre sikkert.
+            </div>
+          )}
+
+          {data.sections.length > 0 && (
+            <>
+              <h3>Plex-biblioteker</h3>
+              <table className="plex-diag-table">
+                <thead>
+                  <tr>
+                    <th>Bibliotek</th>
+                    <th>Type</th>
+                    <th>Elementer</th>
+                    <th>Med TMDb-id</th>
+                    <th>Med IMDb-id</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.sections.map((section) => (
+                    <tr key={section.key}>
+                      <td>{section.title}</td>
+                      <td>{section.type === "movie" ? "Film" : "TV-serier"}</td>
+                      <td>{section.item_count}</td>
+                      <td>{section.with_tmdb_guid}</td>
+                      <td>{section.with_imdb_guid}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+
+          {data.ok && (data.unmatched_movies.length > 0 || data.unmatched_shows.length > 0) && (
+            <>
+              <h3>Ikke fundet i Plex</h3>
+              <p className="muted">
+                De første af dine titler uden match. Ligger de faktisk i Plex, skyldes det typisk at
+                titel eller år afviger — sammenlign med hvad Plex kalder dem.
+              </p>
+              <ul className="plex-diag-unmatched">
+                {[...data.unmatched_movies, ...data.unmatched_shows].map((item, i) => (
+                  <li key={`${item.title}-${i}`}>
+                    {item.title}
+                    {item.year ? ` (${item.year})` : ""}
+                    {item.tmdb_id ? ` — TMDb ${item.tmdb_id}` : " — uden TMDb-id"}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

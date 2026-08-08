@@ -102,7 +102,11 @@ export const api = {
     request(`/movies/check-duplicate?${new URLSearchParams({ tmdb_id: tmdbId })}`),
   getCollection: (collectionId) => request(`/movies/collections/${collectionId}`),
   getStats: () => request("/movies/stats"),
-  getPlexAvailability: (movieId) => request(`/movies/${movieId}/plex`),
+  // Feature #88 — ét kald dækker hele fanens bibliotek. Erstattede den
+  // gamle "Tjek Plex"-knap, der lavede ét kald pr. film, manuelt udløst.
+  getPlexAvailability: (kind) => request(`/plex/availability?kind=${kind}`),
+  refreshPlexAvailability: (kind) => request(`/plex/refresh?kind=${kind}`, { method: "POST" }),
+  getPlexDiagnostics: () => request("/plex/diagnostics"),
   getSerialNumberConfig: () => request("/settings/serial-number"),
   updateSerialNumberConfig: (payload) =>
     request("/settings/serial-number", { method: "PATCH", body: JSON.stringify(payload) }),

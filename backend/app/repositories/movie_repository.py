@@ -261,6 +261,18 @@ async def find_all_raw(db: AsyncIOMotorDatabase) -> list[dict]:
     return await db[COLLECTION].find({}).to_list(length=None)
 
 
+async def find_all_for_plex_match(db: AsyncIOMotorDatabase) -> list[dict]:
+    """Kun de fire felter Plex-matchning bruger (feature #88). En projektion
+    frem for `find_all_raw`, fordi dette kald rammer hver gang biblioteket
+    vises — at trække poster-URL'er, cast-lister og noter med ville være
+    mange gange så meget data for et opslag der kun ser på id, titel og år.
+
+    Ønskelisten er bevidst med: at en ønsket film allerede ligger i Plex er
+    netop den slags man vil kunne se på kortet."""
+    cursor = db[COLLECTION].find({}, {"_id": 1, "tmdb_id": 1, "title": 1, "year": 1})
+    return await cursor.to_list(length=None)
+
+
 async def replace_all(db: AsyncIOMotorDatabase, documents: list[dict]) -> None:
     """Wholesale replace of the collection — used only by the library
     import/restore (feature #60). Not wrapped in a transaction (this app

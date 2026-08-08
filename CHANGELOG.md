@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.62.0 build 0086] — 2026-08-08 — test: #85's testfil, udeladt ved en fejl i build 0085
+
+`backend/tests/test_screening_requests.py` blev ikke staget i b0085 (`git add`-mønsteret dækkede `backend/app`, ikke `backend/tests`), så feature #85's 7 regressionstests lå kun lokalt. Ingen kode- eller adfærdsændring — filen er præcis den der blev kørt grøn før b0085.
+
 ## [0.62.0 build 0085] — 2026-08-08 — feature: besked + ønsket tidspunkt på en visnings-anmodning (FEATURES.md #85)
 
 "🎬 Ønsk visning i Voldby BIO" sendte før anmodningen i det øjeblik man trykkede. Nu åbner knappen en lille boks med et fritekst-felt ("Gerne en fredag aften") og en valgfri dato/tid-vælger. Begge felter er valgfri: åbn boksen, tryk "Send ønske", og resultatet er bit for bit det samme dokument som før — `message`/`preferred_at` udelades helt af payloaden når de er tomme.

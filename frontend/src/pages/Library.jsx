@@ -25,9 +25,33 @@ const SORT_OPTIONS = [
 ];
 const MAX_SORT_LEVELS = 3;
 
+// Feature #86 — appens standardværdier ét sted, så både "er der ændret
+// noget?"-markeringen på værktøjslinjen og "Nulstil til standard"-knapperne
+// måler mod præcis det samme, i stedet for hver sin hardcodede kopi.
+const DEFAULT_SORT_LEVELS = [{ field: "serial_number", direction: "desc" }];
+
 function initialSortLevels(settings) {
   if (settings?.sort_levels?.length) return settings.sort_levels;
-  return [{ field: settings?.sort_field ?? "serial_number", direction: settings?.sort_direction ?? "desc" }];
+  if (settings?.sort_field || settings?.sort_direction) {
+    return [
+      {
+        field: settings.sort_field ?? DEFAULT_SORT_LEVELS[0].field,
+        direction: settings.sort_direction ?? DEFAULT_SORT_LEVELS[0].direction,
+      },
+    ];
+  }
+  return DEFAULT_SORT_LEVELS;
+}
+
+function sortLevelsAreDefault(levels) {
+  return (
+    levels.length === DEFAULT_SORT_LEVELS.length &&
+    levels.every(
+      (level, i) =>
+        level.field === DEFAULT_SORT_LEVELS[i].field &&
+        level.direction === DEFAULT_SORT_LEVELS[i].direction
+    )
+  );
 }
 
 const VISIBLE_FIELD_OPTIONS = [
@@ -40,16 +64,26 @@ const VISIBLE_FIELD_OPTIONS = [
   { key: "runtime", label: "Spilletid" },
 ];
 
+const DEFAULT_VISIBLE_FIELDS = {
+  year: true,
+  tags: true,
+  format: false,
+  audioTypes: false,
+  mediaType: false,
+  rating: false,
+  runtime: false,
+};
+
 function visibleFieldsFromSettings(settings) {
   const vf = settings?.visible_fields ?? {};
   return {
-    year: vf.year ?? true,
-    tags: vf.tags ?? true,
-    format: vf.format ?? false,
-    audioTypes: vf.audio_types ?? false,
-    mediaType: vf.media_type ?? false,
-    rating: vf.rating ?? false,
-    runtime: vf.runtime ?? false,
+    year: vf.year ?? DEFAULT_VISIBLE_FIELDS.year,
+    tags: vf.tags ?? DEFAULT_VISIBLE_FIELDS.tags,
+    format: vf.format ?? DEFAULT_VISIBLE_FIELDS.format,
+    audioTypes: vf.audio_types ?? DEFAULT_VISIBLE_FIELDS.audioTypes,
+    mediaType: vf.media_type ?? DEFAULT_VISIBLE_FIELDS.mediaType,
+    rating: vf.rating ?? DEFAULT_VISIBLE_FIELDS.rating,
+    runtime: vf.runtime ?? DEFAULT_VISIBLE_FIELDS.runtime,
   };
 }
 
@@ -319,13 +353,41 @@ export default function Library({ user, onSettingsChanged, wishlist = false, onG
     persistSortPresets(next);
   }
 
-  const hasActiveFilters =
-    selectedTags.length > 0 ||
-    selectedFormats.length > 0 ||
-    selectedAudioTypes.length > 0 ||
-    selectedMediaTypes.length > 0 ||
-    watchedFilter != null ||
-    personFilter != null;
+  // Feature #86 — ét tal pr. værktøj, så knappen på værktøjslinjen kan vise
+  // om der overhovedet er valgt noget uden at man skal åbne panelet.
+  // personFilter tælles med her; før stod den kun i `hasActiveFilters`, så et
+  // rent person-filter fik knappen til at vise "Filtrér (0)".
+  const activeFilterCount =
+    selectedTags.length +
+    selectedFormats.length +
+    selectedAudioTypes.length +
+    selectedMediaTypes.length +
+    (watchedFilter != null ? 1 : 0) +
+    (personFilter != null ? 1 : 0);
+  const hasActiveFilters = activeFilterCount > 0;
+  const sortIsDefault = sortLevelsAreDefault(sortLevels);
+  const changedFieldCount = VISIBLE_FIELD_OPTIONS.filter(
+    (opt) => visibleFields[opt.key] !== DEFAULT_VISIBLE_FIELDS[opt.key]
+  ).length;
+
+  function resetSortToDefault() {
+    setSortLevels(DEFAULT_SORT_LEVELS);
+    persistSortLevels(DEFAULT_SORT_LEVELS);
+  }
+
+  function resetFilters() {
+    setSelectedTags([]);
+    setSelectedFormats([]);
+    setSelectedAudioTypes([]);
+    setSelectedMediaTypes([]);
+    setWatchedFilter(null);
+    setPersonFilter(null);
+  }
+
+  function resetVisibleFieldsToDefault() {
+    setVisibleFields(DEFAULT_VISIBLE_FIELDS);
+    persistVisibleFields(DEFAULT_VISIBLE_FIELDS);
+  }
 
   return (
     <section>
@@ -356,16 +418,35 @@ export default function Library({ user, onSettingsChanged, wishlist = false, onG
             </button>
           )}
 
-          <button type="button" className="btn" onClick={() => setShowSortPanel((v) => !v)}>
-            Sortér ▾
+          <button
+            type="button"
+            className={`btn${sortIsDefault ? "" : " btn-modified"}`}
+            title={sortIsDefault ? "Standard-sortering" : "Sorteringen er ændret fra standard"}
+            onClick={() => setShowSortPanel((v) => !v)}
+          >
+            Sortér {sortIsDefault ? "" : "● "}▾
           </button>
 
-          <button type="button" className="btn" onClick={() => setShowFilterPanel((v) => !v)}>
-            Filtrér {hasActiveFilters ? `(${selectedTags.length + selectedFormats.length + selectedAudioTypes.length + selectedMediaTypes.length + (watchedFilter != null ? 1 : 0)}) ` : ""}▾
+          <button
+            type="button"
+            className={`btn${hasActiveFilters ? " btn-modified" : ""}`}
+            title={hasActiveFilters ? `${activeFilterCount} aktive filtre` : "Ingen filtre valgt"}
+            onClick={() => setShowFilterPanel((v) => !v)}
+          >
+            Filtrér {hasActiveFilters ? `(${activeFilterCount}) ` : ""}▾
           </button>
 
-          <button type="button" className="btn" onClick={() => setShowFieldPanel((v) => !v)}>
-            Vis felter ▾
+          <button
+            type="button"
+            className={`btn${changedFieldCount > 0 ? " btn-modified" : ""}`}
+            title={
+              changedFieldCount > 0
+                ? "Viste felter er ændret fra standard"
+                : "Standard-felter vises"
+            }
+            onClick={() => setShowFieldPanel((v) => !v)}
+          >
+            Vis felter {changedFieldCount > 0 ? "● " : ""}▾
           </button>
         </div>
 
@@ -420,11 +501,21 @@ export default function Library({ user, onSettingsChanged, wishlist = false, onG
                   )}
                 </div>
               ))}
-              {sortLevels.length < MAX_SORT_LEVELS && (
-                <button type="button" className="btn" onClick={addSortLevel}>
-                  + Tilføj sorteringsniveau
+              <div className="panel-actions">
+                {sortLevels.length < MAX_SORT_LEVELS && (
+                  <button type="button" className="btn" onClick={addSortLevel}>
+                    + Tilføj sorteringsniveau
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={resetSortToDefault}
+                  disabled={sortIsDefault}
+                >
+                  Nulstil sortering
                 </button>
-              )}
+              </div>
             </div>
 
             <div className="filter-group sort-preset-row">
@@ -490,6 +581,16 @@ export default function Library({ user, onSettingsChanged, wishlist = false, onG
                   />
                 ))}
               </div>
+            </div>
+            <div className="panel-actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={resetVisibleFieldsToDefault}
+                disabled={changedFieldCount === 0}
+              >
+                Nulstil viste felter
+              </button>
             </div>
           </div>
         )}
@@ -579,23 +680,20 @@ export default function Library({ user, onSettingsChanged, wishlist = false, onG
               </div>
             </div>
 
-            {hasActiveFilters && (
+            {/* Feature #86 — knappen står der altid (deaktiveret når intet er
+                valgt), så den er til at få øje på og selv fortæller om der
+                er noget at rydde. Før dukkede den kun op når et filter var
+                aktivt, hvilket kun hjalp den der allerede vidste det. */}
+            <div className="panel-actions">
               <button
                 type="button"
                 className="btn"
-                style={{ alignSelf: "flex-start" }}
-                onClick={() => {
-                  setSelectedTags([]);
-                  setSelectedFormats([]);
-                  setSelectedAudioTypes([]);
-                  setSelectedMediaTypes([]);
-                  setWatchedFilter(null);
-                  setPersonFilter(null);
-                }}
+                onClick={resetFilters}
+                disabled={!hasActiveFilters}
               >
                 Ryd filtre
               </button>
-            )}
+            </div>
           </div>
         )}
       </div>

@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.63.0 (build 0088) — 2026-08-08
+
+- **Du kan nu se på knapperne om der er valgt noget.** "Sortér", "Filtrér" og "Vis felter" lyser op når de afviger fra standard — med et tal for hvor mange filtre der er aktive, og en prik når sortering eller viste felter er ændret. Ingen grund til at åbne alle tre paneler for at finde ud af hvorfor listen ser mærkelig ud.
+- **Nulstil-knap i alle tre paneler:** "Nulstil sortering", "Ryd filtre" og "Nulstil viste felter". De står der altid (grå når der ikke er noget at nulstille), så du kan finde dem.
+- Rettet: filter-tælleren talte ikke med, når du havde afgrænset på en skuespiller eller instruktør — der stod "Filtrér (0)" selvom filteret var aktivt.
+
 ## v0.62.1 (build 0087) — 2026-08-08
 
 - **Søgefeltet finder nu også skuespillere, instruktører og genrer.** Før kunne du kun ramme titel og handling — vil du se alt med Al Pacino, skriv bare "pacino" i søgefeltet, i stedet for først at åbne en film og trykke på navnet.

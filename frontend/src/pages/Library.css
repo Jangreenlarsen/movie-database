@@ -52,6 +52,27 @@
   flex-wrap: wrap;
 }
 
+/* Feature #86 — knap-rækken nederst i hvert panel ("Nulstil sortering",
+   "Ryd filtre", "Nulstil viste felter"). Egen række frem for inline, så
+   nulstilling står samme sted i alle tre paneler og er til at finde. */
+.panel-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+/* Feature #86 — værktøjslinje-knap hvis panel har noget valgt/ændret fra
+   standard. Jans problem var at man ikke kunne se om der var tilvalgt noget
+   uden at åbne hvert panel; farven gør det synligt på afstand, og "●"/"(N)"
+   i selve teksten gør det læsbart uden at skulle kunne skelne farver. */
+.btn.btn-modified {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
 .sort-levels {
   display: flex;
   flex-direction: column;

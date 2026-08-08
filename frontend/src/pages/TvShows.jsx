@@ -25,9 +25,24 @@ const SORT_OPTIONS = [
 ];
 const MAX_SORT_LEVELS = 3;
 
+// Feature #86 — se den identiske blok i Library.jsx: standardværdierne ét
+// sted, så markering og nulstilling måler mod det samme.
+const DEFAULT_SORT_LEVELS = [{ field: "serial_number", direction: "desc" }];
+
 function initialSortLevels(settings) {
   if (settings?.tv_sort_levels?.length) return settings.tv_sort_levels;
-  return [{ field: "serial_number", direction: "desc" }];
+  return DEFAULT_SORT_LEVELS;
+}
+
+function sortLevelsAreDefault(levels) {
+  return (
+    levels.length === DEFAULT_SORT_LEVELS.length &&
+    levels.every(
+      (level, i) =>
+        level.field === DEFAULT_SORT_LEVELS[i].field &&
+        level.direction === DEFAULT_SORT_LEVELS[i].direction
+    )
+  );
 }
 
 const VISIBLE_FIELD_OPTIONS = [
@@ -39,15 +54,24 @@ const VISIBLE_FIELD_OPTIONS = [
   { key: "rating", label: "Rating" },
 ];
 
+const DEFAULT_VISIBLE_FIELDS = {
+  year: true,
+  tags: true,
+  format: false,
+  audioTypes: false,
+  mediaType: false,
+  rating: false,
+};
+
 function visibleFieldsFromSettings(settings) {
   const vf = settings?.tv_visible_fields ?? {};
   return {
-    year: vf.year ?? true,
-    tags: vf.tags ?? true,
-    format: vf.format ?? false,
-    audioTypes: vf.audio_types ?? false,
-    mediaType: vf.media_type ?? false,
-    rating: vf.rating ?? false,
+    year: vf.year ?? DEFAULT_VISIBLE_FIELDS.year,
+    tags: vf.tags ?? DEFAULT_VISIBLE_FIELDS.tags,
+    format: vf.format ?? DEFAULT_VISIBLE_FIELDS.format,
+    audioTypes: vf.audio_types ?? DEFAULT_VISIBLE_FIELDS.audioTypes,
+    mediaType: vf.media_type ?? DEFAULT_VISIBLE_FIELDS.mediaType,
+    rating: vf.rating ?? DEFAULT_VISIBLE_FIELDS.rating,
   };
 }
 
@@ -293,12 +317,36 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
     persistSortPresets(next);
   }
 
-  const hasActiveFilters =
-    selectedTags.length > 0 ||
-    selectedFormats.length > 0 ||
-    selectedAudioTypes.length > 0 ||
-    selectedMediaTypes.length > 0 ||
-    watchedFilter != null;
+  // Feature #86 — se Library.jsx' identiske blok.
+  const activeFilterCount =
+    selectedTags.length +
+    selectedFormats.length +
+    selectedAudioTypes.length +
+    selectedMediaTypes.length +
+    (watchedFilter != null ? 1 : 0);
+  const hasActiveFilters = activeFilterCount > 0;
+  const sortIsDefault = sortLevelsAreDefault(sortLevels);
+  const changedFieldCount = VISIBLE_FIELD_OPTIONS.filter(
+    (opt) => visibleFields[opt.key] !== DEFAULT_VISIBLE_FIELDS[opt.key]
+  ).length;
+
+  function resetSortToDefault() {
+    setSortLevels(DEFAULT_SORT_LEVELS);
+    persistSortLevels(DEFAULT_SORT_LEVELS);
+  }
+
+  function resetFilters() {
+    setSelectedTags([]);
+    setSelectedFormats([]);
+    setSelectedAudioTypes([]);
+    setSelectedMediaTypes([]);
+    setWatchedFilter(null);
+  }
+
+  function resetVisibleFieldsToDefault() {
+    setVisibleFields(DEFAULT_VISIBLE_FIELDS);
+    persistVisibleFields(DEFAULT_VISIBLE_FIELDS);
+  }
 
   return (
     <section>
@@ -324,16 +372,35 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
             </button>
           )}
 
-          <button type="button" className="btn" onClick={() => setShowSortPanel((v) => !v)}>
-            Sortér ▾
+          <button
+            type="button"
+            className={`btn${sortIsDefault ? "" : " btn-modified"}`}
+            title={sortIsDefault ? "Standard-sortering" : "Sorteringen er ændret fra standard"}
+            onClick={() => setShowSortPanel((v) => !v)}
+          >
+            Sortér {sortIsDefault ? "" : "● "}▾
           </button>
 
-          <button type="button" className="btn" onClick={() => setShowFilterPanel((v) => !v)}>
-            Filtrér {hasActiveFilters ? `(${selectedTags.length + selectedFormats.length + selectedAudioTypes.length + selectedMediaTypes.length + (watchedFilter != null ? 1 : 0)}) ` : ""}▾
+          <button
+            type="button"
+            className={`btn${hasActiveFilters ? " btn-modified" : ""}`}
+            title={hasActiveFilters ? `${activeFilterCount} aktive filtre` : "Ingen filtre valgt"}
+            onClick={() => setShowFilterPanel((v) => !v)}
+          >
+            Filtrér {hasActiveFilters ? `(${activeFilterCount}) ` : ""}▾
           </button>
 
-          <button type="button" className="btn" onClick={() => setShowFieldPanel((v) => !v)}>
-            Vis felter ▾
+          <button
+            type="button"
+            className={`btn${changedFieldCount > 0 ? " btn-modified" : ""}`}
+            title={
+              changedFieldCount > 0
+                ? "Viste felter er ændret fra standard"
+                : "Standard-felter vises"
+            }
+            onClick={() => setShowFieldPanel((v) => !v)}
+          >
+            Vis felter {changedFieldCount > 0 ? "● " : ""}▾
           </button>
         </div>
 
@@ -387,11 +454,21 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
                   )}
                 </div>
               ))}
-              {sortLevels.length < MAX_SORT_LEVELS && (
-                <button type="button" className="btn" onClick={addSortLevel}>
-                  + Tilføj sorteringsniveau
+              <div className="panel-actions">
+                {sortLevels.length < MAX_SORT_LEVELS && (
+                  <button type="button" className="btn" onClick={addSortLevel}>
+                    + Tilføj sorteringsniveau
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={resetSortToDefault}
+                  disabled={sortIsDefault}
+                >
+                  Nulstil sortering
                 </button>
-              )}
+              </div>
             </div>
 
             <div className="filter-group sort-preset-row">
@@ -457,6 +534,16 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
                   />
                 ))}
               </div>
+            </div>
+            <div className="panel-actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={resetVisibleFieldsToDefault}
+                disabled={changedFieldCount === 0}
+              >
+                Nulstil viste felter
+              </button>
             </div>
           </div>
         )}
@@ -538,22 +625,18 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
                 />
               </div>
             </div>
-            {hasActiveFilters && (
+            {/* Feature #86 — se Library.jsx: altid synlig, deaktiveret når
+                der ikke er noget at rydde. */}
+            <div className="panel-actions">
               <button
                 type="button"
                 className="btn"
-                style={{ alignSelf: "flex-start" }}
-                onClick={() => {
-                  setSelectedTags([]);
-                  setSelectedFormats([]);
-                  setSelectedAudioTypes([]);
-                  setSelectedMediaTypes([]);
-                  setWatchedFilter(null);
-                }}
+                onClick={resetFilters}
+                disabled={!hasActiveFilters}
               >
                 Ryd filtre
               </button>
-            )}
+            </div>
           </div>
         )}
       </div>

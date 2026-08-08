@@ -2,6 +2,20 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.63.0 build 0088] — 2026-08-08 — feature: nulstil + tydelig markering af Sortér/Filtrér/Vis felter (FEATURES.md #86)
+
+Jans problem: "det er svært at se om der er tilvalgt noget på de tre funktioner". Man skulle åbne hvert panel for at finde ud af om noget var valgt — kun "Filtrér" viste et tal, og selv det var forkert.
+
+De tre værktøjslinje-knapper i film- og TV-sektionen markeres nu når deres panel afviger fra standard: accent-farvet knap (`.btn-modified`) plus `(N)` for antal aktive filtre og `●` for ændret sortering/felt-visning. Både farve og tekst, så markeringen ikke afhænger af at kunne skelne farver, og `title`-teksten forklarer hvad markeringen betyder.
+
+Hvert panel har fået sin egen nulstillings-knap i en fast knap-række nederst — "Nulstil sortering", "Ryd filtre", "Nulstil viste felter". De står der altid og er *deaktiveret* når der ikke er noget at nulstille, i stedet for at dukke op og forsvinde: en knap der kun er synlig når den kan bruges, hjælper kun den der allerede ved at den findes. Sortering og felt-visning er persisterede bruger-indstillinger, så nulstilling gemmes med samme `persistSettings`-vej som en almindelig ændring (og fejler den, vises fejlen — BUGS.md #45's mønster).
+
+Standardværdierne ligger nu ét sted pr. side (`DEFAULT_SORT_LEVELS`/`DEFAULT_VISIBLE_FIELDS`), som både `visibleFieldsFromSettings`, markeringen og nulstillingen læser fra. Før var defaults spredt som `?? true`/`?? false`-fallbacks inde i én funktion, hvilket ville lade en "nulstil"-knap og en "er den ændret?"-test drive fra hinanden ved næste ændring.
+
+Sidegevinst: film-sidens filter-tæller talte ikke person-filteret (feature #41) med, selvom `hasActiveFilters` gjorde. Et rent skuespiller-/instruktør-filter viste derfor "Filtrér (0)". Tælleren er nu den samme værdi som afgør om der overhovedet er filtre aktive.
+
+Berørte filer: `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/pages/Library.css`, `FEATURES.md`, `version.json`.
+
 ## [0.62.1 build 0087] — 2026-08-08 — fix: fritekst-søgningen ramte ikke skuespiller/instruktør/genre (BUGS.md #48)
 
 Man kunne kun afgrænse på en person ved at åbne en films detaljevindue og trykke på et navn (feature #41's `?cast=`/`?director=`). Skrev man navnet i søgefeltet, fandt det ingenting — `?q=` gik gennem et Mongo-`$text`-index der kun dækkede `title`+`overview` (film) og `name`+`overview` (TV). Søgefeltets egen placeholder ("Søg på titel, skuespiller, genre...") og CLAUDE.md regel 7 har hele tiden lovet mere end implementeringen leverede.

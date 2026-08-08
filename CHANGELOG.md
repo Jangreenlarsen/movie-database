@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.64.2 build 0091] — 2026-08-08 — fix: sæson-vælgeren talte om "ejerskab" på ønskelisten (BUGS.md #50)
+
+Scanner man en TV-serie ind på ønskelisten, stod der "Vælg hvilke sæsoner du **ejer**" og "de markeres automatisk som **ejet**" — om noget man per definition ikke ejer endnu. Samme fejl i grupperings-grenen ("markeres som ejet på den eksisterende serie", "allerede ejet") og i begge knapper, som talte om "serie" hvor det var et ønske.
+
+`MovieLookupForm` deles af bibliotekets og ønskelistens tilføj-panel og får allerede en `wishlist`-prop; sæson-panelets seks tekster var bare hardkodet til bibliotek-tilfældet. De blev skrevet i feature #53/#54, hvor ønskelisten slet ikke kunne indeholde TV-serier — det blev først muligt at nå hertil med BUGS.md #47 tidligere i dag, og fejlen fulgte med som en direkte konsekvens.
+
+Teksterne følger nu `wishlist`: "ejer"/"ejet" → "ønsker dig"/"med i ønsket", og "serie" → "ønske" i knapperne ("Tilføj sæson(er) til eksisterende ønske", "Opret som nyt separat ønske i stedet").
+
+Feltnavnet `seasons[].owned` er bevidst uændret. Det betyder i begge tilfælde "denne udgave dækker sæsonen", og en omdøbning ville kræve datamigrering uden at gøre koden klarere. Kun det brugeren læser er ændret — ingen ændring af data eller adfærd.
+
+Berørte filer: `frontend/src/components/MovieLookupForm.jsx`, `BUGS.md`, `version.json`.
+
 ## [0.64.1 build 0090] — 2026-08-08 — fix: print satte ikke film og TV-serier på hver sin side (BUGS.md #49)
 
 Hensigten var der allerede: `.print-section-break { break-before: page; }` sad på "TV-serier"-overskriften. Den havde bare aldrig nogen effekt, fordi `.app` er en `display: flex`-column og `.app-main` dermed et flex-item — browsere fragmenterer ikke pålideligt inde i flex-layout, så et sideskift længere nede i træet ignoreres. Reglen sad desuden på en `<h2>` midt i et fælles fragment frem for på et selvstændigt blok-element.

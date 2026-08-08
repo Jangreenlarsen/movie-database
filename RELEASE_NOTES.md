@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.61.1 (build 0084) — 2026-08-08
+
+- **Vigtigt:** TV-serier du tilføjede under "Ønsker" — scannet eller søgt frem — var usynlige bagefter. De blev gemt korrekt hele tiden, men der var ingen visning der viste dem: ønske-siden viste kun film, og TV-fanen viser kun det du ejer. "Ønsker" har nu to underfaner, **Film** og **TV-serier**, og dine tidligere "forsvundne" TV-ønsker dukker op af sig selv.
+- Gemmer du en TV-serie mens du står i filmbiblioteket (eller omvendt), får du nu besked om hvor den blev lagt, med en knap direkte derhen — i stedet for at den bare ikke er i listen du kigger på.
+- Scanner du en serie du havde stående som ønske, bliver sæsonerne ikke længere lagt på selve ønsket (hvor du ikke kan se dem i biblioteket) — den oprettes som en rigtig bibliotekspost.
+
 ## v0.61.0 (build 0083) — 2026-08-05
 
 - Voldby BIO er nu appens forside: er du ikke logget ind, møder du biograf-siden med program og billeder i stedet for en tom login-boks. Samme side som det link du deler ud.

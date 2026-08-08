@@ -2,6 +2,20 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.61.1 build 0084] — 2026-08-08 — fix: TV-serier forsvandt når de blev tilføjet i "Ønsker" (BUGS.md #47)
+
+Jan rapporterede at en TV-serie tilføjet i ønske-sektionen — scannet eller indtastet — forsvandt i databasen. Serien blev rent faktisk gemt korrekt: `MovieLookupForm` søger bevidst i både TMDb's film- og TV-database (jf. BUGS.md #20), og en valgt TV-kandidat oprettes i `tv_shows` med `is_wishlist: true`. Fejlen lå udelukkende i visningen: `App.jsx` renderede kun `<Library wishlist />` for "Ønsker"-fanen, så TV-ønsket var usynligt både der (kun film) og under "TV-serier" (som filtrerer `is_wishlist != true` fra). `TvShows.jsx` havde allerede fuld `wishlist`-understøttelse — overskriften "TV-ønsker", skjult serienummer, "Ingen TV-ønsker endnu" — men blev aldrig renderet med prop'en.
+
+Ny side `frontend/src/pages/Wishlist.jsx` med underfanerne Film / TV-serier, der renderer henholdsvis `<Library wishlist />` og `<TvShows wishlist />`. Samme opdeling som bibliotekets egne faner, frem for én blandet liste — film og TV-serier er to bevidst adskilte ressourcer (CLAUDE.md), og en fælles liste ville skulle blande to forskellige datamodeller og to sæt kort-felter.
+
+Samme fejlklasse ramte hovedfanerne i mildere form: scanner man en TV-serie mens man står i filmbiblioteket, gemmes den under "TV-serier" uden nogen besked om hvor den blev af. `MovieLookupForm` melder nu tilbage *hvilken* type der blev gemt (`onSaved("movie" | "tv")`), og `Library`/`TvShows` viser en besked med genvej ("Det du gemte er en TV-serie — den ligger under TV-ønsker") når resultatet hører hjemme i den anden liste. Genvejen er en valgfri `onGoToTvShows`/`onGoToMovies`-prop, så `Wishlist` skifter underfane og `App.jsx` skifter hovedfane med samme komponent. Bevidst en besked frem for et automatisk fane-skift: skiftet ville rive brugeren ud af add-panelet midt i en stak scanninger.
+
+En tredje variant af samme klasse er lukket i samme ombæring: sæson-grupperingen (feature #53) tilbød `matches[0]` fra dublet-tjekket uanset om posten var et ønske eller en bibliotekspost. Scannede man en serie man havde ønsket sig, mens man stod i TV-biblioteket, blev sæsonerne markeret som ejet på *ønsket* — som stadig ikke vises i biblioteket. Der grupperes nu kun ind i en eksisterende post af samme slags som den man er ved at oprette; findes kun den anden slags, oprettes en ny post, og dublet-banneret fortæller uændret at den anden findes.
+
+Ingen backend- eller datamodel-ændringer — eksisterende, hidtil usynlige TV-ønsker dukker op af sig selv, da de hele tiden har ligget korrekt i `tv_shows`.
+
+Berørte filer: `frontend/src/pages/Wishlist.jsx` (ny), `frontend/src/App.jsx`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/components/MovieLookupForm.jsx`, `BUGS.md`, `version.json`.
+
 ## [0.61.0 build 0083] — 2026-08-05 — feature: Voldby BIO som appens offentlige forside (FEATURES.md #84)
 
 En ikke-indlogget besøgende på `/` møder nu biograf-siden — program, "Om Voldby BIO" og login/opret-badgen — i stedet for en bar login-boks. Det delte `/bio`-link og site-roden er dermed ét og samme udstillingsvindue, i stedet for to forskellige indgange hvor den ene kun viste et loginfelt.

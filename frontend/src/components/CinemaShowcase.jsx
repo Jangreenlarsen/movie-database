@@ -1,15 +1,17 @@
+import { useT } from "../i18n";
 import "./CinemaShowcase.css";
 
 // Feature #71 — reklame-/info-sektion for Voldby BIO, brugt både på den
 // offentlige /bio-side og den indloggede Voldby BIO-fane. Rent statisk
 // indhold (ingen API-kald) — billederne ligger i frontend/public/cinema/.
 const PHOTOS = [
-  { src: "/cinema/voldbyBIO-1-front.jpg", alt: "Lærred med surround-højttalere og biografstole" },
-  { src: "/cinema/voldbyBIO-3.jpg", alt: "Højttaler monteret i loftet" },
-  { src: "/cinema/voldbyBIO-2-back.jpg", alt: "Biografstole fordelt på flere niveauer" },
+  { src: "/cinema/voldbyBIO-1-front.jpg", altKey: "showcase.photo1Alt" },
+  { src: "/cinema/voldbyBIO-3.jpg", altKey: "showcase.photo2Alt" },
+  { src: "/cinema/voldbyBIO-2-back.jpg", altKey: "showcase.photo3Alt" },
 ];
 
 export default function CinemaShowcase() {
+  const t = useT();
   return (
     <div className="cinema-showcase">
       <div className="cinema-showcase-photos">
@@ -17,7 +19,7 @@ export default function CinemaShowcase() {
           <div key={photo.src} className="cinema-showcase-photo">
             <img
               src={photo.src}
-              alt={photo.alt}
+              alt={t(photo.altKey)}
               loading="lazy"
               onError={(e) => {
                 e.currentTarget.parentElement.style.display = "none";
@@ -29,29 +31,23 @@ export default function CinemaShowcase() {
 
       <div className="cinema-showcase-info">
         <div>
-          <h3>Rummet</h3>
-          <p>
-            14 siddepladser fordelt på 3 niveauer i et rum på 30 m². Rummet er akustisk
-            behandlet, så der ikke opstår stående lydbølger — alle flader er dæmpet og
-            spredt-bygget.
-          </p>
+          <h3>{t("showcase.roomHeading")}</h3>
+          <p>{t("showcase.roomText")}</p>
         </div>
 
         <div>
-          <h3>Billede</h3>
-          <p>Hisense 100" 4K UHD Mini-LED TV (100U7KQ).</p>
+          <h3>{t("showcase.pictureHeading")}</h3>
+          <p>{t("showcase.pictureText")}</p>
         </div>
 
         <div>
-          <h3>Lyd</h3>
-          <p>
-            9.2.6 surround, styret af en Anthem AVM 70 sound processor.
-          </p>
+          <h3>{t("showcase.soundHeading")}</h3>
+          <p>{t("showcase.soundText")}</p>
           <ul>
-            <li>Klasse AB, 7×300W til de primære højttalere</li>
-            <li>Klasse D (Rotel), 8×100W til alle sekundære højttalere</li>
-            <li>Klasse AB, 500W til en 21" bas-subwoofer</li>
-            <li>Klasse D, 4kW til en 15" LFE-subwoofer (2,5kW)</li>
+            <li>{t("showcase.amp1")}</li>
+            <li>{t("showcase.amp2")}</li>
+            <li>{t("showcase.amp3")}</li>
+            <li>{t("showcase.amp4")}</li>
           </ul>
         </div>
       </div>

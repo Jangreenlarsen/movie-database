@@ -1,9 +1,11 @@
+import { useT } from "../i18n";
 import "./Login.css";
 
 // Feature #66 — shown instead of the main app for a logged-in user whose
 // account isn't yet `active`. Reuses Login.css's auth-screen/auth-card
 // classes rather than inventing a parallel set of layout styles.
 export default function PendingApproval({ user, onLogout }) {
+  const t = useT();
   const isRejected = user.status === "rejected";
 
   return (
@@ -13,23 +15,21 @@ export default function PendingApproval({ user, onLogout }) {
           <span className="brand-mark" aria-hidden="true">
             🎬
           </span>
-          Film &amp; TV-bibliotek
+          {t("app.brand")}
         </div>
 
         {isRejected ? (
           <div className="banner banner-error">
-            Din konto ({user.username}) er blevet afvist. Kontakt en administrator hvis du mener
-            det er en fejl.
+            {t("pending.rejected", { username: user.username })}
           </div>
         ) : (
           <div className="banner banner-info">
-            Din konto ({user.username}) afventer godkendelse fra en administrator. Prøv igen
-            senere, eller kontakt en administrator.
+            {t("pending.waiting", { username: user.username })}
           </div>
         )}
 
         <button type="button" className="btn" onClick={onLogout}>
-          Log ud
+          {t("app.logout")}
         </button>
       </div>
     </div>

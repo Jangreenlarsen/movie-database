@@ -3,9 +3,12 @@ import { api } from "../api/client";
 import CinemaShowcase from "../components/CinemaShowcase";
 import DateTime24Input from "../components/DateTime24Input";
 import { formatDateHeading, formatShortDate, formatTime, groupByDate } from "../utils/cinemaFormat";
+import { useLocale, useT } from "../i18n";
 import "./Cinema.css";
 
 export default function Cinema({ user }) {
+  const t = useT();
+  const locale = useLocale();
   const isAdmin = user.role === "admin";
   const [screenings, setScreenings] = useState([]);
   const [status, setStatus] = useState("loading");
@@ -41,9 +44,9 @@ export default function Cinema({ user }) {
   return (
     <section>
       <div className="page-header">
-        <h1>🎬 Voldby BIO</h1>
+        <h1>{t("cinema.title")}</h1>
         <button type="button" className="btn" onClick={copyPublicLink}>
-          {linkCopied ? "Link kopieret!" : "🔗 Del link til Voldby BIO"}
+          {t(linkCopied ? "cinema.linkCopied" : "cinema.shareLink")}
         </button>
       </div>
 
@@ -52,15 +55,17 @@ export default function Cinema({ user }) {
       {isAdmin && <AdminScreeningTools onChanged={refresh} />}
 
       <div className="cinema-program">
-        {status === "loading" && <p className="muted">Indlæser program...</p>}
-        {status === "error" && <div className="banner banner-error">Kunne ikke hente programmet.</div>}
+        {status === "loading" && <p className="muted">{t("cinema.loadingProgram")}</p>}
+        {status === "error" && (
+          <div className="banner banner-error">{t("cinema.programLoadError")}</div>
+        )}
         {status === "ready" && groups.length === 0 && (
-          <p className="muted">Ingen kommende visninger er planlagt endnu.</p>
+          <p className="muted">{t("cinema.noScreenings")}</p>
         )}
 
         {groups.map((group) => (
           <div key={group.key} className="cinema-day">
-            <h2 className="cinema-day-heading">{formatDateHeading(group.date)}</h2>
+            <h2 className="cinema-day-heading">{formatDateHeading(group.date, locale)}</h2>
             <div className="cinema-cards">
               {group.screenings.map((screening) => (
                 <ScreeningCard
@@ -79,6 +84,8 @@ export default function Cinema({ user }) {
 }
 
 function ScreeningCard({ screening, isAdmin, onChanged }) {
+  const t = useT();
+  const locale = useLocale();
   const [editing, setEditing] = useState(false);
   const [scheduledAt, setScheduledAt] = useState(screening.scheduled_at.slice(0, 16));
   const [note, setNote] = useState(screening.note ?? "");
@@ -100,7 +107,7 @@ function ScreeningCard({ screening, isAdmin, onChanged }) {
   }
 
   async function removeScreening() {
-    if (!window.confirm(`Fjern "${screening.title}" fra programmet?`)) return;
+    if (!window.confirm(t("cinema.confirmRemove", { title: screening.title }))) return;
     setBusy(true);
     setError(null);
     try {
@@ -122,9 +129,9 @@ function ScreeningCard({ screening, isAdmin, onChanged }) {
         )}
       </div>
       <div className="cinema-card-body">
-        <div className="cinema-card-time">{formatTime(screening.scheduled_at)}</div>
+        <div className="cinema-card-time">{formatTime(screening.scheduled_at, locale)}</div>
         <h3 className="cinema-card-title">
-          {screening.title ?? "Ukendt titel"}
+          {screening.title ?? t("cinema.unknownTitle")}
           {screening.year ? ` (${screening.year})` : ""}
         </h3>
         {screening.genres?.length > 0 && (
@@ -135,7 +142,7 @@ function ScreeningCard({ screening, isAdmin, onChanged }) {
         <div className="cinema-card-links">
           {screening.trailer_url && (
             <a href={screening.trailer_url} target="_blank" rel="noreferrer">
-              ▶ Se trailer
+              {t("cinema.watchTrailer")}
             </a>
           )}
           {screening.imdb_url && (
@@ -148,10 +155,10 @@ function ScreeningCard({ screening, isAdmin, onChanged }) {
         {isAdmin && !editing && (
           <div className="cinema-card-admin-actions">
             <button type="button" className="btn" onClick={() => setEditing(true)}>
-              Redigér
+              {t("cinema.edit")}
             </button>
             <button type="button" className="btn" onClick={removeScreening} disabled={busy}>
-              Fjern
+              {t("cinema.remove")}
             </button>
           </div>
         )}
@@ -162,13 +169,13 @@ function ScreeningCard({ screening, isAdmin, onChanged }) {
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Note (valgfri)"
+              placeholder={t("cinema.notePlaceholder")}
             />
             <button type="button" className="btn btn-primary" onClick={saveEdit} disabled={busy}>
-              {busy ? "Gemmer..." : "Gem"}
+              {t(busy ? "common.saving" : "common.save")}
             </button>
             <button type="button" className="btn" onClick={() => setEditing(false)} disabled={busy}>
-              Annullér
+              {t("common.cancel")}
             </button>
           </div>
         )}
@@ -180,6 +187,7 @@ function ScreeningCard({ screening, isAdmin, onChanged }) {
 }
 
 function AdminScreeningTools({ onChanged }) {
+  const t = useT();
   const [requests, setRequests] = useState([]);
   const [status, setStatus] = useState("loading");
 
@@ -204,13 +212,15 @@ function AdminScreeningTools({ onChanged }) {
 
   return (
     <div className="card cinema-panel">
-      <h2>Anmodninger</h2>
-      <p className="muted">Titler brugerne har ønsket vist — planlæg en dato/tid, eller afvis dem.</p>
+      <h2>{t("cinema.requests")}</h2>
+      <p className="muted">{t("cinema.requestsHint")}</p>
 
-      {status === "loading" && <p className="muted">Indlæser...</p>}
-      {status === "error" && <div className="banner banner-error">Kunne ikke hente anmodninger.</div>}
+      {status === "loading" && <p className="muted">{t("common.loading")}</p>}
+      {status === "error" && (
+        <div className="banner banner-error">{t("cinema.requestsLoadError")}</div>
+      )}
       {status === "ready" && requests.length === 0 && (
-        <p className="muted">Ingen ventende anmodninger.</p>
+        <p className="muted">{t("cinema.noPendingRequests")}</p>
       )}
 
       <div className="cinema-requests">
@@ -244,6 +254,8 @@ function earliestUpcomingSuggestion(requestedBy) {
 }
 
 function RequestRow({ request, onChanged }) {
+  const t = useT();
+  const locale = useLocale();
   const suggestion = earliestUpcomingSuggestion(request.requested_by);
   const [scheduling, setScheduling] = useState(false);
   const [scheduledAt, setScheduledAt] = useState(suggestion);
@@ -294,10 +306,12 @@ function RequestRow({ request, onChanged }) {
       </div>
       <div className="cinema-request-info">
         <strong>
-          {request.title ?? "Ukendt"} {request.year ? `(${request.year})` : ""}
+          {request.title ?? t("cinema.unknown")} {request.year ? `(${request.year})` : ""}
         </strong>
         <div className="muted">
-          Ønsket af: {request.requested_by.map((r) => r.username).join(", ")}
+          {t("cinema.requestedBy", {
+            names: request.requested_by.map((r) => r.username).join(", "),
+          })}
         </div>
         {/* Feature #85 — kun de ønskere der faktisk skrev noget får en
             linje, så en anmodning uden beskeder ser ud som før. */}
@@ -308,7 +322,13 @@ function RequestRow({ request, onChanged }) {
               <strong>{r.username}</strong>
               {r.message && <> „{r.message}“</>}
               {r.preferred_at && (
-                <> ⏰ {formatShortDate(r.preferred_at)} kl. {formatTime(r.preferred_at)}</>
+                <>
+                  {" "}
+                  {t("request.at", {
+                    date: formatShortDate(r.preferred_at, locale),
+                    time: formatTime(r.preferred_at, locale),
+                  })}
+                </>
               )}
             </div>
           ))}
@@ -317,26 +337,30 @@ function RequestRow({ request, onChanged }) {
       {!scheduling ? (
         <div className="cinema-request-actions">
           <button type="button" className="btn btn-primary" onClick={() => setScheduling(true)}>
-            Planlæg
+            {t("cinema.schedule")}
           </button>
           <button type="button" className="btn" onClick={decline} disabled={busy}>
-            Afvis
+            {t("cinema.decline")}
           </button>
         </div>
       ) : (
         <div className="cinema-request-actions cinema-card-edit-form">
           {suggestion && (
             <span className="muted cinema-request-suggestion-hint">
-              Forudfyldt med det tidligste ønskede tidspunkt — ret det frit.
+              {t("cinema.suggestionHint")}
             </span>
           )}
           <DateTime24Input value={scheduledAt} onChange={setScheduledAt} />
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (valgfri)" />
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={t("cinema.notePlaceholder")}
+          />
           <button type="button" className="btn btn-primary" onClick={schedule} disabled={!scheduledAt || busy}>
-            {busy ? "Planlægger..." : "Bekræft"}
+            {t(busy ? "cinema.scheduling" : "cinema.confirm")}
           </button>
           <button type="button" className="btn" onClick={() => setScheduling(false)} disabled={busy}>
-            Annullér
+            {t("common.cancel")}
           </button>
         </div>
       )}
@@ -346,6 +370,7 @@ function RequestRow({ request, onChanged }) {
 }
 
 function DirectAddSection({ onChanged }) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -394,17 +419,17 @@ function DirectAddSection({ onChanged }) {
 
   return (
     <div>
-      <h3 style={{ marginTop: 0 }}>+ Tilføj visning direkte</h3>
-      <p className="muted">
-        Sæt en film/TV-serie fra biblioteket direkte på programmet, uden en forudgående anmodning.
-      </p>
+      <h3 style={{ marginTop: 0 }}>{t("cinema.addDirectly")}</h3>
+      <p className="muted">{t("cinema.addDirectlyHint")}</p>
       <form className="cinema-search-form" onSubmit={search}>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Søg i biblioteket..."
+          placeholder={t("cinema.searchLibraryPlaceholder")}
         />
-        <button type="submit" className="btn">Søg</button>
+        <button type="submit" className="btn">
+          {t("scan.search")}
+        </button>
       </form>
 
       {results.length > 0 && !selected && (
@@ -429,17 +454,21 @@ function DirectAddSection({ onChanged }) {
         <div className="cinema-card-edit-form" style={{ marginTop: 10 }}>
           <strong>{selected.title}</strong>
           <DateTime24Input value={scheduledAt} onChange={setScheduledAt} />
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (valgfri)" />
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={t("cinema.notePlaceholder")}
+          />
           <button
             type="button"
             className="btn btn-primary"
             onClick={addDirectly}
             disabled={!scheduledAt || busy}
           >
-            {busy ? "Tilføjer..." : "Tilføj til programmet"}
+            {t(busy ? "cinema.adding" : "cinema.addToProgram")}
           </button>
           <button type="button" className="btn" onClick={() => setSelected(null)} disabled={busy}>
-            Annullér
+            {t("common.cancel")}
           </button>
         </div>
       )}

@@ -36,6 +36,25 @@ Konsulteres ved al teknisk implementering (jf. CLAUDE.md regel 10). Hold opdater
 - `manifest.json`: `display: "standalone"`, ikon-sæt til iOS home-screen (`apple-touch-icon` i `index.html` — iOS Safari respekterer ikke altid manifest-ikoner alene).
 - API-client i `src/api/`: centraliseret `fetch`-wrapper mod backend `/api`, ingen komponent kalder `fetch` direkte.
 
+### Sprog / i18n (feature #89)
+
+Egen ~60-linjers motor i `frontend/src/i18n/`, ikke react-i18next — to sprog, ingen lazy-loading af sprogfiler og kun "én/flere"-flertal retfærdiggør ikke ~40 kB ekstra i en bundle der allerede advarer om sin størrelse.
+
+| Fil | Rolle |
+|---|---|
+| `i18n/index.js` | `useT()`, `useLanguage()`, `useLocale()`, `LANGUAGES`, `SOURCE_LANGUAGE`, `createTranslator()`. Ingen komponenter — se næste række. |
+| `i18n/I18nProvider.jsx` | Kun provider-komponenten. Adskilt fordi Vites fast refresh ikke kan opdatere en fil der blander komponenter og ikke-komponenter uden fuld genindlæsning. Sætter også `<html lang>`. |
+| `i18n/da.json`, `i18n/en.json` | Flade, punktum-adskilte nøgler (`"lib.searchPlaceholder"`), ikke indlejrede objekter — en nøgle man har foran sig i JSX kan søges direkte i sprogfilen som præcis den streng. |
+
+**Regler ved ny UI-tekst:**
+- Dansk skrives først og er kildesproget. En nøgle der mangler i `en.json` falder tilbage til dansk; mangler den i *begge*, vises den rå nøgle — grimt med vilje, så en manglende oversættelse er til at få øje på frem for at gemme sig som tom tekst.
+- Begge kataloger skal have samme nøglesæt og samme `{pladsholdere}` pr. nøgle. En manglende pladsholder i én oversættelse giver en halvfærdig sætning uden at fejle nogen steder.
+- Interpolation: `t("key", { navn: "Anna" })` → `{navn}`. Flertal: `t("key", { count: n })` vælger `key_one`/`key_other` hvis de findes.
+- **Modul-konstanter må ikke indeholde færdig tekst.** Lister som `SORT_OPTIONS`/`VISIBLE_FIELD_OPTIONS`/`settingsTabs()` evalueres ved import, før nogen oversætter findes — de bærer derfor `labelKey` og slår nøglen op ved render.
+- **Rene funktioner tager `t`/`locale` som argument** frem for at kalde hooks (fx `formatRuntime`, `cinemaFormat.js`). Kun komponenter må kalde `useT()`/`useLocale()`.
+- Datoer/tal: brug `useLocale()` (`da-DK`/`en-GB`), aldrig et hardkodet locale. Engelsk er bevidst `en-GB`, ikke `en-US` — dag-før-måned og 24-timers ur, som resten af appen regner med.
+- `ErrorBoundary` er bevidst *ikke* oversat: den ligger uden om provideren for netop at kunne fange en fejl i den, så der er hverken context eller garanti for at brugerens indstillinger nåede at blive hentet.
+
 ### Stregkode-scanning i browseren
 - Anbefalet lib: **`@zxing/browser`** (ren JS/TS, ingen native afhængighed, understøtter UPC-A + EAN-13 via kamera-stream).
 - Flow: `BrowserMultiFormatReader.decodeFromVideoDevice(...)` mod et `<video>`-element bundet til `getUserMedia`-stream; på match sendes koden til `POST /api/scan/lookup`.

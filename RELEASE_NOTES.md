@@ -1,5 +1,12 @@
 # Release Notes
 
+## v0.66.0 (build 0095) — 2026-08-08
+
+- **Du kan nu vælge engelsk som sprog.** Indstillinger → Konto → Sprog. Valget gemmes på din bruger, så det følger med uanset om du åbner appen på telefonen eller på PC'en.
+- **Hele appen er oversat** — Film, TV-serier, scanning, Indstillinger, Statistik, Print og Voldby BIO. Ikke halve skærme.
+- Datoer og klokkeslæt følger sproget, men bliver ved med at være dag-før-måned og 24-timers ur i begge sprog.
+- Login-siden er altid på dansk: appen ved først hvilket sprog du foretrækker, når du er logget ind. Er du logget ind, får du dit eget sprog på den delte BIO-side; er du ikke, vises den på dansk.
+
 ## v0.65.0 (build 0092) — 2026-08-08
 
 - **Appen tjekker nu selv om en film eller serie ligger i din Plex.** Den gamle "Tjek Plex"-knap, du skulle trykke på inde i hver enkelt film, er væk. I stedet slår appen hele biblioteket op på én gang.

@@ -160,6 +160,26 @@ async def test_new_user_has_default_settings(client):
     assert settings["sort_levels"] == []
     assert settings["sort_presets"] == []
     assert settings["card_size"] == "medium"
+    # Feature #89 — dansk er kildesproget og dermed standarden.
+    assert settings["language"] == "da"
+    # Feature #88 — Plex-badget er fra som standard.
+    assert settings["visible_fields"]["plex"] is False
+
+
+async def test_language_roundtrip_and_rejects_unknown_language(client):
+    """Feature #89 — sproget gemmes pr. bruger (Jans valg 2026-08-08), så det
+    følger med på tværs af enheder frem for at ligge i én browsers storage."""
+    response = await client.patch("/api/users/me/settings", json={"language": "en"})
+    assert response.status_code == 200
+    assert response.json()["settings"]["language"] == "en"
+
+    me = await client.get("/api/users/me")
+    assert me.json()["settings"]["language"] == "en"
+
+    # Et ukendt sprog må afvises i backend, ikke bare falde tilbage stiltiende
+    # — ellers ville en tastefejl gemme en værdi ingen frontend kan bruge.
+    invalid = await client.patch("/api/users/me/settings", json={"language": "de"})
+    assert invalid.status_code == 422
 
 
 async def test_card_size_roundtrip_and_rejects_invalid_value(client):

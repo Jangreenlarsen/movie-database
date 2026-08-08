@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { api } from "../api/client";
+import { useT } from "../i18n";
 import "./Login.css";
 
 export default function Login({ onAuthenticated }) {
+  const t = useT();
   const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -33,12 +35,12 @@ export default function Login({ onAuthenticated }) {
           <span className="brand-mark" aria-hidden="true">
             🎬
           </span>
-          Film &amp; TV-bibliotek
+          {t("app.brand")}
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <label>
-            Brugernavn
+            {t("auth.username")}
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -50,7 +52,7 @@ export default function Login({ onAuthenticated }) {
             />
           </label>
           <label>
-            Adgangskode
+            {t("auth.password")}
             <input
               type="password"
               value={password}
@@ -65,26 +67,26 @@ export default function Login({ onAuthenticated }) {
 
           <button type="submit" className="btn btn-primary" disabled={submitting}>
             {submitting
-              ? "Vent venligst..."
+              ? t("auth.submitting")
               : mode === "login"
-                ? "Log ind"
-                : "Opret konto"}
+                ? t("auth.login")
+                : t("auth.register")}
           </button>
         </form>
 
         <div className="auth-switch">
           {mode === "login" ? (
             <>
-              Ingen konto?{" "}
+              {t("auth.noAccount")}{" "}
               <button type="button" onClick={() => setMode("register")}>
-                Opret en
+                {t("auth.createOne")}
               </button>
             </>
           ) : (
             <>
-              Har du allerede en konto?{" "}
+              {t("auth.haveAccount")}{" "}
               <button type="button" onClick={() => setMode("login")}>
-                Log ind
+                {t("auth.login")}
               </button>
             </>
           )}

@@ -1,6 +1,7 @@
 import { BarcodeFormat, BrowserMultiFormatReader } from "@zxing/browser";
 import { DecodeHintType } from "@zxing/library";
 import { useEffect, useRef, useState } from "react";
+import { useT } from "../i18n";
 import "./BarcodeScanner.css";
 
 // Restricted to the two formats DVD/Blu-ray covers actually use (see
@@ -34,6 +35,7 @@ function releaseCamera(videoEl) {
 }
 
 export default function BarcodeScanner({ onDetected }) {
+  const t = useT();
   const videoRef = useRef(null);
   const controlsRef = useRef(null);
   const [error, setError] = useState(null);
@@ -66,7 +68,7 @@ export default function BarcodeScanner({ onDetected }) {
       );
       controlsRef.current = controls;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Kunne ikke tilgå kameraet");
+      setError(err instanceof Error ? err.message : t("scanner.cameraError"));
       setScanning(false);
     }
   }

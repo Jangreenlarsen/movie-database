@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Library from "./Library";
 import TvShows from "./TvShows";
+import { useT } from "../i18n";
 
 /**
  * "Ønsker"-sektionen. Film og TV-serier er to bevidst adskilte ressourcer
@@ -14,6 +15,7 @@ import TvShows from "./TvShows";
  * "TV-serier", som filtrerer ønsker fra.
  */
 export default function Wishlist({ user, onSettingsChanged }) {
+  const t = useT();
   const [kind, setKind] = useState("movies");
 
   return (
@@ -24,14 +26,14 @@ export default function Wishlist({ user, onSettingsChanged }) {
           className={kind === "movies" ? "active" : ""}
           onClick={() => setKind("movies")}
         >
-          Film
+          {t("app.nav.movies")}
         </button>
         <button
           type="button"
           className={kind === "tv" ? "active" : ""}
           onClick={() => setKind("tv")}
         >
-          TV-serier
+          {t("app.nav.tv")}
         </button>
       </nav>
 

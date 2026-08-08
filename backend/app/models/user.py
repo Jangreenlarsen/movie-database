@@ -80,6 +80,10 @@ class SortPreset(BaseModel):
 
 CardSize = Literal["small", "medium", "large"]
 
+# Feature #89 — UI-sprog pr. bruger. Dansk er kildesproget (al tekst er
+# skrevet på dansk først), så det er også standarden; engelsk er tilvalget.
+Language = Literal["da", "en"]
+
 
 class UserSettings(BaseModel):
     sort_field: str | None = None
@@ -103,6 +107,10 @@ class UserSettings(BaseModel):
     # Antal film/serier pr. side i biblioteksvisningen (feature #15) — én
     # fælles indstilling for begge faner, samme begrundelse som card_size.
     page_size: int = 50
+    # UI-sprog (feature #89). Gemt pr. bruger frem for i browseren (Jans valg
+    # 2026-08-08), så sproget følger med på tværs af iPhone og PC i stedet for
+    # at skulle vælges forfra på hver enhed.
+    language: Language = "da"
 
 
 class UserSettingsUpdate(BaseModel):
@@ -116,6 +124,7 @@ class UserSettingsUpdate(BaseModel):
     tv_sort_presets: list[SortPreset] | None = None
     card_size: CardSize | None = None
     page_size: int | None = Field(default=None, ge=1, le=500)
+    language: Language | None = None
 
 
 class UserRegister(BaseModel):

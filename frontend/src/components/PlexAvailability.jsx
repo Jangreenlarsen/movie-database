@@ -4,21 +4,26 @@
  * posteren og afspilnings-linjen i detaljevinduet.
  */
 
+import { useT } from "../i18n";
+
 /** Badget på selve posteren. Vises kun når elementet faktisk er i Plex. */
 export function PlexCardBadge({ availability }) {
+  const t = useT();
   if (!availability?.available) return null;
   return (
     <div
       className="movie-plex-badge"
       title={
         availability.matched_by === "tmdb"
-          ? "Ligger i Plex (matchet på TMDb-id)"
-          : `Ligger i Plex (matchet på titel: ${availability.plex_title}${
-              availability.plex_year ? ` ${availability.plex_year}` : ""
-            })`
+          ? t("plex.badgeTmdb")
+          : t("plex.badgeTitle", {
+              title: `${availability.plex_title}${
+                availability.plex_year ? ` ${availability.plex_year}` : ""
+              }`,
+            })
       }
     >
-      Plex
+      {t("field.plex")}
     </div>
   );
 }
@@ -29,28 +34,29 @@ export function PlexCardBadge({ availability }) {
  * åbnes; linket er kun til at *afspille* med.
  */
 export function PlexPlayLink({ availability, plex }) {
+  const t = useT();
   // `plex` mangler når vinduet genbruges til en netop scannet film, der
   // endnu ikke er en del af biblioteket (MovieLookupForm).
   if (!plex || plex.status === "unconfigured") return null;
 
   if (plex.status === "error") {
-    return <p className="muted">Plex-status kunne ikke hentes: {plex.error}</p>;
+    return <p className="muted">{t("plex.statusError", { message: plex.error })}</p>;
   }
 
   if (!availability?.available) {
-    return plex.status === "ready" ? <p className="muted">Ikke fundet i Plex.</p> : null;
+    return plex.status === "ready" ? <p className="muted">{t("plex.notFound")}</p> : null;
   }
 
   // Uden machineIdentifier kan der ikke bygges en gyldig web-URL (sjælden
   // proxy-opsætning) — vi ved stadig at den ligger der, så det siges,
   // bare uden link.
   if (!availability.play_url) {
-    return <p className="muted">▶ Ligger i Plex (kunne ikke bygge afspilnings-link).</p>;
+    return <p className="muted">{t("plex.noLink")}</p>;
   }
 
   return (
     <a href={availability.play_url} target="_blank" rel="noreferrer" className="btn btn-primary">
-      ▶ Afspil i Plex
+      {t("plex.play")}
     </a>
   );
 }

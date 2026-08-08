@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import DateTime24Input from "./DateTime24Input";
 import { formatShortDate, formatTime } from "../utils/cinemaFormat";
+import { useLocale, useT } from "../i18n";
 import "./ScreeningRequestButton.css";
 
 /**
@@ -18,6 +19,8 @@ import "./ScreeningRequestButton.css";
  * see screening_request_repository.add_requester).
  */
 export default function ScreeningRequestButton({ mediaKind, id, username }) {
+  const t = useT();
+  const locale = useLocale();
   const [status, setStatus] = useState("idle"); // idle | composing | requesting | requested | error
   const [error, setError] = useState(null);
   const [message, setMessage] = useState("");
@@ -68,15 +71,18 @@ export default function ScreeningRequestButton({ mediaKind, id, username }) {
     return (
       <div className="screening-request">
         <button type="button" className="btn" disabled>
-          ✓ Ønsket til Voldby BIO
+          {t("request.requested")}
         </button>
         {(myRequest?.message || myRequest?.preferred_at) && (
           <div className="screening-request-mine muted">
             {myRequest.message && <>„{myRequest.message}“</>}
             {myRequest.preferred_at && (
               <>
-                {myRequest.message ? " · " : ""}⏰ {formatShortDate(myRequest.preferred_at)} kl.{" "}
-                {formatTime(myRequest.preferred_at)}
+                {myRequest.message ? " · " : ""}
+                {t("request.at", {
+                  date: formatShortDate(myRequest.preferred_at, locale),
+                  time: formatTime(myRequest.preferred_at, locale),
+                })}
               </>
             )}
           </div>
@@ -88,7 +94,7 @@ export default function ScreeningRequestButton({ mediaKind, id, username }) {
   return (
     <div className="screening-request">
       <button type="button" className="btn" onClick={() => setStatus("composing")}>
-        🎬 Ønsk visning i Voldby BIO
+        {t("request.button")}
       </button>
 
       {(status === "composing" || status === "requesting") && (
@@ -105,13 +111,11 @@ export default function ScreeningRequestButton({ mediaKind, id, username }) {
         >
           <div className="modal-card screening-request-card" onClick={(e) => e.stopPropagation()}>
             <div className="screening-request-body">
-              <h3>🎬 Ønsk visning i Voldby BIO</h3>
-              <p className="muted">
-                Skriv gerne hvornår du kunne tænke dig den vist — begge felter er valgfri.
-              </p>
+              <h3>{t("request.button")}</h3>
+              <p className="muted">{t("request.hint")}</p>
 
               <label className="modal-section-label" htmlFor="screening-request-message">
-                Besked (valgfri)
+                {t("request.messageLabel")}
               </label>
               <textarea
                 id="screening-request-message"
@@ -119,11 +123,11 @@ export default function ScreeningRequestButton({ mediaKind, id, username }) {
                 maxLength={500}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Fx: Gerne en fredag aften — så laver jeg popcorn!"
+                placeholder={t("request.messagePlaceholder")}
               />
 
               <label className="modal-section-label" style={{ marginTop: 12 }}>
-                Ønsket tidspunkt (valgfri)
+                {t("request.preferredLabel")}
               </label>
               <DateTime24Input value={preferredAt} onChange={setPreferredAt} />
               {preferredAt && (
@@ -132,7 +136,7 @@ export default function ScreeningRequestButton({ mediaKind, id, username }) {
                   className="btn screening-request-clear"
                   onClick={() => setPreferredAt("")}
                 >
-                  Ryd tidspunkt
+                  {t("request.clearTime")}
                 </button>
               )}
 
@@ -150,7 +154,7 @@ export default function ScreeningRequestButton({ mediaKind, id, username }) {
                 onClick={closeComposer}
                 disabled={status === "requesting"}
               >
-                Annullér
+                {t("common.cancel")}
               </button>
               <button
                 type="button"
@@ -158,7 +162,7 @@ export default function ScreeningRequestButton({ mediaKind, id, username }) {
                 onClick={submitRequest}
                 disabled={status === "requesting"}
               >
-                {status === "requesting" ? "Sender..." : "Send ønske"}
+                {t(status === "requesting" ? "request.sending" : "request.send")}
               </button>
             </div>
           </div>

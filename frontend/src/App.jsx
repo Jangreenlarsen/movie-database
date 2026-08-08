@@ -10,8 +10,17 @@ import CinemaPublic from "./pages/CinemaPublic";
 import Login from "./pages/Login";
 import PendingApproval from "./pages/PendingApproval";
 import { api } from "./api/client";
+import I18nProvider from "./i18n/I18nProvider";
+import { SOURCE_LANGUAGE, useT } from "./i18n";
 import "./App.css";
 
+/**
+ * Feature #89 — sproget kommer fra brugerens egne indstillinger, så det
+ * følger med på tværs af enheder. De offentlige skærme (Voldby BIO på /bio
+ * og login) har ingen bruger at læse fra og bliver derfor på kildesproget;
+ * det er den bevidste konsekvens af at gemme sproget i databasen frem for
+ * i browseren (Jans valg 2026-08-08).
+ */
 function App() {
   // Jans ønske 2026-08-04: efter login lander man på Voldby BIO i stedet
   // for filmbiblioteket — gælder både et frisk login og en genindlæst side
@@ -50,13 +59,22 @@ function App() {
   // biblioteket" to someone already signed in — the page itself renders
   // immediately either way, which is the whole point of this early return.
   if (window.location.pathname.startsWith("/bio")) {
-    return <CinemaPublic user={user} />;
+    // Feature #89 — en besøgende uden login har intet sprogvalg at læse, så
+    // siden bliver på kildesproget. Er man derimod allerede logget ind (den
+    // delte /bio-adresse er også en genvej for husets egne brugere),
+    // kender vi præferencen og bruger den.
+    return (
+      <I18nProvider language={user?.settings?.language ?? SOURCE_LANGUAGE}>
+        <CinemaPublic user={user} />
+      </I18nProvider>
+    );
   }
 
   // Feature #84 — the full login page keeps its own URL so it isn't
   // orphaned by the landing-page change below, and so there's still a
   // direct link for "just let me sign in".
   if (window.location.pathname.startsWith("/login")) {
+    // Ingen bruger endnu — login-skærmen er altid på kildesproget.
     return <Login onAuthenticated={setUser} />;
   }
 
@@ -73,13 +91,35 @@ function App() {
   }
 
   if (user.status !== "active") {
-    return <PendingApproval user={user} onLogout={handleLogout} />;
+    return (
+      <I18nProvider language={user.settings?.language ?? SOURCE_LANGUAGE}>
+        <PendingApproval user={user} onLogout={handleLogout} />
+      </I18nProvider>
+    );
   }
 
   // Feature #72 — guest is read-only: Ønsker/Print/Statistik all involve
   // either writing (ønske en film) or aren't part of "se film/TV-bibliotek",
   // so they're hidden entirely rather than just disabled.
   const isGuest = user.role === "guest";
+
+  return (
+    <I18nProvider language={user.settings?.language ?? SOURCE_LANGUAGE}>
+      <AppShell
+        user={user}
+        isGuest={isGuest}
+        tab={tab}
+        setTab={setTab}
+        setUser={setUser}
+        versionInfo={versionInfo}
+        onLogout={handleLogout}
+      />
+    </I18nProvider>
+  );
+}
+
+function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }) {
+  const t = useT();
 
   return (
     <div className="app">
@@ -89,41 +129,41 @@ function App() {
             <span className="brand-mark" aria-hidden="true">
               🎬
             </span>
-            Film &amp; TV-bibliotek
+            {t("app.brand")}
           </div>
           <nav className="tabs">
             <button
               className={tab === "library" ? "active" : ""}
               onClick={() => setTab("library")}
             >
-              Film
+              {t("app.nav.movies")}
             </button>
             <button
               className={tab === "tv" ? "active" : ""}
               onClick={() => setTab("tv")}
             >
-              TV-serier
+              {t("app.nav.tv")}
             </button>
             {!isGuest && (
               <button
                 className={tab === "wishlist" ? "active" : ""}
                 onClick={() => setTab("wishlist")}
               >
-                Ønsker
+                {t("app.nav.wishlist")}
               </button>
             )}
             <button
               className={tab === "cinema" ? "active" : ""}
               onClick={() => setTab("cinema")}
             >
-              🎬 Voldby BIO
+              {t("app.nav.cinema")}
             </button>
             {!isGuest && (
               <button
                 className={tab === "print" ? "active" : ""}
                 onClick={() => setTab("print")}
               >
-                Print
+                {t("app.nav.print")}
               </button>
             )}
             {!isGuest && (
@@ -131,20 +171,20 @@ function App() {
                 className={tab === "stats" ? "active" : ""}
                 onClick={() => setTab("stats")}
               >
-                Statistik
+                {t("app.nav.stats")}
               </button>
             )}
             <button
               className={tab === "settings" ? "active" : ""}
               onClick={() => setTab("settings")}
             >
-              Indstillinger
+              {t("app.nav.settings")}
             </button>
           </nav>
           <div className="header-user">
             <span className="muted">{user.username}</span>
-            <button type="button" className="btn" onClick={handleLogout}>
-              Log ud
+            <button type="button" className="btn" onClick={onLogout}>
+              {t("app.logout")}
             </button>
           </div>
         </div>

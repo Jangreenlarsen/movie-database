@@ -2,6 +2,24 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.69.1 build 0099] — 2026-08-08 — fix: en delvist hentet Plex-liste blev behandlet som hele biblioteket (BUGS.md #51)
+
+Jans fejlmelding: film importeret fra Plex blev bagefter vist som "Ikke fundet i Plex". Selvmodsigende, da de netop var oprettet ud fra Plex' eget index.
+
+Første skridt var at afgøre om match-logikken selv var forkert. En rundtur-test — importér fra et fake Plex-bibliotek, og slå derefter tilgængeligheden op — bestod i alle de normale tilfælde: både for elementer hvor Plex selv leverede et TMDb-id, og for dem importen fandt via TMDb-søgning. Matchningen var altså ikke problemet.
+
+Fejlen lå et lag under. `_fetch_section_items` hentede en sektion sidevist og afbrød løkken ved enhver fejl undervejs — netværksfejl, ikke-200, ikke-JSON — for derefter at returnere den delvise liste. `fetch_library` behandlede den som hele biblioteket og rapporterede `ok: true`.
+
+Et halvt hentet bibliotek er værre end ingen data, fordi det giver aktivt forkerte svar: film der ligger i Plex rapporteres som "ikke fundet", og intet sted forklarer hvorfor. Fejlede første side, så hele biblioteket tomt ud, og hver eneste film fik beskeden. Kun en WARNING i backend-loggen røbede det.
+
+Nu returnerer `_fetch_section_items` `(elementer, fejl)`, og enhver ufuldstændig hentning fejler hele `fetch_library` med en læsbar besked. Derudover sammenlignes antallet af hentede elementer med `MediaContainer.totalSize`, som Plex oplyser på hver side — så en afkortning fanges også når hver enkelt forespørgsel svarede 200. Sidegrænsen (`MAX_PAGES`) behandles nu på samme måde; den gav før kun en advarsel.
+
+Brugeren ser derfor "Plex-biblioteket kunne ikke hentes fuldstændigt" i stedet for et stille, forkert "ikke fundet i Plex" på alt.
+
+Om det var præcis dette der ramte Jan, kan først afgøres mod hans egen server: fejlsøgnings-panelet under Indstillinger → Nøgler viser nu enten den nye fejlbesked (så var det dette) eller et match-antal (så ligger det i titel/år-sammenligningen mod hans data).
+
+Berørte filer: `backend/app/integrations/plex_client.py`, `backend/tests/test_plex.py`, `BUGS.md`, `version.json`.
+
 ## [0.69.0 build 0098] — 2026-08-08 — feature: serienumre kun til fysiske udgaver, M#/T#-præfiks (FEATURES.md #92)
 
 Jans krav: kun fysiske film og serier skal have serienummer, film skal have præfikset `M#` og serier `T#`, og de to skal tælles hver for sig.

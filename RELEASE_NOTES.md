@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.69.1 (build 0099) — 2026-08-08
+
+- **Rettet: film importeret fra Plex kunne bagefter stå som "Ikke fundet i Plex".** Gik noget galt undervejs i hentningen af dit Plex-bibliotek, blev den halve liste behandlet som om det var det hele — og alt der manglede blev meldt som "ikke i Plex".
+- Nu fejler appen tydeligt med "Plex-biblioteket kunne ikke hentes fuldstændigt" i stedet for at give et forkert svar i stilhed. Appen tjekker desuden antallet mod det Plex selv oplyser, så en afkortet hentning fanges.
+- Ser du stadig beskeden efter denne opdatering, så kør "Test Plex-forbindelse" under Indstillinger → Nøgler — den viser nu enten fejlen eller hvor mange af dine film der matcher.
+
 ## v0.69.0 (build 0098) — 2026-08-08
 
 - **Serienumre gives nu kun til fysiske udgaver.** En digital kopi står ikke på en hylde, så den får intet nummer — og optager heller ikke et, så din nummerrække ikke får huller.

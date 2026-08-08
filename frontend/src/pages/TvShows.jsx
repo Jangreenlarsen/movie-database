@@ -59,7 +59,12 @@ function formatSerial(serialNumber, paddingWidth) {
   return `#${String(serialNumber).padStart(paddingWidth, "0")}`;
 }
 
-export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
+/**
+ * `onGoToMovies` (valgfri) — spejlbilledet af `Library`s `onGoToTvShows`:
+ * genvej til film-visningen når add-panelets scan/søgning endte med en film,
+ * som denne side aldrig kan vise (BUGS.md #47).
+ */
+export default function TvShows({ user, onSettingsChanged, wishlist = false, onGoToMovies }) {
   const isGuest = user.role === "guest";
   const [query, setQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
@@ -91,6 +96,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
   const [settingsError, setSettingsError] = useState(null);
+  const [savedMovie, setSavedMovie] = useState(false);
 
   // BUGS.md #45 — see the identical helper in Library.jsx: a failed settings
   // save must be shown, not swallowed, since the UI reflects the change from
@@ -336,9 +342,13 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
             <MovieLookupForm
               user={user}
               wishlist={wishlist}
-              onSaved={() => {
+              onSaved={(kind) => {
                 refresh();
                 setShowAddPanel(false);
+                // Se Library.jsx' identiske gren — søgningen rammer begge
+                // TMDb-databaser, så en valgt film havner i movies og er
+                // usynlig her (BUGS.md #47).
+                setSavedMovie(kind === "movie");
               }}
             />
           </div>
@@ -559,6 +569,31 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false }) {
       {settingsError && (
         <div className="banner banner-error">
           Dine visningsindstillinger blev ikke gemt: {settingsError}
+        </div>
+      )}
+
+      {savedMovie && (
+        <div className="banner banner-info" style={{ marginBottom: 16 }}>
+          <span style={{ flex: 1 }}>
+            Det du gemte er en film — den ligger derfor under{" "}
+            <strong>{wishlist ? "film-ønsker" : "Filmbibliotek"}</strong>, ikke her blandt{" "}
+            {wishlist ? "TV-ønskerne" : "TV-serierne"}.
+          </span>
+          {onGoToMovies && (
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                setSavedMovie(false);
+                onGoToMovies();
+              }}
+            >
+              Vis {wishlist ? "film-ønsker" : "filmbiblioteket"}
+            </button>
+          )}
+          <button type="button" className="btn" onClick={() => setSavedMovie(false)}>
+            ✕
+          </button>
         </div>
       )}
 

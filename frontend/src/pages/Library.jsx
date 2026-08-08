@@ -70,7 +70,13 @@ function formatSerial(serialNumber, paddingWidth) {
   return `#${String(serialNumber).padStart(paddingWidth, "0")}`;
 }
 
-export default function Library({ user, onSettingsChanged, wishlist = false }) {
+/**
+ * `onGoToTvShows` (valgfri) er genvejen til den tilsvarende TV-visning —
+ * "Ønsker"-sektionens TV-underfane, eller hovedfanen "TV-serier". Den bruges
+ * når scan/søgning i add-panelet endte med en TV-serie, som denne side aldrig
+ * kan vise (BUGS.md #47).
+ */
+export default function Library({ user, onSettingsChanged, wishlist = false, onGoToTvShows }) {
   const isGuest = user.role === "guest";
   const [query, setQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
@@ -103,6 +109,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
   const [settingsError, setSettingsError] = useState(null);
+  const [savedTvShow, setSavedTvShow] = useState(false);
 
   // BUGS.md #45 — these saves used to end in a bare `.catch(() => {})`. The
   // UI updates from local state either way, so a failed save (session
@@ -367,9 +374,14 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
             <MovieLookupForm
               user={user}
               wishlist={wishlist}
-              onSaved={() => {
+              onSaved={(kind) => {
                 refresh();
                 setShowAddPanel(false);
+                // Scan/søgning her rammer også TMDb's TV-database, og en
+                // valgt TV-serie havner i tv_shows — en collection denne
+                // side aldrig viser. Uden beskeden nedenfor så det ud som
+                // om serien forsvandt (BUGS.md #47).
+                setSavedTvShow(kind === "tv");
               }}
             />
           </div>
@@ -601,6 +613,31 @@ export default function Library({ user, onSettingsChanged, wishlist = false }) {
       {settingsError && (
         <div className="banner banner-error">
           Dine visningsindstillinger blev ikke gemt: {settingsError}
+        </div>
+      )}
+
+      {savedTvShow && (
+        <div className="banner banner-info" style={{ marginBottom: 16 }}>
+          <span style={{ flex: 1 }}>
+            Det du gemte er en TV-serie — den ligger derfor under{" "}
+            <strong>{wishlist ? "TV-ønsker" : "TV-serier"}</strong>, ikke her i{" "}
+            {wishlist ? "film-ønskerne" : "filmbiblioteket"}.
+          </span>
+          {onGoToTvShows && (
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                setSavedTvShow(false);
+                onGoToTvShows();
+              }}
+            >
+              Vis {wishlist ? "TV-ønsker" : "TV-serier"}
+            </button>
+          )}
+          <button type="button" className="btn" onClick={() => setSavedTvShow(false)}>
+            ✕
+          </button>
         </div>
       )}
 

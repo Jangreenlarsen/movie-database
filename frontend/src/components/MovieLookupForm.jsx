@@ -34,6 +34,11 @@ function emptyDraftFields(user, wishlist) {
  * for eksisterende bibliotekskort (`MovieDetailModal`/`TvShowDetailModal`)
  * åbnes i "kladde"-tilstand — intet gemmes i databasen før brugeren selv
  * trykker "Opret" i boksen.
+ *
+ * `onSaved(kind)` kaldes med `"movie"` eller `"tv"` — søgningen rammer begge
+ * TMDb-databaser, så den der viser formularen kan ikke selv vide hvilken
+ * collection resultatet endte i. Uden det kunne en TV-serie gemt fra
+ * ønskelisten/filmbiblioteket se ud som om den forsvandt (BUGS.md #47).
  */
 export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   const [barcode, setBarcode] = useState(null);
@@ -171,12 +176,19 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
       .checkTvDuplicate(candidate.tmdb_id)
       .then((matches) => {
         setDuplicates(matches);
-        if (matches.length > 0) {
-          // Kun den første eksisterende serie tilbydes som gruppering — jf.
-          // Jans bekræftede design (2026-08-02): ét scan grupperes ind i den
-          // ene eksisterende post, ikke et valg mellem flere.
+        // Kun den første eksisterende serie tilbydes som gruppering — jf.
+        // Jans bekræftede design (2026-08-02): ét scan grupperes ind i den
+        // ene eksisterende post, ikke et valg mellem flere. Den skal dog
+        // være af samme slags som det vi er ved at oprette: markerer man
+        // sæsoner som ejet på et *ønske* mens man står i biblioteket (eller
+        // omvendt), lander de i en liste man ikke kigger på — samme klasse
+        // "hvor blev den af" som BUGS.md #47. Findes der kun en post af den
+        // anden slags, oprettes en ny post i stedet; dublet-banneret
+        // fortæller uændret at den anden findes.
+        const groupable = matches.find((match) => match.is_wishlist === wishlist);
+        if (groupable) {
           api
-            .getTvShow(matches[0].id)
+            .getTvShow(groupable.id)
             .then((show) => {
               setExistingTvShow(show);
               const preselect = show.seasons.find((s) => !s.owned) ?? show.seasons[0];
@@ -184,7 +196,8 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
             })
             .catch(() => {});
         } else {
-          // Ingen dublet — vis en sæson-vælger til forhåndsvisning, så
+          // Ingen dublet at gruppere ind i — vis en sæson-vælger til
+          // forhåndsvisning, så
           // brugeren kan afkrydse hvilke sæsoner udgaven indeholder inden
           // der springes videre til rediger-boksen (feature #54).
           api.tvTmdbPreview(candidate.tmdb_id).then(setPreviewSeasons).catch(() => {});
@@ -250,7 +263,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
       }
       setGroupSavedShowName(existingTvShow.name);
       resetFormAfterSave();
-      onSaved?.();
+      onSaved?.("tv");
     } catch (err) {
       setGroupStatus("error");
       setGroupError(err.message);
@@ -472,7 +485,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
           onChanged={() => {
             setLastSavedKind("tv");
             setSaveStatus("saved");
-            onSaved?.();
+            onSaved?.("tv");
           }}
         />
       )}
@@ -490,7 +503,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
           onChanged={() => {
             setLastSavedKind("movie");
             setSaveStatus("saved");
-            onSaved?.();
+            onSaved?.("movie");
           }}
           onFilterByPerson={() => {}}
         />

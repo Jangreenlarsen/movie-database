@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Library from "./pages/Library";
 import TvShows from "./pages/TvShows";
+import Wishlist from "./pages/Wishlist";
 import Settings from "./pages/Settings";
 import PrintList from "./pages/PrintList";
 import Statistics from "./pages/Statistics";
@@ -150,9 +151,13 @@ function App() {
       </header>
 
       <main className="app-main">
-        {tab === "library" && <Library user={user} onSettingsChanged={setUser} />}
-        {tab === "tv" && <TvShows user={user} onSettingsChanged={setUser} />}
-        {!isGuest && tab === "wishlist" && <Library user={user} onSettingsChanged={setUser} wishlist />}
+        {tab === "library" && (
+          <Library user={user} onSettingsChanged={setUser} onGoToTvShows={() => setTab("tv")} />
+        )}
+        {tab === "tv" && (
+          <TvShows user={user} onSettingsChanged={setUser} onGoToMovies={() => setTab("library")} />
+        )}
+        {!isGuest && tab === "wishlist" && <Wishlist user={user} onSettingsChanged={setUser} />}
         {tab === "cinema" && <Cinema user={user} />}
         {!isGuest && tab === "print" && <PrintList />}
         {!isGuest && tab === "stats" && <Statistics />}

@@ -1,58 +1,9 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import CinemaShowcase from "../components/CinemaShowcase";
-import { formatDateHeading, formatTime, groupByDate } from "../utils/cinemaFormat";
+import DateTime24Input from "../components/DateTime24Input";
+import { formatDateHeading, formatShortDate, formatTime, groupByDate } from "../utils/cinemaFormat";
 import "./Cinema.css";
-
-const HOURS = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0"));
-const MINUTES = Array.from({ length: 60 }, (_, m) => String(m).padStart(2, "0"));
-
-// A plain `<input type="datetime-local">`'s time portion renders in
-// whatever 12h/AM-PM-or-24h format the browser/OS locale happens to use —
-// there's no HTML attribute to force 24-hour display, and Jan's Windows
-// locale shows AM/PM (2026-08-04). Hour/minute `<select>`s render exactly
-// the labels we write ourselves, so they're 24-hour regardless of locale.
-// `value`/`onChange` still speak the same "YYYY-MM-DDTHH:MM" string the
-// rest of this file (and the API) already uses for `scheduled_at`.
-function DateTime24Input({ value, onChange }) {
-  const [datePart, timePart] = value ? value.split("T") : ["", ""];
-  const [hour, minute] = timePart ? timePart.split(":") : ["", ""];
-
-  function emit(nextDate, nextHour, nextMinute) {
-    onChange(nextDate && nextHour && nextMinute ? `${nextDate}T${nextHour}:${nextMinute}` : "");
-  }
-
-  return (
-    <span className="datetime24-input">
-      <input
-        type="date"
-        value={datePart}
-        onChange={(e) => emit(e.target.value, hour || "00", minute || "00")}
-      />
-      <select value={hour} onChange={(e) => emit(datePart, e.target.value, minute || "00")}>
-        <option value="" disabled>
-          Time
-        </option>
-        {HOURS.map((h) => (
-          <option key={h} value={h}>
-            {h}
-          </option>
-        ))}
-      </select>
-      <span aria-hidden="true">:</span>
-      <select value={minute} onChange={(e) => emit(datePart, hour || "00", e.target.value)}>
-        <option value="" disabled>
-          Min
-        </option>
-        {MINUTES.map((m) => (
-          <option key={m} value={m}>
-            {m}
-          </option>
-        ))}
-      </select>
-    </span>
-  );
-}
 
 export default function Cinema({ user }) {
   const isAdmin = user.role === "admin";
@@ -275,9 +226,27 @@ function AdminScreeningTools({ onChanged }) {
   );
 }
 
+/**
+ * Feature #85 — det tidligste foreslåede tidspunkt der stadig ligger i
+ * fremtiden, som "YYYY-MM-DDTHH:MM" (samme streng-format som
+ * DateTime24Input og API'et bruger). Bruges til at forudfylde
+ * planlægnings-feltet: et forslag, ikke en binding — admin kan rette det
+ * frit inden "Bekræft". Forslag der er overstået er bevidst sprunget over,
+ * så en gammel anmodning ikke forudfylder en dato i fortiden.
+ */
+function earliestUpcomingSuggestion(requestedBy) {
+  const now = Date.now();
+  const upcoming = requestedBy
+    .map((r) => r.preferred_at)
+    .filter((value) => value && new Date(value).getTime() > now)
+    .sort();
+  return upcoming.length > 0 ? upcoming[0].slice(0, 16) : "";
+}
+
 function RequestRow({ request, onChanged }) {
+  const suggestion = earliestUpcomingSuggestion(request.requested_by);
   const [scheduling, setScheduling] = useState(false);
-  const [scheduledAt, setScheduledAt] = useState("");
+  const [scheduledAt, setScheduledAt] = useState(suggestion);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -330,6 +299,19 @@ function RequestRow({ request, onChanged }) {
         <div className="muted">
           Ønsket af: {request.requested_by.map((r) => r.username).join(", ")}
         </div>
+        {/* Feature #85 — kun de ønskere der faktisk skrev noget får en
+            linje, så en anmodning uden beskeder ser ud som før. */}
+        {request.requested_by
+          .filter((r) => r.message || r.preferred_at)
+          .map((r) => (
+            <div key={r.username} className="cinema-request-wish">
+              <strong>{r.username}</strong>
+              {r.message && <> „{r.message}“</>}
+              {r.preferred_at && (
+                <> ⏰ {formatShortDate(r.preferred_at)} kl. {formatTime(r.preferred_at)}</>
+              )}
+            </div>
+          ))}
       </div>
 
       {!scheduling ? (
@@ -343,6 +325,11 @@ function RequestRow({ request, onChanged }) {
         </div>
       ) : (
         <div className="cinema-request-actions cinema-card-edit-form">
+          {suggestion && (
+            <span className="muted cinema-request-suggestion-hint">
+              Forudfyldt med det tidligste ønskede tidspunkt — ret det frit.
+            </span>
+          )}
           <DateTime24Input value={scheduledAt} onChange={setScheduledAt} />
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (valgfri)" />
           <button type="button" className="btn btn-primary" onClick={schedule} disabled={!scheduledAt || busy}>

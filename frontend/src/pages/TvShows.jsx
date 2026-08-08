@@ -1119,7 +1119,7 @@ export function TvShowDetailModal({
 
         {isGuest ? (
           <div className="modal-footer">
-            {show.id && <ScreeningRequestButton mediaKind="tv" id={show.id} />}
+            {show.id && <ScreeningRequestButton mediaKind="tv" id={show.id} username={user.username} />}
           </div>
         ) : (
           <div className="modal-footer">
@@ -1133,7 +1133,7 @@ export function TvShowDetailModal({
                 {moving ? "Flytter..." : "Flyt til bibliotek"}
               </button>
             )}
-            {show.id && <ScreeningRequestButton mediaKind="tv" id={show.id} />}
+            {show.id && <ScreeningRequestButton mediaKind="tv" id={show.id} username={user.username} />}
             <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
               {saving ? "Gemmer..." : show.id ? "Gem ændringer" : "Opret"}
             </button>

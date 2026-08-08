@@ -149,12 +149,19 @@ export const api = {
     }),
 
   // Voldby BIO (feature #62/#63/#64)
-  requestScreening: (mediaKind, id) =>
+  // `message`/`preferredAt` er feature #85's valgfri ønske-besked og
+  // foreslåede tidspunkt. Begge udelades helt af payloaden når de er tomme,
+  // så et ønske uden besked ser præcis ud som før #85.
+  requestScreening: (mediaKind, id, { message, preferredAt } = {}) =>
     request("/screening-requests", {
       method: "POST",
-      body: JSON.stringify(
-        mediaKind === "movie" ? { media_kind: "movie", movie_id: id } : { media_kind: "tv", tv_show_id: id }
-      ),
+      body: JSON.stringify({
+        ...(mediaKind === "movie"
+          ? { media_kind: "movie", movie_id: id }
+          : { media_kind: "tv", tv_show_id: id }),
+        ...(message?.trim() ? { message: message.trim() } : {}),
+        ...(preferredAt ? { preferred_at: preferredAt } : {}),
+      }),
     }),
   listScreeningRequests: (status) =>
     request(`/screening-requests${status ? `?status=${status}` : ""}`),

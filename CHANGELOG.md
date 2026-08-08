@@ -2,6 +2,24 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.62.0 build 0085] — 2026-08-08 — feature: besked + ønsket tidspunkt på en visnings-anmodning (FEATURES.md #85)
+
+"🎬 Ønsk visning i Voldby BIO" sendte før anmodningen i det øjeblik man trykkede. Nu åbner knappen en lille boks med et fritekst-felt ("Gerne en fredag aften") og en valgfri dato/tid-vælger. Begge felter er valgfri: åbn boksen, tryk "Send ønske", og resultatet er bit for bit det samme dokument som før — `message`/`preferred_at` udelades helt af payloaden når de er tomme.
+
+Begge felter gemmes på ønskerens egen entry i `requested_by[]`, ikke på anmodningen som helhed. Flere personer deler ét anmodnings-dokument pr. titel (feature #62), og de kan hver især have deres egen begrundelse og deres eget forslag — ét fælles felt ville lade den næste ønsker overskrive den forriges. `RequestedBy` fik derfor `message`/`preferred_at` med `None` som default, så dokumenter fra før #85 læses uden migration. Whitespace-only besked normaliseres til `None` i servicen, så hverken API'et eller admin-panelet skal skelne mellem to slags "tom" (CLAUDE.md regel 16).
+
+Dedup'en i `add_requester` er bevidst uændret: den er stadig kun på `username`, så et gentaget ønske for samme titel hverken tilføjer en ekstra entry eller overskriver den første besked. UI'et har heller ingen vej dertil — knappen står som "✓ Ønsket" bagefter, nu med ens egen besked/tidspunkt vist under sig, så et ønske ikke bare bliver til et anonymt flueben. Egen entry findes på brugernavn (nyt `username`-prop), aldrig ved at gætte på listens rækkefølge.
+
+Admins "Anmodninger"-panel viser hver ønskers besked og foreslåede tidspunkt på sin egen linje — kun for dem der faktisk skrev noget, så en anmodning uden beskeder ser ud som før. "Planlæg"-feltet forudfyldes med det tidligste foreslåede tidspunkt der stadig ligger i fremtiden (forslag i fortiden springes over, så en gammel anmodning ikke forudfylder en dato der er overstået), med en linje der siger at det bare er et forslag. Admin retter frit inden "Bekræft" — forslaget er aldrig en binding.
+
+`DateTime24Input` er flyttet fra `Cinema.jsx` til `components/DateTime24Input.jsx`, da både ønskeren og admin nu vælger tidspunkter. Samme widget begge steder betyder samme 24-timers visning (BUGS.md #38) og samme "YYYY-MM-DDTHH:MM"-strengformat, så et forslag falder direkte ned i planlægnings-feltet uden konvertering. Ønske-boksen er sin egen modal oven på film-/serie-vinduet: `modal-footer` er en smal knap-række uden plads til en formular, og et klik i boksen stopper propagation, så det ikke bobler op og lukker det underliggende vindue.
+
+Guest-rollen er uændret omfattet — visnings-ønsket er stadig deres ene tilladte skrivehandling, besked inklusive. ARCHITECTURE.md's guest-afsnit sagde fejlagtigt at `POST /api/screening-requests` var `require_not_guest`-beskyttet (det har været en bevidst undtagelse siden 2026-08-03); den passage er rettet til at beskrive koden som den faktisk er.
+
+7 nye tests i `test_screening_requests.py` (besked+tidspunkt gemmes, pre-#85-payload uændret, whitespace→None, gentaget ønske bevarer første besked, hver ønsker sin egen besked, >500 tegn afvist, guest må sende besked). Hele suiten: 424 passed.
+
+Berørte filer: `backend/app/models/screening.py`, `backend/app/services/screening_service.py`, `backend/app/repositories/screening_request_repository.py`, `backend/app/api/screening_requests.py`, `backend/tests/test_screening_requests.py`, `frontend/src/components/ScreeningRequestButton.jsx` + `.css`, `frontend/src/components/DateTime24Input.jsx` (ny), `frontend/src/pages/Cinema.jsx` + `.css`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/api/client.js`, `ARCHITECTURE.md`, `FEATURES.md`, `version.json`.
+
 ## [0.61.1 build 0084] — 2026-08-08 — fix: TV-serier forsvandt når de blev tilføjet i "Ønsker" (BUGS.md #47)
 
 Jan rapporterede at en TV-serie tilføjet i ønske-sektionen — scannet eller indtastet — forsvandt i databasen. Serien blev rent faktisk gemt korrekt: `MovieLookupForm` søger bevidst i både TMDb's film- og TV-database (jf. BUGS.md #20), og en valgt TV-kandidat oprettes i `tv_shows` med `is_wishlist: true`. Fejlen lå udelukkende i visningen: `App.jsx` renderede kun `<Library wishlist />` for "Ønsker"-fanen, så TV-ønsket var usynligt både der (kun film) og under "TV-serier" (som filtrerer `is_wishlist != true` fra). `TvShows.jsx` havde allerede fuld `wishlist`-understøttelse — overskriften "TV-ønsker", skjult serienummer, "Ingen TV-ønsker endnu" — men blev aldrig renderet med prop'en.

@@ -17,12 +17,23 @@ def _validate_media_reference(media_kind: str, movie_id: str | None, tv_show_id:
 class RequestedBy(BaseModel):
     username: str
     requested_at: datetime
+    # Feature #85 — begge valgfri og gemt PR. BRUGER, ikke på anmodningen
+    # som helhed: flere personer kan ønske samme titel, og deres beskeder/
+    # tidspunkter er hver deres. `message` er fri tekst ("gerne en fredag
+    # aften"), `preferred_at` et konkret forslag admin kan planlægge ud fra.
+    # Defaults gør ældre dokumenter (fra før #85) læsbare uden migration.
+    message: str | None = None
+    preferred_at: datetime | None = None
 
 
 class ScreeningRequestCreate(BaseModel):
     media_kind: MediaKind
     movie_id: str | None = None
     tv_show_id: str | None = None
+    # Feature #85 — valgfri: udeladt payload svarer nøjagtigt til hvordan
+    # knappen opførte sig før, så en tom boks + "Send ønske" stadig virker.
+    message: str | None = Field(default=None, max_length=500)
+    preferred_at: datetime | None = None
 
     @model_validator(mode="after")
     def check_reference(self) -> "ScreeningRequestCreate":

@@ -1,0 +1,54 @@
+/* Feature #85 — ønske-boksen der åbnes fra "Ønsk visning i Voldby BIO".
+   Genbruger modal-backdrop/modal-card/modal-footer fra Library.css, så den
+   ser ud som resten af appens dialoger; kun det der er særligt for denne
+   boks står her. */
+
+.screening-request {
+  display: inline-block;
+}
+
+.screening-request-card {
+  max-width: 420px;
+}
+
+.screening-request-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.screening-request-body h3 {
+  margin: 0;
+}
+
+.screening-request-body p.muted {
+  margin: 0 0 12px;
+}
+
+.screening-request-body textarea {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+}
+
+/* Dato + time/minut-vælgerne wrapper på en telefon i stedet for at flyde
+   ud over kortets bredde. */
+.screening-request-body .datetime24-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.screening-request-clear {
+  align-self: flex-start;
+  margin-top: 8px;
+}
+
+/* Ens eget, allerede afsendte ønske vist under "✓ Ønsket"-knappen. */
+.screening-request-mine {
+  font-size: 0.8rem;
+  margin-top: 6px;
+  max-width: 260px;
+}

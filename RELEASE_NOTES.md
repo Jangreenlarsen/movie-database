@@ -1,5 +1,12 @@
 # Release Notes
 
+## v0.62.0 (build 0085) — 2026-08-08
+
+- **"Ønsk visning i Voldby BIO" spørger nu hvornår.** Knappen sender ikke længere med det samme — den åbner en lille boks hvor man kan skrive en besked ("Gerne en fredag aften — så laver jeg popcorn!") og vælge et ønsket tidspunkt. Begge dele er valgfri: åbn og tryk "Send ønske", så er det som før.
+- Under **Anmodninger** på Voldby BIO-fanen ser du nu hver persons besked og foreslåede tidspunkt. Trykker du "Planlæg", er dato og tid allerede udfyldt med det tidligste ønskede tidspunkt — bare et forslag, du kan rette det frit inden du bekræfter.
+- Har du selv ønsket en titel, står din besked nu under "✓ Ønsket"-knappen, så du kan se hvad du skrev.
+- Gæste-konti kan stadig ønske visninger, nu også med besked.
+
 ## v0.61.1 (build 0084) — 2026-08-08
 
 - **Vigtigt:** TV-serier du tilføjede under "Ønsker" — scannet eller søgt frem — var usynlige bagefter. De blev gemt korrekt hele tiden, men der var ingen visning der viste dem: ønske-siden viste kun film, og TV-fanen viser kun det du ejer. "Ønsker" har nu to underfaner, **Film** og **TV-serier**, og dine tidligere "forsvundne" TV-ønsker dukker op af sig selv.

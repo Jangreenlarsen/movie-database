@@ -1231,7 +1231,7 @@ export function MovieDetailModal({
           // screening (their one allowed write action) even though the
           // rest of the footer (save/delete/move) stays hidden for them.
           <div className="modal-footer">
-            {movie.id && <ScreeningRequestButton mediaKind="movie" id={movie.id} />}
+            {movie.id && <ScreeningRequestButton mediaKind="movie" id={movie.id} username={user.username} />}
           </div>
         ) : (
           <div className="modal-footer">
@@ -1245,7 +1245,7 @@ export function MovieDetailModal({
                 {moving ? "Flytter..." : "Flyt til bibliotek"}
               </button>
             )}
-            {movie.id && <ScreeningRequestButton mediaKind="movie" id={movie.id} />}
+            {movie.id && <ScreeningRequestButton mediaKind="movie" id={movie.id} username={user.username} />}
             <button type="button" className="btn btn-primary" onClick={save} disabled={!dirty || saving}>
               {saving ? "Gemmer..." : movie.id ? "Gem ændringer" : "Opret"}
             </button>

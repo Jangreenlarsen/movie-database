@@ -1,17 +1,6 @@
 {
   "permissions": {
     "defaultMode": "bypassPermissions",
-    "ask": [
-      "Bash(git push*)",
-      "Bash(git -C * push*)",
-      "PowerShell(git push*)",
-      "Bash(git remote add*)",
-      "Bash(git remote set-url*)",
-      "PowerShell(git remote set-url*)",
-      "Bash(gh *)",
-      "PowerShell(gh *)",
-      "Bash(*gh.exe*)"
-    ],
     "deny": [
       "Bash(rm -rf /*)",
       "Bash(rm -rf ~*)",
@@ -29,16 +18,7 @@
       "Glob",
       "Grep",
       "WebFetch",
-      "WebSearch",
-      "Bash(npm -v)",
-      "Bash(docker --version)",
-      "Bash(git --version)",
-      "Bash(echo \"exit:$?\")",
-      "Bash(py -0p)",
-      "Bash(py --list)",
-      "Bash(py -3.12 --version)",
-      "Bash(py -3.11 --version)",
-      "Bash(py -3.10 --version)"
+      "WebSearch"
     ]
   }
 }

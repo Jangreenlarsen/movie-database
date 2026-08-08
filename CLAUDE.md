@@ -73,11 +73,13 @@ Hver film/serie kan tildeles frie, **brugerdefinerede tags** (fx "Julefilm", "Se
     - Claude skal pushe til `origin dev` efter hvert commit — aldrig direkte til `main`.
     - Merge `dev` → `main` gøres manuelt af Jan når en release er godkendt.
 
-15. **Push og merge efter commit (UFRAVIGELIG)**: Efter ethvert commit skal Claude automatisk:
-    - Pushe til `origin dev`
-    - Spørge Jan: *"Vil du også merge til `main` og pushe?"*
+15. **Push og merge efter commit (UFRAVIGELIG)**: Commit sker frit; **enhver skrivning til GitHub kræver Jans accept først** (Jans eksplicitte ønske 2026-08-08, samtidig med at han gav Claude bypass-rettigheder lokalt: alt andet må ske uden at spørge, men *"de ting du vil lave mod GitHub, der skal jeg spørges om write"*). Efter ethvert commit skal Claude derfor:
+    - Spørge Jan: *"Skal jeg pushe til `origin dev`?"* — og **ikke** pushe før der er svaret ja. Den gamle regel pushede automatisk; det gør Claude ikke længere.
+    - Når `dev` er pushet, spørge: *"Vil du også merge til `main` og pushe?"*
     - Hvis ja: merge `dev` → `main` med `--no-ff` og pushe `origin main`
     - Hvis nej: forblive på `dev` og informere om at `main` ikke er opdateret
+    - Lokale git-handlinger (add, commit, branch, lokal merge) er *ikke* omfattet — de kræver ingen accept. Kun det der forlader maskinen (`git push`, `gh`-kommandoer der skriver, ændring af remotes).
+    - Håndhæves også teknisk via `ask`-reglerne i [.claude/settings.local.json](.claude/settings.local.json), men denne regel gælder uanset om rettighedssystemet fanger kommandoen.
 
 16. **Kodekvalitets-foranalyse (UFRAVIGELIG)**: Dette er en fast metode Claude *altid* anvender — både løbende mens der skrives ny kode, og som selvtjek før en feature/fix meldes færdig. Opstod af en systematisk to-fase-gennemgang (2026-08-01) der fandt gentagne instanser af de samme underliggende fejlmønstre; punkterne nedenfor er de generaliserede lektioner, ikke kun de konkrete bugs de blev fundet ud fra:
     - **Null/fejl-propagering**: ethvert kald til en repository- eller service-funktion der kan returnere `None`/`null` eller kaste en fejl, skal have sit resultat tjekket af den kaldende kode *før* det bruges (fx `document.get(...)` på et resultat der kan være `None`). Antag aldrig succes.
@@ -104,7 +106,7 @@ Hver film/serie kan tildeles frie, **brugerdefinerede tags** (fx "Julefilm", "Se
 5. Opdater `RELEASE_NOTES.md` hvis kode er ændret.
 6. Kør backend-/frontend-tests hvis relevant.
 7. `git add` + `git commit` med besked der inkluderer version: `v0.1.0-b0001: beskrivelse`.
-8. `git push origin dev` til GitHub.
+8. Spørg Jan om der må pushes — og `git push origin dev` til GitHub **først når han har sagt ja** (regel 15).
 9. Spørg Jan: *"Vil du også merge til `main`?"* — merge og push `origin main` hvis ja.
 
 ---

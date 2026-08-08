@@ -1,5 +1,14 @@
 # Release Notes
 
+## v0.69.0 (build 0098) — 2026-08-08
+
+- **Serienumre gives nu kun til fysiske udgaver.** En digital kopi står ikke på en hylde, så den får intet nummer — og optager heller ikke et, så din nummerrække ikke får huller.
+- **Film får præfikset `M#` og TV-serier `T#`** — fx `M#0042` og `T#0007`. De to rækker tælles hver for sig, så M#0001 og T#0001 er to forskellige udgaver.
+- **Medietype og format skal nu vælges, før noget kan gemmes i biblioteket.** Gem-knappen er spærret indtil begge er valgt, med en besked der forklarer hvorfor. Ønskelisten er undtaget — du ejer jo ikke noget endnu.
+- **Skifter du medietype senere, følger nummeret med.** Sætter du en fysisk film til Digital, frigives dens nummer til genbrug. Går den den anden vej, får den et nyt.
+- **Ved opdateringen ryddes der op:** eksisterende poster med medietype Digital får fjernet deres serienummer. Poster hvor du aldrig har udfyldt medietypen røres ikke — de kan lige så godt være fysiske.
+- Plex-importerede film og serier er digitale og får derfor ingen numre.
+
 ## v0.68.0 (build 0097) — 2026-08-08
 
 - **Plex-importen udfylder nu selv medietype og format.** Alt importeret får medietypen **Digital**, og formatet sættes efter hvad der faktisk ligger i Plex: 4K bliver **Digital-UHD**, 720p/1080p bliver **Digital-HD**, og alt derunder **Digital-STD**.

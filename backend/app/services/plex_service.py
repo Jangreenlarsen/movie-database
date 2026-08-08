@@ -285,6 +285,12 @@ async def _resolve_tmdb_id(kind: str, title: str, year: int | None) -> int | Non
     return matches[0]["tmdb_id"] if len(matches) == 1 else None
 
 
+class MissingResolutionError(Exception):
+    """Feature #92 — Plex kunne ikke oplyse en opløsning, så det påkrævede
+    format kan ikke udledes. Intern for importen: fanges i løkken og bliver
+    til én rapporteret titel, aldrig til en fejl ud af endpointet."""
+
+
 def format_for_resolution(resolution: str | None) -> MovieFormat | None:
     """Plex' `videoResolution` oversat til appens eget format-vokabular
     (feature #91).
@@ -342,6 +348,11 @@ async def _create_imported(
     # serveren.
     details = await plex_client.fetch_show_details(item.rating_key)
     show_format = format_for_resolution(details.resolution)
+    if show_format is None:
+        # Feature #92 — uden format kan serien ikke oprettes i biblioteket.
+        # Signaleres frem for at lade Pydantic kaste en rå valideringsfejl,
+        # så importen kan rapportere den ene titel og fortsætte med resten.
+        raise MissingResolutionError(item.title)
     await tv_show_service.create_tv_show(
         db,
         TvShowCreate(
@@ -454,12 +465,42 @@ async def import_from_plex(
                 format=format_for_resolution(item.resolution),
             )
 
+            # Feature #92 — format er påkrævet på en biblioteks-post, og for
+            # film kender vi det allerede her. Kan Plex ikke fortælle
+            # opløsningen, rapporteres titlen frem for at gætte et format på
+            # plads (samme princip som det entydige TMDb-match ovenfor).
+            if kind == "movie" and entry.format is None:
+                result.unmatched.append(
+                    PlexImportItem(
+                        kind=kind,
+                        title=item.title,
+                        year=item.year,
+                        tmdb_id=tmdb_id,
+                        reason="Plex oplyser ingen opløsning — formatet kan ikke udledes",
+                    )
+                )
+                continue
+
             if request.dry_run:
                 result.imported.append(entry)
                 continue
 
             try:
                 entry.format = await _create_imported(db, item, tmdb_id, tags, registered_by)
+            except MissingResolutionError:
+                # Serier: opløsningen kendes først her, når episoderne er
+                # hentet. Samme håndtering som film ovenfor, bare et trin
+                # senere i forløbet.
+                result.unmatched.append(
+                    PlexImportItem(
+                        kind=kind,
+                        title=item.title,
+                        year=item.year,
+                        tmdb_id=tmdb_id,
+                        reason="Plex oplyser ingen opløsning — formatet kan ikke udledes",
+                    )
+                )
+                continue
             except TmdbRateLimitedError:
                 result.stopped_early = True
                 break

@@ -195,7 +195,7 @@ async def test_fetch_library_reports_what_is_missing(monkeypatch):
 async def test_availability_endpoint_degrades_when_plex_unconfigured(client, monkeypatch):
     monkeypatch.setattr(settings, "plex_server_url", "")
     monkeypatch.setattr(settings, "plex_token", "")
-    await client.post("/api/movies", json={"title": "No Plex Here"})
+    await client.post("/api/movies", json={"title": "No Plex Here", "media_type": "Fysisk", "format": "DVD"})
 
     response = await client.get("/api/plex/availability?kind=movie")
     assert response.status_code == 200
@@ -208,7 +208,7 @@ async def test_availability_endpoint_degrades_when_plex_unconfigured(client, mon
 
 async def test_availability_endpoint_maps_library_ids(client, monkeypatch):
     _configure(monkeypatch)
-    created = await client.post("/api/movies", json={"title": "The Matrix", "year": 1999})
+    created = await client.post("/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Fysisk", "format": "DVD"})
     movie_id = created.json()["id"]
     _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
 
@@ -223,7 +223,7 @@ async def test_availability_endpoint_maps_library_ids(client, monkeypatch):
 
 async def test_availability_endpoint_omits_unmatched_movies(client, monkeypatch):
     _configure(monkeypatch)
-    await client.post("/api/movies", json={"title": "Findes Ikke I Plex", "year": 2001})
+    await client.post("/api/movies", json={"title": "Findes Ikke I Plex", "year": 2001, "media_type": "Fysisk", "format": "DVD"})
     _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
 
     body = (await client.get("/api/plex/availability?kind=movie")).json()
@@ -264,8 +264,8 @@ async def test_availability_uses_cache_until_refresh_is_forced(client, monkeypat
 
 async def test_diagnostics_reports_match_breakdown(client, monkeypatch):
     _configure(monkeypatch)
-    await client.post("/api/movies", json={"tmdb_id": None, "title": "The Matrix", "year": 1999})
-    await client.post("/api/movies", json={"title": "Ikke I Plex", "year": 2020})
+    await client.post("/api/movies", json={"tmdb_id": None, "title": "The Matrix", "year": 1999, "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Ikke I Plex", "year": 2020, "media_type": "Fysisk", "format": "DVD"})
     _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
 
     response = await client.get("/api/plex/diagnostics")
@@ -322,7 +322,7 @@ async def test_import_requires_tmdb_token_before_looping(client, monkeypatch):
     meldes én gang, ikke som N identiske fejl."""
     _configure(monkeypatch)
     monkeypatch.setattr(settings, "tmdb_api_token", "")
-    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None)]))
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None, resolution="1080")]))
 
     body = (await client.post("/api/plex/import", json={"dry_run": True})).json()
     assert body["ok"] is False
@@ -334,7 +334,7 @@ async def test_import_dry_run_creates_nothing(client, monkeypatch):
     _configure(monkeypatch)
     created = []
     _patch_create(monkeypatch, created)
-    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None)]))
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None, resolution="1080")]))
 
     body = (await client.post("/api/plex/import", json={"dry_run": True})).json()
     assert body["ok"] is True
@@ -348,7 +348,7 @@ async def test_import_creates_with_tag(client, monkeypatch):
     _configure(monkeypatch)
     created = []
     _patch_create(monkeypatch, created)
-    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None)]))
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None, resolution="1080")]))
 
     body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
     assert body["ok"] is True
@@ -360,10 +360,10 @@ async def test_import_skips_what_we_already_have(client, monkeypatch):
     """Genbruger feature #88s matchning i modsat retning — en film vi har på
     titel+år må ikke importeres igen bare fordi Plex har et tmdb-id."""
     _configure(monkeypatch)
-    await client.post("/api/movies", json={"title": "The Matrix", "year": 1999})
+    await client.post("/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Fysisk", "format": "DVD"})
     created = []
     _patch_create(monkeypatch, created)
-    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None)]))
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None, resolution="1080")]))
 
     body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
     assert body["already_present"] == 1
@@ -380,7 +380,7 @@ async def test_import_resolves_missing_tmdb_id_via_search(client, monkeypatch):
         return [{"tmdb_id": 603, "title": "The Matrix", "year": 1999}]
 
     monkeypatch.setattr(tmdb_client, "search_movies", fake_search_movies)
-    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, None, None)]))
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, None, None, resolution="1080")]))
 
     body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
     assert created == [("movie", 603, ["Plex-import"])]
@@ -401,7 +401,7 @@ async def test_import_refuses_ambiguous_search_result(client, monkeypatch):
         ]
 
     monkeypatch.setattr(tmdb_client, "search_movies", fake_search_movies)
-    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "Batman", 1989, None, None)]))
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "Batman", 1989, None, None, resolution="1080")]))
 
     body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
     assert created == []
@@ -417,7 +417,7 @@ async def test_import_refuses_search_result_with_wrong_year(client, monkeypatch)
         return [{"tmdb_id": 99, "title": "The Matrix", "year": 2021}]
 
     monkeypatch.setattr(tmdb_client, "search_movies", fake_search_movies)
-    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, None, None)]))
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, None, None, resolution="1080")]))
 
     body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
     assert created == []
@@ -430,7 +430,7 @@ async def test_import_marks_seasons_owned_from_plex(client, monkeypatch):
     _patch_create(monkeypatch, created)
 
     async def fake_fetch_show_details(rating_key):
-        return PlexShowDetails(seasons=[1, 2, 3], resolution=None)
+        return PlexShowDetails(seasons=[1, 2, 3], resolution="1080")
 
     monkeypatch.setattr(plex_client, "fetch_show_details", fake_fetch_show_details)
     _patch_library(monkeypatch, _fake_library([PlexItem("show", "7", "Fargo", 2014, 60622, None)]))
@@ -447,7 +447,7 @@ async def test_import_can_limit_to_movies_only(client, monkeypatch):
         monkeypatch,
         _fake_library(
             [
-                PlexItem("movie", "1", "The Matrix", 1999, 603, None),
+                PlexItem("movie", "1", "The Matrix", 1999, 603, None, resolution="1080"),
                 PlexItem("show", "7", "Fargo", 2014, 60622, None),
             ]
         ),
@@ -475,9 +475,9 @@ async def test_import_stops_immediately_on_rate_limit(client, monkeypatch):
         monkeypatch,
         _fake_library(
             [
-                PlexItem("movie", "1", "Film A", 2001, 1, None),
-                PlexItem("movie", "2", "Film B", 2002, 2, None),
-                PlexItem("movie", "3", "Film C", 2003, 3, None),
+                PlexItem("movie", "1", "Film A", 2001, 1, None, resolution="1080"),
+                PlexItem("movie", "2", "Film B", 2002, 2, None, resolution="1080"),
+                PlexItem("movie", "3", "Film C", 2003, 3, None, resolution="1080"),
             ]
         ),
     )
@@ -492,7 +492,7 @@ async def test_import_empty_tag_creates_without_tag(client, monkeypatch):
     _configure(monkeypatch)
     created = []
     _patch_create(monkeypatch, created)
-    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None)]))
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None, resolution="1080")]))
 
     await client.post("/api/plex/import", json={"dry_run": False, "tag": "   "})
     assert created == [("movie", 603, [])]
@@ -574,24 +574,40 @@ async def test_import_preview_shows_movie_format_without_creating(client, monkey
     assert body["imported"][0]["format"] == "Digital-STD"
 
 
-async def test_import_without_resolution_leaves_format_empty(client, monkeypatch):
-    """Medietypen er stadig Digital — den følger af at ligge på en
-    medieserver, ikke af opløsningen."""
+async def test_import_skips_item_without_resolution(client, monkeypatch):
+    """Feature #92 gjorde format påkrævet på en biblioteks-post. Kan Plex
+    ikke oplyse opløsningen, kan formatet ikke udledes — og så rapporteres
+    titlen frem for at gætte et format på plads."""
     _configure(monkeypatch)
-    captured = []
-    from app.services import movie_service
-
-    async def fake_create_movie(db, payload, registered_by):
-        captured.append((payload.media_type, payload.format))
-
-    monkeypatch.setattr(movie_service, "create_movie", fake_create_movie)
+    created = []
+    _patch_create(monkeypatch, created)
     _patch_library(
         monkeypatch,
         _fake_library([PlexItem("movie", "1", "Uden Opløsning", 2000, 12, None)]),
     )
 
-    await client.post("/api/plex/import", json={"dry_run": False})
-    assert captured == [(MediaType.DIGITAL, None)]
+    body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
+    assert created == []
+    assert [item["title"] for item in body["unmatched"]] == ["Uden Opløsning"]
+    assert "opløsning" in body["unmatched"][0]["reason"]
+
+
+async def test_import_skips_show_without_resolution(client, monkeypatch):
+    """Samme regel for serier, bare opdaget et trin senere — opløsningen
+    kendes først når episoderne er hentet."""
+    _configure(monkeypatch)
+    created = []
+    _patch_create(monkeypatch, created)
+
+    async def fake_fetch_show_details(rating_key):
+        return PlexShowDetails(seasons=[1], resolution=None)
+
+    monkeypatch.setattr(plex_client, "fetch_show_details", fake_fetch_show_details)
+    _patch_library(monkeypatch, _fake_library([PlexItem("show", "7", "Fargo", 2014, 60622, None)]))
+
+    body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
+    assert created == []
+    assert [item["title"] for item in body["unmatched"]] == ["Fargo"]
 
 
 async def test_import_show_takes_format_and_seasons_from_episodes(client, monkeypatch):

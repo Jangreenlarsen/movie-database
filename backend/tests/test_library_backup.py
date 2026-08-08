@@ -4,9 +4,9 @@ from app.main import app
 
 
 async def test_export_includes_all_movies_and_tv_shows(client):
-    await client.post("/api/movies", json={"title": "Export Movie A"})
-    await client.post("/api/movies", json={"title": "Export Movie B"})
-    await client.post("/api/tv-shows", json={"name": "Export Show A"})
+    await client.post("/api/movies", json={"title": "Export Movie A", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Export Movie B", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/tv-shows", json={"name": "Export Show A", "media_type": "Fysisk", "format": "DVD"})
 
     response = await client.get("/api/library/export")
     assert response.status_code == 200
@@ -30,11 +30,11 @@ async def test_export_requires_admin(client):
 
 
 async def test_import_replaces_movies_and_tv_shows(client):
-    await client.post("/api/movies", json={"title": "Original Movie"})
+    await client.post("/api/movies", json={"title": "Original Movie", "media_type": "Fysisk", "format": "DVD"})
     original_export = (await client.get("/api/library/export")).json()
 
     # A second, unrelated movie is created after the export was taken.
-    await client.post("/api/movies", json={"title": "Created After Export"})
+    await client.post("/api/movies", json={"title": "Created After Export", "media_type": "Fysisk", "format": "DVD"})
     assert len((await client.get("/api/movies")).json()["items"]) == 2
 
     response = await client.post("/api/library/import", json=original_export)
@@ -47,7 +47,7 @@ async def test_import_replaces_movies_and_tv_shows(client):
 
 
 async def test_import_preserves_serial_numbers_and_bumps_counter(client):
-    created = await client.post("/api/movies", json={"title": "Serial Keeper"})
+    created = await client.post("/api/movies", json={"title": "Serial Keeper", "media_type": "Fysisk", "format": "DVD"})
     original_serial = created.json()["serial_number"]
     export_data = (await client.get("/api/library/export")).json()
 
@@ -58,7 +58,7 @@ async def test_import_preserves_serial_numbers_and_bumps_counter(client):
 
     # The next movie created after a restore must not collide with the
     # restored serial number.
-    next_movie = await client.post("/api/movies", json={"title": "Next One"})
+    next_movie = await client.post("/api/movies", json={"title": "Next One", "media_type": "Fysisk", "format": "DVD"})
     assert next_movie.json()["serial_number"] > original_serial
 
 

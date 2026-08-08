@@ -9,7 +9,7 @@ async def test_wishlist_movie_has_no_serial_number(client):
 
 
 async def test_library_and_wishlist_listings_are_separate(client):
-    await client.post("/api/movies", json={"title": "Owned Movie"})
+    await client.post("/api/movies", json={"title": "Owned Movie", "media_type": "Fysisk", "format": "DVD"})
     await client.post("/api/movies", json={"title": "Wanted Movie", "is_wishlist": True})
 
     library = await client.get("/api/movies")
@@ -39,7 +39,11 @@ async def test_moving_a_wishlist_movie_to_the_library_assigns_a_serial_number(cl
     movie_id = create.json()["id"]
     assert create.json()["serial_number"] is None
 
-    response = await client.patch(f"/api/movies/{movie_id}", json={"is_wishlist": False})
+    # Feature #92 — medietypen skal med i flytningen: kun fysiske udgaver
+    # nummereres, og et ønske har ingen medietype at arve fra.
+    response = await client.patch(
+        f"/api/movies/{movie_id}", json={"is_wishlist": False, "media_type": "Fysisk"}
+    )
     assert response.status_code == 200
     moved = response.json()
     assert moved["is_wishlist"] is False
@@ -74,13 +78,15 @@ async def test_moving_a_wishlist_movie_to_the_library_is_not_gated_by_registrant
         movie_id = create.json()["id"]
 
     # `client` fixture's user ("testuser") did not register this movie.
-    response = await client.patch(f"/api/movies/{movie_id}", json={"is_wishlist": False})
+    response = await client.patch(
+        f"/api/movies/{movie_id}", json={"is_wishlist": False, "media_type": "Fysisk"}
+    )
     assert response.status_code == 200
     assert response.json()["serial_number"] is not None
 
 
 async def test_moving_a_library_movie_to_the_wishlist_clears_its_serial_number(client):
-    create = await client.post("/api/movies", json={"title": "Regretted Purchase"})
+    create = await client.post("/api/movies", json={"title": "Regretted Purchase", "media_type": "Fysisk", "format": "DVD"})
     movie_id = create.json()["id"]
     assert create.json()["serial_number"] is not None
 

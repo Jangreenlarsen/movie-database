@@ -62,6 +62,25 @@ class TvShowCreate(BaseModel):
             raise ValueError("Enten tmdb_id eller name skal angives")
         return self
 
+    @model_validator(mode="after")
+    def require_media_type_and_format_for_library(self) -> "TvShowCreate":
+        """Feature #92 — se den identiske regel i MovieCreate for
+        begrundelsen. TV-serier er en selvstændig ressource med sin egen
+        nummer-serie, men samme krav: medietypen afgør serienummeret."""
+        if self.is_wishlist:
+            return self
+        missing = []
+        if self.media_type is None:
+            missing.append("media_type")
+        if self.format is None:
+            missing.append("format")
+        if missing:
+            raise ValueError(
+                f"{' og '.join(missing)} skal angives for en TV-serie i biblioteket "
+                "(kun ønskelisten er undtaget)"
+            )
+        return self
+
 
 class TvShowPreview(BaseModel):
     """Read-only, fuld TMDb-metadata for en kandidat (feature #79) — samme

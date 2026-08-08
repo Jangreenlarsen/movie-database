@@ -31,7 +31,7 @@ async def test_finds_existing_library_movie(client, monkeypatch):
         return _fake_details(tmdb_id, "Already Owned")
 
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
-    created = await client.post("/api/movies", json={"tmdb_id": 42})
+    created = await client.post("/api/movies", json={"tmdb_id": 42, "media_type": "Fysisk", "format": "DVD"})
     serial = created.json()["serial_number"]
 
     response = await client.get("/api/movies/check-duplicate", params={"tmdb_id": 42})
@@ -65,8 +65,8 @@ async def test_creating_a_duplicate_is_not_blocked(client, monkeypatch):
         return _fake_details(tmdb_id, "Two Copies")
 
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
-    first = await client.post("/api/movies", json={"tmdb_id": 55})
-    second = await client.post("/api/movies", json={"tmdb_id": 55})
+    first = await client.post("/api/movies", json={"tmdb_id": 55, "media_type": "Fysisk", "format": "DVD"})
+    second = await client.post("/api/movies", json={"tmdb_id": 55, "media_type": "Fysisk", "format": "DVD"})
 
     assert first.status_code == 201
     assert second.status_code == 201

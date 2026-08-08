@@ -74,7 +74,7 @@ async def test_create_movie_uses_imdb_rating_when_available(client, monkeypatch)
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
     monkeypatch.setattr(omdb_client, "get_imdb_rating", fake_get_imdb_rating)
 
-    response = await client.post("/api/movies", json={"tmdb_id": 603})
+    response = await client.post("/api/movies", json={"tmdb_id": 603, "media_type": "Fysisk", "format": "DVD"})
     assert response.status_code == 201
     assert response.json()["rating"] == 8.7
 
@@ -89,7 +89,7 @@ async def test_create_movie_falls_back_to_tmdb_rating_without_omdb_configured(cl
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
     monkeypatch.setattr(settings, "omdb_api_key", "")
 
-    response = await client.post("/api/movies", json={"tmdb_id": 603})
+    response = await client.post("/api/movies", json={"tmdb_id": 603, "media_type": "Fysisk", "format": "DVD"})
     assert response.status_code == 201
     assert response.json()["rating"] == 8.2
 
@@ -100,7 +100,7 @@ async def test_sync_uses_imdb_rating_when_available(client, monkeypatch):
 
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_initial)
     monkeypatch.setattr(settings, "omdb_api_key", "")
-    created = await client.post("/api/movies", json={"tmdb_id": 603})
+    created = await client.post("/api/movies", json={"tmdb_id": 603, "media_type": "Fysisk", "format": "DVD"})
     assert created.json()["rating"] == 8.2
 
     async def fake_refreshed(tmdb_id):

@@ -52,7 +52,7 @@ def _fake_episodes(season_number, count):
 
 
 async def test_create_tv_show_manually(client):
-    response = await client.post("/api/tv-shows", json={"name": "My Show"})
+    response = await client.post("/api/tv-shows", json={"name": "My Show", "media_type": "Fysisk", "format": "DVD"})
     assert response.status_code == 201
     show = response.json()
     assert show["name"] == "My Show"
@@ -72,7 +72,7 @@ async def test_create_tv_show_from_tmdb_fetches_metadata_and_light_seasons(clien
 
     monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
 
-    response = await client.post("/api/tv-shows", json={"tmdb_id": 1396, "tags": ["Favorite"]})
+    response = await client.post("/api/tv-shows", json={"tmdb_id": 1396, "tags": ["Favorite"], "media_type": "Fysisk", "format": "DVD"})
     assert response.status_code == 201
     show = response.json()
     assert show["name"] == "Breaking Bad"
@@ -103,7 +103,7 @@ async def test_create_tv_show_marks_owned_seasons_and_fetches_their_episodes(cli
     monkeypatch.setattr(tmdb_client, "get_season_details", fake_get_season_details)
 
     response = await client.post(
-        "/api/tv-shows", json={"tmdb_id": 1396, "owned_seasons": [2]}
+        "/api/tv-shows", json={"tmdb_id": 1396, "owned_seasons": [2], "media_type": "Fysisk", "format": "DVD"}
     )
     assert response.status_code == 201
     seasons = response.json()["seasons"]
@@ -133,7 +133,7 @@ async def test_create_tv_show_owned_season_survives_tmdb_episode_fetch_failure(c
     monkeypatch.setattr(tmdb_client, "get_season_details", failing_get_season_details)
 
     response = await client.post(
-        "/api/tv-shows", json={"tmdb_id": 1396, "owned_seasons": [1]}
+        "/api/tv-shows", json={"tmdb_id": 1396, "owned_seasons": [1], "media_type": "Fysisk", "format": "DVD"}
     )
     assert response.status_code == 201
     season_1 = next(s for s in response.json()["seasons"] if s["season_number"] == 1)
@@ -142,10 +142,10 @@ async def test_create_tv_show_owned_season_survives_tmdb_episode_fetch_failure(c
 
 
 async def test_tv_show_serial_numbers_are_independent_from_movies(client):
-    await client.post("/api/movies", json={"title": "A Movie"})
-    await client.post("/api/movies", json={"title": "Another Movie"})
+    await client.post("/api/movies", json={"title": "A Movie", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Another Movie", "media_type": "Fysisk", "format": "DVD"})
 
-    show = await client.post("/api/tv-shows", json={"name": "A Show"})
+    show = await client.post("/api/tv-shows", json={"name": "A Show", "media_type": "Fysisk", "format": "DVD"})
     assert show.json()["serial_number"] == 1
 
 
@@ -163,7 +163,7 @@ async def test_get_missing_tv_show_returns_404(client):
 
 
 async def test_update_tv_show_tags_and_location(client):
-    created = await client.post("/api/tv-shows", json={"name": "Editable Show"})
+    created = await client.post("/api/tv-shows", json={"name": "Editable Show", "media_type": "Fysisk", "format": "DVD"})
     show_id = created.json()["id"]
 
     response = await client.patch(
@@ -175,7 +175,7 @@ async def test_update_tv_show_tags_and_location(client):
 
 
 async def test_delete_tv_show_logs_and_allows_manual_serial_reuse(client):
-    created = await client.post("/api/tv-shows", json={"name": "Doomed Show"})
+    created = await client.post("/api/tv-shows", json={"name": "Doomed Show", "media_type": "Fysisk", "format": "DVD"})
     show_id = created.json()["id"]
     assert created.json()["serial_number"] == 1
 
@@ -187,7 +187,7 @@ async def test_delete_tv_show_logs_and_allows_manual_serial_reuse(client):
     assert deleted_list.json()[0]["name"] == "Doomed Show"
 
     # The auto-incrementing counter itself doesn't rewind on delete...
-    recreated = await client.post("/api/tv-shows", json={"name": "New Show"})
+    recreated = await client.post("/api/tv-shows", json={"name": "New Show", "media_type": "Fysisk", "format": "DVD"})
     assert recreated.json()["serial_number"] == 2
 
     # ...but #1 is no longer taken, so it can be manually reassigned.
@@ -203,7 +203,10 @@ async def test_move_wishlist_tv_show_to_library_assigns_serial(client):
     )
     show_id = created.json()["id"]
 
-    response = await client.patch(f"/api/tv-shows/{show_id}", json={"is_wishlist": False})
+    # Feature #92 — se den identiske note i test_wishlist.py.
+    response = await client.patch(
+        f"/api/tv-shows/{show_id}", json={"is_wishlist": False, "media_type": "Fysisk"}
+    )
     assert response.status_code == 200
     assert response.json()["serial_number"] == 1
 
@@ -213,7 +216,7 @@ async def test_check_duplicate_finds_existing_show(client, monkeypatch):
         return _fake_tv_details(tv_id, name="Some Show")
 
     monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
-    created = await client.post("/api/tv-shows", json={"tmdb_id": 42})
+    created = await client.post("/api/tv-shows", json={"tmdb_id": 42, "media_type": "Fysisk", "format": "DVD"})
 
     response = await client.get("/api/tv-shows/check-duplicate", params={"tmdb_id": 42})
     matches = response.json()
@@ -223,8 +226,8 @@ async def test_check_duplicate_finds_existing_show(client, monkeypatch):
 
 
 async def test_search_filter_and_sort(client):
-    await client.post("/api/tv-shows", json={"name": "Alpha Show", "format": "BD"})
-    await client.post("/api/tv-shows", json={"name": "Beta Show", "format": "DVD"})
+    await client.post("/api/tv-shows", json={"name": "Alpha Show", "format": "BD", "media_type": "Fysisk"})
+    await client.post("/api/tv-shows", json={"name": "Beta Show", "format": "DVD", "media_type": "Fysisk"})
 
     filtered = await client.get("/api/tv-shows", params={"format": "BD"})
     assert [s["name"] for s in filtered.json()["items"]] == ["Alpha Show"]
@@ -234,7 +237,7 @@ async def test_search_filter_and_sort(client):
 
 
 async def test_personal_rating_and_note(client):
-    created = await client.post("/api/tv-shows", json={"name": "Rateable Show"})
+    created = await client.post("/api/tv-shows", json={"name": "Rateable Show", "media_type": "Fysisk", "format": "DVD"})
     show_id = created.json()["id"]
 
     response = await client.patch(
@@ -245,7 +248,7 @@ async def test_personal_rating_and_note(client):
 
 
 async def test_top_level_watched_toggle(client):
-    created = await client.post("/api/tv-shows", json={"name": "Finished Show"})
+    created = await client.post("/api/tv-shows", json={"name": "Finished Show", "media_type": "Fysisk", "format": "DVD"})
     show_id = created.json()["id"]
 
     response = await client.patch(
@@ -268,7 +271,7 @@ async def test_marking_season_owned_lazily_fetches_episodes(client, monkeypatch)
     monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
     monkeypatch.setattr(tmdb_client, "get_season_details", fake_get_season_details)
 
-    created = await client.post("/api/tv-shows", json={"tmdb_id": 1396})
+    created = await client.post("/api/tv-shows", json={"tmdb_id": 1396, "media_type": "Fysisk", "format": "DVD"})
     show_id = created.json()["id"]
     assert created.json()["seasons"][0]["episodes"] == []
 
@@ -298,7 +301,7 @@ async def test_marking_season_unowned_does_not_clear_cached_episodes(client, mon
     monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
     monkeypatch.setattr(tmdb_client, "get_season_details", fake_get_season_details)
 
-    created = await client.post("/api/tv-shows", json={"tmdb_id": 1396})
+    created = await client.post("/api/tv-shows", json={"tmdb_id": 1396, "media_type": "Fysisk", "format": "DVD"})
     show_id = created.json()["id"]
     await client.patch(f"/api/tv-shows/{show_id}/seasons/1", json={"owned": True})
 
@@ -321,7 +324,7 @@ async def test_marking_season_owned_twice_does_not_refetch(client, monkeypatch):
     monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
     monkeypatch.setattr(tmdb_client, "get_season_details", fake_get_season_details)
 
-    created = await client.post("/api/tv-shows", json={"tmdb_id": 1396})
+    created = await client.post("/api/tv-shows", json={"tmdb_id": 1396, "media_type": "Fysisk", "format": "DVD"})
     show_id = created.json()["id"]
 
     await client.patch(f"/api/tv-shows/{show_id}/seasons/1", json={"owned": True})
@@ -341,7 +344,7 @@ async def test_set_episode_watched(client, monkeypatch):
     monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
     monkeypatch.setattr(tmdb_client, "get_season_details", fake_get_season_details)
 
-    created = await client.post("/api/tv-shows", json={"tmdb_id": 1396})
+    created = await client.post("/api/tv-shows", json={"tmdb_id": 1396, "media_type": "Fysisk", "format": "DVD"})
     show_id = created.json()["id"]
     await client.patch(f"/api/tv-shows/{show_id}/seasons/1", json={"owned": True})
 
@@ -361,7 +364,7 @@ async def test_set_episode_watched(client, monkeypatch):
 
 
 async def test_set_episode_watched_on_unknown_season_returns_404(client):
-    created = await client.post("/api/tv-shows", json={"name": "No Seasons Show"})
+    created = await client.post("/api/tv-shows", json={"name": "No Seasons Show", "media_type": "Fysisk", "format": "DVD"})
     show_id = created.json()["id"]
 
     response = await client.patch(
@@ -391,7 +394,7 @@ async def test_concurrent_episode_toggles_do_not_lose_writes(db, monkeypatch):
     monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
     monkeypatch.setattr(tmdb_client, "get_season_details", fake_get_season_details)
 
-    show = await tv_show_service.create_tv_show(db, TvShowCreate(tmdb_id=1396), "tester")
+    show = await tv_show_service.create_tv_show(db, TvShowCreate(tmdb_id=1396, media_type="Fysisk", format="DVD"), "tester")
     await tv_show_service.set_season_owned(db, show.id, 1, True)
 
     # Force the same interleaving a real (non-instant) MongoDB round-trip

@@ -36,7 +36,7 @@ def test_director_returns_none_when_no_director_credited():
 
 async def test_manual_movie_can_set_director(client):
     response = await client.post(
-        "/api/movies", json={"title": "Indie Film", "director": "Ed Wood"}
+        "/api/movies", json={"title": "Indie Film", "director": "Ed Wood", "media_type": "Fysisk", "format": "DVD"}
     )
     assert response.json()["director"] == "Ed Wood"
 
@@ -46,8 +46,8 @@ async def test_filter_by_director(client, monkeypatch):
         return _fake_details(tmdb_id, f"Movie {tmdb_id}", ["Actor A"], "Christopher Nolan")
 
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
-    await client.post("/api/movies", json={"tmdb_id": 1})
-    await client.post("/api/movies", json={"title": "Unrelated"})
+    await client.post("/api/movies", json={"tmdb_id": 1, "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Unrelated", "media_type": "Fysisk", "format": "DVD"})
 
     response = await client.get("/api/movies", params={"director": "Christopher Nolan"})
     titles = [m["title"] for m in response.json()["items"]]
@@ -59,8 +59,8 @@ async def test_filter_by_cast_member(client, monkeypatch):
         return _fake_details(tmdb_id, f"Movie {tmdb_id}", ["Tom Hanks", "Other Actor"], None)
 
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
-    await client.post("/api/movies", json={"tmdb_id": 1})
-    await client.post("/api/movies", json={"title": "No Tom Here"})
+    await client.post("/api/movies", json={"tmdb_id": 1, "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "No Tom Here", "media_type": "Fysisk", "format": "DVD"})
 
     response = await client.get("/api/movies", params={"cast": "Tom Hanks"})
     titles = [m["title"] for m in response.json()["items"]]
@@ -68,8 +68,8 @@ async def test_filter_by_cast_member(client, monkeypatch):
 
 
 async def test_no_person_filter_returns_everything(client):
-    await client.post("/api/movies", json={"title": "A"})
-    await client.post("/api/movies", json={"title": "B"})
+    await client.post("/api/movies", json={"title": "A", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "B", "media_type": "Fysisk", "format": "DVD"})
     response = await client.get("/api/movies")
     data = response.json()
     assert len(data["items"]) == 2

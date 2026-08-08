@@ -1,7 +1,7 @@
 async def test_create_and_get_movie(client):
     response = await client.post(
         "/api/movies",
-        json={"title": "The Matrix", "year": 1999, "tags": ["Sci-Fi", "sci-fi", " Favorite "]},
+        json={"title": "The Matrix", "year": 1999, "tags": ["Sci-Fi", "sci-fi", " Favorite "], "media_type": "Fysisk", "format": "DVD"},
     )
     assert response.status_code == 201
     movie = response.json()
@@ -25,8 +25,8 @@ async def test_get_invalid_id_returns_404(client):
 
 
 async def test_tag_reuses_canonical_casing_across_movies(client):
-    await client.post("/api/movies", json={"title": "Movie A", "tags": ["Action"]})
-    response = await client.post("/api/movies", json={"title": "Movie B", "tags": ["ACTION"]})
+    await client.post("/api/movies", json={"title": "Movie A", "tags": ["Action"], "media_type": "Fysisk", "format": "DVD"})
+    response = await client.post("/api/movies", json={"title": "Movie B", "tags": ["ACTION"], "media_type": "Fysisk", "format": "DVD"})
     assert response.json()["tags"] == ["Action", "Tilføjet af testuser"]
 
     tags_response = await client.get("/api/tags")
@@ -56,15 +56,15 @@ async def test_new_tag_survives_concurrent_insert_race(client, monkeypatch):
     monkeypatch.setattr(tag_repository, "insert", flaky_insert)
 
     response = await client.post(
-        "/api/movies", json={"title": "Race Test", "tags": ["BrandNewTag"]}
+        "/api/movies", json={"title": "Race Test", "tags": ["BrandNewTag"], "media_type": "Fysisk", "format": "DVD"}
     )
     assert response.status_code == 201
     assert response.json()["tags"] == ["BrandNewTag", "Tilføjet af testuser"]
 
 
 async def test_filter_by_tag_is_case_insensitive(client):
-    await client.post("/api/movies", json={"title": "Tagged", "tags": ["Christmas"]})
-    await client.post("/api/movies", json={"title": "Untagged"})
+    await client.post("/api/movies", json={"title": "Tagged", "tags": ["Christmas"], "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Untagged", "media_type": "Fysisk", "format": "DVD"})
 
     response = await client.get("/api/movies", params={"tags": "christmas"})
     titles = [m["title"] for m in response.json()["items"]]
@@ -72,7 +72,7 @@ async def test_filter_by_tag_is_case_insensitive(client):
 
 
 async def test_update_and_delete_movie(client):
-    create_response = await client.post("/api/movies", json={"title": "Old Title"})
+    create_response = await client.post("/api/movies", json={"title": "Old Title", "media_type": "Fysisk", "format": "DVD"})
     movie_id = create_response.json()["id"]
 
     update_response = await client.patch(f"/api/movies/{movie_id}", json={"title": "New Title"})
@@ -86,9 +86,9 @@ async def test_update_and_delete_movie(client):
 
 
 async def test_barcode_must_be_unique(client):
-    await client.post("/api/movies", json={"title": "First", "barcode": "1234567890123"})
+    await client.post("/api/movies", json={"title": "First", "barcode": "1234567890123", "media_type": "Fysisk", "format": "DVD"})
     with_duplicate = await client.post(
-        "/api/movies", json={"title": "Second", "barcode": "1234567890123"}
+        "/api/movies", json={"title": "Second", "barcode": "1234567890123", "media_type": "Fysisk", "format": "DVD"}
     )
     assert with_duplicate.status_code == 409
 
@@ -98,8 +98,8 @@ async def test_multiple_movies_without_barcode_are_allowed(client):
     documents where the field is entirely absent, not documents where it's
     explicitly null. Storing `barcode: None` for every barcode-less movie
     would make the unique index collide after the second one."""
-    first = await client.post("/api/movies", json={"title": "No Barcode A"})
-    second = await client.post("/api/movies", json={"title": "No Barcode B"})
+    first = await client.post("/api/movies", json={"title": "No Barcode A", "media_type": "Fysisk", "format": "DVD"})
+    second = await client.post("/api/movies", json={"title": "No Barcode B", "media_type": "Fysisk", "format": "DVD"})
     assert first.status_code == 201
     assert second.status_code == 201
 
@@ -107,7 +107,7 @@ async def test_multiple_movies_without_barcode_are_allowed(client):
 async def test_movie_without_barcode_omits_field_entirely(client, db):
     from bson import ObjectId
 
-    response = await client.post("/api/movies", json={"title": "No Barcode"})
+    response = await client.post("/api/movies", json={"title": "No Barcode", "media_type": "Fysisk", "format": "DVD"})
     movie_id = response.json()["id"]
 
     raw_doc = await db["movies"].find_one({"_id": ObjectId(movie_id)})
@@ -121,8 +121,8 @@ async def test_multiple_movies_with_blank_barcode_are_allowed(client, db):
     like the null case fixed above)."""
     from bson import ObjectId
 
-    first = await client.post("/api/movies", json={"title": "Blank A", "barcode": ""})
-    second = await client.post("/api/movies", json={"title": "Blank B", "barcode": "   "})
+    first = await client.post("/api/movies", json={"title": "Blank A", "barcode": "", "media_type": "Fysisk", "format": "DVD"})
+    second = await client.post("/api/movies", json={"title": "Blank B", "barcode": "   ", "media_type": "Fysisk", "format": "DVD"})
     assert first.status_code == 201
     assert second.status_code == 201
 
@@ -131,8 +131,8 @@ async def test_multiple_movies_with_blank_barcode_are_allowed(client, db):
 
 
 async def test_serial_number_auto_increments(client):
-    first = await client.post("/api/movies", json={"title": "First"})
-    second = await client.post("/api/movies", json={"title": "Second"})
+    first = await client.post("/api/movies", json={"title": "First", "media_type": "Fysisk", "format": "DVD"})
+    second = await client.post("/api/movies", json={"title": "Second", "media_type": "Fysisk", "format": "DVD"})
 
     assert first.json()["serial_number"] == 1
     assert second.json()["serial_number"] == 2
@@ -144,8 +144,7 @@ async def test_create_movie_with_format_and_audio_types(client):
         json={
             "title": "The Matrix",
             "format": "BD",
-            "audio_types": ["DD5.1", "DTS"],
-        },
+            "audio_types": ["DD5.1", "DTS"], "media_type": "Fysisk"},
     )
     assert response.status_code == 201
     movie = response.json()
@@ -155,14 +154,14 @@ async def test_create_movie_with_format_and_audio_types(client):
 
 async def test_create_movie_rejects_invalid_format(client):
     response = await client.post(
-        "/api/movies", json={"title": "Bad Format", "format": "Laserdisc"}
+        "/api/movies", json={"title": "Bad Format", "format": "Laserdisc", "media_type": "Fysisk"}
     )
     assert response.status_code == 422
 
 
 async def test_create_movie_rejects_invalid_audio_type(client):
     response = await client.post(
-        "/api/movies", json={"title": "Bad Audio", "audio_types": ["Surround-o-matic"]}
+        "/api/movies", json={"title": "Bad Audio", "audio_types": ["Surround-o-matic"], "media_type": "Fysisk", "format": "DVD"}
     )
     assert response.status_code == 422
 
@@ -170,11 +169,11 @@ async def test_create_movie_rejects_invalid_audio_type(client):
 async def test_filter_by_format_and_audio_type(client):
     await client.post(
         "/api/movies",
-        json={"title": "Blu-ray DTS", "format": "BD", "audio_types": ["DTS"]},
+        json={"title": "Blu-ray DTS", "format": "BD", "audio_types": ["DTS"], "media_type": "Fysisk"},
     )
     await client.post(
         "/api/movies",
-        json={"title": "DVD Stereo", "format": "DVD", "audio_types": ["Stereo"]},
+        json={"title": "DVD Stereo", "format": "DVD", "audio_types": ["Stereo"], "media_type": "Fysisk"},
     )
 
     by_format = await client.get("/api/movies", params={"format": "BD"})
@@ -187,10 +186,13 @@ async def test_filter_by_format_and_audio_type(client):
 async def test_media_type_roundtrip_and_filter(client):
     """Regression test for FEATURES.md #35."""
     physical = await client.post(
-        "/api/movies", json={"title": "Physical Copy", "media_type": "Fysisk"}
+        "/api/movies", json={"title": "Physical Copy", "media_type": "Fysisk", "format": "DVD"}
     )
     assert physical.json()["media_type"] == "Fysisk"
-    await client.post("/api/movies", json={"title": "Digital Copy", "media_type": "Digital"})
+    await client.post(
+        "/api/movies",
+        json={"title": "Digital Copy", "media_type": "Digital", "format": "Digital-HD"},
+    )
 
     by_media_type = await client.get("/api/movies", params={"media_types": "Digital"})
     assert [m["title"] for m in by_media_type.json()["items"]] == ["Digital Copy"]
@@ -205,10 +207,10 @@ async def test_sort_by_newly_added_fields(client):
     "Tilføjet"), and runtime/location/owner/registered_by must be sortable
     too — Jan asked to be able to sort by "all fields"."""
     await client.post(
-        "/api/movies", json={"title": "B Movie", "runtime": 90, "location": "Loft", "owner": "anna"}
+        "/api/movies", json={"title": "B Movie", "runtime": 90, "location": "Loft", "owner": "anna", "media_type": "Fysisk", "format": "DVD"}
     )
     await client.post(
-        "/api/movies", json={"title": "A Movie", "runtime": 150, "location": "Stue", "owner": "bo"}
+        "/api/movies", json={"title": "A Movie", "runtime": 150, "location": "Stue", "owner": "bo", "media_type": "Fysisk", "format": "DVD"}
     )
 
     by_runtime = await client.get("/api/movies", params={"sort": "runtime:asc"})
@@ -228,8 +230,8 @@ async def test_sort_by_newly_added_fields(client):
 
 
 async def test_sort_by_title(client):
-    await client.post("/api/movies", json={"title": "Zebra"})
-    await client.post("/api/movies", json={"title": "Apple"})
+    await client.post("/api/movies", json={"title": "Zebra", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Apple", "media_type": "Fysisk", "format": "DVD"})
 
     asc = await client.get("/api/movies", params={"sort": "title:asc"})
     assert [m["title"] for m in asc.json()["items"]] == ["Apple", "Zebra"]
@@ -239,16 +241,16 @@ async def test_sort_by_title(client):
 
 
 async def test_sort_by_year(client):
-    await client.post("/api/movies", json={"title": "Old", "year": 1980})
-    await client.post("/api/movies", json={"title": "New", "year": 2020})
+    await client.post("/api/movies", json={"title": "Old", "year": 1980, "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "New", "year": 2020, "media_type": "Fysisk", "format": "DVD"})
 
     response = await client.get("/api/movies", params={"sort": "year:asc"})
     assert [m["title"] for m in response.json()["items"]] == ["Old", "New"]
 
 
 async def test_sort_by_serial_number(client):
-    await client.post("/api/movies", json={"title": "First"})
-    await client.post("/api/movies", json={"title": "Second"})
+    await client.post("/api/movies", json={"title": "First", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Second", "media_type": "Fysisk", "format": "DVD"})
 
     response = await client.get("/api/movies", params={"sort": "serial_number:desc"})
     assert [m["title"] for m in response.json()["items"]] == ["Second", "First"]
@@ -257,9 +259,9 @@ async def test_sort_by_serial_number(client):
 async def test_multi_level_sort_falls_through_to_second_field(client):
     """Regression test for FEATURES.md #17/#27 — ties on the first level
     should be broken by the second level."""
-    await client.post("/api/movies", json={"title": "Zeta", "format": "DVD"})
-    await client.post("/api/movies", json={"title": "Alpha", "format": "DVD"})
-    await client.post("/api/movies", json={"title": "Middle", "format": "BD"})
+    await client.post("/api/movies", json={"title": "Zeta", "format": "DVD", "media_type": "Fysisk"})
+    await client.post("/api/movies", json={"title": "Alpha", "format": "DVD", "media_type": "Fysisk"})
+    await client.post("/api/movies", json={"title": "Middle", "format": "BD", "media_type": "Fysisk"})
 
     response = await client.get(
         "/api/movies", params={"sort": "format:asc,title:asc"}
@@ -279,7 +281,7 @@ async def test_create_movie_returns_429_on_tmdb_rate_limit(client, monkeypatch):
 
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
 
-    response = await client.post("/api/movies", json={"tmdb_id": 1})
+    response = await client.post("/api/movies", json={"tmdb_id": 1, "media_type": "Fysisk", "format": "DVD"})
     assert response.status_code == 429
 
 
@@ -307,8 +309,8 @@ async def test_sort_by_rating(client, monkeypatch):
 
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
 
-    await client.post("/api/movies", json={"tmdb_id": 1})
-    await client.post("/api/movies", json={"tmdb_id": 2})
+    await client.post("/api/movies", json={"tmdb_id": 1, "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"tmdb_id": 2, "media_type": "Fysisk", "format": "DVD"})
 
     response = await client.get("/api/movies", params={"sort": "rating:desc"})
     assert [m["rating"] for m in response.json()["items"]] == [9.0, 5.0]
@@ -318,15 +320,15 @@ async def test_sort_ignores_unknown_field_and_falls_back_to_default(client):
     """An unrecognized sort field is dropped rather than rejected — a saved
     preset referencing a since-removed field should degrade gracefully
     (see movie_service.parse_sort_param) instead of erroring the whole page."""
-    await client.post("/api/movies", json={"title": "Movie"})
+    await client.post("/api/movies", json={"title": "Movie", "media_type": "Fysisk", "format": "DVD"})
     response = await client.get("/api/movies", params={"sort": "invalid_field"})
     assert response.status_code == 200
     assert len(response.json()["items"]) == 1
 
 
 async def test_sort_treats_unrecognized_direction_as_ascending(client):
-    await client.post("/api/movies", json={"title": "Zebra"})
-    await client.post("/api/movies", json={"title": "Apple"})
+    await client.post("/api/movies", json={"title": "Zebra", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Apple", "media_type": "Fysisk", "format": "DVD"})
 
     response = await client.get("/api/movies", params={"sort": "title:sideways"})
     assert response.status_code == 200
@@ -334,7 +336,7 @@ async def test_sort_treats_unrecognized_direction_as_ascending(client):
 
 
 async def test_update_movie_format_and_audio_types(client):
-    create_response = await client.post("/api/movies", json={"title": "Upgradeable"})
+    create_response = await client.post("/api/movies", json={"title": "Upgradeable", "media_type": "Fysisk", "format": "DVD"})
     movie_id = create_response.json()["id"]
 
     update_response = await client.patch(
@@ -347,8 +349,8 @@ async def test_update_movie_format_and_audio_types(client):
 
 
 async def test_update_serial_number_swaps_with_conflicting_movie(client):
-    first = await client.post("/api/movies", json={"title": "First"})
-    second = await client.post("/api/movies", json={"title": "Second"})
+    first = await client.post("/api/movies", json={"title": "First", "media_type": "Fysisk", "format": "DVD"})
+    second = await client.post("/api/movies", json={"title": "Second", "media_type": "Fysisk", "format": "DVD"})
     first_id = first.json()["id"]
     second_id = second.json()["id"]
     assert first.json()["serial_number"] == 1
@@ -363,7 +365,7 @@ async def test_update_serial_number_swaps_with_conflicting_movie(client):
 
 
 async def test_update_serial_number_to_unused_value_does_not_swap(client):
-    only = await client.post("/api/movies", json={"title": "Only"})
+    only = await client.post("/api/movies", json={"title": "Only", "media_type": "Fysisk", "format": "DVD"})
     only_id = only.json()["id"]
 
     response = await client.patch(f"/api/movies/{only_id}", json={"serial_number": 42})
@@ -372,7 +374,7 @@ async def test_update_serial_number_to_unused_value_does_not_swap(client):
 
 
 async def test_update_serial_number_rejects_non_positive(client):
-    created = await client.post("/api/movies", json={"title": "Foo"})
+    created = await client.post("/api/movies", json={"title": "Foo", "media_type": "Fysisk", "format": "DVD"})
     movie_id = created.json()["id"]
 
     response = await client.patch(f"/api/movies/{movie_id}", json={"serial_number": 0})

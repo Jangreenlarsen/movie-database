@@ -4,9 +4,9 @@ from app.main import app
 
 
 async def test_backup_includes_all_expected_collections(client):
-    await client.post("/api/movies", json={"title": "Backup Movie"})
-    await client.post("/api/tv-shows", json={"name": "Backup Show"})
-    created = await client.post("/api/movies", json={"title": "Deleted Movie"})
+    await client.post("/api/movies", json={"title": "Backup Movie", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/tv-shows", json={"name": "Backup Show", "media_type": "Fysisk", "format": "DVD"})
+    created = await client.post("/api/movies", json={"title": "Deleted Movie", "media_type": "Fysisk", "format": "DVD"})
     await client.delete(f"/api/movies/{created.json()['id']}")
 
     response = await client.get("/api/system/backup")
@@ -44,12 +44,12 @@ async def test_backup_requires_admin(client):
 
 
 async def test_restore_round_trip_preserves_everything(client):
-    await client.post("/api/movies", json={"title": "Roundtrip Movie", "tags": ["Favorite"]})
-    await client.post("/api/tv-shows", json={"name": "Roundtrip Show"})
+    await client.post("/api/movies", json={"title": "Roundtrip Movie", "tags": ["Favorite"], "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/tv-shows", json={"name": "Roundtrip Show", "media_type": "Fysisk", "format": "DVD"})
     backup = (await client.get("/api/system/backup")).json()
 
     # Mutate everything after the backup was taken.
-    await client.post("/api/movies", json={"title": "Should Disappear After Restore"})
+    await client.post("/api/movies", json={"title": "Should Disappear After Restore", "media_type": "Fysisk", "format": "DVD"})
 
     response = await client.post("/api/system/restore", json=backup)
     assert response.status_code == 200

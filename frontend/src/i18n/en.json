@@ -493,5 +493,6 @@
   "plexImport.failedHeading": "Failed ({count})",
   "plexImport.failedHint": "These were recognised but could not be created. Try the import again — it is usually a temporary TMDb error.",
   "audit.action.plexImported": "Imported from Plex",
-  "plexImport.formatPending": "format decided on import"
+  "plexImport.formatPending": "format decided on import",
+  "detail.classificationRequired": "Media type and format must be chosen before this can be saved to the library. The media type decides whether it gets a serial number — only physical editions are numbered."
 }

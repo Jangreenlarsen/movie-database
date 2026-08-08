@@ -493,5 +493,6 @@
   "plexImport.failedHeading": "Fejlede ({count})",
   "plexImport.failedHint": "Disse blev genkendt, men kunne ikke oprettes. Prøv importen igen — det er typisk en midlertidig TMDb-fejl.",
   "audit.action.plexImported": "Importeret fra Plex",
-  "plexImport.formatPending": "format afgøres ved import"
+  "plexImport.formatPending": "format afgøres ved import",
+  "detail.classificationRequired": "Medietype og format skal vælges, før den kan gemmes i biblioteket. Medietypen afgør om den får et serienummer — kun fysiske udgaver nummereres."
 }

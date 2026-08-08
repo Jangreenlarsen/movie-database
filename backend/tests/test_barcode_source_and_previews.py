@@ -99,21 +99,21 @@ async def test_movie_creation_persists_barcode_source_when_provided(client, monk
 
     response = await client.post(
         "/api/movies",
-        json={"tmdb_id": 603, "barcode": "5051890012345", "barcode_source": "discogs"},
+        json={"tmdb_id": 603, "barcode": "5051890012345", "barcode_source": "discogs", "media_type": "Fysisk", "format": "DVD"},
     )
     assert response.status_code == 201
     assert response.json()["barcode_source"] == "discogs"
 
 
 async def test_movie_creation_omits_barcode_source_when_not_provided(client):
-    response = await client.post("/api/movies", json={"title": "Manual entry"})
+    response = await client.post("/api/movies", json={"title": "Manual entry", "media_type": "Fysisk", "format": "DVD"})
     assert response.status_code == 201
     assert response.json()["barcode_source"] is None
 
 
 async def test_movie_creation_rejects_unknown_barcode_source(client):
     response = await client.post(
-        "/api/movies", json={"title": "x", "barcode_source": "not-a-real-source"}
+        "/api/movies", json={"title": "x", "barcode_source": "not-a-real-source", "media_type": "Fysisk", "format": "DVD"}
     )
     assert response.status_code == 422
 
@@ -123,14 +123,14 @@ async def test_tv_show_creation_persists_barcode_source_when_provided(client, mo
 
     response = await client.post(
         "/api/tv-shows",
-        json={"tmdb_id": 1396, "barcode": "5051890012345", "barcode_source": "ean_search"},
+        json={"tmdb_id": 1396, "barcode": "5051890012345", "barcode_source": "ean_search", "media_type": "Fysisk", "format": "DVD"},
     )
     assert response.status_code == 201
     assert response.json()["barcode_source"] == "ean_search"
 
 
 async def test_tv_show_creation_omits_barcode_source_when_not_provided(client):
-    response = await client.post("/api/tv-shows", json={"name": "Manual entry"})
+    response = await client.post("/api/tv-shows", json={"name": "Manual entry", "media_type": "Fysisk", "format": "DVD"})
     assert response.status_code == 201
     assert response.json()["barcode_source"] is None
 
@@ -143,15 +143,15 @@ async def test_stats_barcode_source_breakdown_covers_movies_and_tv(client, monke
     monkeypatch.setattr(tmdb_client, "get_tv_show_details", _fake_get_tv_show_details)
 
     await client.post(
-        "/api/movies", json={"tmdb_id": 603, "barcode": "1", "barcode_source": "upcitemdb"}
+        "/api/movies", json={"tmdb_id": 603, "barcode": "1", "barcode_source": "upcitemdb", "media_type": "Fysisk", "format": "DVD"}
     )
     await client.post(
-        "/api/movies", json={"tmdb_id": 604, "barcode": "2", "barcode_source": "upcitemdb"}
+        "/api/movies", json={"tmdb_id": 604, "barcode": "2", "barcode_source": "upcitemdb", "media_type": "Fysisk", "format": "DVD"}
     )
     await client.post(
-        "/api/tv-shows", json={"tmdb_id": 1396, "barcode": "3", "barcode_source": "discogs"}
+        "/api/tv-shows", json={"tmdb_id": 1396, "barcode": "3", "barcode_source": "discogs", "media_type": "Fysisk", "format": "DVD"}
     )
-    await client.post("/api/movies", json={"title": "Manual, no barcode source"})
+    await client.post("/api/movies", json={"title": "Manual, no barcode source", "media_type": "Fysisk", "format": "DVD"})
 
     response = await client.get("/api/movies/stats")
     assert response.status_code == 200

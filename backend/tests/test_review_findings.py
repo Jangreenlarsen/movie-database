@@ -112,7 +112,7 @@ async def test_can_still_demote_an_admin_when_another_active_admin_remains(clien
 async def test_restore_with_no_collections_is_rejected_and_deletes_nothing(client, db):
     """Every SystemBackup list defaults to [], so a truncated/wrong file used
     to validate cleanly and then delete every collection, returning 200."""
-    await client.post("/api/movies", json={"title": "Keep Me"})
+    await client.post("/api/movies", json={"title": "Keep Me", "media_type": "Fysisk", "format": "DVD"})
     users_before = await db["users"].count_documents({})
     movies_before = await db["movies"].count_documents({})
 
@@ -131,7 +131,7 @@ async def test_restore_with_no_collections_is_rejected_and_deletes_nothing(clien
 async def test_restore_is_rejected_when_backup_has_no_active_admin(client, db):
     """Subtler variant: users are present, but none of them could administer
     (or undo) the restored system."""
-    await client.post("/api/movies", json={"title": "Keep Me"})
+    await client.post("/api/movies", json={"title": "Keep Me", "media_type": "Fysisk", "format": "DVD"})
     movies_before = await db["movies"].count_documents({})
 
     response = await client.post(
@@ -153,10 +153,10 @@ async def test_restore_is_rejected_when_backup_has_no_active_admin(client, db):
 async def test_restore_accepts_a_genuine_backup(client, db):
     """A real snapshot always contains the active admin who took it, so the
     new guard must not get in the way of the feature working."""
-    await client.post("/api/movies", json={"title": "Original"})
+    await client.post("/api/movies", json={"title": "Original", "media_type": "Fysisk", "format": "DVD"})
     backup = (await client.get("/api/system/backup")).json()
 
-    await client.post("/api/movies", json={"title": "Added After Backup"})
+    await client.post("/api/movies", json={"title": "Added After Backup", "media_type": "Fysisk", "format": "DVD"})
     assert await db["movies"].count_documents({}) == 2
 
     response = await client.post("/api/system/restore", json=backup)
@@ -168,7 +168,7 @@ async def test_restore_accepts_a_genuine_backup(client, db):
 async def test_restore_of_an_empty_library_is_still_allowed(client, db):
     """An empty *library* is legitimate (a backup taken before any films were
     added) — only the missing-admin case is rejected."""
-    await client.post("/api/movies", json={"title": "Will Be Replaced"})
+    await client.post("/api/movies", json={"title": "Will Be Replaced", "media_type": "Fysisk", "format": "DVD"})
     admin = await db["users"].find_one({"username": "testuser"})
 
     backup = SystemBackup(
@@ -199,7 +199,7 @@ async def test_assert_restorable_raises_before_any_deletion():
 
 
 async def test_scheduling_against_an_unknown_request_creates_no_screening(client, db):
-    movie = (await client.post("/api/movies", json={"title": "Probe Movie"})).json()
+    movie = (await client.post("/api/movies", json={"title": "Probe Movie", "media_type": "Fysisk", "format": "DVD"})).json()
 
     response = await client.post(
         "/api/screenings",
@@ -218,7 +218,7 @@ async def test_scheduling_against_an_unknown_request_creates_no_screening(client
 async def test_scheduling_from_a_real_request_still_works(client, db):
     """The reordering must not break the normal path: the screening is
     created and the originating request is marked scheduled."""
-    movie = (await client.post("/api/movies", json={"title": "Probe Movie"})).json()
+    movie = (await client.post("/api/movies", json={"title": "Probe Movie", "media_type": "Fysisk", "format": "DVD"})).json()
     request = (
         await client.post(
             "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie["id"]}
@@ -247,7 +247,7 @@ async def test_scheduling_from_a_real_request_still_works(client, db):
 
 
 async def test_deleting_a_movie_removes_its_screenings_and_requests(client, db):
-    movie = (await client.post("/api/movies", json={"title": "Probe Movie"})).json()
+    movie = (await client.post("/api/movies", json={"title": "Probe Movie", "media_type": "Fysisk", "format": "DVD"})).json()
     await client.post(
         "/api/screenings",
         json={
@@ -277,7 +277,7 @@ async def test_deleting_a_tv_show_removes_its_screenings_and_requests(client, db
         return _fake_tv_details(tv_id)
 
     monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_details)
-    show = (await client.post("/api/tv-shows", json={"tmdb_id": 1409})).json()
+    show = (await client.post("/api/tv-shows", json={"tmdb_id": 1409, "media_type": "Fysisk", "format": "DVD"})).json()
 
     await client.post(
         "/api/screenings",
@@ -300,8 +300,8 @@ async def test_deleting_a_tv_show_removes_its_screenings_and_requests(client, db
 
 async def test_deleting_a_movie_leaves_other_titles_screenings_alone(client, db):
     """The cleanup must be scoped to the deleted title only."""
-    keep = (await client.post("/api/movies", json={"title": "Keep"})).json()
-    drop = (await client.post("/api/movies", json={"title": "Drop"})).json()
+    keep = (await client.post("/api/movies", json={"title": "Keep", "media_type": "Fysisk", "format": "DVD"})).json()
+    drop = (await client.post("/api/movies", json={"title": "Drop", "media_type": "Fysisk", "format": "DVD"})).json()
     for movie_id in (keep["id"], drop["id"]):
         await client.post(
             "/api/screenings",
@@ -325,7 +325,7 @@ async def test_deleting_a_movie_leaves_other_titles_screenings_alone(client, db)
 
 
 async def test_concurrent_requests_for_the_same_title_share_one_request(client, db):
-    movie = (await client.post("/api/movies", json={"title": "Probe Movie"})).json()
+    movie = (await client.post("/api/movies", json={"title": "Probe Movie", "media_type": "Fysisk", "format": "DVD"})).json()
 
     await asyncio.gather(
         screening_service.request_screening(db, "movie", movie["id"], None, "userA"),
@@ -340,7 +340,7 @@ async def test_concurrent_requests_for_the_same_title_share_one_request(client, 
 async def test_a_title_can_be_requested_again_after_being_declined(client, db):
     """The pending-only partial index must not block the legitimate history
     of several declined requests for the same title."""
-    movie = (await client.post("/api/movies", json={"title": "Probe Movie"})).json()
+    movie = (await client.post("/api/movies", json={"title": "Probe Movie", "media_type": "Fysisk", "format": "DVD"})).json()
 
     first = (
         await client.post(

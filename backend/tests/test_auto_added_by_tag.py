@@ -1,5 +1,5 @@
 async def test_manually_created_movie_gets_added_by_tag(client):
-    response = await client.post("/api/movies", json={"title": "Manual Movie"})
+    response = await client.post("/api/movies", json={"title": "Manual Movie", "media_type": "Fysisk", "format": "DVD"})
     assert response.json()["tags"] == ["Tilføjet af testuser"]
 
 
@@ -26,18 +26,18 @@ async def test_tmdb_created_movie_gets_added_by_tag(client, monkeypatch):
 
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
 
-    response = await client.post("/api/movies", json={"tmdb_id": 1})
+    response = await client.post("/api/movies", json={"tmdb_id": 1, "media_type": "Fysisk", "format": "DVD"})
     assert response.json()["tags"] == ["Tilføjet af testuser"]
 
 
 async def test_manually_created_tv_show_gets_added_by_tag(client):
-    response = await client.post("/api/tv-shows", json={"name": "Manual Show"})
+    response = await client.post("/api/tv-shows", json={"name": "Manual Show", "media_type": "Fysisk", "format": "DVD"})
     assert response.json()["tags"] == ["Tilføjet af testuser"]
 
 
 async def test_added_by_tag_not_duplicated_across_creations_by_same_user(client):
-    await client.post("/api/movies", json={"title": "First"})
-    await client.post("/api/movies", json={"title": "Second"})
+    await client.post("/api/movies", json={"title": "First", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Second", "media_type": "Fysisk", "format": "DVD"})
 
     tags = await client.get("/api/tags")
     assert tags.json().count("Tilføjet af testuser") == 1
@@ -58,12 +58,12 @@ async def test_added_by_tag_reflects_the_actual_creator_not_admin(client):
         await client.patch(
             f"/api/users/{register.json()['id']}/status", json={"status": "active"}
         )
-        response = await second.post("/api/movies", json={"title": "Other User's Movie"})
+        response = await second.post("/api/movies", json={"title": "Other User's Movie", "media_type": "Fysisk", "format": "DVD"})
         assert response.json()["tags"] == ["Tilføjet af otheruser"]
 
 
 async def test_updating_a_movie_does_not_add_or_duplicate_the_tag(client):
-    created = await client.post("/api/movies", json={"title": "Editable Movie"})
+    created = await client.post("/api/movies", json={"title": "Editable Movie", "media_type": "Fysisk", "format": "DVD"})
     movie_id = created.json()["id"]
     assert created.json()["tags"] == ["Tilføjet af testuser"]
 
@@ -74,7 +74,7 @@ async def test_updating_a_movie_does_not_add_or_duplicate_the_tag(client):
 async def test_user_can_remove_the_added_by_tag_afterwards(client):
     """It's a normal tag once created, not specially protected — a user can
     still remove it via a regular tags update if they don't want it."""
-    created = await client.post("/api/movies", json={"title": "Untaggable Movie"})
+    created = await client.post("/api/movies", json={"title": "Untaggable Movie", "media_type": "Fysisk", "format": "DVD"})
     movie_id = created.json()["id"]
 
     updated = await client.patch(f"/api/movies/{movie_id}", json={"tags": []})

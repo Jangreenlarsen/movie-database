@@ -7,23 +7,26 @@ import Pagination from "../components/Pagination";
 import { PlexCardBadge, PlexPlayLink } from "../components/PlexAvailability";
 import { usePlexAvailability } from "../components/usePlexAvailability";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
+import { useLocale, useT } from "../i18n";
 import "../pages/Library.css";
 import "./TvShows.css";
 
+// Feature #89 — se Library.jsx' identiske note: `labelKey` frem for
+// `label`, fordi listen evalueres ved import, før nogen oversætter findes.
 const SORT_OPTIONS = [
-  { value: "serial_number", label: "Serienummer" },
-  { value: "created_at", label: "Tilføjet" },
-  { value: "name", label: "Navn" },
-  { value: "year", label: "År" },
-  { value: "rating", label: "Rating" },
-  { value: "personal_rating", label: "Din rating" },
-  { value: "watched_at", label: "Set-dato" },
-  { value: "format", label: "Format" },
-  { value: "audio_types", label: "Lyd-type" },
-  { value: "media_type", label: "Medietype" },
-  { value: "location", label: "Lokation" },
-  { value: "owner", label: "Ejer" },
-  { value: "registered_by", label: "Registreret af" },
+  { value: "serial_number", labelKey: "field.serialNumber" },
+  { value: "created_at", labelKey: "field.added" },
+  { value: "name", labelKey: "field.name" },
+  { value: "year", labelKey: "field.year" },
+  { value: "rating", labelKey: "field.rating" },
+  { value: "personal_rating", labelKey: "field.personalRating" },
+  { value: "watched_at", labelKey: "field.watchedDate" },
+  { value: "format", labelKey: "field.format" },
+  { value: "audio_types", labelKey: "field.audioType" },
+  { value: "media_type", labelKey: "field.mediaType" },
+  { value: "location", labelKey: "field.location" },
+  { value: "owner", labelKey: "field.owner" },
+  { value: "registered_by", labelKey: "field.registeredBy" },
 ];
 const MAX_SORT_LEVELS = 3;
 
@@ -48,13 +51,13 @@ function sortLevelsAreDefault(levels) {
 }
 
 const VISIBLE_FIELD_OPTIONS = [
-  { key: "year", label: "År" },
-  { key: "tags", label: "Tags" },
-  { key: "format", label: "Format" },
-  { key: "audioTypes", label: "Lyd-type" },
-  { key: "mediaType", label: "Medietype" },
-  { key: "rating", label: "Rating" },
-  { key: "plex", label: "Plex" },
+  { key: "year", labelKey: "field.year" },
+  { key: "tags", labelKey: "field.tags" },
+  { key: "format", labelKey: "field.format" },
+  { key: "audioTypes", labelKey: "field.audioType" },
+  { key: "mediaType", labelKey: "field.mediaType" },
+  { key: "rating", labelKey: "field.rating" },
+  { key: "plex", labelKey: "field.plex" },
 ];
 
 const DEFAULT_VISIBLE_FIELDS = {
@@ -94,6 +97,7 @@ function formatSerial(serialNumber, paddingWidth) {
  * som denne side aldrig kan vise (BUGS.md #47).
  */
 export default function TvShows({ user, onSettingsChanged, wishlist = false, onGoToMovies }) {
+  const t = useT();
   const isGuest = user.role === "guest";
   const [query, setQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
@@ -359,8 +363,10 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
   return (
     <section>
       <div className="page-header">
-        <h1>{wishlist ? "TV-ønsker" : "TV-serier"}</h1>
-        <span className="muted">{status === "ready" ? `${shows.length} serier` : " "}</span>
+        <h1>{t(wishlist ? "tv.wishlistTitle" : "tv.title")}</h1>
+        <span className="muted">
+          {status === "ready" ? t("tv.count", { count: shows.length }) : " "}
+        </span>
       </div>
 
       <div className="library-toolbar">
@@ -368,7 +374,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
           <div className="search-input-wrap">
             <input
               type="search"
-              placeholder="Søg på navn, skuespiller, genre..."
+              placeholder={t("tv.searchPlaceholder")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -376,39 +382,44 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
 
           {!isGuest && (
             <button type="button" className="btn btn-primary" onClick={() => setShowAddPanel((v) => !v)}>
-              {showAddPanel ? "Luk" : wishlist ? "+ Tilføj ønske" : "+ Tilføj serie"} ▾
+              {showAddPanel
+                ? t("common.close")
+                : t(wishlist ? "lib.addWish" : "tv.addShow")}{" "}
+              ▾
             </button>
           )}
 
           <button
             type="button"
             className={`btn${sortIsDefault ? "" : " btn-modified"}`}
-            title={sortIsDefault ? "Standard-sortering" : "Sorteringen er ændret fra standard"}
+            title={t(sortIsDefault ? "lib.sortDefaultTitle" : "lib.sortModifiedTitle")}
             onClick={() => setShowSortPanel((v) => !v)}
           >
-            Sortér {sortIsDefault ? "" : "● "}▾
+            {t("lib.sort")} {sortIsDefault ? "" : "● "}▾
           </button>
 
           <button
             type="button"
             className={`btn${hasActiveFilters ? " btn-modified" : ""}`}
-            title={hasActiveFilters ? `${activeFilterCount} aktive filtre` : "Ingen filtre valgt"}
+            title={
+              hasActiveFilters
+                ? t("lib.filterActiveTitle", { count: activeFilterCount })
+                : t("lib.filterNoneTitle")
+            }
             onClick={() => setShowFilterPanel((v) => !v)}
           >
-            Filtrér {hasActiveFilters ? `(${activeFilterCount}) ` : ""}▾
+            {t("lib.filter")} {hasActiveFilters ? `(${activeFilterCount}) ` : ""}▾
           </button>
 
           <button
             type="button"
             className={`btn${changedFieldCount > 0 ? " btn-modified" : ""}`}
-            title={
-              changedFieldCount > 0
-                ? "Viste felter er ændret fra standard"
-                : "Standard-felter vises"
-            }
+            title={t(
+              changedFieldCount > 0 ? "lib.fieldsModifiedTitle" : "lib.fieldsDefaultTitle"
+            )}
             onClick={() => setShowFieldPanel((v) => !v)}
           >
-            Vis felter {changedFieldCount > 0 ? "● " : ""}▾
+            {t("lib.fields")} {changedFieldCount > 0 ? "● " : ""}▾
           </button>
         </div>
 
@@ -438,14 +449,14 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
                   <select value={level.field} onChange={(e) => updateSortLevelField(index, e.target.value)}>
                     {SORT_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
-                        {opt.label}
+                        {t(opt.labelKey)}
                       </option>
                     ))}
                   </select>
                   <button
                     type="button"
                     className="btn"
-                    title={level.direction === "asc" ? "Stigende" : "Faldende"}
+                    title={t(level.direction === "asc" ? "lib.sortAscending" : "lib.sortDescending")}
                     onClick={() => toggleSortLevelDirection(index)}
                   >
                     {level.direction === "asc" ? "↑" : "↓"}
@@ -454,7 +465,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
                     <button
                       type="button"
                       className="btn"
-                      title="Fjern niveau"
+                      title={t("lib.removeSortLevel")}
                       onClick={() => removeSortLevel(index)}
                     >
                       ✕
@@ -465,7 +476,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
               <div className="panel-actions">
                 {sortLevels.length < MAX_SORT_LEVELS && (
                   <button type="button" className="btn" onClick={addSortLevel}>
-                    + Tilføj sorteringsniveau
+                    {t("lib.addSortLevel")}
                   </button>
                 )}
                 <button
@@ -474,15 +485,15 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
                   onClick={resetSortToDefault}
                   disabled={sortIsDefault}
                 >
-                  Nulstil sortering
+                  {t("lib.resetSort")}
                 </button>
               </div>
             </div>
 
             <div className="filter-group sort-preset-row">
-              <span className="filter-group-label">Gemte visninger</span>
+              <span className="filter-group-label">{t("lib.savedViews")}</span>
               <select value="" onChange={(e) => e.target.value && applyPreset(e.target.value)}>
-                <option value="">Vælg gemt visning...</option>
+                <option value="">{t("lib.selectSavedView")}</option>
                 {presets.map((preset) => (
                   <option key={preset.name} value={preset.name}>
                     {preset.name}
@@ -490,7 +501,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
                 ))}
               </select>
               <input
-                placeholder="Navngiv visning..."
+                placeholder={t("lib.nameViewPlaceholder")}
                 value={presetNameInput}
                 onChange={(e) => setPresetNameInput(e.target.value)}
                 style={{ maxWidth: 160 }}
@@ -501,11 +512,11 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
                 onClick={saveCurrentAsPreset}
                 disabled={!presetNameInput.trim()}
               >
-                Gem nuværende visning
+                {t("lib.saveCurrentView")}
               </button>
             </div>
             <p className="muted" style={{ margin: 0 }}>
-              En gemt visning husker søgetekst, alle filtre og sortering — ikke kun rækkefølgen.
+              {t("lib.savedViewHint")}
             </p>
 
             {presets.length > 0 && (
@@ -516,7 +527,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
                     <button
                       type="button"
                       className="sort-preset-remove"
-                      title={`Slet preset "${preset.name}"`}
+                      title={t("lib.deletePreset", { name: preset.name })}
                       onClick={() => deletePreset(preset.name)}
                     >
                       ✕
@@ -531,12 +542,12 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
         {showFieldPanel && (
           <div className="filter-panel">
             <div className="filter-group">
-              <span className="filter-group-label">Vis på kort</span>
+              <span className="filter-group-label">{t("lib.showOnCard")}</span>
               <div className="chip-row">
                 {VISIBLE_FIELD_OPTIONS.map((opt) => (
                   <Chip
                     key={opt.key}
-                    label={opt.label}
+                    label={t(opt.labelKey)}
                     active={visibleFields[opt.key]}
                     onClick={() => updateVisibleField(opt.key, !visibleFields[opt.key])}
                   />
@@ -550,7 +561,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
                 onClick={resetVisibleFieldsToDefault}
                 disabled={changedFieldCount === 0}
               >
-                Nulstil viste felter
+                {t("lib.resetFields")}
               </button>
             </div>
           </div>
@@ -560,7 +571,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
           <div className="filter-panel">
             {allTags.length > 0 && (
               <div className="filter-group">
-                <span className="filter-group-label">Tags</span>
+                <span className="filter-group-label">{t("field.tags")}</span>
                 <div className="chip-row">
                   {allTags.map((tag) => (
                     <Chip
@@ -575,7 +586,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
             )}
             {attributeOptions.formats.length > 0 && (
               <div className="filter-group">
-                <span className="filter-group-label">Format</span>
+                <span className="filter-group-label">{t("field.format")}</span>
                 <div className="chip-row">
                   {attributeOptions.formats.map((format) => (
                     <Chip
@@ -590,7 +601,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
             )}
             {attributeOptions.audio_types.length > 0 && (
               <div className="filter-group">
-                <span className="filter-group-label">Lyd</span>
+                <span className="filter-group-label">{t("field.audio")}</span>
                 <div className="chip-row">
                   {attributeOptions.audio_types.map((audioType) => (
                     <Chip
@@ -605,7 +616,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
             )}
             {attributeOptions.media_types.length > 0 && (
               <div className="filter-group">
-                <span className="filter-group-label">Medietype</span>
+                <span className="filter-group-label">{t("field.mediaType")}</span>
                 <div className="chip-row">
                   {attributeOptions.media_types.map((mediaType) => (
                     <Chip
@@ -619,15 +630,15 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
               </div>
             )}
             <div className="filter-group">
-              <span className="filter-group-label">Set-status</span>
+              <span className="filter-group-label">{t("field.watchedStatus")}</span>
               <div className="chip-row">
                 <Chip
-                  label="Set"
+                  label={t("lib.watched")}
                   active={watchedFilter === true}
                   onClick={() => setWatchedFilter((prev) => (prev === true ? null : true))}
                 />
                 <Chip
-                  label="Ikke set"
+                  label={t("lib.notWatched")}
                   active={watchedFilter === false}
                   onClick={() => setWatchedFilter((prev) => (prev === false ? null : false))}
                 />
@@ -642,7 +653,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
                 onClick={resetFilters}
                 disabled={!hasActiveFilters}
               >
-                Ryd filtre
+                {t("lib.clearFilters")}
               </button>
             </div>
           </div>
@@ -659,16 +670,17 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
 
       {settingsError && (
         <div className="banner banner-error">
-          Dine visningsindstillinger blev ikke gemt: {settingsError}
+          {t("lib.settingsNotSaved", { message: settingsError })}
         </div>
       )}
 
       {savedMovie && (
         <div className="banner banner-info" style={{ marginBottom: 16 }}>
           <span style={{ flex: 1 }}>
-            Det du gemte er en film — den ligger derfor under{" "}
-            <strong>{wishlist ? "film-ønsker" : "Filmbibliotek"}</strong>, ikke her blandt{" "}
-            {wishlist ? "TV-ønskerne" : "TV-serierne"}.
+            {t("tv.savedMovieNotice", {
+              target: t(wishlist ? "tv.movieWishes" : "lib.title"),
+              here: t(wishlist ? "tv.tvWishes" : "tv.tvShows"),
+            })}
           </span>
           {onGoToMovies && (
             <button
@@ -679,7 +691,9 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
                 onGoToMovies();
               }}
             >
-              Vis {wishlist ? "film-ønsker" : "filmbiblioteket"}
+              {t("lib.showTarget", {
+                target: t(wishlist ? "tv.movieWishes" : "tv.movieLibraryLower"),
+              })}
             </button>
           )}
           <button type="button" className="btn" onClick={() => setSavedMovie(false)}>
@@ -689,18 +703,20 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
       )}
 
       {status === "error" && (
-        <div className="banner banner-error">Kunne ikke hente TV-serier.</div>
+        <div className="banner banner-error">{t("tv.loadError")}</div>
       )}
 
       {status === "ready" && shows.length === 0 && (
         <div className="empty-state">
           <div className="empty-state-icon">📺</div>
           <p>
-            {hasActiveFilters || query
-              ? "Ingen serier matcher dine filtre."
-              : wishlist
-                ? "Ingen TV-ønsker endnu."
-                : "Ingen TV-serier endnu — scan et cover eller søg for at komme i gang."}
+            {t(
+              hasActiveFilters || query
+                ? "tv.emptyFiltered"
+                : wishlist
+                  ? "tv.emptyWishlist"
+                  : "tv.empty"
+            )}
           </p>
         </div>
       )}
@@ -725,13 +741,16 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
                 <div className="movie-badge-stack">
                   {visibleFields.plex && <PlexCardBadge availability={plex.items[show.id]} />}
                   {show.number_of_seasons > 0 && (
-                    <div className="movie-seasons-badge" title="Ejede sæsoner ud af serien totalt">
-                      {show.seasons.filter((s) => s.owned).length}/{show.number_of_seasons} sæsoner
+                    <div className="movie-seasons-badge" title={t("tv.seasonsBadgeTitle")}>
+                      {t("tv.seasonsBadge", {
+                        owned: show.seasons.filter((s) => s.owned).length,
+                        total: show.number_of_seasons,
+                      })}
                     </div>
                   )}
                   {show.watched && (
-                    <div className="movie-watched-badge" title="Set">
-                      ✓ Set
+                    <div className="movie-watched-badge" title={t("lib.watched")}>
+                      {t("detail.watchedShort")}
                     </div>
                   )}
                 </div>
@@ -821,6 +840,8 @@ export function TvShowDetailModal({
   onClose,
   onChanged,
 }) {
+  const t = useT();
+  const locale = useLocale();
   const [tagsInput, setTagsInput] = useState(show.tags.join(", "));
   const [format, setFormat] = useState(show.format ?? "");
   const [audioTypes, setAudioTypes] = useState(show.audio_types);
@@ -964,16 +985,23 @@ export function TvShowDetailModal({
           <div>
             <h2>{show.name}</h2>
             <p className="muted">
-              {show.year ?? "År ukendt"}
+              {show.year ?? t("detail.yearUnknown")}
               {show.end_year && show.end_year !== show.year ? `–${show.end_year}` : ""}
               {show.status && <> · {show.status}</>}
               {!show.is_wishlist && show.id && (
-                <> · Serienr. {formatSerial(show.serial_number, serialPaddingWidth)}</>
+                <>
+                  {" · "}
+                  {t("detail.serialShort", {
+                    serial: formatSerial(show.serial_number, serialPaddingWidth),
+                  })}
+                </>
               )}
-              {!show.id && <> · Ikke oprettet endnu</>}
+              {!show.id && <> · {t("detail.notCreatedYet")}</>}
               {show.rating != null && <> · ★ {show.rating.toFixed(1)}</>}
-              {show.personal_rating != null && <> · Din: {show.personal_rating}/10</>}
-              {show.watched && <> · ✓ Set</>}
+              {show.personal_rating != null && (
+                <> · {t("detail.yourRatingShort", { rating: show.personal_rating })}</>
+              )}
+              {show.watched && <> · {t("detail.watchedShort")}</>}
             </p>
             {show.genres.length > 0 && <p className="muted">{show.genres.join(", ")}</p>}
             {(show.imdb_url || show.tmdb_id) && (
@@ -1004,12 +1032,12 @@ export function TvShowDetailModal({
           {show.overview && <p>{show.overview}</p>}
           {show.creators.length > 0 && (
             <p className="muted">
-              <strong>Skabt af:</strong> {show.creators.join(", ")}
+              <strong>{t("tv.createdBy")}</strong> {show.creators.join(", ")}
             </p>
           )}
           {show.cast.length > 0 && (
             <p className="muted">
-              <strong>Medvirkende:</strong> {show.cast.join(", ")}
+              <strong>{t("detail.cast")}</strong> {show.cast.join(", ")}
             </p>
           )}
 
@@ -1022,90 +1050,93 @@ export function TvShowDetailModal({
               <div className="modal-field-row">
                 {!show.is_wishlist && (
                   <div>
-                    <div className="modal-section-label">Serienummer</div>
+                    <div className="modal-section-label">{t("field.serialNumber")}</div>
                     <p>{formatSerial(show.serial_number, serialPaddingWidth)}</p>
                   </div>
                 )}
                 <div>
-                  <div className="modal-section-label">Set-status (hele serien)</div>
+                  <div className="modal-section-label">{t("tv.watchedStatusWhole")}</div>
                   <p>
                     {show.watched
-                      ? `✓ Set${show.watched_at ? ` d. ${new Date(show.watched_at).toLocaleDateString("da-DK")}` : ""}`
-                      : "Ikke set"}
+                      ? show.watched_at
+                        ? t("detail.watchedOn", {
+                            date: new Date(show.watched_at).toLocaleDateString(locale),
+                          })
+                        : t("detail.watchedShort")
+                      : t("lib.notWatched")}
                   </p>
                 </div>
               </div>
               <div>
-                <div className="modal-section-label">Tags</div>
-                <p>{show.tags.length > 0 ? show.tags.join(", ") : "Ingen tags"}</p>
+                <div className="modal-section-label">{t("field.tags")}</div>
+                <p>{show.tags.length > 0 ? show.tags.join(", ") : t("detail.noTags")}</p>
               </div>
               <div className="modal-field-row">
                 <div>
-                  <div className="modal-section-label">Lokation</div>
+                  <div className="modal-section-label">{t("field.location")}</div>
                   <p>{show.location || "—"}</p>
                 </div>
                 <div>
-                  <div className="modal-section-label">Ejer</div>
+                  <div className="modal-section-label">{t("field.owner")}</div>
                   <p>{show.owner || "—"}</p>
                 </div>
               </div>
               <div className="modal-field-row">
                 <div>
-                  <div className="modal-section-label">Format</div>
-                  <p>{show.format || "Ikke angivet"}</p>
+                  <div className="modal-section-label">{t("field.format")}</div>
+                  <p>{show.format || t("detail.notSpecified")}</p>
                 </div>
                 <div>
-                  <div className="modal-section-label">Medietype</div>
-                  <p>{show.media_type || "Ikke angivet"}</p>
+                  <div className="modal-section-label">{t("field.mediaType")}</div>
+                  <p>{show.media_type || t("detail.notSpecified")}</p>
                 </div>
               </div>
               <div className="modal-field-row">
                 <div>
-                  <div className="modal-section-label">Din rating</div>
+                  <div className="modal-section-label">{t("field.personalRating")}</div>
                   <p>{show.personal_rating != null ? `${show.personal_rating}/10` : "—"}</p>
                 </div>
                 {show.registered_by && (
                   <div>
-                    <div className="modal-section-label">Registreret af</div>
+                    <div className="modal-section-label">{t("field.registeredBy")}</div>
                     <p>{show.registered_by}</p>
                   </div>
                 )}
               </div>
               <div>
-                <div className="modal-section-label">Lyd-type</div>
+                <div className="modal-section-label">{t("field.audioType")}</div>
                 <p>{show.audio_types.length > 0 ? show.audio_types.join(", ") : "—"}</p>
               </div>
               <div>
-                <div className="modal-section-label">Din note</div>
+                <div className="modal-section-label">{t("field.personalNote")}</div>
                 <p>{show.personal_note || "—"}</p>
               </div>
             </>
           ) : (
             <>
               {!show.id && (
-                <p className="muted">
-                  Ikke oprettet endnu — tryk "Opret" nedenfor for at gemme i biblioteket.
-                  Serienummer tildeles automatisk ved oprettelse.
-                </p>
+                <p className="muted">{t("tv.createHint")}</p>
               )}
               {/* Feature #87 — se den identiske gruppering i Library.jsx. */}
               <div className="modal-field-row">
                 {!show.is_wishlist && show.id && (
                   <div>
-                    <div className="modal-section-label">Serienummer</div>
+                    <div className="modal-section-label">{t("field.serialNumber")}</div>
                     <p className="muted" style={{ margin: 0 }}>
                       {canEditSerial
-                        ? "Redigér serienummeret via API'et om nødvendigt."
-                        : `Kun en admin eller ${show.registered_by ?? "den der registrerede serien"} kan ændre serienummeret.`}
+                        ? t("tv.serialEditHint")
+                        : t("tv.serialLockedHint", {
+                            who: show.registered_by ?? t("tv.serialLockedFallback"),
+                          })}
                     </p>
                   </div>
                 )}
 
                 <div>
-                  <div className="modal-section-label">Set-status (hele serien)</div>
+                  <div className="modal-section-label">{t("tv.watchedStatusWhole")}</div>
                   <label className="watched-toggle">
                     <input type="checkbox" checked={watched} onChange={toggleWatched} />
-                    Set
+                    {t("lib.watched")}
                   </label>
                   {watched && (
                     <input
@@ -1119,7 +1150,7 @@ export function TvShowDetailModal({
               </div>
 
               <div>
-                <div className="modal-section-label">Tags</div>
+                <div className="modal-section-label">{t("field.tags")}</div>
                 <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} />
                 {allTags.length > 0 && (
                   <div className="chip-row" style={{ marginTop: 8 }}>
@@ -1132,26 +1163,31 @@ export function TvShowDetailModal({
 
               <div className="modal-field-row">
                 <div>
-                  <div className="modal-section-label">Lokation</div>
+                  <div className="modal-section-label">{t("field.location")}</div>
                   <Combobox
                     value={location}
                     onChange={setLocation}
                     options={allLocations}
-                    placeholder="Stue, reol 2..."
+                    placeholder={t("detail.locationPlaceholder")}
                   />
                 </div>
 
                 <div>
-                  <div className="modal-section-label">Ejer</div>
-                  <Combobox value={owner} onChange={setOwner} options={allOwners} placeholder="Hvem ejer den..." />
+                  <div className="modal-section-label">{t("field.owner")}</div>
+                  <Combobox
+                    value={owner}
+                    onChange={setOwner}
+                    options={allOwners}
+                    placeholder={t("tv.ownerPlaceholder")}
+                  />
                 </div>
               </div>
 
               <div className="modal-field-row">
                 <div>
-                  <div className="modal-section-label">Format</div>
+                  <div className="modal-section-label">{t("field.format")}</div>
                   <select value={format} onChange={(e) => setFormat(e.target.value)}>
-                    <option value="">Ikke angivet</option>
+                    <option value="">{t("detail.notSpecified")}</option>
                     {attributeOptions.formats.map((f) => (
                       <option key={f} value={f}>
                         {f}
@@ -1161,9 +1197,9 @@ export function TvShowDetailModal({
                 </div>
 
                 <div>
-                  <div className="modal-section-label">Medietype</div>
+                  <div className="modal-section-label">{t("field.mediaType")}</div>
                   <select value={mediaType} onChange={(e) => setMediaType(e.target.value)}>
-                    <option value="">Ikke angivet</option>
+                    <option value="">{t("detail.notSpecified")}</option>
                     {attributeOptions.media_types.map((m) => (
                       <option key={m} value={m}>
                         {m}
@@ -1175,7 +1211,7 @@ export function TvShowDetailModal({
 
               <div className="modal-field-row">
                 <div>
-                  <div className="modal-section-label">Din rating (1-10)</div>
+                  <div className="modal-section-label">{t("field.personalRatingRange")}</div>
                   <input
                     type="number"
                     min="1"
@@ -1188,7 +1224,7 @@ export function TvShowDetailModal({
 
                 {show.registered_by && (
                   <div>
-                    <div className="modal-section-label">Registreret af</div>
+                    <div className="modal-section-label">{t("field.registeredBy")}</div>
                     <p className="muted" style={{ margin: 0 }}>
                       {show.registered_by}
                     </p>
@@ -1197,7 +1233,7 @@ export function TvShowDetailModal({
               </div>
 
               <div>
-                <div className="modal-section-label">Lyd-type</div>
+                <div className="modal-section-label">{t("field.audioType")}</div>
                 <div className="chip-row">
                   {attributeOptions.audio_types.map((audioType) => (
                     <Chip
@@ -1211,11 +1247,11 @@ export function TvShowDetailModal({
               </div>
 
               <div>
-                <div className="modal-section-label">Din note</div>
+                <div className="modal-section-label">{t("field.personalNote")}</div>
                 <textarea
                   value={personalNote}
                   onChange={(e) => setPersonalNote(e.target.value)}
-                  placeholder="Egne tanker om serien..."
+                  placeholder={t("tv.notePlaceholder")}
                   rows={3}
                   style={{ width: "100%", resize: "vertical" }}
                 />
@@ -1225,7 +1261,7 @@ export function TvShowDetailModal({
 
           {seasons.length > 0 && (
             <div>
-              <div className="modal-section-label">Sæsoner</div>
+              <div className="modal-section-label">{t("field.seasons")}</div>
               <div className="season-list">
                 {seasons.map((season) => (
                   <SeasonRow
@@ -1257,17 +1293,19 @@ export function TvShowDetailModal({
           <div className="modal-footer">
             {show.id && (
               <button type="button" className="btn" onClick={remove} disabled={deleting}>
-                {deleting ? "Sletter..." : "Slet serie"}
+                {t(deleting ? "detail.deleting" : "tv.deleteShow")}
               </button>
             )}
             {show.id && show.is_wishlist && (
               <button type="button" className="btn" onClick={moveToLibrary} disabled={moving}>
-                {moving ? "Flytter..." : "Flyt til bibliotek"}
+                {t(moving ? "detail.moving" : "detail.moveToLibrary")}
               </button>
             )}
             {show.id && <ScreeningRequestButton mediaKind="tv" id={show.id} username={user.username} />}
             <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
-              {saving ? "Gemmer..." : show.id ? "Gem ændringer" : "Opret"}
+              {saving
+                ? t("common.saving")
+                : t(show.id ? "detail.saveChanges" : "detail.create")}
             </button>
           </div>
         )}
@@ -1277,6 +1315,7 @@ export function TvShowDetailModal({
 }
 
 function SeasonRow({ season, isGuest, onToggleOwned, onToggleEpisode }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -1302,15 +1341,21 @@ function SeasonRow({ season, isGuest, onToggleOwned, onToggleEpisode }) {
             onChange={handleOwnedChange}
             disabled={busy || isGuest}
           />
-          {season.name ?? `Sæson ${season.season_number}`} ({season.episode_count} episoder)
+          {t("tv.seasonEpisodes", {
+            name: season.name ?? t("tv.seasonFallback", { number: season.season_number }),
+            count: season.episode_count,
+          })}
         </label>
         {season.episodes.length > 0 && (
           <>
             <span className="muted">
-              {watchedCount}/{season.episodes.length} set
+              {t("tv.episodesWatched", {
+                watched: watchedCount,
+                total: season.episodes.length,
+              })}
             </span>
             <button type="button" className="btn" onClick={() => setExpanded((v) => !v)}>
-              {expanded ? "Skjul episoder" : "Vis episoder"}
+              {t(expanded ? "tv.hideEpisodes" : "tv.showEpisodes")}
             </button>
           </>
         )}
@@ -1327,7 +1372,8 @@ function SeasonRow({ season, isGuest, onToggleOwned, onToggleEpisode }) {
                   disabled={isGuest}
                   onChange={(e) => onToggleEpisode(episode.episode_number, e.target.checked)}
                 />
-                {episode.episode_number}. {episode.name ?? `Episode ${episode.episode_number}`}
+                {episode.episode_number}.{" "}
+                {episode.name ?? t("tv.episodeFallback", { number: episode.episode_number })}
               </label>
             </li>
           ))}

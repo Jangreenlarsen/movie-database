@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { useT } from "../i18n";
 import "./PrintList.css";
 
 function formatSerial(serialNumber, paddingWidth) {
@@ -8,6 +9,7 @@ function formatSerial(serialNumber, paddingWidth) {
 }
 
 export default function PrintList() {
+  const t = useT();
   const [movies, setMovies] = useState([]);
   const [shows, setShows] = useState([]);
   const [status, setStatus] = useState("loading");
@@ -38,24 +40,24 @@ export default function PrintList() {
   return (
     <section className="print-page">
       <div className="page-header no-print">
-        <h1>Print-venlig liste</h1>
+        <h1>{t("print.title")}</h1>
         <button type="button" className="btn btn-primary" onClick={() => window.print()}>
-          🖨️ Print
+          {t("print.print")}
         </button>
       </div>
 
       <div className="no-print print-search">
         <input
           type="search"
-          placeholder="Søg på titel, skuespiller, genre..."
+          placeholder={t("lib.searchPlaceholder")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
       </div>
 
-      {status === "loading" && <p className="muted">Indlæser...</p>}
+      {status === "loading" && <p className="muted">{t("common.loading")}</p>}
       {status === "error" && (
-        <div className="banner banner-error">Kunne ikke hente film/TV-serier.</div>
+        <div className="banner banner-error">{t("print.loadError")}</div>
       )}
 
       {status === "ready" && (
@@ -64,15 +66,15 @@ export default function PrintList() {
               sideskiftet sidder på et rigtigt blok-element frem for på en
               overskrift midt i et fælles fragment. */}
           <section className="print-section">
-            <h2>Film</h2>
+            <h2>{t("app.nav.movies")}</h2>
             <table className="print-table">
               <thead>
                 <tr>
-                  <th>Serienr.</th>
-                  <th>Titel</th>
-                  <th>År</th>
-                  <th>Format</th>
-                  <th>Lokation</th>
+                  <th>{t("print.serialShort")}</th>
+                  <th>{t("field.title")}</th>
+                  <th>{t("field.year")}</th>
+                  <th>{t("field.format")}</th>
+                  <th>{t("field.location")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -88,23 +90,23 @@ export default function PrintList() {
               </tbody>
             </table>
             <p className="muted no-print" style={{ marginTop: 12 }}>
-              {movies.length} film
+              {t("print.movieCount", { count: movies.length })}
             </p>
           </section>
 
           {/* Sideskiftet droppes hvis film-listen er tom — ellers ville
               udskriften starte med en tom side før TV-serierne. */}
           <section className={`print-section${movies.length > 0 ? " print-page-break" : ""}`}>
-            <h2>TV-serier</h2>
+            <h2>{t("app.nav.tv")}</h2>
             <table className="print-table">
               <thead>
                 <tr>
-                  <th>Serienr.</th>
-                  <th>Navn</th>
-                  <th>År</th>
-                  <th>Sæsoner</th>
-                  <th>Format</th>
-                  <th>Lokation</th>
+                  <th>{t("print.serialShort")}</th>
+                  <th>{t("field.name")}</th>
+                  <th>{t("field.year")}</th>
+                  <th>{t("field.seasons")}</th>
+                  <th>{t("field.format")}</th>
+                  <th>{t("field.location")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -125,7 +127,7 @@ export default function PrintList() {
               </tbody>
             </table>
             <p className="muted no-print" style={{ marginTop: 12 }}>
-              {shows.length} TV-serier
+              {t("print.showCount", { count: shows.length })}
             </p>
           </section>
         </>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import Chip from "../components/Chip";
-import { LANGUAGES, useT } from "../i18n";
+import { LANGUAGES, useLocale, useT } from "../i18n";
 import "./Settings.css";
 
 // Feature #78 — kategoriseret undermenu i stedet for én lang scroll.
@@ -9,18 +9,21 @@ import "./Settings.css";
 // vises kun hvis mindst én af dets sektioner rent faktisk er synlig for den
 // aktuelle rolle — de enkelte sektioners egen isAdmin/isGuest-gating
 // bevares uændret nedenfor som et ekstra sikkerhedslag.
+// Feature #89 — `labelKey` frem for en færdig `label`: faneblads-listen
+// bygges før render, hvor oversætteren ikke er tilgængelig endnu.
 function settingsTabs(isAdmin, isGuest) {
   return [
-    { id: "brugere", label: "Brugere", visible: isAdmin },
-    { id: "konto", label: "Konto", visible: true },
-    { id: "bibliotek", label: "Bibliotek", visible: !isGuest },
-    { id: "backup", label: "Backup & gendannelse", visible: isAdmin },
-    { id: "noegler", label: "Eksterne API-nøgler", visible: isAdmin },
-    { id: "drift", label: "Drift", visible: isAdmin },
+    { id: "brugere", labelKey: "settings.tab.users", visible: isAdmin },
+    { id: "konto", labelKey: "settings.tab.account", visible: true },
+    { id: "bibliotek", labelKey: "settings.tab.library", visible: !isGuest },
+    { id: "backup", labelKey: "settings.tab.backup", visible: isAdmin },
+    { id: "noegler", labelKey: "settings.tab.keys", visible: isAdmin },
+    { id: "drift", labelKey: "settings.tab.ops", visible: isAdmin },
   ].filter((tab) => tab.visible);
 }
 
 export default function Settings({ user, onSettingsChanged }) {
+  const t = useT();
   const isAdmin = user.role === "admin";
   const isGuest = user.role === "guest";
   const tabs = settingsTabs(isAdmin, isGuest);
@@ -29,7 +32,7 @@ export default function Settings({ user, onSettingsChanged }) {
   return (
     <section>
       <div className="page-header">
-        <h1>Indstillinger</h1>
+        <h1>{t("settings.title")}</h1>
       </div>
 
       <div className="tabs" style={{ marginBottom: 20 }}>
@@ -40,7 +43,7 @@ export default function Settings({ user, onSettingsChanged }) {
             className={activeTab === tab.id ? "active" : ""}
             onClick={() => setActiveTab(tab.id)}
           >
-            {tab.label}
+            {t(tab.labelKey)}
           </button>
         ))}
       </div>
@@ -66,19 +69,19 @@ export default function Settings({ user, onSettingsChanged }) {
           <DeletedMoviesSection />
           {isAdmin && (
             <TmdbSyncSection
-              title="TMDb-synkronisering (film)"
-              description="Henter frisk metadata (titel, år, poster, plot, genrer, medvirkende, rating, spilletid) fra TMDb for alle film der er oprettet via TMDb, og opdaterer det lokalt gemte. Dine egne oplysninger (tags, format, lyd-type, lokation, ejer, serienummer) rører den ikke. Kan tage et øjeblik afhængig af antal film."
-              buttonLabel="Opdatér alle film fra TMDb"
-              itemLabel="film"
+              titleKey="sync.movieTitle"
+              descriptionKey="sync.movieDescription"
+              buttonLabelKey="sync.movieButton"
+              itemLabelKey="sync.movieItems"
               syncFn={api.syncMoviesFromTmdb}
             />
           )}
           {isAdmin && (
             <TmdbSyncSection
-              title="TMDb-synkronisering (TV-serier)"
-              description="Henter frisk metadata (navn, år, status, poster, plot, genrer, medvirkende, rating, sæson-/episodetal) fra TMDb for alle TV-serier der er oprettet via TMDb. Dine egne oplysninger (tags, format, lokation, ejer, serienummer) samt hvilke sæsoner du ejer og hvilke episoder du har set rører den ikke."
-              buttonLabel="Opdatér alle TV-serier fra TMDb"
-              itemLabel="TV-serier"
+              titleKey="sync.tvTitle"
+              descriptionKey="sync.tvDescription"
+              buttonLabelKey="sync.tvButton"
+              itemLabelKey="sync.tvItems"
               syncFn={api.syncTvShowsFromTmdb}
             />
           )}
@@ -111,6 +114,7 @@ export default function Settings({ user, onSettingsChanged }) {
 }
 
 function AccountSection({ user }) {
+  const t = useT();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -136,17 +140,23 @@ function AccountSection({ user }) {
 
   return (
     <div className="card settings-account">
-      <div className="modal-section-label">Konto</div>
+      <div className="modal-section-label">{t("account.heading")}</div>
       <p>
-        Logget ind som <strong>{user.username}</strong>{" "}
+        {t("account.loggedInAs")} <strong>{user.username}</strong>{" "}
         <span className="role-badge">
-          {user.role === "admin" ? "Admin" : user.role === "guest" ? "Guest" : "Standard"}
+          {t(
+            user.role === "admin"
+              ? "account.roleAdmin"
+              : user.role === "guest"
+                ? "account.roleGuest"
+                : "account.roleStandard"
+          )}
         </span>
       </p>
 
       <form className="serial-config-form" onSubmit={changePassword}>
         <label>
-          Nuværende adgangskode
+          {t("account.currentPassword")}
           <input
             type="password"
             autoComplete="current-password"
@@ -156,7 +166,7 @@ function AccountSection({ user }) {
           />
         </label>
         <label>
-          Ny adgangskode
+          {t("account.newPassword")}
           <input
             type="password"
             autoComplete="new-password"
@@ -168,10 +178,10 @@ function AccountSection({ user }) {
         </label>
 
         {error && <div className="banner banner-error">{error}</div>}
-        {saved && <div className="banner banner-info">Adgangskode ændret!</div>}
+        {saved && <div className="banner banner-info">{t("account.passwordChanged")}</div>}
 
         <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? "Gemmer..." : "Skift adgangskode"}
+          {t(saving ? "common.saving" : "account.changePassword")}
         </button>
       </form>
     </div>
@@ -179,12 +189,13 @@ function AccountSection({ user }) {
 }
 
 const CARD_SIZE_OPTIONS = [
-  { value: "small", label: "Lille" },
-  { value: "medium", label: "Mellem" },
-  { value: "large", label: "Stor" },
+  { value: "small", labelKey: "cardSize.small" },
+  { value: "medium", labelKey: "cardSize.medium" },
+  { value: "large", labelKey: "cardSize.large" },
 ];
 
 function CardSizeSection({ cardSize, onSettingsChanged }) {
+  const t = useT();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -201,24 +212,25 @@ function CardSizeSection({ cardSize, onSettingsChanged }) {
 
   return (
     <div className="card settings-section">
-      <h2>Kortstørrelse</h2>
-      <p className="muted">
-        Styrer størrelsen på film-/TV-serie-kortene i Film- og TV-serie-fanen. Én fælles
-        indstilling for begge faner.
-      </p>
+      <h2>{t("cardSize.heading")}</h2>
+      <p className="muted">{t("cardSize.description")}</p>
 
       <div className="chip-row">
         {CARD_SIZE_OPTIONS.map((option) => (
           <Chip
             key={option.value}
-            label={option.label}
+            label={t(option.labelKey)}
             active={cardSize === option.value}
             onClick={() => selectSize(option.value)}
           />
         ))}
       </div>
 
-      {saving && <p className="muted" style={{ marginTop: 8 }}>Gemmer...</p>}
+      {saving && (
+        <p className="muted" style={{ marginTop: 8 }}>
+          {t("common.saving")}
+        </p>
+      )}
       {error && (
         <div className="banner banner-error" style={{ marginTop: 12 }}>
           {error}
@@ -292,6 +304,7 @@ function timestampForFilename() {
 }
 
 function LibraryBackupSection() {
+  const t = useT();
   const [exportStatus, setExportStatus] = useState("idle");
   const [exportError, setExportError] = useState(null);
 
@@ -335,14 +348,10 @@ function LibraryBackupSection() {
 
   return (
     <div className="card settings-section">
-      <h2>Bibliotek-eksport / -gendannelse</h2>
-      <p className="muted">
-        Eksportér hele film-/TV-biblioteket som en JSON-fil — til at bruge i et andet system, eller
-        som en gendannelsesmulighed hvis biblioteket skulle blive rodet til. Dette er{" "}
-        <strong>ikke</strong> en fuld system-backup (se den nedenfor) — kun selve film-/TV-dataene.
-      </p>
+      <h2>{t("libBackup.heading")}</h2>
+      <p className="muted">{t("libBackup.description")}</p>
       <button type="button" className="btn btn-primary" onClick={exportLibrary} disabled={exportStatus === "exporting"}>
-        {exportStatus === "exporting" ? "Eksporterer..." : "Eksportér bibliotek"}
+        {t(exportStatus === "exporting" ? "libBackup.exporting" : "libBackup.export")}
       </button>
       {exportStatus === "error" && (
         <div className="banner banner-error" style={{ marginTop: 12 }}>
@@ -352,11 +361,7 @@ function LibraryBackupSection() {
 
       <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
 
-      <p className="muted">
-        <strong>Gendan</strong> erstatter hele det nuværende film-/TV-bibliotek med indholdet af en
-        tidligere eksporteret fil — alt der ikke er i filen, forsvinder. Vælg en fil, og skriv{" "}
-        <strong>GENDAN</strong> for at bekræfte.
-      </p>
+      <p className="muted">{t("libBackup.restoreDescription")}</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
         <input
           type="file"
@@ -366,7 +371,7 @@ function LibraryBackupSection() {
         <input
           value={confirmText}
           onChange={(e) => setConfirmText(e.target.value)}
-          placeholder='Skriv "GENDAN" for at bekræfte'
+          placeholder={t("libBackup.confirmPlaceholder")}
         />
         <button
           type="button"
@@ -374,7 +379,7 @@ function LibraryBackupSection() {
           onClick={importLibrary}
           disabled={!importFile || confirmText !== "GENDAN" || importStatus === "importing"}
         >
-          {importStatus === "importing" ? "Gendanner..." : "Gendan bibliotek"}
+          {t(importStatus === "importing" ? "libBackup.restoring" : "libBackup.restore")}
         </button>
       </div>
       {importStatus === "error" && (
@@ -384,7 +389,10 @@ function LibraryBackupSection() {
       )}
       {importStatus === "done" && importResult && (
         <div className="banner banner-info" style={{ marginTop: 12 }}>
-          Gendannet: {importResult.movies_imported} film, {importResult.tv_shows_imported} TV-serier.
+          {t("libBackup.restored", {
+            movies: importResult.movies_imported,
+            shows: importResult.tv_shows_imported,
+          })}
         </div>
       )}
     </div>
@@ -392,6 +400,7 @@ function LibraryBackupSection() {
 }
 
 function SystemBackupSection() {
+  const t = useT();
   const [backupStatus, setBackupStatus] = useState("idle");
   const [backupError, setBackupError] = useState(null);
 
@@ -435,15 +444,10 @@ function SystemBackupSection() {
 
   return (
     <div className="card settings-section">
-      <h2>Fuld system-backup</h2>
-      <p className="muted">
-        Tager en fuld lavniveau-backup af hele systemet (film, TV-serier, slettede film/TV-serier,
-        tags, brugere, tællere) — til katastrofe-gendannelse. <strong>Bemærk:</strong> dine eksterne
-        API-nøgler (TMDb/UPC/Discogs/OMDb/Plex) er <strong>ikke</strong> med i backuppen og skal
-        genindtastes manuelt under "System-indstillinger" nedenfor efter en gendannelse.
-      </p>
+      <h2>{t("sysBackup.heading")}</h2>
+      <p className="muted">{t("sysBackup.description")}</p>
       <button type="button" className="btn btn-primary" onClick={takeBackup} disabled={backupStatus === "backing-up"}>
-        {backupStatus === "backing-up" ? "Tager backup..." : "Tag fuld system-backup"}
+        {t(backupStatus === "backing-up" ? "sysBackup.backingUp" : "sysBackup.take")}
       </button>
       {backupStatus === "error" && (
         <div className="banner banner-error" style={{ marginTop: 12 }}>
@@ -453,11 +457,7 @@ function SystemBackupSection() {
 
       <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
 
-      <p className="muted">
-        <strong>Gendan hele systemet</strong> erstatter alt ovenstående med indholdet af en tidligere
-        system-backup — inklusive brugerkonti. Vælg en fil, og skriv <strong>GENDAN SYSTEM</strong>{" "}
-        for at bekræfte.
-      </p>
+      <p className="muted">{t("sysBackup.restoreDescription")}</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
         <input
           type="file"
@@ -467,7 +467,7 @@ function SystemBackupSection() {
         <input
           value={confirmText}
           onChange={(e) => setConfirmText(e.target.value)}
-          placeholder='Skriv "GENDAN SYSTEM" for at bekræfte'
+          placeholder={t("sysBackup.confirmPlaceholder")}
         />
         <button
           type="button"
@@ -475,7 +475,7 @@ function SystemBackupSection() {
           onClick={restoreBackup}
           disabled={!restoreFile || confirmText !== "GENDAN SYSTEM" || restoreStatus === "restoring"}
         >
-          {restoreStatus === "restoring" ? "Gendanner..." : "Gendan hele systemet"}
+          {t(restoreStatus === "restoring" ? "libBackup.restoring" : "sysBackup.restore")}
         </button>
       </div>
       {restoreStatus === "error" && (
@@ -485,8 +485,11 @@ function SystemBackupSection() {
       )}
       {restoreStatus === "done" && restoreResult && (
         <div className="banner banner-info" style={{ marginTop: 12 }}>
-          Gendannet: {restoreResult.movies_imported} film, {restoreResult.tv_shows_imported} TV-serier,{" "}
-          {restoreResult.users_imported} brugere.
+          {t("sysBackup.restored", {
+            movies: restoreResult.movies_imported,
+            shows: restoreResult.tv_shows_imported,
+            users: restoreResult.users_imported,
+          })}
         </div>
       )}
     </div>
@@ -494,6 +497,7 @@ function SystemBackupSection() {
 }
 
 function DatabaseResetSection() {
+  const t = useT();
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
@@ -517,20 +521,14 @@ function DatabaseResetSection() {
 
   return (
     <div className="card settings-section">
-      <h2>Nulstil database</h2>
-      <p className="muted">
-        Tømmer film-/TV-biblioteket helt (film, TV-serier, slettede film/TV-serier, tags,
-        serienummer-tællere, samt Voldby BIO-visninger/-anmodninger) tilbage til tom tilstand.{" "}
-        <strong>Rører ikke</strong> brugerkonti eller system-indstillinger.{" "}
-        <strong>Uigenkaldeligt</strong> — tag en fuld system-backup ovenfor først, hvis du vil kunne
-        fortryde. Bekræft med din egen adgangskode.
-      </p>
+      <h2>{t("reset.heading")}</h2>
+      <p className="muted">{t("reset.description")}</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Din adgangskode"
+          placeholder={t("reset.passwordPlaceholder")}
           autoComplete="current-password"
         />
         <button
@@ -539,7 +537,7 @@ function DatabaseResetSection() {
           onClick={reset}
           disabled={!password || status === "resetting"}
         >
-          {status === "resetting" ? "Nulstiller..." : "Nulstil database"}
+          {t(status === "resetting" ? "reset.resetting" : "reset.reset")}
         </button>
       </div>
       {status === "error" && (
@@ -549,8 +547,10 @@ function DatabaseResetSection() {
       )}
       {status === "done" && result && (
         <div className="banner banner-info" style={{ marginTop: 12 }}>
-          Nulstillet: {result.movies_removed} film, {result.tv_shows_removed} TV-serier og
-          relaterede data fjernet.
+          {t("reset.done", {
+            movies: result.movies_removed,
+            shows: result.tv_shows_removed,
+          })}
         </div>
       )}
     </div>
@@ -566,11 +566,13 @@ function fileToBase64(file) {
   });
 }
 
-function formatCertDate(iso) {
-  return new Date(iso).toLocaleDateString("da-DK", { year: "numeric", month: "long", day: "numeric" });
+function formatCertDate(iso, locale) {
+  return new Date(iso).toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" });
 }
 
 function TlsCertSection() {
+  const t = useT();
+  const locale = useLocale();
   const [certStatus, setCertStatus] = useState(null);
   const [loadStatus, setLoadStatus] = useState("loading");
 
@@ -668,37 +670,34 @@ function TlsCertSection() {
 
   return (
     <div className="card settings-section">
-      <h2>TLS-certifikat</h2>
-      <p className="muted">
-        Styrer produktionens HTTPS-certifikat (Caddy, <code>movie.ll.lan</code>, se
-        DEPLOYMENT.md/BUGS.md #23). <strong>Højere risiko end appens øvrige værktøjer</strong> — en
-        forkert installation kan gøre siden utilgængelig over HTTPS. Kun meningsfuldt i produktion.
-      </p>
+      <h2>{t("cert.heading")}</h2>
+      <p className="muted">{t("cert.description")}</p>
 
-      {loadStatus === "loading" && <p className="muted">Indlæser status...</p>}
+      {loadStatus === "loading" && <p className="muted">{t("cert.loadingStatus")}</p>}
       {loadStatus === "error" && (
-        <div className="banner banner-error">Kunne ikke hente certifikat-status.</div>
+        <div className="banner banner-error">{t("cert.statusError")}</div>
       )}
       {loadStatus === "ready" && certStatus && !certStatus.installed && !certStatus.staged && (
-        <p className="muted">Intet certifikat fundet (hverken installeret eller klar).</p>
+        <p className="muted">{t("cert.none")}</p>
       )}
       {loadStatus === "ready" && certStatus && (certStatus.installed || certStatus.staged) && (
         <div className={`banner ${expirySoon ? "banner-error" : "banner-info"}`}>
-          {certStatus.installed ? "Installeret" : "Klar til installation (ikke installeret endnu)"}:{" "}
-          {certStatus.common_name} — gyldigt {formatCertDate(certStatus.valid_from)} til{" "}
-          {formatCertDate(certStatus.valid_until)} ({certStatus.days_until_expiry} dage tilbage)
+          {t("cert.validity", {
+            state: t(certStatus.installed ? "cert.installed" : "cert.staged"),
+            name: certStatus.common_name,
+            from: formatCertDate(certStatus.valid_from, locale),
+            until: formatCertDate(certStatus.valid_until, locale),
+            days: certStatus.days_until_expiry,
+          })}
         </div>
       )}
 
       <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
 
-      <h3 style={{ marginTop: 0 }}>Metode 1: Generér CSR</h3>
-      <p className="muted">
-        Genererer en ny nøgle + CSR til ekstern signering (fx via din interne CA). Nøglen forlader
-        aldrig serveren.
-      </p>
+      <h3 style={{ marginTop: 0 }}>{t("cert.method1")}</h3>
+      <p className="muted">{t("cert.method1Description")}</p>
       <button type="button" className="btn" onClick={generateCsr} disabled={csrStatus === "generating"}>
-        {csrStatus === "generating" ? "Genererer..." : "Generér ny CSR"}
+        {t(csrStatus === "generating" ? "cert.generating" : "cert.generateCsr")}
       </button>
       {csrStatus === "error" && (
         <div className="banner banner-error" style={{ marginTop: 12 }}>{csrError}</div>
@@ -712,14 +711,14 @@ function TlsCertSection() {
             style={{ marginTop: 8 }}
             onClick={() => navigator.clipboard.writeText(csrPem).catch(() => {})}
           >
-            Kopiér CSR
+            {t("cert.copyCsr")}
           </button>
         </div>
       )}
 
       <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10, maxWidth: 500 }}>
         <label className="field-label" htmlFor="signed-cert-input">
-          Indsæt det signerede certifikat (PEM), når du har fået CSR'en signeret
+          {t("cert.pasteSignedLabel")}
         </label>
         <textarea
           id="signed-cert-input"
@@ -735,18 +734,18 @@ function TlsCertSection() {
           onClick={completeCsr}
           disabled={!signedCertPem.trim() || completeStatus === "staging"}
         >
-          {completeStatus === "staging" ? "Forbereder..." : "Fuldfør CSR"}
+          {t(completeStatus === "staging" ? "cert.staging" : "cert.completeCsr")}
         </button>
         {completeStatus === "error" && <div className="banner banner-error">{completeError}</div>}
-        {completeStatus === "done" && <div className="banner banner-info">Certifikat klar til installation.</div>}
+        {completeStatus === "done" && (
+          <div className="banner banner-info">{t("cert.readyToInstall")}</div>
+        )}
       </div>
 
       <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
 
-      <h3 style={{ marginTop: 0 }}>Metode 2: Importér PKCS12</h3>
-      <p className="muted">
-        Alternativ til CSR-flowet — upload en færdig .pfx/.p12-fil (cert + nøgle i én fil).
-      </p>
+      <h3 style={{ marginTop: 0 }}>{t("cert.method2")}</h3>
+      <p className="muted">{t("cert.method2Description")}</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
         <input
           type="file"
@@ -757,7 +756,7 @@ function TlsCertSection() {
           type="password"
           value={pkcs12Passphrase}
           onChange={(e) => setPkcs12Passphrase(e.target.value)}
-          placeholder="Adgangsfrase for PKCS12-filen (hvis nogen)"
+          placeholder={t("cert.pkcs12Passphrase")}
           autoComplete="off"
         />
         <button
@@ -766,26 +765,24 @@ function TlsCertSection() {
           onClick={importPkcs12}
           disabled={!pkcs12File || pkcs12Status === "importing"}
         >
-          {pkcs12Status === "importing" ? "Importerer..." : "Importér PKCS12"}
+          {t(pkcs12Status === "importing" ? "cert.importing" : "cert.importPkcs12")}
         </button>
         {pkcs12Status === "error" && <div className="banner banner-error">{pkcs12Error}</div>}
-        {pkcs12Status === "done" && <div className="banner banner-info">Certifikat klar til installation.</div>}
+        {pkcs12Status === "done" && (
+          <div className="banner banner-info">{t("cert.readyToInstall")}</div>
+        )}
       </div>
 
       <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
 
-      <h3 style={{ marginTop: 0 }}>Installér</h3>
-      <p className="muted">
-        Erstatter det aktuelt kørende certifikat med det forberedte ovenfor, og genindlæser Caddy.{" "}
-        <strong>Uigenkaldeligt uden en frisk backup af det nuværende certifikat</strong> — bekræft
-        med din egen adgangskode.
-      </p>
+      <h3 style={{ marginTop: 0 }}>{t("cert.installHeading")}</h3>
+      <p className="muted">{t("cert.installDescription")}</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
         <input
           type="password"
           value={installPassword}
           onChange={(e) => setInstallPassword(e.target.value)}
-          placeholder="Din adgangskode"
+          placeholder={t("reset.passwordPlaceholder")}
           autoComplete="current-password"
         />
         <button
@@ -794,13 +791,11 @@ function TlsCertSection() {
           onClick={install}
           disabled={!installPassword || !certStatus?.staged || installStatus === "installing"}
         >
-          {installStatus === "installing" ? "Installerer..." : "Installér nu"}
+          {t(installStatus === "installing" ? "cert.installing" : "cert.installNow")}
         </button>
         {installStatus === "error" && <div className="banner banner-error">{installError}</div>}
         {installStatus === "done" && (
-          <div className="banner banner-info">
-            Installation igangsat — tjek at siden stadig svarer over HTTPS om et øjeblik.
-          </div>
+          <div className="banner banner-info">{t("cert.installStarted")}</div>
         )}
       </div>
     </div>
@@ -808,6 +803,7 @@ function TlsCertSection() {
 }
 
 function SerialNumberSection({ isAdmin }) {
+  const t = useT();
   const [status, setStatus] = useState("loading");
   const [startNumber, setStartNumber] = useState("");
   const [increment, setIncrement] = useState("");
@@ -852,23 +848,21 @@ function SerialNumberSection({ isAdmin }) {
 
   return (
     <div className="card settings-section">
-      <h2>Serienummer-opsætning</h2>
+      <h2>{t("serial.heading")}</h2>
       <p className="muted">
-        Styrer hvilket nummer den næste tilføjede film får, og med hvilket spring
-        fremtidige film nummereres. Vil du rette en <em>bestemt</em> films
-        serienummer, gør du det i stedet i filmens redigeringsvindue i biblioteket.
-        {!isAdmin && " Kun administratorer kan ændre denne opsætning."}
+        {t("serial.description")}
+        {!isAdmin && t("serial.adminOnly")}
       </p>
 
-      {status === "loading" && <p className="muted">Indlæser...</p>}
+      {status === "loading" && <p className="muted">{t("common.loading")}</p>}
       {status === "error" && (
-        <div className="banner banner-error">Kunne ikke hente opsætning.</div>
+        <div className="banner banner-error">{t("serial.loadError")}</div>
       )}
 
       {status === "ready" && (
         <form className="serial-config-form" onSubmit={save}>
           <label>
-            Næste film-nummer
+            {t("serial.nextNumber")}
             <input
               type="number"
               min="1"
@@ -878,7 +872,7 @@ function SerialNumberSection({ isAdmin }) {
             />
           </label>
           <label>
-            Spring (increment)
+            {t("serial.increment")}
             <input
               type="number"
               min="1"
@@ -888,7 +882,7 @@ function SerialNumberSection({ isAdmin }) {
             />
           </label>
           <label>
-            Antal cifre (foranstillede nuller)
+            {t("serial.padding")}
             <input
               type="number"
               min="0"
@@ -900,11 +894,11 @@ function SerialNumberSection({ isAdmin }) {
           </label>
 
           {error && <div className="banner banner-error">{error}</div>}
-          {saved && <div className="banner banner-info">Gemt!</div>}
+          {saved && <div className="banner banner-info">{t("serial.saved")}</div>}
 
           {isAdmin && (
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? "Gemmer..." : "Gem"}
+              {t(saving ? "common.saving" : "common.save")}
             </button>
           )}
         </form>
@@ -914,6 +908,8 @@ function SerialNumberSection({ isAdmin }) {
 }
 
 function DeletedMoviesSection() {
+  const t = useT();
+  const locale = useLocale();
   const [entries, setEntries] = useState([]);
   const [status, setStatus] = useState("loading");
 
@@ -929,19 +925,16 @@ function DeletedMoviesSection() {
 
   return (
     <div className="card settings-section">
-      <h2>Slettede film</h2>
-      <p className="muted">
-        Når en film slettes, logges den her sammen med serienummeret — nummeret er
-        derefter frit til at blive genbrugt af en ny film.
-      </p>
+      <h2>{t("deleted.heading")}</h2>
+      <p className="muted">{t("deleted.description")}</p>
 
-      {status === "loading" && <p className="muted">Indlæser...</p>}
+      {status === "loading" && <p className="muted">{t("common.loading")}</p>}
       {status === "error" && (
-        <div className="banner banner-error">Kunne ikke hente slettede film.</div>
+        <div className="banner banner-error">{t("deleted.loadError")}</div>
       )}
 
       {status === "ready" && entries.length === 0 && (
-        <p className="muted">Ingen film er slettet endnu.</p>
+        <p className="muted">{t("deleted.none")}</p>
       )}
 
       {status === "ready" && entries.length > 0 && (
@@ -953,8 +946,10 @@ function DeletedMoviesSection() {
                 {entry.year ? ` (${entry.year})` : ""}
               </span>
               <span className="muted">
-                Slettet af {entry.deleted_by ?? "ukendt"} d.{" "}
-                {new Date(entry.deleted_at).toLocaleDateString("da-DK")}
+                {t("deleted.by", {
+                  who: entry.deleted_by ?? t("deleted.unknownUser"),
+                  date: new Date(entry.deleted_at).toLocaleDateString(locale),
+                })}
               </span>
             </li>
           ))}
@@ -964,7 +959,8 @@ function DeletedMoviesSection() {
   );
 }
 
-function TmdbSyncSection({ title, description, buttonLabel, itemLabel, syncFn }) {
+function TmdbSyncSection({ titleKey, descriptionKey, buttonLabelKey, itemLabelKey, syncFn }) {
+  const t = useT();
   const [status, setStatus] = useState("idle");
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -985,11 +981,11 @@ function TmdbSyncSection({ title, description, buttonLabel, itemLabel, syncFn })
 
   return (
     <div className="card settings-section">
-      <h2>{title}</h2>
-      <p className="muted">{description}</p>
+      <h2>{t(titleKey)}</h2>
+      <p className="muted">{t(descriptionKey)}</p>
 
       <button type="button" className="btn btn-primary" onClick={sync} disabled={status === "syncing"}>
-        {status === "syncing" ? "Synkroniserer..." : buttonLabel}
+        {status === "syncing" ? t("sync.syncing") : t(buttonLabelKey)}
       </button>
 
       {status === "error" && (
@@ -1005,18 +1001,26 @@ function TmdbSyncSection({ title, description, buttonLabel, itemLabel, syncFn })
         >
           {result.stopped_early ? (
             result.synced === 0 && result.total === result.failed && result.failed > 0 ? (
-              <>Synkronisering afbrudt — tjek at backend har en gyldig TMDB_API_TOKEN.</>
+              t("sync.abortedNoToken")
             ) : (
-              <>
-                {result.synced} af {result.total} {itemLabel} opdateret, men stoppet tidligt fordi
-                TMDb ramte et rate-limit. Prøv igen om lidt for at opdatere resten.
-              </>
+              t("sync.rateLimited", {
+                synced: result.synced,
+                total: result.total,
+                items: t(itemLabelKey),
+              })
             )
           ) : (
             <>
-              {result.synced} af {result.total} {itemLabel} opdateret.
+              {t("sync.done", {
+                synced: result.synced,
+                total: result.total,
+                items: t(itemLabelKey),
+              })}
               {result.failed > 0 &&
-                ` ${result.failed} kunne ikke hentes: ${result.failed_titles.join(", ")}.`}
+                t("sync.failedSuffix", {
+                  failed: result.failed,
+                  titles: result.failed_titles.join(", "),
+                })}
             </>
           )}
         </div>
@@ -1026,6 +1030,7 @@ function TmdbSyncSection({ title, description, buttonLabel, itemLabel, syncFn })
 }
 
 function SystemSettingsSection() {
+  const t = useT();
   const [statusData, setStatusData] = useState(null);
   const [loadStatus, setLoadStatus] = useState("loading");
 
@@ -1044,17 +1049,12 @@ function SystemSettingsSection() {
 
   return (
     <div className="card settings-section">
-      <h2>System-indstillinger</h2>
-      <p className="muted">
-        Eksterne API-nøgler og Plex-integration. Kan i stedet sættes via <code>.env</code> på
-        serveren — en værdi sat her overstyrer den, med det samme, uden genstart. Nøgler vises
-        aldrig igen efter de er gemt, kun om en nøgle er sat og hvorfra. Plex-server-URL'en er
-        undtagelsen — den er ikke en hemmelighed, og vises derfor med sin faktiske værdi.
-      </p>
+      <h2>{t("sys.heading")}</h2>
+      <p className="muted">{t("sys.description")}</p>
 
-      {loadStatus === "loading" && <p className="muted">Indlæser...</p>}
+      {loadStatus === "loading" && <p className="muted">{t("common.loading")}</p>}
       {loadStatus === "error" && (
-        <div className="banner banner-error">Kunne ikke hente status.</div>
+        <div className="banner banner-error">{t("sys.statusError")}</div>
       )}
 
       {loadStatus === "ready" && statusData && (
@@ -1088,20 +1088,20 @@ function SystemSettingsSection() {
             onSaved={load}
           />
           <ApiKeyRow
-            label="OMDb API-nøgle"
+            label={t("sys.omdbKey")}
             field="omdb_api_key"
             status={statusData.omdb_api_key}
             onSaved={load}
           />
           <PlainSettingRow
-            label="Plex-server-URL"
+            label={t("sys.plexServerUrl")}
             field="plex_server_url"
-            hint="Ikke en hemmelighed — vises som den er, fx http://192.168.1.50:32400"
+            hint={t("sys.plexServerUrlHint")}
             currentValue={statusData.plex_server_url}
             onSaved={load}
           />
           <ApiKeyRow
-            label="Plex-token"
+            label={t("sys.plexToken")}
             field="plex_token"
             status={statusData.plex_token}
             onSaved={load}
@@ -1122,6 +1122,7 @@ function SystemSettingsSection() {
  * fem ad, og viser konkret hvilke af *dine* film der ikke kunne matches.
  */
 function PlexDiagnosticsSection() {
+  const t = useT();
   const [status, setStatus] = useState("idle"); // idle | running | done | error
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -1146,15 +1147,11 @@ function PlexDiagnosticsSection() {
 
   return (
     <div className="card settings-section">
-      <h2>Plex-forbindelse (fejlsøgning)</h2>
-      <p className="muted">
-        Tester forbindelsen til Plex og viser hvor mange af dine film og TV-serier der kan matches.
-        Henter altid friskt uden om cachen, så en netop rettet URL eller token afprøves med det
-        samme. Badget på kortene slås til pr. bruger under "Vis felter" i Bibliotek og TV-serier.
-      </p>
+      <h2>{t("plexDiag.heading")}</h2>
+      <p className="muted">{t("plexDiag.description")}</p>
 
       <button type="button" className="btn btn-primary" onClick={run} disabled={status === "running"}>
-        {status === "running" ? "Tester..." : "Test Plex-forbindelse"}
+        {t(status === "running" ? "plexDiag.testing" : "plexDiag.test")}
       </button>
 
       {status === "error" && <div className="banner banner-error">{error}</div>}
@@ -1163,8 +1160,11 @@ function PlexDiagnosticsSection() {
         <div className="plex-diagnostics">
           {data.ok ? (
             <div className="banner banner-info">
-              ✓ Forbundet til {data.server_name ?? "Plex"} (version {data.server_version ?? "?"}) på{" "}
-              {data.duration_ms} ms.
+              {t("plexDiag.connected", {
+                server: data.server_name ?? "Plex",
+                version: data.server_version ?? "?",
+                ms: data.duration_ms,
+              })}
             </div>
           ) : (
             <div className="banner banner-error">{data.error}</div>
@@ -1172,41 +1172,53 @@ function PlexDiagnosticsSection() {
 
           <dl className="plex-diag-grid">
             <div>
-              <dt>Server-URL</dt>
-              <dd>{data.server_url || <span className="muted">ikke sat</span>}</dd>
+              <dt>{t("plexDiag.serverUrl")}</dt>
+              <dd>{data.server_url || <span className="muted">{t("plexDiag.notSet")}</span>}</dd>
             </div>
             <div>
-              <dt>Token</dt>
-              <dd>{data.token_configured ? "sat" : <span className="muted">ikke sat</span>}</dd>
+              <dt>{t("plexDiag.token")}</dt>
+              <dd>
+                {data.token_configured ? (
+                  t("plexDiag.tokenSet")
+                ) : (
+                  <span className="muted">{t("plexDiag.notSet")}</span>
+                )}
+              </dd>
             </div>
             {data.ok && (
               <>
                 <div>
-                  <dt>Film i Plex</dt>
+                  <dt>{t("plexDiag.moviesInPlex")}</dt>
                   <dd>{data.plex_movie_count}</dd>
                 </div>
                 <div>
-                  <dt>Serier i Plex</dt>
+                  <dt>{t("plexDiag.showsInPlex")}</dt>
                   <dd>{data.plex_show_count}</dd>
                 </div>
                 <div>
-                  <dt>Film matchet</dt>
+                  <dt>{t("plexDiag.moviesMatched")}</dt>
                   <dd>
-                    {data.matched_movies} af {data.library_movie_count}
+                    {t("plexDiag.ofTotal", {
+                      matched: data.matched_movies,
+                      total: data.library_movie_count,
+                    })}
                   </dd>
                 </div>
                 <div>
-                  <dt>Serier matchet</dt>
+                  <dt>{t("plexDiag.showsMatched")}</dt>
                   <dd>
-                    {data.matched_shows} af {data.library_show_count}
+                    {t("plexDiag.ofTotal", {
+                      matched: data.matched_shows,
+                      total: data.library_show_count,
+                    })}
                   </dd>
                 </div>
                 <div>
-                  <dt>Matchet på TMDb-id</dt>
+                  <dt>{t("plexDiag.matchedByTmdb")}</dt>
                   <dd>{data.matched_by_tmdb}</dd>
                 </div>
                 <div>
-                  <dt>Matchet på titel</dt>
+                  <dt>{t("plexDiag.matchedByTitle")}</dt>
                   <dd>{data.matched_by_title}</dd>
                 </div>
               </>
@@ -1214,37 +1226,31 @@ function PlexDiagnosticsSection() {
           </dl>
 
           {data.ok && data.sections.length === 0 && (
-            <div className="banner banner-error">
-              Plex svarede, men der blev ikke fundet nogen film- eller TV-biblioteker. Har token'ets
-              konto adgang til bibliotekerne?
-            </div>
+            <div className="banner banner-error">{t("plexDiag.noSections")}</div>
           )}
 
           {noTmdbGuids && (
-            <div className="banner banner-info">
-              Bemærk: ingen af elementerne i Plex har et TMDb-id. Sektionerne bruger sandsynligvis en
-              ældre agent — matchning falder derfor tilbage på titel og år, hvilket er mindre sikkert.
-            </div>
+            <div className="banner banner-info">{t("plexDiag.noTmdbGuids")}</div>
           )}
 
           {data.sections.length > 0 && (
             <>
-              <h3>Plex-biblioteker</h3>
+              <h3>{t("plexDiag.librariesHeading")}</h3>
               <table className="plex-diag-table">
                 <thead>
                   <tr>
-                    <th>Bibliotek</th>
-                    <th>Type</th>
-                    <th>Elementer</th>
-                    <th>Med TMDb-id</th>
-                    <th>Med IMDb-id</th>
+                    <th>{t("plexDiag.colLibrary")}</th>
+                    <th>{t("plexDiag.colType")}</th>
+                    <th>{t("plexDiag.colItems")}</th>
+                    <th>{t("plexDiag.colTmdb")}</th>
+                    <th>{t("plexDiag.colImdb")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.sections.map((section) => (
                     <tr key={section.key}>
                       <td>{section.title}</td>
-                      <td>{section.type === "movie" ? "Film" : "TV-serier"}</td>
+                      <td>{t(section.type === "movie" ? "app.nav.movies" : "app.nav.tv")}</td>
                       <td>{section.item_count}</td>
                       <td>{section.with_tmdb_guid}</td>
                       <td>{section.with_imdb_guid}</td>
@@ -1257,17 +1263,14 @@ function PlexDiagnosticsSection() {
 
           {data.ok && (data.unmatched_movies.length > 0 || data.unmatched_shows.length > 0) && (
             <>
-              <h3>Ikke fundet i Plex</h3>
-              <p className="muted">
-                De første af dine titler uden match. Ligger de faktisk i Plex, skyldes det typisk at
-                titel eller år afviger — sammenlign med hvad Plex kalder dem.
-              </p>
+              <h3>{t("plexDiag.unmatchedHeading")}</h3>
+              <p className="muted">{t("plexDiag.unmatchedHint")}</p>
               <ul className="plex-diag-unmatched">
                 {[...data.unmatched_movies, ...data.unmatched_shows].map((item, i) => (
                   <li key={`${item.title}-${i}`}>
                     {item.title}
                     {item.year ? ` (${item.year})` : ""}
-                    {item.tmdb_id ? ` — TMDb ${item.tmdb_id}` : " — uden TMDb-id"}
+                    {item.tmdb_id ? ` — TMDb ${item.tmdb_id}` : t("plexDiag.noTmdbId")}
                   </li>
                 ))}
               </ul>
@@ -1279,21 +1282,25 @@ function PlexDiagnosticsSection() {
   );
 }
 
-const AUDIT_ACTION_LABELS = {
-  "user.role_changed": "Rolle ændret",
-  "system_settings.updated": "System-nøgler opdateret",
-  "deploy.triggered": "OTA-opdatering udløst",
-  "system_backup.created": "System-backup taget",
-  "system_backup.restored": "System gendannet fra backup",
-  "library_backup.exported": "Bibliotek eksporteret",
-  "library_backup.imported": "Bibliotek importeret",
-  "screening_request.declined": "Visningsanmodning afvist",
-  "screening.scheduled": "Visning planlagt",
+// Backendens handlings-koder mappet til oversættelsesnøgler. En ukendt kode
+// (fx en nyere backend mod en ældre frontend) falder tilbage til koden selv.
+const AUDIT_ACTION_KEYS = {
+  "user.role_changed": "audit.action.roleChanged",
+  "system_settings.updated": "audit.action.settingsUpdated",
+  "deploy.triggered": "audit.action.deployTriggered",
+  "system_backup.created": "audit.action.backupCreated",
+  "system_backup.restored": "audit.action.backupRestored",
+  "library_backup.exported": "audit.action.libraryExported",
+  "library_backup.imported": "audit.action.libraryImported",
+  "screening_request.declined": "audit.action.requestDeclined",
+  "screening.scheduled": "audit.action.screeningScheduled",
 };
 
 const AUDIT_PAGE_SIZE = 10;
 
 function AuditLogSection() {
+  const t = useT();
+  const locale = useLocale();
   const [entries, setEntries] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -1318,15 +1325,12 @@ function AuditLogSection() {
 
   return (
     <div className="card settings-section">
-      <h2>Audit-log</h2>
-      <p className="muted">
-        Sikkerheds-/data-relevante handlinger (rolle-ændringer, system-nøgle-opdateringer,
-        OTA-opdatering, backup/gendannelse, biograf-planlægning/afvisning), nyeste øverst.
-      </p>
+      <h2>{t("audit.heading")}</h2>
+      <p className="muted">{t("audit.description")}</p>
 
-      {status === "loading" && <p className="muted">Indlæser...</p>}
+      {status === "loading" && <p className="muted">{t("common.loading")}</p>}
       {status === "error" && (
-        <div className="banner banner-error">Kunne ikke hente audit-log.</div>
+        <div className="banner banner-error">{t("audit.loadError")}</div>
       )}
 
       {entries.length > 0 && (
@@ -1334,13 +1338,13 @@ function AuditLogSection() {
           {entries.map((entry) => (
             <li key={entry.id} className="user-row">
               <span className="user-row-name">
-                {AUDIT_ACTION_LABELS[entry.action] ?? entry.action}
+                {AUDIT_ACTION_KEYS[entry.action] ? t(AUDIT_ACTION_KEYS[entry.action]) : entry.action}
                 {entry.detail && <span className="muted"> — {entry.detail}</span>}
               </span>
               <span className="muted">{entry.actor}</span>
               <span className="muted">
-                {new Date(entry.created_at).toLocaleDateString("da-DK")}{" "}
-                {new Date(entry.created_at).toLocaleTimeString("da-DK")}
+                {new Date(entry.created_at).toLocaleDateString(locale)}{" "}
+                {new Date(entry.created_at).toLocaleTimeString(locale)}
               </span>
             </li>
           ))}
@@ -1348,7 +1352,7 @@ function AuditLogSection() {
       )}
 
       {status === "ready" && entries.length === 0 && (
-        <p className="muted">Ingen registrerede handlinger endnu.</p>
+        <p className="muted">{t("audit.empty")}</p>
       )}
 
       {total > AUDIT_PAGE_SIZE && (
@@ -1359,10 +1363,10 @@ function AuditLogSection() {
             onClick={() => load(page - 1)}
             disabled={page === 0 || status === "loading"}
           >
-            ← Forrige
+            {t("audit.previous")}
           </button>
           <span className="muted">
-            Side {page + 1} af {totalPages}
+            {t("audit.page", { page: page + 1, totalPages })}
           </span>
           <button
             type="button"
@@ -1370,7 +1374,7 @@ function AuditLogSection() {
             onClick={() => load(page + 1)}
             disabled={page + 1 >= totalPages || status === "loading"}
           >
-            Næste →
+            {t("audit.next")}
           </button>
         </div>
       )}
@@ -1386,6 +1390,7 @@ const BARCODE_SOURCE_LABELS = {
 };
 
 function PrimaryBarcodeSourceRow({ currentValue, onSaved }) {
+  const t = useT();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -1406,8 +1411,8 @@ function PrimaryBarcodeSourceRow({ currentValue, onSaved }) {
   return (
     <div className="serial-config-form" style={{ marginBottom: 16 }}>
       <label>
-        Primær stregkode-kilde —{" "}
-        <span className="muted">prøves først ved scan, de øvrige tre som fallback bagefter</span>
+        {t("sys.primarySource")}{" "}
+        <span className="muted">{t("sys.primarySourceHint")}</span>
         <select value={currentValue ?? "upcitemdb"} onChange={handleChange} disabled={saving}>
           {Object.entries(BARCODE_SOURCE_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
@@ -1422,6 +1427,7 @@ function PrimaryBarcodeSourceRow({ currentValue, onSaved }) {
 }
 
 function PlainSettingRow({ label, field, hint, currentValue, onSaved }) {
+  const t = useT();
   const [value, setValue] = useState(currentValue ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -1455,16 +1461,17 @@ function PlainSettingRow({ label, field, hint, currentValue, onSaved }) {
       </label>
 
       {error && <div className="banner banner-error">{error}</div>}
-      {saved && <div className="banner banner-info">Gemt!</div>}
+      {saved && <div className="banner banner-info">{t("serial.saved")}</div>}
 
       <button type="submit" className="btn btn-primary" disabled={saving}>
-        {saving ? "Gemmer..." : "Gem"}
+        {t(saving ? "common.saving" : "common.save")}
       </button>
     </form>
   );
 }
 
 function ApiKeyRow({ label, field, status, onSaved, testable = true }) {
+  const t = useT();
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -1502,12 +1509,13 @@ function ApiKeyRow({ label, field, status, onSaved, testable = true }) {
     }
   }
 
-  const sourceLabel =
+  const sourceLabel = t(
     status.source === "custom"
-      ? "Sat her i UI'et"
+      ? "sys.sourceCustom"
       : status.source === "env"
-        ? "Sat via .env på serveren"
-        : "Ikke sat";
+        ? "sys.sourceEnv"
+        : "sys.sourceUnset"
+  );
 
   return (
     <form
@@ -1523,14 +1531,16 @@ function ApiKeyRow({ label, field, status, onSaved, testable = true }) {
         <input
           type="password"
           autoComplete="off"
-          placeholder={status.configured ? "•••••••• (indtast for at ændre)" : "Indtast nøgle"}
+            placeholder={t(
+            status.configured ? "sys.keyPlaceholderSet" : "sys.keyPlaceholderUnset"
+          )}
           value={value}
           onChange={(e) => setValue(e.target.value)}
         />
       </label>
 
       {error && <div className="banner banner-error">{error}</div>}
-      {saved && <div className="banner banner-info">Gemt!</div>}
+      {saved && <div className="banner banner-info">{t("serial.saved")}</div>}
       {testResult && (
         <div className={`banner ${testResult.ok ? "banner-info" : "banner-error"}`}>
           {testResult.ok ? "✓" : "✗"} {testResult.message}
@@ -1539,11 +1549,11 @@ function ApiKeyRow({ label, field, status, onSaved, testable = true }) {
 
       <div style={{ display: "flex", gap: 8 }}>
         <button type="submit" className="btn btn-primary" disabled={saving || !value}>
-          {saving ? "Gemmer..." : "Gem"}
+          {t(saving ? "common.saving" : "common.save")}
         </button>
         {status.source === "custom" && (
           <button type="button" className="btn" onClick={() => submit("")} disabled={saving}>
-            Ryd (brug .env igen)
+            {t("sys.clearUseEnv")}
           </button>
         )}
         {testable && (
@@ -1553,7 +1563,7 @@ function ApiKeyRow({ label, field, status, onSaved, testable = true }) {
             onClick={testConnection}
             disabled={testStatus === "testing" || !status.configured}
           >
-            {testStatus === "testing" ? "Tester..." : "Test forbindelse"}
+            {t(testStatus === "testing" ? "sys.testing" : "sys.testConnection")}
           </button>
         )}
       </div>
@@ -1562,6 +1572,7 @@ function ApiKeyRow({ label, field, status, onSaved, testable = true }) {
 }
 
 function DeploySection() {
+  const t = useT();
   const [currentBuild, setCurrentBuild] = useState(null);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
@@ -1626,12 +1637,10 @@ function DeploySection() {
 
   return (
     <div className="card settings-section">
-      <h2>Opdatér fra GitHub</h2>
+      <h2>{t("deploy.heading")}</h2>
       <p className="muted">
-        Henter seneste version fra GitHub (main-branchen), geninstallerer afhængigheder og
-        genstarter serveren automatisk. Kun tilgængelig i produktion (se DEPLOYMENT.md). Tager
-        typisk et minuts tid — siden er kortvarigt utilgængelig mens backend genstarter.
-        {currentBuild && <> Kører nu build {currentBuild}.</>}
+        {t("deploy.description")}
+        {currentBuild && t("deploy.currentBuild", { build: currentBuild })}
       </p>
 
       <button
@@ -1640,7 +1649,7 @@ function DeploySection() {
         onClick={deploy}
         disabled={status === "deploying"}
       >
-        {status === "deploying" ? "Opdaterer..." : "Opdatér fra GitHub"}
+        {t(status === "deploying" ? "deploy.deploying" : "deploy.deploy")}
       </button>
 
       {status === "error" && (
@@ -1650,18 +1659,17 @@ function DeploySection() {
       )}
       {status === "timeout" && (
         <div className="banner banner-error" style={{ marginTop: 12 }}>
-          Kunne ikke bekræfte at opdateringen er fuldført endnu — tjek serveren manuelt (se
-          DEPLOYMENT.md's fejlsøgnings-afsnit) eller genindlæs siden om lidt.
+          {t("deploy.timeout")}
         </div>
       )}
       {status === "up-to-date" && (
         <div className="banner banner-info" style={{ marginTop: 12 }}>
-          Allerede opdateret — der var ingen ny version at hente. Kører stadig build {currentBuild}.
+          {t("deploy.upToDate", { build: currentBuild })}
         </div>
       )}
       {status === "done" && (
         <div className="banner banner-info" style={{ marginTop: 12 }}>
-          Opdateret! Kører nu build {currentBuild}.
+          {t("deploy.done", { build: currentBuild })}
         </div>
       )}
     </div>
@@ -1669,6 +1677,7 @@ function DeploySection() {
 }
 
 function UsersSection({ currentUserId }) {
+  const t = useT();
   const [users, setUsers] = useState([]);
   const [status, setStatus] = useState("loading");
   const [updatingId, setUpdatingId] = useState(null);
@@ -1715,7 +1724,7 @@ function UsersSection({ currentUserId }) {
   }
 
   async function deleteUser(targetUser) {
-    if (!window.confirm(`Slet brugeren "${targetUser.username}" permanent? Kan ikke fortrydes.`)) {
+    if (!window.confirm(t("users.confirmDelete", { username: targetUser.username }))) {
       return;
     }
     setUpdatingId(targetUser.id);
@@ -1734,15 +1743,15 @@ function UsersSection({ currentUserId }) {
 
   return (
     <div className="card settings-section">
-      <h2>Brugere</h2>
+      <h2>{t("users.heading")}</h2>
       <p className="muted">
-        Administrér hvem der har admin-rettigheder, og godkend/afvis nye registreringer
-        {pendingCount > 0 && ` (${pendingCount} afventer godkendelse)`}.
+        {t("users.description")}
+        {pendingCount > 0 && t("users.pendingCount", { count: pendingCount })}.
       </p>
 
-      {status === "loading" && <p className="muted">Indlæser...</p>}
+      {status === "loading" && <p className="muted">{t("common.loading")}</p>}
       {status === "error" && (
-        <div className="banner banner-error">Kunne ikke hente brugere.</div>
+        <div className="banner banner-error">{t("users.loadError")}</div>
       )}
       {error && <div className="banner banner-error">{error}</div>}
 
@@ -1752,14 +1761,26 @@ function UsersSection({ currentUserId }) {
             <li key={u.id} className="user-row">
               <span className="user-row-name">
                 {u.username}
-                {u.id === currentUserId && <span className="muted"> (dig)</span>}
+                {u.id === currentUserId && <span className="muted">{t("users.you")}</span>}
               </span>
-              {u.status === "pending" && <span className="role-badge">Afventer</span>}
-              {u.status === "rejected" && <span className="role-badge">Afvist</span>}
-              {u.status === "disabled" && <span className="role-badge">Deaktiveret</span>}
+              {u.status === "pending" && (
+                <span className="role-badge">{t("users.statusPending")}</span>
+              )}
+              {u.status === "rejected" && (
+                <span className="role-badge">{t("users.statusRejected")}</span>
+              )}
+              {u.status === "disabled" && (
+                <span className="role-badge">{t("users.statusDisabled")}</span>
+              )}
               {u.status === "active" && (
                 <span className="role-badge">
-                  {u.role === "admin" ? "Admin" : u.role === "guest" ? "Guest" : "Standard"}
+                  {t(
+                    u.role === "admin"
+                      ? "account.roleAdmin"
+                      : u.role === "guest"
+                        ? "account.roleGuest"
+                        : "account.roleStandard"
+                  )}
                 </span>
               )}
               {u.status === "pending" ? (
@@ -1770,7 +1791,7 @@ function UsersSection({ currentUserId }) {
                     disabled={updatingId === u.id}
                     onClick={() => setStatusFor(u, "active")}
                   >
-                    {updatingId === u.id ? "..." : "Godkend"}
+                    {updatingId === u.id ? "..." : t("users.approve")}
                   </button>
                   <button
                     type="button"
@@ -1778,7 +1799,7 @@ function UsersSection({ currentUserId }) {
                     disabled={updatingId === u.id}
                     onClick={() => setStatusFor(u, "rejected")}
                   >
-                    Afvis
+                    {t("users.reject")}
                   </button>
                 </>
               ) : u.status === "active" ? (
@@ -1788,9 +1809,9 @@ function UsersSection({ currentUserId }) {
                     disabled={u.id === currentUserId || updatingId === u.id}
                     onChange={(e) => changeRole(u, e.target.value)}
                   >
-                    <option value="admin">Admin</option>
-                    <option value="standard">Standard</option>
-                    <option value="guest">Guest (read-only)</option>
+                    <option value="admin">{t("account.roleAdmin")}</option>
+                    <option value="standard">{t("account.roleStandard")}</option>
+                    <option value="guest">{t("users.roleGuestOption")}</option>
                   </select>
                   {u.id !== currentUserId && (
                     <button
@@ -1799,7 +1820,7 @@ function UsersSection({ currentUserId }) {
                       disabled={updatingId === u.id}
                       onClick={() => setStatusFor(u, "disabled")}
                     >
-                      Deaktivér
+                      {t("users.disable")}
                     </button>
                   )}
                 </>
@@ -1810,7 +1831,7 @@ function UsersSection({ currentUserId }) {
                   disabled={updatingId === u.id}
                   onClick={() => setStatusFor(u, "active")}
                 >
-                  {updatingId === u.id ? "..." : "Genaktivér"}
+                  {updatingId === u.id ? "..." : t("users.reactivate")}
                 </button>
               ) : null}
               {u.id !== currentUserId && (
@@ -1820,7 +1841,7 @@ function UsersSection({ currentUserId }) {
                   disabled={updatingId === u.id}
                   onClick={() => deleteUser(u)}
                 >
-                  Slet
+                  {t("common.delete")}
                 </button>
               )}
             </li>

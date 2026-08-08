@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 import { hasCatalog, I18nContext, SOURCE_LANGUAGE } from "./index";
 
 /**
@@ -11,5 +13,13 @@ import { hasCatalog, I18nContext, SOURCE_LANGUAGE } from "./index";
  */
 export default function I18nProvider({ language, children }) {
   const value = hasCatalog(language) ? language : SOURCE_LANGUAGE;
+
+  // `<html lang>` skal følge det viste sprog, ikke bare index.html's
+  // statiske kildesprog: skærmlæsere vælger stemme/udtale ud fra den, og
+  // browserens oversættelses-tilbud retter sig efter den.
+  useEffect(() => {
+    document.documentElement.lang = value;
+  }, [value]);
+
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

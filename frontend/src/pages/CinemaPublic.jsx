@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import CinemaShowcase from "../components/CinemaShowcase";
 import { formatShortDate, formatTime } from "../utils/cinemaFormat";
+import { useLocale, useT } from "../i18n";
 import "./CinemaPublic.css";
 import "./Login.css";
 
@@ -19,6 +20,7 @@ import "./Login.css";
 // mostly one screening per day, date-grouping just produced a long single
 // column of near-empty rows.
 export default function CinemaPublic({ user = null }) {
+  const t = useT();
   const [screenings, setScreenings] = useState([]);
   const [status, setStatus] = useState("loading");
 
@@ -36,24 +38,24 @@ export default function CinemaPublic({ user = null }) {
     <div className="cinema-public-page">
       <header className="cinema-public-hero">
         <PublicLoginToggle user={user} />
-        <h1>🎬 Voldby BIO</h1>
-        <p className="cinema-public-tagline">Hjemmebiografen — se hvad der går i bio herunder.</p>
+        <h1>{t("cinema.title")}</h1>
+        <p className="cinema-public-tagline">{t("public.tagline")}</p>
       </header>
 
       <main className="cinema-public-main">
         <section>
-          <h2 className="cinema-public-section-heading">Om Voldby BIO</h2>
+          <h2 className="cinema-public-section-heading">{t("public.about")}</h2>
           <CinemaShowcase />
         </section>
 
         <section>
-          <h2 className="cinema-public-section-heading">Hvad går i bio</h2>
-          {status === "loading" && <p className="muted">Indlæser program...</p>}
+          <h2 className="cinema-public-section-heading">{t("public.nowShowing")}</h2>
+          {status === "loading" && <p className="muted">{t("cinema.loadingProgram")}</p>}
           {status === "error" && (
-            <div className="banner banner-error">Kunne ikke hente programmet.</div>
+            <div className="banner banner-error">{t("cinema.programLoadError")}</div>
           )}
           {status === "ready" && screenings.length === 0 && (
-            <p className="muted">Ingen kommende visninger er planlagt endnu.</p>
+            <p className="muted">{t("cinema.noScreenings")}</p>
           )}
 
           {screenings.length > 0 && (
@@ -77,6 +79,7 @@ export default function CinemaPublic({ user = null }) {
 // App.jsx over med den nu autentificerede bruger, landet på Voldby BIO
 // (samme feature #82's anden halvdel: login lander altid der).
 function PublicLoginToggle({ user }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   // Feature #83 — samme to-tilstands-mønster som appens egen Login.jsx, så
   // en besøgende der har fået biograf-linket delt også kan oprette sin konto
@@ -122,7 +125,7 @@ function PublicLoginToggle({ user }) {
   if (user) {
     return (
       <a className="cinema-public-login-toggle" href="/">
-        Åbn biblioteket →
+        {t("public.openLibrary")}
       </a>
     );
   }
@@ -130,7 +133,7 @@ function PublicLoginToggle({ user }) {
   if (!open) {
     return (
       <button type="button" className="cinema-public-login-toggle" onClick={() => setOpen(true)}>
-        Log ind
+        {t("auth.login")}
       </button>
     );
   }
@@ -139,7 +142,7 @@ function PublicLoginToggle({ user }) {
     <div className="cinema-public-login-panel">
       <form className="auth-form" onSubmit={handleSubmit}>
         <label>
-          Brugernavn
+          {t("auth.username")}
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -152,7 +155,7 @@ function PublicLoginToggle({ user }) {
           />
         </label>
         <label>
-          Adgangskode
+          {t("auth.password")}
           <input
             type="password"
             value={password}
@@ -165,31 +168,33 @@ function PublicLoginToggle({ user }) {
         {error && <div className="banner banner-error">{error}</div>}
         <div className="cinema-public-login-actions">
           <button type="button" className="btn" onClick={() => setOpen(false)} disabled={submitting}>
-            Annullér
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn btn-primary" disabled={submitting}>
-            {submitting
-              ? mode === "login"
-                ? "Logger ind..."
-                : "Opretter..."
-              : mode === "login"
-                ? "Log ind"
-                : "Opret bruger"}
+            {t(
+              submitting
+                ? mode === "login"
+                  ? "public.loggingIn"
+                  : "public.creating"
+                : mode === "login"
+                  ? "auth.login"
+                  : "public.createUser"
+            )}
           </button>
         </div>
         <div className="auth-switch">
           {mode === "login" ? (
             <>
-              Ingen konto?{" "}
+              {t("auth.noAccount")}{" "}
               <button type="button" onClick={() => switchMode("register")}>
-                Opret bruger
+                {t("public.createUser")}
               </button>
             </>
           ) : (
             <>
-              Har du allerede en konto?{" "}
+              {t("auth.haveAccount")}{" "}
               <button type="button" onClick={() => switchMode("login")}>
-                Log ind
+                {t("auth.login")}
               </button>
             </>
           )}
@@ -200,10 +205,13 @@ function PublicLoginToggle({ user }) {
 }
 
 function PublicScreeningCard({ screening }) {
+  const t = useT();
+  const locale = useLocale();
   return (
     <div className="bio-poster-card">
       <div className="bio-poster-card-datetime">
-        {formatShortDate(screening.scheduled_at)} · {formatTime(screening.scheduled_at)}
+        {formatShortDate(screening.scheduled_at, locale)} ·{" "}
+        {formatTime(screening.scheduled_at, locale)}
       </div>
       <div className="bio-poster-card-poster">
         {screening.poster_url ? (
@@ -214,7 +222,7 @@ function PublicScreeningCard({ screening }) {
       </div>
       <div className="bio-poster-card-body">
         <h3 className="bio-poster-card-title">
-          {screening.title ?? "Ukendt titel"}
+          {screening.title ?? t("cinema.unknownTitle")}
           {screening.year ? ` (${screening.year})` : ""}
         </h3>
         {screening.genres?.length > 0 && (

@@ -2,6 +2,26 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.66.0 build 0095] — 2026-08-08 — feature: resten af brugerfladen oversat, #89 færdig (FEATURES.md #89, del 3-4/4)
+
+Sidste del af sprogvalget: TV-serier, Indstillinger (den største enkeltfil, ~1.800 linjer), Statistik, Print, Voldby BIO — både den indloggede fane og den offentlige `/bio` — samt visnings-ønske-boksen, biograf-showcasen og scanneren. I alt 472 nøgler i hvert af de to kataloger; hele brugerfladen er dækket, og featuren er markeret `done`.
+
+Tre mønstre gik igen nok til at være værd at skrive ned (nu i TECH_REFERENCE.md):
+
+**Modul-konstanter må ikke indeholde færdig tekst.** `SORT_OPTIONS`, `VISIBLE_FIELD_OPTIONS`, `CARD_SIZE_OPTIONS`, `PHOTOS` og `settingsTabs()` evalueres alle ved import — længe før nogen oversætter findes. De bærer nu `labelKey`/`altKey`, og nøglen slås op ved render. Det samme gælder `TmdbSyncSection`s fire tekst-props, som blev til `*Key`-props.
+
+**Rene funktioner tager `t`/`locale` som argument** frem for at kalde hooks. `formatRuntime` (Statistik) og `cinemaFormat.js`' fire dato-funktioner er ikke komponenter og må derfor ikke kalde `useT()`/`useLocale()`. `cinemaFormat`s locale-parameter defaulter til dansk, netop fordi den offentlige `/bio` kalder dem uden en indlogget bruger.
+
+**Datoer går gennem `useLocale()`.** Otte steder havde hardkodet `toLocaleDateString("da-DK")`. `formatTime` sætter desuden `hour12: false` eksplicit: `en-GB` giver AM/PM på nogle platforme, og hele appen — inklusive `DateTime24Input` — regner med 24-timers ur.
+
+Den offentlige `/bio` er nu wrappet i provideren når der *er* en indlogget bruger. En udelogget besøgende har stadig ingen præference at læse og får dansk, men husets egne brugere får deres eget sprog på den delte adresse. Login-skærmen forbliver dansk — der er intet at læse fra på det tidspunkt.
+
+`index.html` stod med `lang="en"` på en app der udelukkende var dansk. Den er rettet til `da` og opdateres nu til det viste sprog fra `I18nProvider` — skærmlæsere vælger stemme og udtale ud fra den, og browserens oversættelses-tilbud retter sig efter den.
+
+Katalogerne er verificeret: samme 472 nøgler i begge sprog, samme `{pladsholdere}` pr. nøgle i begge, og ingen ubrugte nøgler (seks spekulative blev fjernet igen, heriblandt `error.*` til den bevidst uoversatte `ErrorBoundary`).
+
+Berørte filer: `frontend/src/pages/TvShows.jsx`, `frontend/src/pages/Settings.jsx`, `frontend/src/pages/Statistics.jsx`, `frontend/src/pages/PrintList.jsx`, `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/components/CinemaShowcase.jsx`, `frontend/src/components/ScreeningRequestButton.jsx`, `frontend/src/scanner/BarcodeScanner.jsx`, `frontend/src/utils/cinemaFormat.js`, `frontend/src/App.jsx`, `frontend/src/i18n/I18nProvider.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `frontend/index.html`, `ARCHITECTURE.md`, `TECH_REFERENCE.md`, `FEATURES.md`, `version.json`.
+
 ## [0.66.0 build 0094] — 2026-08-08 — feature: Film-siden og scan/tilføj-panelet oversat (FEATURES.md #89, del 2/4)
 
 Filmbiblioteket, dets detalje-/redigeringsvindue, samlings-sektionen, Plex-badget og hele scan/søg-panelet kører nu gennem oversætteren. Omkring 180 strenge.

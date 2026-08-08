@@ -1,10 +1,11 @@
 # Release Notes
 
-## v0.66.0 (build 0093) — 2026-08-08
+## v0.66.0 (build 0095) — 2026-08-08
 
 - **Du kan nu vælge engelsk som sprog.** Indstillinger → Konto → Sprog. Valget gemmes på din bruger, så det følger med uanset om du åbner appen på telefonen eller på PC'en.
-- Denne version dækker menuen, login og ønskeliste-fanerne. Film-, TV-serie-, Indstillings- og BIO-siderne oversættes i de næste opdateringer — indtil da står de på dansk.
-- Login-siden og den offentlige BIO-side forbliver på dansk: der er ingen bruger at læse sprogvalget fra, før du er logget ind.
+- **Hele appen er oversat** — Film, TV-serier, scanning, Indstillinger, Statistik, Print og Voldby BIO. Ikke halve skærme.
+- Datoer og klokkeslæt følger sproget, men bliver ved med at være dag-før-måned og 24-timers ur i begge sprog.
+- Login-siden er altid på dansk: appen ved først hvilket sprog du foretrækker, når du er logget ind. Er du logget ind, får du dit eget sprog på den delte BIO-side; er du ikke, vises den på dansk.
 
 ## v0.65.0 (build 0092) — 2026-08-08
 

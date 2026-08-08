@@ -59,13 +59,22 @@ function App() {
   // biblioteket" to someone already signed in — the page itself renders
   // immediately either way, which is the whole point of this early return.
   if (window.location.pathname.startsWith("/bio")) {
-    return <CinemaPublic user={user} />;
+    // Feature #89 — en besøgende uden login har intet sprogvalg at læse, så
+    // siden bliver på kildesproget. Er man derimod allerede logget ind (den
+    // delte /bio-adresse er også en genvej for husets egne brugere),
+    // kender vi præferencen og bruger den.
+    return (
+      <I18nProvider language={user?.settings?.language ?? SOURCE_LANGUAGE}>
+        <CinemaPublic user={user} />
+      </I18nProvider>
+    );
   }
 
   // Feature #84 — the full login page keeps its own URL so it isn't
   // orphaned by the landing-page change below, and so there's still a
   // direct link for "just let me sign in".
   if (window.location.pathname.startsWith("/login")) {
+    // Ingen bruger endnu — login-skærmen er altid på kildesproget.
     return <Login onAuthenticated={setUser} />;
   }
 
@@ -82,7 +91,11 @@ function App() {
   }
 
   if (user.status !== "active") {
-    return <PendingApproval user={user} onLogout={handleLogout} />;
+    return (
+      <I18nProvider language={user.settings?.language ?? SOURCE_LANGUAGE}>
+        <PendingApproval user={user} onLogout={handleLogout} />
+      </I18nProvider>
+    );
   }
 
   // Feature #72 — guest is read-only: Ønsker/Print/Statistik all involve

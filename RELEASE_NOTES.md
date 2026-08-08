@@ -1,5 +1,15 @@
 # Release Notes
 
+## v0.67.0 (build 0096) — 2026-08-08
+
+- **Du kan nu importere det din Plex allerede har ind i portalen.** Indstillinger → Nøgler → "Importér fra Plex". Vælg om det skal være film, serier eller begge.
+- **Den viser altid først hvad den ville gøre.** Du får listen at se, og skal trykke Importér bagefter — intet oprettes af sig selv.
+- Film og serier du allerede har i portalen springes over, så du kan trygt køre importen igen senere for at hente det nye.
+- Alt importeret får taget **Plex-import**, så du kan filtrere det frem i biblioteket bagefter — eller finde det igen hvis du fortryder. Du kan ændre tag-navnet, eller lade feltet stå tomt.
+- **TV-serier får markeret de sæsoner du faktisk har liggende i Plex** som ejede med det samme.
+- Titler som Plex ikke har nok oplysninger om, bliver ikke gættet på plads — de vises i en liste for sig, så du selv kan tilføje dem.
+- Metadata (poster, plot, genrer, medvirkende, rating) hentes fra TMDb, ikke fra Plex, så importerede film ser ud som alt andet i biblioteket.
+
 ## v0.66.0 (build 0095) — 2026-08-08
 
 - **Du kan nu vælge engelsk som sprog.** Indstillinger → Konto → Sprog. Valget gemmes på din bruger, så det følger med uanset om du åbner appen på telefonen eller på PC'en.

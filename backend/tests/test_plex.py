@@ -1,7 +1,7 @@
 import pytest
 
 from app.core.config import settings
-from app.integrations import plex_client
+from app.integrations import plex_client, tmdb_client
 from app.integrations.plex_client import PlexFetchResult, PlexItem, PlexSectionResult
 from app.services import plex_service
 
@@ -281,3 +281,212 @@ async def test_diagnostics_explains_missing_configuration(client, monkeypatch):
     assert body["configured"] is False
     assert body["token_configured"] is True
     assert "server-URL" in body["error"]
+
+
+# --- import fra Plex (feature #90) ------------------------------------------
+
+
+def _patch_create(monkeypatch, created):
+    """Fanger hvad importen ville oprette, uden at ramme TMDb. Kun tmdb_id,
+    tags og sæsoner er interessante her — resten af oprettelsen er
+    movie_service og tv_show_service sit eget ansvar, dækket af deres tests."""
+    from app.services import movie_service, tv_show_service
+
+    async def fake_create_movie(db, payload, registered_by):
+        created.append(("movie", payload.tmdb_id, payload.tags))
+
+    async def fake_create_tv_show(db, payload, registered_by):
+        created.append(("show", payload.tmdb_id, payload.tags, payload.owned_seasons))
+
+    monkeypatch.setattr(movie_service, "create_movie", fake_create_movie)
+    monkeypatch.setattr(tv_show_service, "create_tv_show", fake_create_tv_show)
+
+
+async def test_import_requires_plex_configuration(client, monkeypatch):
+    monkeypatch.setattr(settings, "plex_server_url", "")
+    monkeypatch.setattr(settings, "plex_token", "")
+
+    body = (await client.post("/api/plex/import", json={"dry_run": True})).json()
+    assert body["ok"] is False
+    assert "ikke konfigureret" in body["error"]
+
+
+async def test_import_requires_tmdb_token_before_looping(client, monkeypatch):
+    """CLAUDE.md regel 16 — en manglende nøgle rammer hele batchen og skal
+    meldes én gang, ikke som N identiske fejl."""
+    _configure(monkeypatch)
+    monkeypatch.setattr(settings, "tmdb_api_token", "")
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None)]))
+
+    body = (await client.post("/api/plex/import", json={"dry_run": True})).json()
+    assert body["ok"] is False
+    assert "TMDb-token" in body["error"]
+    assert body["imported"] == []
+
+
+async def test_import_dry_run_creates_nothing(client, monkeypatch):
+    _configure(monkeypatch)
+    created = []
+    _patch_create(monkeypatch, created)
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None)]))
+
+    body = (await client.post("/api/plex/import", json={"dry_run": True})).json()
+    assert body["ok"] is True
+    assert body["dry_run"] is True
+    assert [item["title"] for item in body["imported"]] == ["The Matrix"]
+    assert body["imported"][0]["resolved_via"] == "plex_guid"
+    assert created == []
+
+
+async def test_import_creates_with_tag(client, monkeypatch):
+    _configure(monkeypatch)
+    created = []
+    _patch_create(monkeypatch, created)
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None)]))
+
+    body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
+    assert body["ok"] is True
+    assert created == [("movie", 603, ["Plex-import"])]
+    assert len(body["imported"]) == 1
+
+
+async def test_import_skips_what_we_already_have(client, monkeypatch):
+    """Genbruger feature #88s matchning i modsat retning — en film vi har på
+    titel+år må ikke importeres igen bare fordi Plex har et tmdb-id."""
+    _configure(monkeypatch)
+    await client.post("/api/movies", json={"title": "The Matrix", "year": 1999})
+    created = []
+    _patch_create(monkeypatch, created)
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None)]))
+
+    body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
+    assert body["already_present"] == 1
+    assert body["imported"] == []
+    assert created == []
+
+
+async def test_import_resolves_missing_tmdb_id_via_search(client, monkeypatch):
+    _configure(monkeypatch)
+    created = []
+    _patch_create(monkeypatch, created)
+
+    async def fake_search_movies(query):
+        return [{"tmdb_id": 603, "title": "The Matrix", "year": 1999}]
+
+    monkeypatch.setattr(tmdb_client, "search_movies", fake_search_movies)
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, None, None)]))
+
+    body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
+    assert created == [("movie", 603, ["Plex-import"])]
+    assert body["imported"][0]["resolved_via"] == "tmdb_search"
+
+
+async def test_import_refuses_ambiguous_search_result(client, monkeypatch):
+    """Jans valg 2026-08-08: hellere rapportere titlen end lade et gæt blive
+    til data der ser lige så rigtig ud som resten af biblioteket."""
+    _configure(monkeypatch)
+    created = []
+    _patch_create(monkeypatch, created)
+
+    async def fake_search_movies(query):
+        return [
+            {"tmdb_id": 1, "title": "Batman", "year": 1989},
+            {"tmdb_id": 2, "title": "Batman", "year": 1989},
+        ]
+
+    monkeypatch.setattr(tmdb_client, "search_movies", fake_search_movies)
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "Batman", 1989, None, None)]))
+
+    body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
+    assert created == []
+    assert [item["title"] for item in body["unmatched"]] == ["Batman"]
+
+
+async def test_import_refuses_search_result_with_wrong_year(client, monkeypatch):
+    _configure(monkeypatch)
+    created = []
+    _patch_create(monkeypatch, created)
+
+    async def fake_search_movies(query):
+        return [{"tmdb_id": 99, "title": "The Matrix", "year": 2021}]
+
+    monkeypatch.setattr(tmdb_client, "search_movies", fake_search_movies)
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, None, None)]))
+
+    body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
+    assert created == []
+    assert len(body["unmatched"]) == 1
+
+
+async def test_import_marks_seasons_owned_from_plex(client, monkeypatch):
+    _configure(monkeypatch)
+    created = []
+    _patch_create(monkeypatch, created)
+
+    async def fake_fetch_show_seasons(rating_key):
+        return [1, 2, 3]
+
+    monkeypatch.setattr(plex_client, "fetch_show_seasons", fake_fetch_show_seasons)
+    _patch_library(monkeypatch, _fake_library([PlexItem("show", "7", "Fargo", 2014, 60622, None)]))
+
+    await client.post("/api/plex/import", json={"dry_run": False})
+    assert created == [("show", 60622, ["Plex-import"], [1, 2, 3])]
+
+
+async def test_import_can_limit_to_movies_only(client, monkeypatch):
+    _configure(monkeypatch)
+    created = []
+    _patch_create(monkeypatch, created)
+    _patch_library(
+        monkeypatch,
+        _fake_library(
+            [
+                PlexItem("movie", "1", "The Matrix", 1999, 603, None),
+                PlexItem("show", "7", "Fargo", 2014, 60622, None),
+            ]
+        ),
+    )
+
+    await client.post("/api/plex/import", json={"dry_run": False, "include_shows": False})
+    assert [entry[0] for entry in created] == ["movie"]
+
+
+async def test_import_stops_immediately_on_rate_limit(client, monkeypatch):
+    """CLAUDE.md regel 16 — bliv ikke ved med at ramme en allerede-throttlet
+    API for resten af batchen."""
+    from app.core.errors import TmdbRateLimitedError
+    from app.services import movie_service
+
+    _configure(monkeypatch)
+    calls = []
+
+    async def rate_limited_create(db, payload, registered_by):
+        calls.append(payload.tmdb_id)
+        raise TmdbRateLimitedError()
+
+    monkeypatch.setattr(movie_service, "create_movie", rate_limited_create)
+    _patch_library(
+        monkeypatch,
+        _fake_library(
+            [
+                PlexItem("movie", "1", "Film A", 2001, 1, None),
+                PlexItem("movie", "2", "Film B", 2002, 2, None),
+                PlexItem("movie", "3", "Film C", 2003, 3, None),
+            ]
+        ),
+    )
+
+    body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
+    assert body["stopped_early"] is True
+    # Stoppede efter den første — prøvede ikke de to andre.
+    assert calls == [1]
+
+
+async def test_import_empty_tag_creates_without_tag(client, monkeypatch):
+    _configure(monkeypatch)
+    created = []
+    _patch_create(monkeypatch, created)
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None)]))
+
+    await client.post("/api/plex/import", json={"dry_run": False, "tag": "   "})
+    assert created == [("movie", 603, [])]

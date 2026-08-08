@@ -107,6 +107,10 @@ export const api = {
   getPlexAvailability: (kind) => request(`/plex/availability?kind=${kind}`),
   refreshPlexAvailability: (kind) => request(`/plex/refresh?kind=${kind}`, { method: "POST" }),
   getPlexDiagnostics: () => request("/plex/diagnostics"),
+  // Feature #90 — samme endpoint til forhåndsvisning og udførelse, styret af
+  // `dry_run`, så det viste og det udførte ikke kan drive fra hinanden.
+  importFromPlex: (payload) =>
+    request("/plex/import", { method: "POST", body: JSON.stringify(payload) }),
   getSerialNumberConfig: () => request("/settings/serial-number"),
   updateSerialNumberConfig: (payload) =>
     request("/settings/serial-number", { method: "PATCH", body: JSON.stringify(payload) }),

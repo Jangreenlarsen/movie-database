@@ -3,8 +3,14 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.api.deps import get_current_user, require_admin
 from app.db import get_database
-from app.models.plex import PlexAvailabilityMap, PlexDiagnostics, PlexKind
-from app.services import plex_service
+from app.models.plex import (
+    PlexAvailabilityMap,
+    PlexDiagnostics,
+    PlexImportRequest,
+    PlexImportResult,
+    PlexKind,
+)
+from app.services import audit_log_service, plex_service
 
 router = APIRouter(prefix="/api/plex", tags=["plex"], dependencies=[Depends(get_current_user)])
 
@@ -29,6 +35,29 @@ async def refresh_availability(
     """Tvinger et nyt hent uden om cachen — til lige efter man har lagt en
     ny film i Plex og ikke vil vente på at TTL'en løber ud."""
     return await plex_service.get_availability_map(db, kind, force_refresh=True)
+
+
+@router.post("/import", response_model=PlexImportResult, dependencies=[Depends(require_admin)])
+async def import_from_plex(
+    payload: PlexImportRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """Opretter alt det Plex har, som portalen ikke har i forvejen (feature
+    #90). `dry_run: true` (default) viser hvad der ville ske uden at oprette
+    noget. **Kræver admin** — en enkelt udførelse kan oprette hundredvis af
+    poster."""
+    result = await plex_service.import_from_plex(db, payload, current_user["username"])
+    # Kun den faktiske import logges — en forhåndsvisning ændrer intet, og
+    # ville drukne loggen hvis man klikker sig frem og tilbage.
+    if not payload.dry_run and result.ok:
+        await audit_log_service.record(
+            db,
+            current_user["username"],
+            "plex.imported",
+            f"{len(result.imported)} oprettet, {result.already_present} fandtes i forvejen",
+        )
+    return result
 
 
 @router.get("/diagnostics", response_model=PlexDiagnostics, dependencies=[Depends(require_admin)])

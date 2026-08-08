@@ -28,6 +28,7 @@ from app.models.tv_show import (
     TvShowUpdate,
 )
 from app.repositories import (
+    digital_serial_repository,
     screening_repository,
     screening_request_repository,
     tv_show_repository,
@@ -142,12 +143,28 @@ async def preview_from_tmdb(tmdb_id: int) -> TvShowPreview:
     )
 
 
-def _should_have_serial_number(is_wishlist: bool, media_type) -> bool:
-    """Feature #92 — spejler movie_service._should_have_serial_number; se
-    dens docstring for begrundelsen."""
+async def _assign_serial_number(db, is_wishlist: bool, media_type) -> int | None:
+    """Tildeler et serienummer fra den rigtige serie, eller None.
+
+    Feature #92 gav kun fysiske udgaver et nummer; feature #93 gav digitale
+    deres egen serie i stedet (Jans ønske 2026-08-08). Ønskelisten står
+    fortsat udenfor — man ejer ikke det man ønsker sig endnu.
+
+    Tre serier tælles hver for sig: fysiske film (M#), fysiske TV-serier
+    (T#) og *alle* digitale udgaver under ét (D#, delt på tværs af film og
+    serier, så et D#-nummer altid peger på præcis én ting).
+
+    `media_type` er påkrævet ved oprettelse af en biblioteks-post, så "ikke
+    sat" kan kun forekomme på dokumenter fra før den regel. De får intet
+    nummer her; eksisterende dokumenter røres kun af migreringen i
+    `digital_serial_repository.backfill`."""
     if is_wishlist:
-        return False
-    return media_type == MediaType.PHYSICAL
+        return None
+    if media_type == MediaType.PHYSICAL:
+        return await tv_show_repository.next_serial_number(db)
+    if media_type == MediaType.DIGITAL:
+        return await digital_serial_repository.next_serial_number(db)
+    return None
 
 
 async def create_tv_show(
@@ -215,8 +232,9 @@ async def create_tv_show(
     # Feature #92 — kun fysiske udgaver nummereres, se den identiske regel og
     # begrundelse i movie_service. TV-serier har sin egen nummer-serie
     # (`tv_show_serial`-tælleren), adskilt fra filmenes.
-    if _should_have_serial_number(payload.is_wishlist, payload.media_type):
-        document["serial_number"] = await tv_show_repository.next_serial_number(db)
+    serial_number = await _assign_serial_number(db, payload.is_wishlist, payload.media_type)
+    if serial_number is not None:
+        document["serial_number"] = serial_number
 
     trimmed_barcode = payload.barcode.strip() if payload.barcode else ""
     if trimmed_barcode:
@@ -369,8 +387,9 @@ async def update_tv_show(
         fields["is_wishlist"] = requested_wishlist
         media_type = requested_media_type or current_doc.get("media_type")
         if was_wishlist and not requested_wishlist:
-            if _should_have_serial_number(False, media_type):
-                fields["serial_number"] = await tv_show_repository.next_serial_number(db)
+            assigned = await _assign_serial_number(db, False, media_type)
+            if assigned is not None:
+                fields["serial_number"] = assigned
         elif not was_wishlist and requested_wishlist:
             _assert_can_edit_serial_number(current_user, current_doc)
             await tv_show_repository.clear_serial_number(db, tv_show_id)
@@ -379,13 +398,20 @@ async def update_tv_show(
         await _reassign_serial_number(db, tv_show_id, current_doc, requested_serial)
     elif requested_media_type is not None:
         # Feature #92 — reglen håndhæves begge veje, se movie_service.
-        should_have = _should_have_serial_number(
-            current_doc.get("is_wishlist", False), requested_media_type
+        # Feature #93 — medietypen bestemmer *hvilken* serie nummeret hører
+        # til, ikke bare om der er et. Et skift mellem fysisk og digital
+        # flytter derfor posten til den anden serie: det gamle nummer
+        # frigives, og et nyt tildeles fra den rigtige.
+        was_digital = current_doc.get("media_type") == MediaType.DIGITAL.value
+        is_digital = requested_media_type == MediaType.DIGITAL.value
+        series_changed = was_digital != is_digital
+        assigned = await _assign_serial_number(
+            db, current_doc.get("is_wishlist", False), requested_media_type
         )
         has_now = current_doc.get("serial_number") is not None
-        if should_have and not has_now:
-            fields["serial_number"] = await tv_show_repository.next_serial_number(db)
-        elif not should_have and has_now:
+        if assigned is not None and (not has_now or series_changed):
+            fields["serial_number"] = assigned
+        elif assigned is None and has_now:
             _assert_can_edit_serial_number(current_user, current_doc)
             await tv_show_repository.clear_serial_number(db, tv_show_id)
 

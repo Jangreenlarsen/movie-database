@@ -494,5 +494,7 @@
   "plexImport.failedHint": "Disse blev genkendt, men kunne ikke oprettes. Prøv importen igen — det er typisk en midlertidig TMDb-fejl.",
   "audit.action.plexImported": "Importeret fra Plex",
   "plexImport.formatPending": "format afgøres ved import",
-  "detail.classificationRequired": "Medietype og format skal vælges, før den kan gemmes i biblioteket. Medietypen afgør om den får et serienummer — kun fysiske udgaver nummereres."
+  "detail.classificationRequired": "Medietype og format skal vælges, før den kan gemmes i biblioteket. Medietypen afgør hvilken nummer-serie den får — M#/T# for fysiske, D# for digitale.",
+  "counts.summary": "{movies} film · {shows} serier",
+  "counts.title": "I biblioteket: {movies} film ({movePhysical} fysiske, {movieDigital} digitale) og {shows} TV-serier ({showPhysical} fysiske, {showDigital} digitale)"
 }

@@ -1,11 +1,12 @@
-"""Serienummer-reglerne fra feature #92.
+"""Serienummer-reglerne fra feature #92 og #93.
 
-Kun fysiske biblioteksposter nummereres, medietype+format er påkrævet ved
-oprettelse, og reglen håndhæves begge veje når medietypen ændres senere.
-Film og TV-serier har hver sin nummer-serie.
+Tre serier tælles hver for sig: fysiske film (M#), fysiske TV-serier (T#) og
+alle digitale udgaver under ét (D#, delt på tværs af film og serier).
+Ønskelisten nummereres ikke. Medietype og format er påkrævet ved oprettelse,
+og et skift af medietype flytter posten til den anden serie.
 """
 
-from app.repositories import movie_repository, tv_show_repository
+from app.repositories import digital_serial_repository, movie_repository, tv_show_repository
 
 PHYSICAL = {"media_type": "Fysisk", "format": "DVD"}
 DIGITAL = {"media_type": "Digital", "format": "Digital-HD"}
@@ -45,71 +46,96 @@ async def test_wishlist_is_exempt_from_the_requirement(client):
         assert response.json()["serial_number"] is None
 
 
-# --- kun fysiske får nummer -------------------------------------------------
+# --- de tre serier ----------------------------------------------------------
 
 
-async def test_physical_movie_gets_a_serial_number(client):
+async def test_physical_movie_gets_a_number_from_the_movie_series(client):
     response = await client.post("/api/movies", json={"title": "Fysisk Film", **PHYSICAL})
     assert response.status_code == 201
     assert response.json()["serial_number"] == 1
 
 
-async def test_digital_movie_gets_no_serial_number(client):
+async def test_digital_movie_gets_a_number_from_the_digital_series(client):
     response = await client.post("/api/movies", json={"title": "Digital Film", **DIGITAL})
     assert response.status_code == 201
-    assert response.json()["serial_number"] is None
+    assert response.json()["serial_number"] == 1
 
 
-async def test_digital_movie_does_not_consume_a_number(client):
-    """Nummer-serien må ikke få huller af digitale poster — den svarer til
-    rækkefølgen på hylden."""
+async def test_digital_movie_does_not_consume_a_physical_number(client):
+    """De to serier tælles uafhængigt: en digital post må ikke lave hul i
+    M#-rækken, som svarer til rækkefølgen på hylden."""
     await client.post("/api/movies", json={"title": "Fysisk 1", **PHYSICAL})
     await client.post("/api/movies", json={"title": "Digital", **DIGITAL})
     third = await client.post("/api/movies", json={"title": "Fysisk 2", **PHYSICAL})
     assert third.json()["serial_number"] == 2
 
 
-async def test_digital_tv_show_gets_no_serial_number(client):
-    response = await client.post("/api/tv-shows", json={"name": "Digital Serie", **DIGITAL})
-    assert response.status_code == 201
-    assert response.json()["serial_number"] is None
+async def test_physical_and_digital_numbers_may_be_equal(client):
+    """M#1 og D#1 er to forskellige udgaver og skal kunne findes side om
+    side — det unikke index er derfor sammensat af nummer og medietype."""
+    physical = await client.post("/api/movies", json={"title": "Fysisk", **PHYSICAL})
+    digital = await client.post("/api/movies", json={"title": "Digital", **DIGITAL})
+    assert physical.json()["serial_number"] == 1
+    assert digital.json()["serial_number"] == 1
 
 
-async def test_movies_and_tv_shows_have_separate_number_series(client):
-    """Jans krav 2026-08-08: M#-serien og T#-serien tælles hver for sig, så
-    M#0001 og T#0001 er to forskellige udgaver."""
+async def test_movies_and_tv_shows_have_separate_physical_series(client):
+    """M#-rækken og T#-rækken tælles hver for sig, så M#0001 og T#0001 er to
+    forskellige udgaver."""
     movie = await client.post("/api/movies", json={"title": "Første Film", **PHYSICAL})
     show = await client.post("/api/tv-shows", json={"name": "Første Serie", **PHYSICAL})
     assert movie.json()["serial_number"] == 1
     assert show.json()["serial_number"] == 1
 
 
-# --- reglen håndhæves begge veje ved ændring --------------------------------
+async def test_digital_series_is_shared_between_movies_and_tv_shows(client):
+    """Jans valg 2026-08-08: én fælles D#-række, så et D#-nummer altid peger
+    på præcis én ting — modsat M#/T#, der er adskilte pr. ressource."""
+    movie = await client.post("/api/movies", json={"title": "Digital Film", **DIGITAL})
+    show = await client.post("/api/tv-shows", json={"name": "Digital Serie", **DIGITAL})
+    assert movie.json()["serial_number"] == 1
+    assert show.json()["serial_number"] == 2
 
 
-async def test_switching_physical_to_digital_clears_the_serial_number(client):
+# --- skift af medietype flytter posten til den anden serie ------------------
+
+
+async def test_switching_physical_to_digital_moves_it_to_the_digital_series(client):
+    """Feature #93 — medietypen bestemmer hvilken serie nummeret hører til,
+    så et skift flytter posten frem for bare at fjerne nummeret."""
+    await client.post("/api/movies", json={"title": "Digital I Forvejen", **DIGITAL})
     created = await client.post("/api/movies", json={"title": "Solgt DVD", **PHYSICAL})
     movie_id = created.json()["id"]
     assert created.json()["serial_number"] == 1
 
     response = await client.patch(f"/api/movies/{movie_id}", json={"media_type": "Digital"})
     assert response.status_code == 200
-    assert response.json()["serial_number"] is None
+    # Næste ledige i D#-rækken, ikke det gamle M#-nummer.
+    assert response.json()["serial_number"] == 2
 
 
-async def test_switching_digital_to_physical_assigns_a_serial_number(client):
+async def test_switching_digital_to_physical_moves_it_to_the_physical_series(client):
     created = await client.post("/api/movies", json={"title": "Købt På Disk", **DIGITAL})
     movie_id = created.json()["id"]
-    assert created.json()["serial_number"] is None
+    assert created.json()["serial_number"] == 1  # D#1
 
     response = await client.patch(f"/api/movies/{movie_id}", json={"media_type": "Fysisk"})
     assert response.status_code == 200
-    assert response.json()["serial_number"] == 1
+    assert response.json()["serial_number"] == 1  # M#1 — en anden serie
 
 
-async def test_freed_number_can_be_reused(client):
-    """Går en fysisk udgave over til digital, skal dens nummer kunne
-    genbruges — ellers ville hullet aldrig blive fyldt."""
+async def test_switching_tv_show_media_type_follows_the_same_rule(client):
+    created = await client.post("/api/tv-shows", json={"name": "Boks-udgave", **PHYSICAL})
+    show_id = created.json()["id"]
+    assert created.json()["serial_number"] == 1  # T#1
+
+    response = await client.patch(f"/api/tv-shows/{show_id}", json={"media_type": "Digital"})
+    assert response.json()["serial_number"] == 1  # D#1
+
+
+async def test_freed_physical_number_can_be_reused(client):
+    """Går en fysisk udgave over til digital, frigives dens M#-nummer og kan
+    tildeles igen — ellers ville hullet aldrig blive fyldt."""
     first = await client.post("/api/movies", json={"title": "Nummer 1", **PHYSICAL})
     movie_id = first.json()["id"]
     assert first.json()["serial_number"] == 1
@@ -121,15 +147,6 @@ async def test_freed_number_can_be_reused(client):
     assert reused.json()["serial_number"] == 1
 
 
-async def test_switching_tv_show_media_type_follows_the_same_rule(client):
-    created = await client.post("/api/tv-shows", json={"name": "Boks-udgave", **PHYSICAL})
-    show_id = created.json()["id"]
-    assert created.json()["serial_number"] == 1
-
-    response = await client.patch(f"/api/tv-shows/{show_id}", json={"media_type": "Digital"})
-    assert response.json()["serial_number"] is None
-
-
 async def test_unrelated_update_does_not_touch_the_serial_number(client):
     created = await client.post("/api/movies", json={"title": "Uændret", **PHYSICAL})
     movie_id = created.json()["id"]
@@ -138,49 +155,89 @@ async def test_unrelated_update_does_not_touch_the_serial_number(client):
     assert response.json()["serial_number"] == 1
 
 
-# --- engangs-oprydning af eksisterende data ---------------------------------
+async def test_moving_to_the_wishlist_clears_the_number_regardless_of_series(client):
+    created = await client.post("/api/movies", json={"title": "Fortrudt", **DIGITAL})
+    movie_id = created.json()["id"]
+    assert created.json()["serial_number"] == 1
+
+    response = await client.patch(f"/api/movies/{movie_id}", json={"is_wishlist": True})
+    assert response.json()["serial_number"] is None
 
 
-async def test_migration_strips_serial_numbers_from_digital_documents(db):
-    """Feature #92's oprydning: digitale poster oprettet før reglen fandtes,
-    må ikke blive ved med at optage numre i den fysiske serie."""
+# --- engangs-migrering af eksisterende data ---------------------------------
+
+
+async def test_backfill_assigns_numbers_to_digital_documents_without_one(db):
+    """Digitale poster oprettet før de fik deres egen serie — eller ryddet af
+    feature #92, hvis dengang-gældende regel var at kun fysiske nummereres —
+    skal have et D#-nummer."""
     await db[movie_repository.COLLECTION].insert_one(
-        {"title": "Gammel Digital", "media_type": "Digital", "serial_number": 7}
+        {"title": "Gammel Digital", "media_type": "Digital"}
+    )
+
+    assigned = await digital_serial_repository.backfill(db, movie_repository.COLLECTION)
+
+    doc = await db[movie_repository.COLLECTION].find_one({"title": "Gammel Digital"})
+    assert assigned == 1
+    assert doc["serial_number"] == 1
+
+
+async def test_backfill_renumbers_digital_document_clashing_with_a_physical_one(db):
+    """Poster fra før feature #92: nummeret stammer fra den fysiske serie og
+    hører ikke hjemme i D#-rækken."""
+    await db[movie_repository.COLLECTION].insert_one(
+        {"title": "Fysisk", "media_type": "Fysisk", "serial_number": 4}
     )
     await db[movie_repository.COLLECTION].insert_one(
-        {"title": "Gammel Fysisk", "media_type": "Fysisk", "serial_number": 8}
+        {"title": "Digital Med Fysisk Nummer", "media_type": "Digital", "serial_number": 4}
     )
 
-    await movie_repository._migrate_digital_serial_numbers(db)
+    await digital_serial_repository.backfill(db, movie_repository.COLLECTION)
 
-    digital = await db[movie_repository.COLLECTION].find_one({"title": "Gammel Digital"})
-    physical = await db[movie_repository.COLLECTION].find_one({"title": "Gammel Fysisk"})
-    # Nøglen fjernes helt, ikke sat til null — så det sparse unikke index
-    # aldrig ser to poster kollidere på ingenting.
-    assert "serial_number" not in digital
-    assert physical["serial_number"] == 8
+    digital = await db[movie_repository.COLLECTION].find_one(
+        {"title": "Digital Med Fysisk Nummer"}
+    )
+    physical = await db[movie_repository.COLLECTION].find_one({"title": "Fysisk"})
+    assert digital["serial_number"] != 4
+    assert physical["serial_number"] == 4
 
 
-async def test_migration_leaves_documents_without_media_type_alone(db):
+async def test_backfill_is_idempotent(db):
+    """Migreringen kører ved hver opstart og må ikke omnummerere noget den
+    allerede har rettet."""
+    await db[movie_repository.COLLECTION].insert_one(
+        {"title": "Gammel Digital", "media_type": "Digital"}
+    )
+
+    await digital_serial_repository.backfill(db, movie_repository.COLLECTION)
+    first = await db[movie_repository.COLLECTION].find_one({"title": "Gammel Digital"})
+    second_run = await digital_serial_repository.backfill(db, movie_repository.COLLECTION)
+    after = await db[movie_repository.COLLECTION].find_one({"title": "Gammel Digital"})
+
+    assert second_run == 0
+    assert after["serial_number"] == first["serial_number"]
+
+
+async def test_backfill_leaves_documents_without_media_type_alone(db):
     """En post uden medietype er fra før reglen og kan lige så godt være en
-    fysisk udgave hvor feltet aldrig blev udfyldt. At fjerne dens nummer
-    ville slette noget der kan stå skrevet på et cover."""
+    fysisk udgave hvor feltet aldrig blev udfyldt."""
     await db[movie_repository.COLLECTION].insert_one(
         {"title": "Ukendt Medietype", "serial_number": 9}
     )
 
-    await movie_repository._migrate_digital_serial_numbers(db)
+    await digital_serial_repository.backfill(db, movie_repository.COLLECTION)
 
     doc = await db[movie_repository.COLLECTION].find_one({"title": "Ukendt Medietype"})
     assert doc["serial_number"] == 9
 
 
-async def test_migration_covers_tv_shows_too(db):
+async def test_digital_series_skips_a_number_used_in_the_other_collection(db):
+    """Den delte D#-serie skal springe et nummer over hvis den anden
+    collection allerede bruger det — et index kan ikke håndhæve entydighed
+    på tværs af collections."""
     await db[tv_show_repository.COLLECTION].insert_one(
-        {"name": "Gammel Digital Serie", "media_type": "Digital", "serial_number": 3}
+        {"name": "Digital Serie", "media_type": "Digital", "serial_number": 1}
     )
 
-    await tv_show_repository._migrate_digital_serial_numbers(db)
-
-    doc = await db[tv_show_repository.COLLECTION].find_one({"name": "Gammel Digital Serie"})
-    assert "serial_number" not in doc
+    assigned = await digital_serial_repository.next_serial_number(db)
+    assert assigned != 1

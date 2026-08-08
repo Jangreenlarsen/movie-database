@@ -628,3 +628,203 @@ async def test_import_show_takes_format_and_seasons_from_episodes(client, monkey
     body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
     assert captured == [(MediaType.DIGITAL, MovieFormat.DIGITAL_HD, [1, 2])]
     assert body["imported"][0]["format"] == "Digital-HD"
+
+
+
+def _patch_tmdb_details(monkeypatch, title="The Matrix", year=1999):
+    """Rigtig oprettelse gennem movie_service, men uden at ramme TMDb —
+    rundtur-testene skal bruge et faktisk gemt dokument at slå op på."""
+
+    async def fake_get_movie_details(tmdb_id):
+        return {
+            "tmdb_id": tmdb_id,
+            "title": title,
+            "year": year,
+            "poster_url": None,
+            "overview": None,
+            "genres": [],
+            "cast": [],
+            "director": None,
+            "rating": None,
+            "runtime": None,
+            "imdb_url": None,
+            "trailer_url": None,
+            "collection_id": None,
+            "collection_name": None,
+        }
+
+    monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
+
+
+async def test_imported_movie_is_afterwards_reported_as_available(client, monkeypatch):
+    """Rundtur: importér fra Plex, og slå derefter tilgængeligheden op.
+
+    En film der lige er importeret FRA Plex må aldrig bagefter rapporteres
+    som "ikke fundet i Plex" — det er selvmodsigende og var Jans fejlmelding
+    2026-08-08."""
+    _configure(monkeypatch)
+    _patch_tmdb_details(monkeypatch)
+    _patch_library(
+        monkeypatch,
+        _fake_library([PlexItem("movie", "42", "The Matrix", 1999, 603, None, resolution="4k")]),
+    )
+
+    import_body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
+    assert len(import_body["imported"]) == 1, import_body
+
+    listed = await client.get("/api/movies")
+    movie_id = listed.json()["items"][0]["id"]
+
+    availability = (await client.get("/api/plex/availability?kind=movie")).json()
+    assert availability["ok"] is True
+    assert movie_id in availability["items"], availability
+    assert availability["items"][movie_id]["available"] is True
+
+
+async def test_imported_movie_resolved_via_search_is_also_available(client, monkeypatch):
+    """Samme rundtur for et Plex-element uden TMDb-id, hvor importen selv
+    fandt id'et via en titel-søgning. Badget kan her ikke matche på id —
+    Plex-siden har intet — så det må klare sig på titel og år."""
+    _configure(monkeypatch)
+
+    async def fake_search_movies(query):
+        return [{"tmdb_id": 603, "title": "The Matrix", "year": 1999}]
+
+    monkeypatch.setattr(tmdb_client, "search_movies", fake_search_movies)
+    _patch_tmdb_details(monkeypatch)
+    _patch_library(
+        monkeypatch,
+        _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None, resolution="1080")]),
+    )
+
+    import_body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
+    assert len(import_body["imported"]) == 1, import_body
+
+    listed = await client.get("/api/movies")
+    movie_id = listed.json()["items"][0]["id"]
+
+    availability = (await client.get("/api/plex/availability?kind=movie")).json()
+    assert movie_id in availability["items"], availability
+
+
+# --- ufuldstændig hentning (BUGS.md #51) ------------------------------------
+
+
+class _FakeResponse:
+    def __init__(self, payload, status_code=200):
+        self._payload = payload
+        self.status_code = status_code
+
+    def json(self):
+        return self._payload
+
+
+def _install_fake_http(monkeypatch, responses):
+    """Erstatter plex_client._client med en klient der svarer efter `responses`
+    (en dict fra sti-fragment til _FakeResponse eller en exception)."""
+
+    class FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def get(self, url, headers=None, params=None, timeout=None):
+            # Præcis URL-match, ikke delstreng: rod-URLen er et præfiks af
+            # alle de øvrige og ville ellers svare på dem alle.
+            response = responses.get(url)
+            if response is None:
+                raise AssertionError(f"uventet URL i test: {url}")
+            if isinstance(response, Exception):
+                raise response
+            return response
+
+    monkeypatch.setattr(plex_client, "_client", lambda: FakeClient())
+
+
+BASE = "http://192.168.1.50:32400"
+
+
+def _identity_and_sections():
+    return {
+        BASE + "/": _FakeResponse(
+            {"MediaContainer": {"friendlyName": "Voldby", "version": "1.40", "machineIdentifier": "abc"}}
+        ),
+        BASE + "/library/sections": _FakeResponse(
+            {"MediaContainer": {"Directory": [{"key": "1", "title": "Film", "type": "movie"}]}}
+        ),
+    }
+
+
+async def test_fetch_library_fails_when_a_page_errors(monkeypatch):
+    """Før BUGS.md #51 returnerede en fejl undervejs den delvise liste som om
+    den var hele biblioteket — og filmene der manglede blev rapporteret som
+    "ikke fundet i Plex" selvom de lå der."""
+    _configure(monkeypatch)
+    responses = _identity_and_sections()
+    responses[BASE + "/library/sections/1/all"] = _FakeResponse({}, status_code=500)
+    _install_fake_http(monkeypatch, responses)
+
+    result = await plex_client.fetch_library()
+    assert result.ok is False
+    assert "ufuldstændigt" in result.error or "fuldstændigt" in result.error
+
+
+async def test_fetch_library_fails_when_count_does_not_match_total_size(monkeypatch):
+    """Plex oplyser sektionens fulde størrelse på hver side. Får vi færre
+    elementer end lovet, er hentningen afkortet — også selvom hver enkelt
+    forespørgsel svarede 200."""
+    _configure(monkeypatch)
+    responses = _identity_and_sections()
+    responses[BASE + "/library/sections/1/all"] = _FakeResponse(
+        {
+            "MediaContainer": {
+                "totalSize": 40,
+                "Metadata": [
+                    {"ratingKey": "1", "title": "Kun Én Film", "year": 2001},
+                ],
+            }
+        }
+    )
+    _install_fake_http(monkeypatch, responses)
+
+    result = await plex_client.fetch_library()
+    assert result.ok is False
+    assert "40" in result.error
+
+
+async def test_fetch_library_succeeds_when_count_matches(monkeypatch):
+    _configure(monkeypatch)
+    responses = _identity_and_sections()
+    responses[BASE + "/library/sections/1/all"] = _FakeResponse(
+        {
+            "MediaContainer": {
+                "totalSize": 1,
+                "Metadata": [{"ratingKey": "1", "title": "Den Ene Film", "year": 2001}],
+            }
+        }
+    )
+    _install_fake_http(monkeypatch, responses)
+
+    result = await plex_client.fetch_library()
+    assert result.ok is True
+    assert [item.title for item in result.items] == ["Den Ene Film"]
+
+
+async def test_availability_reports_error_instead_of_empty_when_fetch_failed(client, monkeypatch):
+    """Kernen i fejlmeldingen: en mislykket hentning må ikke se ud som
+    "intet ligger i Plex" — så ville hver eneste film få "Ikke fundet i
+    Plex" uden at noget forklarede hvorfor."""
+    _configure(monkeypatch)
+    _patch_tmdb_details(monkeypatch)
+    await client.post(
+        "/api/movies",
+        json={"title": "The Matrix", "year": 1999, "media_type": "Fysisk", "format": "DVD"},
+    )
+    _patch_library(monkeypatch, _fake_library([], ok=False, error="Plex-biblioteket kunne ikke hentes fuldstændigt"))
+
+    body = (await client.get("/api/plex/availability?kind=movie")).json()
+    assert body["ok"] is False
+    assert body["error"]
+    assert body["items"] == {}

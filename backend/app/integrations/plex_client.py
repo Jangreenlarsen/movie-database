@@ -211,11 +211,21 @@ async def _fetch_sections(client: httpx.AsyncClient) -> tuple[list[dict], str | 
         return [], "Plex' biblioteks-liste kunne ikke læses som JSON"
 
 
-async def _fetch_section_items(client: httpx.AsyncClient, section_key: str) -> list[dict]:
+async def _fetch_section_items(
+    client: httpx.AsyncClient, section_key: str
+) -> tuple[list[dict], str | None]:
     """Henter alle elementer i én sektion, sidevist. `includeGuids=1` er det
     der overhovedet får `Guid`-listen med i `/all`-svaret — uden den er der
-    ingen TMDb-id'er at matche på, kun titler."""
+    ingen TMDb-id'er at matche på, kun titler.
+
+    Returnerer (elementer, fejl). BUGS.md #51: en fejl undervejs afbrød før
+    løkken og returnerede den *delvise* liste som om den var hele sektionen.
+    Et halvt hentet bibliotek er værre end intet: filmene der manglede blev
+    rapporteret som "ikke fundet i Plex", selvom de lå der — og i værste fald
+    (fejl på første side) så hele biblioteket tomt ud, uden at noget sted
+    fortalte hvorfor. Enhver ufuldstændig hentning er derfor nu en fejl."""
     items: list[dict] = []
+    total_size = None
     for page in range(MAX_PAGES):
         headers = {
             **_headers(),
@@ -229,32 +239,35 @@ async def _fetch_section_items(client: httpx.AsyncClient, section_key: str) -> l
                 params={"includeGuids": 1},
             )
         except httpx.HTTPError as exc:
-            logger.warning("Plex: sektion %s side %s fejlede: %s", section_key, page, exc)
-            break
+            return items, f"sektion {section_key} side {page} fejlede: {exc}"
 
         if response.status_code != 200:
-            logger.warning(
-                "Plex: sektion %s side %s gav HTTP %s", section_key, page, response.status_code
-            )
-            break
+            return items, f"sektion {section_key} side {page} gav HTTP {response.status_code}"
 
         try:
-            batch = response.json().get("MediaContainer", {}).get("Metadata", []) or []
+            container = response.json().get("MediaContainer", {})
         except ValueError:
-            logger.warning("Plex: sektion %s side %s var ikke JSON", section_key, page)
-            break
+            return items, f"sektion {section_key} side {page} var ikke JSON"
+
+        batch = container.get("Metadata", []) or []
+        # Plex oplyser sektionens fulde størrelse på hver side; den bruges
+        # nedenfor til at fange en afkortet hentning der ellers ville se
+        # fuldstændig ud.
+        if total_size is None and isinstance(container.get("totalSize"), int):
+            total_size = container["totalSize"]
 
         items.extend(batch)
         if len(batch) < PAGE_SIZE:
             break
     else:
-        logger.warning(
-            "Plex: sektion %s nåede sidegrænsen (%s sider) — der kan mangle elementer",
-            section_key,
-            MAX_PAGES,
+        return items, f"sektion {section_key} nåede sidegrænsen ({MAX_PAGES} sider)"
+
+    if total_size is not None and len(items) != total_size:
+        return items, (
+            f"sektion {section_key} gav {len(items)} elementer, men Plex oplyser {total_size}"
         )
 
-    return items
+    return items, None
 
 
 async def fetch_library() -> PlexFetchResult:
@@ -297,7 +310,21 @@ async def fetch_library() -> PlexFetchResult:
                 title=directory.get("title", "?"),
                 type=section_type,
             )
-            for raw in await _fetch_section_items(client, section.key):
+            raw_items, section_error = await _fetch_section_items(client, section.key)
+            if section_error is not None:
+                logger.warning("Plex-hentning ufuldstændig: %s", section_error)
+                return PlexFetchResult(
+                    ok=False,
+                    error=(
+                        f"Plex-biblioteket kunne ikke hentes fuldstændigt ({section_error}). "
+                        "Et delvist hentet bibliotek ville få film der ligger i Plex til at "
+                        "se ud som om de ikke gjorde — prøv igen."
+                    ),
+                    server_name=info.get("friendlyName"),
+                    server_version=info.get("version"),
+                    machine_identifier=info.get("machineIdentifier"),
+                )
+            for raw in raw_items:
                 rating_key = raw.get("ratingKey")
                 title = raw.get("title")
                 if rating_key is None or not title:

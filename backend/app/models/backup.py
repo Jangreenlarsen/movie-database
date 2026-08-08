@@ -69,3 +69,24 @@ class DatabaseResetResult(BaseModel):
     counters_removed: int
     screenings_removed: int
     screening_requests_removed: int
+
+
+class MediaTypeCounts(BaseModel):
+    """Feature #94 — optaelling for een ressource."""
+
+    total: int
+    physical: int
+    digital: int
+    # Poster fra foer medietype blev paakraevet (feature #92) — vises kun hvis
+    # der faktisk er nogen, saa tallet ikke forvirrer i et rent bibliotek.
+    unclassified: int
+    wishlist: int
+
+
+class LibraryCounts(BaseModel):
+    """Det samlede overblik i app-hovedet: hvor meget staar der egentlig i
+    biblioteket. Film og TV-serier holdes adskilt, jf. CLAUDE.md's princip om
+    to bevidst adskilte ressourcer."""
+
+    movies: MediaTypeCounts
+    tv_shows: MediaTypeCounts

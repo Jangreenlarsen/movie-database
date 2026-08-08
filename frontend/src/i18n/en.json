@@ -494,5 +494,7 @@
   "plexImport.failedHint": "These were recognised but could not be created. Try the import again — it is usually a temporary TMDb error.",
   "audit.action.plexImported": "Imported from Plex",
   "plexImport.formatPending": "format decided on import",
-  "detail.classificationRequired": "Media type and format must be chosen before this can be saved to the library. The media type decides whether it gets a serial number — only physical editions are numbered."
+  "detail.classificationRequired": "Media type and format must be chosen before this can be saved to the library. The media type decides which number series it gets — M#/T# for physical, D# for digital.",
+  "counts.summary": "{movies} movies · {shows} shows",
+  "counts.title": "In the library: {movies} movies ({movePhysical} physical, {movieDigital} digital) and {shows} TV shows ({showPhysical} physical, {showDigital} digital)"
 }

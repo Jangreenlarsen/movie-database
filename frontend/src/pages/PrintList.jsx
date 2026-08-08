@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useT } from "../i18n";
-import { MOVIE_SERIAL_PREFIX, TV_SERIAL_PREFIX, formatSerial } from "../utils/serialNumber";
+import { formatSerial, serialPrefix } from "../utils/serialNumber";
 import "./PrintList.css";
 
 export default function PrintList() {
@@ -77,7 +77,7 @@ export default function PrintList() {
                 {movies.map((movie) => (
                   <tr key={movie.id}>
                     <td>
-                      {formatSerial(movie.serial_number, serialPaddingWidth, MOVIE_SERIAL_PREFIX)}
+                      {formatSerial(movie.serial_number, serialPaddingWidth, serialPrefix(movie.media_type, "movie"))}
                     </td>
                     <td>{movie.title}</td>
                     <td>{movie.year ?? ""}</td>
@@ -111,7 +111,7 @@ export default function PrintList() {
                 {shows.map((show) => (
                   <tr key={show.id}>
                     <td>
-                      {formatSerial(show.serial_number, serialPaddingWidth, TV_SERIAL_PREFIX)}
+                      {formatSerial(show.serial_number, serialPaddingWidth, serialPrefix(show.media_type, "tv"))}
                     </td>
                     <td>{show.name}</td>
                     <td>{show.year ?? ""}</td>

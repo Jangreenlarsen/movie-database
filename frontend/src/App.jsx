@@ -120,6 +120,18 @@ function App() {
 
 function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }) {
   const t = useT();
+  // Feature #94 — samlet optælling i hovedet, så man kan se biblioteksets
+  // størrelse fra enhver side uden at navigere hen til statistikken.
+  // `libraryVersion` tvinger en genhentning når noget er gemt eller slettet;
+  // uden den ville tallet blive stående til næste sideindlæsning.
+  const [libraryVersion, setLibraryVersion] = useState(0);
+  const [counts, setCounts] = useState(null);
+
+  useEffect(() => {
+    api.getLibraryCounts().then(setCounts).catch(() => setCounts(null));
+  }, [libraryVersion]);
+
+  const refreshCounts = () => setLibraryVersion((v) => v + 1);
 
   return (
     <div className="app">
@@ -182,6 +194,24 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
             </button>
           </nav>
           <div className="header-user">
+            {counts && (
+              <span
+                className="header-counts"
+                title={t("counts.title", {
+                  movies: counts.movies.total,
+                  movePhysical: counts.movies.physical,
+                  movieDigital: counts.movies.digital,
+                  shows: counts.tv_shows.total,
+                  showPhysical: counts.tv_shows.physical,
+                  showDigital: counts.tv_shows.digital,
+                })}
+              >
+                {t("counts.summary", {
+                  movies: counts.movies.total,
+                  shows: counts.tv_shows.total,
+                })}
+              </span>
+            )}
             <span className="muted">{user.username}</span>
             <button type="button" className="btn" onClick={onLogout}>
               {t("app.logout")}
@@ -192,12 +222,24 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
 
       <main className="app-main">
         {tab === "library" && (
-          <Library user={user} onSettingsChanged={setUser} onGoToTvShows={() => setTab("tv")} />
+          <Library
+            user={user}
+            onSettingsChanged={setUser}
+            onGoToTvShows={() => setTab("tv")}
+            onLibraryChanged={refreshCounts}
+          />
         )}
         {tab === "tv" && (
-          <TvShows user={user} onSettingsChanged={setUser} onGoToMovies={() => setTab("library")} />
+          <TvShows
+            user={user}
+            onSettingsChanged={setUser}
+            onGoToMovies={() => setTab("library")}
+            onLibraryChanged={refreshCounts}
+          />
         )}
-        {!isGuest && tab === "wishlist" && <Wishlist user={user} onSettingsChanged={setUser} />}
+        {!isGuest && tab === "wishlist" && (
+          <Wishlist user={user} onSettingsChanged={setUser} onLibraryChanged={refreshCounts} />
+        )}
         {tab === "cinema" && <Cinema user={user} />}
         {!isGuest && tab === "print" && <PrintList />}
         {!isGuest && tab === "stats" && <Statistics />}

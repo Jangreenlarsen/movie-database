@@ -3,12 +3,20 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.api.deps import get_current_user, require_admin
 from app.db import get_database
-from app.models.backup import LibraryExport, LibraryImportResult
+from app.models.backup import LibraryCounts, LibraryExport, LibraryImportResult
 from app.services import audit_log_service, library_backup_service
 
 # Feature #60 — high-level film/TV-library export/import, distinct from
 # the full low-level system backup at /api/system/backup (feature #61).
 router = APIRouter(prefix="/api/library", tags=["library-backup"])
+
+
+@router.get("/counts", response_model=LibraryCounts, dependencies=[Depends(get_current_user)])
+async def get_counts(db: AsyncIOMotorDatabase = Depends(get_database)):
+    """Feature #94 — samlet optaelling til app-hovedet. Aaben for alle
+    logget-ind brugere, ogsaa guests: at se hvor meget der staar i
+    biblioteket er ren laesning."""
+    return await library_backup_service.get_counts(db)
 
 
 @router.get("/export", response_model=LibraryExport, dependencies=[Depends(require_admin)])

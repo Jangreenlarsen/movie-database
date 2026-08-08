@@ -1,10 +1,16 @@
+import asyncio
 from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.mongo_json import from_json_safe, to_json_safe
 from app.core.version_info import VERSION_INFO
-from app.models.backup import LibraryExport, LibraryImportResult
+from app.models.backup import (
+    LibraryCounts,
+    LibraryExport,
+    LibraryImportResult,
+    MediaTypeCounts,
+)
 from app.repositories import movie_repository, tv_show_repository
 
 
@@ -36,3 +42,19 @@ async def import_library(
     await tv_show_repository.bump_serial_counter_past(db, tv_show_docs)
 
     return LibraryImportResult(movies_imported=len(movie_docs), tv_shows_imported=len(tv_show_docs))
+
+
+async def get_counts(db: AsyncIOMotorDatabase) -> LibraryCounts:
+    """Feature #94 — samlet overblik over hvor meget der staar i biblioteket.
+
+    Film og TV-serier taelles hver for sig; de er to bevidst adskilte
+    ressourcer (CLAUDE.md), og et samlet tal ville skjule netop den opdeling
+    resten af appen er bygget op om."""
+    movies, tv_shows = await asyncio.gather(
+        movie_repository.count_library_by_media_type(db),
+        tv_show_repository.count_library_by_media_type(db),
+    )
+    return LibraryCounts(
+        movies=MediaTypeCounts(**movies),
+        tv_shows=MediaTypeCounts(**tv_shows),
+    )

@@ -1,5 +1,21 @@
 # Release Notes
 
+## v0.71.0 (build 0100) — 2026-08-08
+
+- **Digitale udgaver får nu også serienummer** — med præfikset `D#`. Der er tre rækker der tælles hver for sig: `M#` til fysiske film, `T#` til fysiske TV-serier og `D#` til alt digitalt. `#` læses som "nr.", så `M#0042` er film nr. 42.
+- D#-rækken er fælles for digitale film og serier, så et D#-nummer altid peger på præcis én ting.
+- **Skifter du medietype, flytter posten til den anden række.** Sætter du en fysisk film til Digital, får den et D#-nummer, og dens gamle M#-nummer bliver frit igen.
+- Ved opdateringen får dine eksisterende digitale film og serier automatisk tildelt D#-numre.
+- **Samlet optælling i toppen af appen:** "142 film · 38 serier", synligt fra alle sider. Hold musen over for at se fordelingen på fysisk og digital.
+- Ønskelisten tæller ikke med — den er jo ikke noget du har endnu.
+- Rettet: de fysiske numre sprang over, hvis en digital post havde samme nummer. Nu tælles de tre rækker helt uafhængigt.
+
+## v0.69.1 (build 0099) — 2026-08-08
+
+- **Rettet: film importeret fra Plex kunne bagefter stå som "Ikke fundet i Plex".** Gik noget galt undervejs i hentningen af dit Plex-bibliotek, blev den halve liste behandlet som om det var det hele — og alt der manglede blev meldt som "ikke i Plex".
+- Nu fejler appen tydeligt med "Plex-biblioteket kunne ikke hentes fuldstændigt" i stedet for at give et forkert svar i stilhed. Appen tjekker desuden antallet mod det Plex selv oplyser, så en afkortet hentning fanges.
+- Ser du stadig beskeden efter denne opdatering, så kør "Test Plex-forbindelse" under Indstillinger → Nøgler — den viser nu enten fejlen eller hvor mange af dine film der matcher.
+
 ## v0.69.0 (build 0098) — 2026-08-08
 
 - **Serienumre gives nu kun til fysiske udgaver.** En digital kopi står ikke på en hylde, så den får intet nummer — og optager heller ikke et, så din nummerrække ikke får huller.

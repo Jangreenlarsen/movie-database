@@ -76,6 +76,16 @@
   color: var(--accent-contrast);
 }
 
+/* Feature #94 — optællingen står ved siden af brugernavnet i hovedet.
+   Skjules på smalle skærme sammen med brugernavnet (se media query
+   nederst): på en telefon er pladsen i hovedet allerede knap. */
+.header-counts {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 .header-user {
   display: flex;
   align-items: center;
@@ -231,6 +241,8 @@
     white-space: nowrap;
   }
 
+  /* Feature #94 — både brugernavn og optælling ryger ud på smalle
+     skærme; hovedet har kun plads til fanerne og "Log ud". */
   .header-user span {
     display: none;
   }

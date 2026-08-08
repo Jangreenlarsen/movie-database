@@ -8,7 +8,7 @@ import { PlexCardBadge, PlexPlayLink } from "../components/PlexAvailability";
 import { usePlexAvailability } from "../components/usePlexAvailability";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import { useLocale, useT } from "../i18n";
-import { MOVIE_SERIAL_PREFIX, formatSerial } from "../utils/serialNumber";
+import { formatSerial, serialPrefix } from "../utils/serialNumber";
 import "./Library.css";
 
 // Feature #89 — `labelKey` frem for en færdig `label`: listen er et
@@ -116,7 +116,15 @@ function toggleValue(list, value) {
  * når scan/søgning i add-panelet endte med en TV-serie, som denne side aldrig
  * kan vise (BUGS.md #47).
  */
-export default function Library({ user, onSettingsChanged, wishlist = false, onGoToTvShows }) {
+export default function Library({
+  user,
+  onSettingsChanged,
+  wishlist = false,
+  onGoToTvShows,
+  // Feature #94 — kaldes når biblioteket ændrer sig, så app-hovedets
+  // optælling ikke bliver stående til næste sideindlæsning.
+  onLibraryChanged,
+}) {
   const t = useT();
   const isGuest = user.role === "guest";
   const [query, setQuery] = useState("");
@@ -266,6 +274,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false, onG
   }
 
   function refresh() {
+    onLibraryChanged?.();
     fetchMovies()
       .then((data) => {
         setMovies(data.items);
@@ -793,7 +802,7 @@ export default function Library({ user, onSettingsChanged, wishlist = false, onG
                   ikke noget nummer at vise. */}
               {movie.serial_number != null && (
                 <div className="movie-serial">
-                  {formatSerial(movie.serial_number, serialPaddingWidth, MOVIE_SERIAL_PREFIX)}
+                  {formatSerial(movie.serial_number, serialPaddingWidth, serialPrefix(movie.media_type, "movie"))}
                 </div>
               )}
               {movie.format && <div className="movie-format-badge">{movie.format}</div>}
@@ -1084,7 +1093,7 @@ export function MovieDetailModal({
                     serial: formatSerial(
                       movie.serial_number,
                       serialPaddingWidth,
-                      MOVIE_SERIAL_PREFIX
+                      serialPrefix(movie.media_type, "movie")
                     ),
                   })}
                 </>
@@ -1184,7 +1193,7 @@ export function MovieDetailModal({
                   <div>
                     <div className="modal-section-label">{t("field.serialNumber")}</div>
                     <p>
-                      {formatSerial(movie.serial_number, serialPaddingWidth, MOVIE_SERIAL_PREFIX)}
+                      {formatSerial(movie.serial_number, serialPaddingWidth, serialPrefix(movie.media_type, "movie"))}
                     </p>
                   </div>
                 )}

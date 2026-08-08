@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.64.2 (build 0091) — 2026-08-08
+
+- Scanner du en TV-serie ind på **ønskelisten**, står der ikke længere "vælg hvilke sæsoner du ejer" — nu står der at du vælger hvilke sæsoner ønsket dækker. Knapperne taler også om "ønske" i stedet for "serie".
+
 ## v0.64.1 (build 0090) — 2026-08-08
 
 - **Print: film og TV-serier kommer nu på hver sin side.** Det var meningen før, men sideskiftet blev ignoreret af browseren — nu virker det.

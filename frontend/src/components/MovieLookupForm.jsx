@@ -404,16 +404,29 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
 
           {(existingTvShow?.seasons.length > 0 || previewSeasons.length > 0) && (
             <div className="season-group-panel">
+              {/* BUGS.md #50 — panelet deles af bibliotekets og ønskelistens
+                  tilføj-panel, men talte kun om "ejerskab". Man ejer per
+                  definition ikke det man er ved at ønske sig, så teksten
+                  følger nu `wishlist`-prop'en. */}
               <h3>
-                {existingTvShow ? "Føj til eksisterende serie i stedet" : "Vælg hvilke sæsoner du ejer"}
+                {existingTvShow
+                  ? wishlist
+                    ? "Føj til eksisterende ønske i stedet"
+                    : "Føj til eksisterende serie i stedet"
+                  : wishlist
+                    ? "Vælg hvilke sæsoner du ønsker dig"
+                    : "Vælg hvilke sæsoner du ejer"}
               </h3>
               <p className="muted" style={{ margin: 0 }}>
                 {existingTvShow ? (
                   <>
-                    Vælg hvilke sæsoner dette er, så markeres de som ejet på den eksisterende serie "
-                    {existingTvShow.name}" — i stedet for at oprette en ny separat post. Sæsoner markeret ✓
-                    er allerede ejet.
+                    Vælg hvilke sæsoner dette er, så {wishlist ? "føjes de til" : "markeres de som ejet på"}{" "}
+                    {wishlist ? "det eksisterende ønske" : "den eksisterende serie"} "{existingTvShow.name}" —
+                    i stedet for at oprette {wishlist ? "et nyt separat ønske" : "en ny separat post"}. Sæsoner
+                    markeret ✓ er allerede {wishlist ? "med" : "ejet"}.
                   </>
+                ) : wishlist ? (
+                  "Vælg hvilke sæsoner ønsket dækker (fx en boks med flere sæsoner) — de markeres på ønsket, klar til at redigere videre."
                 ) : (
                   "Vælg hvilke sæsoner denne udgave indeholder (fx en boks med flere sæsoner) — de markeres automatisk som ejet, klar til at redigere videre."
                 )}
@@ -440,7 +453,11 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
                   onClick={addSeasonsToExistingShow}
                   disabled={selectedSeasonNumbers.length === 0 || groupStatus === "saving"}
                 >
-                  {groupStatus === "saving" ? "Tilføjer..." : "Tilføj sæson(er) til eksisterende serie"}
+                  {groupStatus === "saving"
+                    ? "Tilføjer..."
+                    : wishlist
+                      ? "Tilføj sæson(er) til eksisterende ønske"
+                      : "Tilføj sæson(er) til eksisterende serie"}
                 </button>
               )}
             </div>
@@ -465,7 +482,9 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
               {previewStatus === "loading"
                 ? "Henter detaljer..."
                 : existingTvShow
-                  ? "Opret som ny separat serie i stedet"
+                  ? wishlist
+                    ? "Opret som nyt separat ønske i stedet"
+                    : "Opret som ny separat serie i stedet"
                   : "Fortsæt til redigering"}
             </button>
           </div>

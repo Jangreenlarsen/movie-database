@@ -34,6 +34,18 @@
     display: none !important;
   }
 
+  /* BUGS.md #49 — `.app` er en flex-column, og `.app-main` dermed et
+     flex-item. Browsere fragmenterer ikke pålideligt inde i flex-layout, så
+     et sideskift længere nede i træet blev simpelthen ignoreret — det var
+     årsagen til at den tidligere `.print-section-break`-regel aldrig virkede.
+     Ved print sættes kæden tilbage til almindelig blok-layout, hvor
+     sideskift er veldefineret. */
+  .app,
+  .app-main,
+  .print-page {
+    display: block;
+  }
+
   .app-main {
     padding: 0;
     max-width: 100%;
@@ -50,7 +62,23 @@
     color: #000;
   }
 
-  .print-section-break {
+  /* Gentag kolonne-overskrifterne øverst på hver side en lang tabel løber
+     over, og undgå at en enkelt række knækkes midt over. */
+  .print-table thead {
+    display: table-header-group;
+  }
+
+  .print-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Film og TV-serier på hver sin side (Jans ønske 2026-08-08). De
+     forældede `page-break-*`-egenskaber står med, fordi Safari — som er
+     browseren på den iPhone appen primært bruges fra — stadig honorerer dem
+     mere pålideligt end de moderne `break-*`. */
+  .print-page-break {
     break-before: page;
+    page-break-before: always;
   }
 }

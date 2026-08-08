@@ -167,10 +167,27 @@
   min-width: 160px;
 }
 
+/* Feature #85 — én linje pr. ønsker der skrev en besked og/eller foreslog
+   et tidspunkt. Vises under "Ønsket af:"-linjen i anmodnings-rækken. */
+.cinema-request-wish {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.cinema-request-wish strong {
+  color: var(--text);
+}
+
 .cinema-request-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.cinema-request-suggestion-hint {
+  flex-basis: 100%;
+  font-size: 0.78rem;
 }
 
 .cinema-search-form {

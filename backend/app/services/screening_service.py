@@ -87,12 +87,34 @@ async def _to_screening_model(db: AsyncIOMotorDatabase, document: dict) -> Scree
 
 
 async def request_screening(
-    db: AsyncIOMotorDatabase, media_kind: str, movie_id: str | None, tv_show_id: str | None, username: str
+    db: AsyncIOMotorDatabase,
+    media_kind: str,
+    movie_id: str | None,
+    tv_show_id: str | None,
+    username: str,
+    message: str | None = None,
+    preferred_at: datetime | None = None,
 ) -> ScreeningRequest:
     """Adds `username` to the shared pending request for this title,
     creating the request if none exists yet (feature #62). Re-requesting a
-    title you've already requested is a no-op, not a duplicate entry."""
+    title you've already requested is a no-op, not a duplicate entry.
+
+    Feature #85 — `message`/`preferred_at` are the requester's own optional
+    note and suggested time, stored on their entry in `requested_by` rather
+    than on the request itself, since several people can want the same title
+    for different reasons. Both default to None, so the pre-#85 call shape
+    (and any client that omits them) behaves exactly as before."""
     now = datetime.now(timezone.utc)
+    # A message of "" or "   " is the same as no message — normalised here
+    # so neither the admin panel nor the API has to distinguish between the
+    # two kinds of "empty" (CLAUDE.md regel 16).
+    cleaned_message = message.strip() if message else ""
+    entry = {
+        "username": username,
+        "requested_at": now,
+        "message": cleaned_message or None,
+        "preferred_at": preferred_at,
+    }
     existing = await screening_request_repository.find_pending_for_title(
         db, media_kind, movie_id, tv_show_id
     )
@@ -102,7 +124,7 @@ async def request_screening(
             "movie_id": movie_id,
             "tv_show_id": tv_show_id,
             "status": "pending",
-            "requested_by": [{"username": username, "requested_at": now}],
+            "requested_by": [entry],
             "created_at": now,
             "updated_at": now,
         }
@@ -122,9 +144,7 @@ async def request_screening(
             if existing is None:
                 raise
 
-    updated = await screening_request_repository.add_requester(
-        db, str(existing["_id"]), {"username": username, "requested_at": now}
-    )
+    updated = await screening_request_repository.add_requester(db, str(existing["_id"]), entry)
     return await _to_request_model(db, updated)
 
 

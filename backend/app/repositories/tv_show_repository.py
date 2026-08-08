@@ -4,6 +4,8 @@ from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
+from app.repositories.text_search import build_text_query, drop_legacy_text_index
+
 COLLECTION = "tv_shows"
 DELETED_COLLECTION = "deleted_tv_shows"
 COUNTERS_COLLECTION = "counters"
@@ -33,10 +35,17 @@ SORT_FIELDS = {
 DEFAULT_SORT_FIELD = "created_at"
 MAX_SORT_LEVELS = 3
 
+# Spejler movie_repository.TEXT_SEARCH_FIELDS — TV-serier har `creators`
+# hvor film har `director` (BUGS.md #48).
+TEXT_SEARCH_FIELDS = ["name", "overview", "cast", "creators", "genres"]
+
 
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     collection = db[COLLECTION]
-    await collection.create_index([("name", "text"), ("overview", "text")])
+    # BUGS.md #48 — se movie_repository: søgningen bruger ikke længere
+    # `$text`, så det gamle index ryddes op i stedet for at ligge og koste
+    # skrivetid.
+    await drop_legacy_text_index(collection)
     await collection.create_index("tags_normalized")
     await collection.create_index("barcode", unique=True, sparse=True)
     await collection.create_index("format")
@@ -182,7 +191,9 @@ def _build_find_many_filter(
     drift apart on what counts as a match."""
     filter_: dict = {"is_wishlist": True if is_wishlist else {"$ne": True}}
     if query:
-        filter_["$text"] = {"$search": query}
+        text_query = build_text_query(query, TEXT_SEARCH_FIELDS)
+        if text_query:
+            filter_.update(text_query)
     if normalized_tags:
         filter_["tags_normalized"] = {"$all": normalized_tags}
     if formats:

@@ -1,5 +1,34 @@
 # Release Notes
 
+## v0.64.1 (build 0090) — 2026-08-08
+
+- **Print: film og TV-serier kommer nu på hver sin side.** Det var meningen før, men sideskiftet blev ignoreret af browseren — nu virker det.
+- Løber en liste over flere sider, gentages kolonne-overskrifterne øverst på hver side, og en filmlinje bliver ikke længere skåret midt over ved sideskiftet.
+
+## v0.64.0 (build 0089) — 2026-08-08
+
+- **Redigerings-vinduet for film og serier er blevet kompakt.** Korte felter står nu side om side — Serienummer og Set-status, Lokation og Ejer, Format og Medietype — i stedet for hver sin linje. Tags, lyd-type og din note bruger stadig fuld bredde, og ligger nu samlet nederst. Meget mindre at scrolle igennem.
+- På telefon stiller felterne sig automatisk under hinanden igen, så intet bliver mast sammen.
+
+## v0.63.0 (build 0088) — 2026-08-08
+
+- **Du kan nu se på knapperne om der er valgt noget.** "Sortér", "Filtrér" og "Vis felter" lyser op når de afviger fra standard — med et tal for hvor mange filtre der er aktive, og en prik når sortering eller viste felter er ændret. Ingen grund til at åbne alle tre paneler for at finde ud af hvorfor listen ser mærkelig ud.
+- **Nulstil-knap i alle tre paneler:** "Nulstil sortering", "Ryd filtre" og "Nulstil viste felter". De står der altid (grå når der ikke er noget at nulstille), så du kan finde dem.
+- Rettet: filter-tælleren talte ikke med, når du havde afgrænset på en skuespiller eller instruktør — der stod "Filtrér (0)" selvom filteret var aktivt.
+
+## v0.62.1 (build 0087) — 2026-08-08
+
+- **Søgefeltet finder nu også skuespillere, instruktører og genrer.** Før kunne du kun ramme titel og handling — vil du se alt med Al Pacino, skriv bare "pacino" i søgefeltet, i stedet for først at åbne en film og trykke på navnet.
+- Søgningen indsnævrer nu mens du skriver: "paci" er nok, du behøver ikke skrive hele navnet færdigt.
+- Flere ord kombineres: "pacino heat" finder filmen selvom det ene er en skuespiller og det andet en titel.
+
+## v0.62.0 (build 0085) — 2026-08-08
+
+- **"Ønsk visning i Voldby BIO" spørger nu hvornår.** Knappen sender ikke længere med det samme — den åbner en lille boks hvor man kan skrive en besked ("Gerne en fredag aften — så laver jeg popcorn!") og vælge et ønsket tidspunkt. Begge dele er valgfri: åbn og tryk "Send ønske", så er det som før.
+- Under **Anmodninger** på Voldby BIO-fanen ser du nu hver persons besked og foreslåede tidspunkt. Trykker du "Planlæg", er dato og tid allerede udfyldt med det tidligste ønskede tidspunkt — bare et forslag, du kan rette det frit inden du bekræfter.
+- Har du selv ønsket en titel, står din besked nu under "✓ Ønsket"-knappen, så du kan se hvad du skrev.
+- Gæste-konti kan stadig ønske visninger, nu også med besked.
+
 ## v0.61.1 (build 0084) — 2026-08-08
 
 - **Vigtigt:** TV-serier du tilføjede under "Ønsker" — scannet eller søgt frem — var usynlige bagefter. De blev gemt korrekt hele tiden, men der var ingen visning der viste dem: ønske-siden viste kun film, og TV-fanen viser kun det du ejer. "Ønsker" har nu to underfaner, **Film** og **TV-serier**, og dine tidligere "forsvundne" TV-ønsker dukker op af sig selv.

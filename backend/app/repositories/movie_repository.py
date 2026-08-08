@@ -4,6 +4,8 @@ from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
+from app.repositories.text_search import build_text_query, drop_legacy_text_index
+
 COLLECTION = "movies"
 DELETED_COLLECTION = "deleted_movies"
 COUNTERS_COLLECTION = "counters"
@@ -31,6 +33,11 @@ SORT_FIELDS = {
 }
 DEFAULT_SORT_FIELD = "created_at"
 MAX_SORT_LEVELS = 3
+
+# Felterne fritekst-søgningen (`?q=`) rammer. Skuespiller/instruktør/genre er
+# med her, fordi både søgefeltets placeholder og CLAUDE.md regel 7 lover dem —
+# det gjorde det gamle `$text`-index ikke (BUGS.md #48).
+TEXT_SEARCH_FIELDS = ["title", "overview", "cast", "director", "genres"]
 
 # Pre-v0.22.0 AudioType labels -> the new, shorter ones — see
 # `_migrate_audio_type_labels` and `models/movie.py::AudioType`.
@@ -89,7 +96,9 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     collection = db[COLLECTION]
     await _migrate_audio_type_labels(db)
     await _migrate_format_labels(db)
-    await collection.create_index([("title", "text"), ("overview", "text")])
+    # BUGS.md #48 — søgningen går ikke længere gennem `$text`; det gamle
+    # text-index ryddes op så det ikke koster skrivetid uden at blive brugt.
+    await drop_legacy_text_index(collection)
     await collection.create_index("tags_normalized")
     await collection.create_index("barcode", unique=True, sparse=True)
     await collection.create_index("format")
@@ -326,7 +335,9 @@ def _build_find_many_filter(
     match."""
     filter_: dict = {"is_wishlist": True if is_wishlist else {"$ne": True}}
     if query:
-        filter_["$text"] = {"$search": query}
+        text_query = build_text_query(query, TEXT_SEARCH_FIELDS)
+        if text_query:
+            filter_.update(text_query)
     if normalized_tags:
         filter_["tags_normalized"] = {"$all": normalized_tags}
     if formats:

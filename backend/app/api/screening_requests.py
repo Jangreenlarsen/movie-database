@@ -29,7 +29,13 @@ async def create_request(
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     return await screening_service.request_screening(
-        db, payload.media_kind, payload.movie_id, payload.tv_show_id, current_user["username"]
+        db,
+        payload.media_kind,
+        payload.movie_id,
+        payload.tv_show_id,
+        current_user["username"],
+        payload.message,
+        payload.preferred_at,
     )
 
 

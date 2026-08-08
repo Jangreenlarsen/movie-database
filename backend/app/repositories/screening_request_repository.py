@@ -42,7 +42,13 @@ async def insert(db: AsyncIOMotorDatabase, document: dict) -> dict:
 
 async def add_requester(db: AsyncIOMotorDatabase, request_id: str, entry: dict) -> dict | None:
     """Adds one user to `requested_by` — atomic, and a no-op (dedup) if
-    that user is already on the list, via the `$ne` guard in the filter."""
+    that user is already on the list, via the `$ne` guard in the filter.
+
+    Feature #85: `entry` now also carries that user's optional message and
+    preferred time. The dedup is deliberately still keyed on username alone,
+    so re-sending a request for a title you already wished for keeps your
+    original message rather than appending a second entry for you — the UI
+    has no path to it either (the button reads "✓ Ønsket" once requested)."""
     if not ObjectId.is_valid(request_id):
         return None
     await db[COLLECTION].update_one(

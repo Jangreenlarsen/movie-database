@@ -2,6 +2,82 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.64.1 build 0090] — 2026-08-08 — fix: print satte ikke film og TV-serier på hver sin side (BUGS.md #49)
+
+Hensigten var der allerede: `.print-section-break { break-before: page; }` sad på "TV-serier"-overskriften. Den havde bare aldrig nogen effekt, fordi `.app` er en `display: flex`-column og `.app-main` dermed et flex-item — browsere fragmenterer ikke pålideligt inde i flex-layout, så et sideskift længere nede i træet ignoreres. Reglen sad desuden på en `<h2>` midt i et fælles fragment frem for på et selvstændigt blok-element.
+
+`@media print` sætter nu `.app`/`.app-main`/`.print-page` til `display: block`, så kæden ned til sideskiftet er almindelig blok-layout. Film og TV-serier pakkes hver i sin `<section className="print-section">`, og sideskiftet flyttes til `.print-page-break` på TV-sektionen. Er film-listen tom (fx efter en søgning der kun rammer serier), sættes sideskiftet ikke — ellers ville udskriften starte med en blank side.
+
+Både `break-before: page` og det forældede `page-break-before: always` sættes. Safari er browseren på den iPhone appen primært bruges fra, og honorerer fortsat de gamle egenskaber mere pålideligt end de moderne.
+
+Samtidig to ting der først mærkes når en liste fylder mere end én side: kolonne-overskrifterne gentages nu øverst på hver side (`thead { display: table-header-group }`), og en enkelt række knækkes ikke længere midt over ved et sideskift.
+
+Ikke verificeret på papir/PDF her — ændringen er ren print-CSS, som ikke kan efterprøves fra terminalen. Jan bedes tjekke med browserens print-forhåndsvisning.
+
+Berørte filer: `frontend/src/pages/PrintList.jsx`, `frontend/src/pages/PrintList.css`, `BUGS.md`, `version.json`.
+
+## [0.64.0 build 0089] — 2026-08-08 — feature: kompakt redigerings-/detaljevindue (FEATURES.md #87)
+
+Film- og TV-vinduet var en lodret stak af ti enkeltfelter, hvor de fleste kun rummede en dropdown eller et tal — meget scroll for meget lidt indhold. Korte felter parres nu to og to i en `.modal-field-row` (CSS grid): Serienummer+Set-status, Lokation+Ejer, Format+Medietype, Din rating+Registreret af.
+
+De felter der reelt bruger bredden — Tags med sin chip-liste, Lyd-type-chips og Din note — står fortsat alene og er flyttet ned under parrene, så det korte og faste samles øverst og det lange ligger samlet nedenunder. "Registreret af" var før en løs `<p class="muted">`-linje midt i stakken; den er nu et rigtigt felt med label, hvilket både giver rating en sidemakker og gør vinduet mere ensartet.
+
+Ændringen er lavet i *begge* grene af vinduet — redigerings-udgaven og guest-rollens read-only-udgave. De to render den samme felt-liste hver for sig, så en ændring kun ét sted ville have ladet dem drive fra hinanden.
+
+Under 560px falder rækkerne tilbage til én kolonne: to kolonner på en telefon ville presse dropdowns og datofelter sammen, og appens primære brug er netop en installeret iPhone-PWA. `align-items: start` sikrer at et felt med hjælpetekst under sig (serienummerets "bytter automatisk plads"-note) ikke strækker sin sidemakker.
+
+Berørte filer: `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/pages/Library.css`, `FEATURES.md`, `version.json`.
+
+## [0.63.0 build 0088] — 2026-08-08 — feature: nulstil + tydelig markering af Sortér/Filtrér/Vis felter (FEATURES.md #86)
+
+Jans problem: "det er svært at se om der er tilvalgt noget på de tre funktioner". Man skulle åbne hvert panel for at finde ud af om noget var valgt — kun "Filtrér" viste et tal, og selv det var forkert.
+
+De tre værktøjslinje-knapper i film- og TV-sektionen markeres nu når deres panel afviger fra standard: accent-farvet knap (`.btn-modified`) plus `(N)` for antal aktive filtre og `●` for ændret sortering/felt-visning. Både farve og tekst, så markeringen ikke afhænger af at kunne skelne farver, og `title`-teksten forklarer hvad markeringen betyder.
+
+Hvert panel har fået sin egen nulstillings-knap i en fast knap-række nederst — "Nulstil sortering", "Ryd filtre", "Nulstil viste felter". De står der altid og er *deaktiveret* når der ikke er noget at nulstille, i stedet for at dukke op og forsvinde: en knap der kun er synlig når den kan bruges, hjælper kun den der allerede ved at den findes. Sortering og felt-visning er persisterede bruger-indstillinger, så nulstilling gemmes med samme `persistSettings`-vej som en almindelig ændring (og fejler den, vises fejlen — BUGS.md #45's mønster).
+
+Standardværdierne ligger nu ét sted pr. side (`DEFAULT_SORT_LEVELS`/`DEFAULT_VISIBLE_FIELDS`), som både `visibleFieldsFromSettings`, markeringen og nulstillingen læser fra. Før var defaults spredt som `?? true`/`?? false`-fallbacks inde i én funktion, hvilket ville lade en "nulstil"-knap og en "er den ændret?"-test drive fra hinanden ved næste ændring.
+
+Sidegevinst: film-sidens filter-tæller talte ikke person-filteret (feature #41) med, selvom `hasActiveFilters` gjorde. Et rent skuespiller-/instruktør-filter viste derfor "Filtrér (0)". Tælleren er nu den samme værdi som afgør om der overhovedet er filtre aktive.
+
+Berørte filer: `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/pages/Library.css`, `FEATURES.md`, `version.json`.
+
+## [0.62.1 build 0087] — 2026-08-08 — fix: fritekst-søgningen ramte ikke skuespiller/instruktør/genre (BUGS.md #48)
+
+Man kunne kun afgrænse på en person ved at åbne en films detaljevindue og trykke på et navn (feature #41's `?cast=`/`?director=`). Skrev man navnet i søgefeltet, fandt det ingenting — `?q=` gik gennem et Mongo-`$text`-index der kun dækkede `title`+`overview` (film) og `name`+`overview` (TV). Søgefeltets egen placeholder ("Søg på titel, skuespiller, genre...") og CLAUDE.md regel 7 har hele tiden lovet mere end implementeringen leverede.
+
+`$text` er erstattet af et felt-eksplicit regex-match i ny `repositories/text_search.py`, delt af begge repositories. Søgeteksten splittes i ord; hvert ord skal matche mindst ét felt (film: titel, overview, cast, director, genres — TV: name, overview, cast, creators, genres), og alle ord skal matche. Det gør "pacino heat" til en søgning der finder Heat selvom navn og titel står i hver sit felt, mens "pacino" alene finder alt med ham. Regex-metategn escapes, så en søgning på "(2019)" behandles som tekst.
+
+Sidegevinst: `$text` matcher kun hele ord, hvilket er direkte upraktisk i et felt der søger for hvert tastetryk — "Paci" gav nul resultater indtil "Pacino" stod færdigt. Delstrengs-matchet indsnævrer nu mens man skriver.
+
+Trade-off'et er bevidst: et regex-scan er langsommere end et text-index og har ingen relevans-rangering. Biblioteket er en privat samling i hundred-/tusindtals-størrelsen, og resultaterne vises i brugerens egen valgte sortering — ikke efter score — så ingen af delene mærkes her. De nu ubrugte text-indexes droppes ved opstart (`drop_legacy_text_index`) frem for at ligge og koste skrivetid ved hver dokument-opdatering.
+
+Søgningen var **helt utestet** før nu, og kunne ikke testes: mongomock implementerer ikke `$text` (`NotImplementedError`), så ingen test i suiten rammer `?q=` overhovedet — samme klasse blind vinkel som BUGS.md #31. Regex-varianten er testbar, og ny `test_search.py` dækker 13 tilfælde: cast, instruktør, genre, titel/overview-regression, case-insensitivitet, delstrenge, flere ord på tværs af felter, intet-match, regex-metategn, kombination med tag-filter, TV-cast, og at en tom søgning ikke filtrerer noget fra. Hele suiten: 437 passed.
+
+Berørte filer: `backend/app/repositories/text_search.py` (ny), `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/tests/test_search.py` (ny), `ARCHITECTURE.md`, `BUGS.md`, `version.json`.
+
+## [0.62.0 build 0086] — 2026-08-08 — test: #85's testfil, udeladt ved en fejl i build 0085
+
+`backend/tests/test_screening_requests.py` blev ikke staget i b0085 (`git add`-mønsteret dækkede `backend/app`, ikke `backend/tests`), så feature #85's 7 regressionstests lå kun lokalt. Ingen kode- eller adfærdsændring — filen er præcis den der blev kørt grøn før b0085.
+
+## [0.62.0 build 0085] — 2026-08-08 — feature: besked + ønsket tidspunkt på en visnings-anmodning (FEATURES.md #85)
+
+"🎬 Ønsk visning i Voldby BIO" sendte før anmodningen i det øjeblik man trykkede. Nu åbner knappen en lille boks med et fritekst-felt ("Gerne en fredag aften") og en valgfri dato/tid-vælger. Begge felter er valgfri: åbn boksen, tryk "Send ønske", og resultatet er bit for bit det samme dokument som før — `message`/`preferred_at` udelades helt af payloaden når de er tomme.
+
+Begge felter gemmes på ønskerens egen entry i `requested_by[]`, ikke på anmodningen som helhed. Flere personer deler ét anmodnings-dokument pr. titel (feature #62), og de kan hver især have deres egen begrundelse og deres eget forslag — ét fælles felt ville lade den næste ønsker overskrive den forriges. `RequestedBy` fik derfor `message`/`preferred_at` med `None` som default, så dokumenter fra før #85 læses uden migration. Whitespace-only besked normaliseres til `None` i servicen, så hverken API'et eller admin-panelet skal skelne mellem to slags "tom" (CLAUDE.md regel 16).
+
+Dedup'en i `add_requester` er bevidst uændret: den er stadig kun på `username`, så et gentaget ønske for samme titel hverken tilføjer en ekstra entry eller overskriver den første besked. UI'et har heller ingen vej dertil — knappen står som "✓ Ønsket" bagefter, nu med ens egen besked/tidspunkt vist under sig, så et ønske ikke bare bliver til et anonymt flueben. Egen entry findes på brugernavn (nyt `username`-prop), aldrig ved at gætte på listens rækkefølge.
+
+Admins "Anmodninger"-panel viser hver ønskers besked og foreslåede tidspunkt på sin egen linje — kun for dem der faktisk skrev noget, så en anmodning uden beskeder ser ud som før. "Planlæg"-feltet forudfyldes med det tidligste foreslåede tidspunkt der stadig ligger i fremtiden (forslag i fortiden springes over, så en gammel anmodning ikke forudfylder en dato der er overstået), med en linje der siger at det bare er et forslag. Admin retter frit inden "Bekræft" — forslaget er aldrig en binding.
+
+`DateTime24Input` er flyttet fra `Cinema.jsx` til `components/DateTime24Input.jsx`, da både ønskeren og admin nu vælger tidspunkter. Samme widget begge steder betyder samme 24-timers visning (BUGS.md #38) og samme "YYYY-MM-DDTHH:MM"-strengformat, så et forslag falder direkte ned i planlægnings-feltet uden konvertering. Ønske-boksen er sin egen modal oven på film-/serie-vinduet: `modal-footer` er en smal knap-række uden plads til en formular, og et klik i boksen stopper propagation, så det ikke bobler op og lukker det underliggende vindue.
+
+Guest-rollen er uændret omfattet — visnings-ønsket er stadig deres ene tilladte skrivehandling, besked inklusive. ARCHITECTURE.md's guest-afsnit sagde fejlagtigt at `POST /api/screening-requests` var `require_not_guest`-beskyttet (det har været en bevidst undtagelse siden 2026-08-03); den passage er rettet til at beskrive koden som den faktisk er.
+
+7 nye tests i `test_screening_requests.py` (besked+tidspunkt gemmes, pre-#85-payload uændret, whitespace→None, gentaget ønske bevarer første besked, hver ønsker sin egen besked, >500 tegn afvist, guest må sende besked). Hele suiten: 424 passed.
+
+Berørte filer: `backend/app/models/screening.py`, `backend/app/services/screening_service.py`, `backend/app/repositories/screening_request_repository.py`, `backend/app/api/screening_requests.py`, `backend/tests/test_screening_requests.py`, `frontend/src/components/ScreeningRequestButton.jsx` + `.css`, `frontend/src/components/DateTime24Input.jsx` (ny), `frontend/src/pages/Cinema.jsx` + `.css`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/api/client.js`, `ARCHITECTURE.md`, `FEATURES.md`, `version.json`.
+
 ## [0.61.1 build 0084] — 2026-08-08 — fix: TV-serier forsvandt når de blev tilføjet i "Ønsker" (BUGS.md #47)
 
 Jan rapporterede at en TV-serie tilføjet i ønske-sektionen — scannet eller indtastet — forsvandt i databasen. Serien blev rent faktisk gemt korrekt: `MovieLookupForm` søger bevidst i både TMDb's film- og TV-database (jf. BUGS.md #20), og en valgt TV-kandidat oprettes i `tv_shows` med `is_wishlist: true`. Fejlen lå udelukkende i visningen: `App.jsx` renderede kun `<Library wishlist />` for "Ønsker"-fanen, så TV-ønsket var usynligt både der (kun film) og under "TV-serier" (som filtrerer `is_wishlist != true` fra). `TvShows.jsx` havde allerede fuld `wishlist`-understøttelse — overskriften "TV-ønsker", skjult serienummer, "Ingen TV-ønsker endnu" — men blev aldrig renderet med prop'en.

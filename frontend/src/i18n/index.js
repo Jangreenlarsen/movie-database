@@ -18,6 +18,11 @@ import en from "./en.json";
 
 const CATALOGS = { da, en };
 
+/** Findes der overhovedet et katalog for denne sprogkode? */
+export function hasCatalog(language) {
+  return Boolean(CATALOGS[language]);
+}
+
 // Dansk er kildesproget: al tekst skrives på dansk først, så det danske
 // katalog er per definition komplet. Derfor er det også fallback'et — en
 // nøgle der endnu ikke er oversat viser dansk tekst frem for en rå nøgle
@@ -29,7 +34,10 @@ export const LANGUAGES = [
   { code: "en", label: "English" },
 ];
 
-const I18nContext = createContext(SOURCE_LANGUAGE);
+// Eksporteret, fordi provider-komponenten ligger i sin egen fil
+// (I18nProvider.jsx) — denne fil eksporterer bevidst kun ikke-komponenter,
+// så Vites fast refresh kan opdatere den uden fuld genindlæsning.
+export const I18nContext = createContext(SOURCE_LANGUAGE);
 
 function lookup(language, key) {
   const value = CATALOGS[language]?.[key];
@@ -69,11 +77,6 @@ export function createTranslator(language) {
   };
 }
 
-export function I18nProvider({ language, children }) {
-  const value = CATALOGS[language] ? language : SOURCE_LANGUAGE;
-  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
-}
-
 /** Oversætter-funktionen. Genskabes kun når sproget faktisk skifter. */
 export function useT() {
   const language = useContext(I18nContext);
@@ -86,4 +89,14 @@ export function useT() {
  */
 export function useLanguage() {
   return useContext(I18nContext);
+}
+
+// BCP 47-tags til `Intl`/`toLocaleDateString`. Engelsk mappes til en-GB, ikke
+// en-US: en dansk bruger der slår over på engelsk forventer stadig dag-før-
+// måned og 24-timers ur, ikke amerikansk datoformat.
+const LOCALES = { da: "da-DK", en: "en-GB" };
+
+/** Locale-tagget til dato-/talformatering — ikke en oversat streng. */
+export function useLocale() {
+  return LOCALES[useContext(I18nContext)] ?? LOCALES[SOURCE_LANGUAGE];
 }

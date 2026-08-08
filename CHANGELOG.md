@@ -2,6 +2,20 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.66.0 build 0094] — 2026-08-08 — feature: Film-siden og scan/tilføj-panelet oversat (FEATURES.md #89, del 2/4)
+
+Filmbiblioteket, dets detalje-/redigeringsvindue, samlings-sektionen, Plex-badget og hele scan/søg-panelet kører nu gennem oversætteren. Omkring 180 strenge.
+
+To ting krævede mere end en tekst-udskiftning:
+
+`SORT_OPTIONS` og `VISIBLE_FIELD_OPTIONS` er modul-konstanter, der evalueres én gang ved import — længe før nogen oversætter findes. De bærer derfor `labelKey` i stedet for en færdig `label`, og nøglen slås først op ved render. Felt-nøglerne ligger i et fælles `field.*`-navnerum, fordi Film- og TV-siden viser præcis de samme feltnavne; ellers ville "Medietype" skulle vedligeholdes to steder og kunne nå at drive fra hinanden.
+
+Datoformatering brugte hardkodet `toLocaleDateString("da-DK")`. Den læser nu locale fra sproget via en ny `useLocale()`. Engelsk mapper til `en-GB`, ikke `en-US`: en dansk bruger der slår over på engelsk forventer stadig dag-før-måned, ikke amerikansk datoformat.
+
+`i18n/index.jsx` er delt i `index.js` (hooks, konstanter, oversætter — ingen JSX) og `I18nProvider.jsx` (kun komponenten). En fil der blander komponenter og ikke-komponenter kan Vites fast refresh ikke opdatere uden at genindlæse hele siden; samme grund som `usePlexAvailability.js` blev skilt ud i feature #88.
+
+Berørte filer: `frontend/src/i18n/index.js` (omdøbt fra index.jsx), `frontend/src/i18n/I18nProvider.jsx` (ny), `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `frontend/src/App.jsx`, `frontend/src/pages/Library.jsx`, `frontend/src/components/MovieLookupForm.jsx`, `frontend/src/components/PlexAvailability.jsx`, `version.json`.
+
 ## [0.66.0 build 0093] — 2026-08-08 — feature: i18n-motor + sprogvalg, første sider oversat (FEATURES.md #89, del 1/4)
 
 Første del af sprogvalget: motoren, indstillingen og de skærme der ikke kræver de tre store sider. Resten af brugerfladen følger i de næste commits — featuren står som `in-progress` indtil alt er dækket.

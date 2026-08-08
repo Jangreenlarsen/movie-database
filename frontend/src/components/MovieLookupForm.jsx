@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import Chip from "./Chip";
 import { MovieDetailModal } from "../pages/Library";
 import { TvShowDetailModal } from "../pages/TvShows";
+import { useT } from "../i18n";
 import "./MovieLookupForm.css";
 
 function toggleValue(list, value) {
@@ -41,6 +42,7 @@ function emptyDraftFields(user, wishlist) {
  * ønskelisten/filmbiblioteket se ud som om den forsvandt (BUGS.md #47).
  */
 export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
+  const t = useT();
   const [barcode, setBarcode] = useState(null);
   const [barcodeSource, setBarcodeSource] = useState(null);
   const [candidates, setCandidates] = useState([]);
@@ -273,75 +275,78 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   return (
     <section className="scan-layout">
       <div className="card scan-card">
-        <h2>Scan</h2>
-        <p className="muted">
-          Scan stregkoden på cover'et med kameraet — finder både film og TV-serier.
-        </p>
+        <h2>{t("scan.heading")}</h2>
+        <p className="muted">{t("scan.description")}</p>
         <BarcodeScanner onDetected={handleDetected} />
 
         <form className="manual-search-form" onSubmit={submitManualBarcode} style={{ marginTop: 10 }}>
           <input
             value={manualBarcode}
             onChange={(e) => setManualBarcode(e.target.value)}
-            placeholder="...eller indtast stregkoden manuelt (UPC/EAN)"
+            placeholder={t("scan.manualBarcodePlaceholder")}
             inputMode="numeric"
           />
           <button type="submit" className="btn btn-primary" disabled={!manualBarcode.trim()}>
-            Slå op
+            {t("scan.lookUp")}
           </button>
         </form>
 
-        {barcode && <p className="muted" style={{ marginTop: 10 }}>Scannet stregkode: {barcode}</p>}
-        {scanStatus === "looking-up" && <p className="muted">Slår op...</p>}
+        {barcode && (
+          <p className="muted" style={{ marginTop: 10 }}>
+            {t("scan.scannedBarcode", { barcode })}
+          </p>
+        )}
+        {scanStatus === "looking-up" && <p className="muted">{t("scan.lookingUp")}</p>}
         {scanStatus === "error" && (
-          <div className="banner banner-error">
-            Opslag fejlede. Prøv igen, eller søg manuelt på titel nedenfor.
-          </div>
+          <div className="banner banner-error">{t("scan.lookupFailed")}</div>
         )}
         {scanStatus === "ready" && candidates.length === 0 && !guessedTitle && (
-          <div className="banner banner-info">Intet match fundet — søg manuelt på titel i stedet.</div>
+          <div className="banner banner-info">{t("scan.noMatch")}</div>
         )}
         {scanStatus === "ready" && candidates.length === 0 && guessedTitle && (
           <div className="banner banner-info">
-            Stregkoden gav titel-gættet "{guessedTitle}", men det matchede intet på TMDb — kilden kan have
-            leveret en let forkert eller ufuldstændig tekst. Ret teksten i feltet nedenfor (fx et manglende
-            bogstav) og søg igen.
+            {t("scan.guessNoTmdbMatch", { guess: guessedTitle })}
           </div>
         )}
       </div>
 
       <div className="card scan-card">
-        <h2>Søg manuelt (TMDb)</h2>
+        <h2>{t("scan.manualHeading")}</h2>
         {guessedTitle && (
           <p className="muted" style={{ marginTop: 0 }}>
-            Forudfyldt med titel-gættet fra stregkode-scanningen — ret teksten hvis den ser forkert eller
-            ufuldstændig ud, og tryk "Søg".
+            {t("scan.prefilledHint")}
           </p>
         )}
         <form className="manual-search-form" onSubmit={searchManually}>
           <input
             value={manualQuery}
             onChange={(e) => setManualQuery(e.target.value)}
-            placeholder="Film- eller serietitel..."
+            placeholder={t("scan.titlePlaceholder")}
           />
           <button type="submit" className="btn btn-primary">
-            Søg
+            {t("scan.search")}
           </button>
         </form>
-        {manualStatus === "searching" && <p className="muted" style={{ marginTop: 10 }}>Søger på TMDb...</p>}
+        {manualStatus === "searching" && (
+          <p className="muted" style={{ marginTop: 10 }}>
+            {t("scan.searching")}
+          </p>
+        )}
         {manualStatus === "error" && (
           <div className="banner banner-error" style={{ marginTop: 10 }}>
-            TMDb-søgning fejlede. Tjek at backend har en gyldig TMDB_API_TOKEN.
+            {t("scan.searchFailed")}
           </div>
         )}
         {manualStatus === "ready" && candidates.length === 0 && (
-          <div className="banner banner-info" style={{ marginTop: 10 }}>Intet matchede din søgning.</div>
+          <div className="banner banner-info" style={{ marginTop: 10 }}>
+            {t("scan.noSearchMatch")}
+          </div>
         )}
       </div>
 
       {candidates.length > 0 && (
         <div>
-          <h2 style={{ marginBottom: 10 }}>Vælg den rigtige film eller serie</h2>
+          <h2 style={{ marginBottom: 10 }}>{t("scan.chooseCandidate")}</h2>
           <ul className="candidate-grid">
             {candidates.map((candidate) => (
               <li
@@ -356,7 +361,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
                     "🎬"
                   )}
                   <span className="candidate-media-kind">
-                    {candidate.media_kind === "tv" ? "TV-serie" : "Film"}
+                    {t(candidate.media_kind === "tv" ? "scan.kindTv" : "scan.kindMovie")}
                   </span>
                 </div>
                 <div className="candidate-info">
@@ -390,15 +395,18 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
 
           {duplicates.length > 0 && (
             <div className="banner banner-error">
-              Findes allerede: {selectedCandidate.media_kind === "tv" ? "denne serie" : "denne film"} er allerede{" "}
-              {duplicates
-                .map((d) =>
-                  d.is_wishlist
-                    ? "på ønskelisten"
-                    : `i biblioteket${d.serial_number ? ` (#${d.serial_number})` : ""}`
-                )
-                .join(" og ")}
-              . Du kan stadig tilføje den igen — fx hvis du ejer flere kopier.
+              {t("scan.duplicateIntro", {
+                what: t(
+                  selectedCandidate.media_kind === "tv" ? "scan.duplicateShow" : "scan.duplicateMovie"
+                ),
+                where: duplicates
+                  .map((d) =>
+                    d.is_wishlist
+                      ? t("scan.duplicateOnWishlist")
+                      : `${t("scan.duplicateInLibrary")}${d.serial_number ? ` (#${d.serial_number})` : ""}`
+                  )
+                  .join(t("scan.duplicateJoin")),
+              })}
             </div>
           )}
 
@@ -409,33 +417,31 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
                   definition ikke det man er ved at ønske sig, så teksten
                   følger nu `wishlist`-prop'en. */}
               <h3>
-                {existingTvShow
-                  ? wishlist
-                    ? "Føj til eksisterende ønske i stedet"
-                    : "Føj til eksisterende serie i stedet"
-                  : wishlist
-                    ? "Vælg hvilke sæsoner du ønsker dig"
-                    : "Vælg hvilke sæsoner du ejer"}
+                {t(
+                  existingTvShow
+                    ? wishlist
+                      ? "scan.seasonsAddToWish"
+                      : "scan.seasonsAddToShow"
+                    : wishlist
+                      ? "scan.seasonsPickWished"
+                      : "scan.seasonsPickOwned"
+                )}
               </h3>
               <p className="muted" style={{ margin: 0 }}>
-                {existingTvShow ? (
-                  <>
-                    Vælg hvilke sæsoner dette er, så {wishlist ? "føjes de til" : "markeres de som ejet på"}{" "}
-                    {wishlist ? "det eksisterende ønske" : "den eksisterende serie"} "{existingTvShow.name}" —
-                    i stedet for at oprette {wishlist ? "et nyt separat ønske" : "en ny separat post"}. Sæsoner
-                    markeret ✓ er allerede {wishlist ? "med" : "ejet"}.
-                  </>
-                ) : wishlist ? (
-                  "Vælg hvilke sæsoner ønsket dækker (fx en boks med flere sæsoner) — de markeres på ønsket, klar til at redigere videre."
-                ) : (
-                  "Vælg hvilke sæsoner denne udgave indeholder (fx en boks med flere sæsoner) — de markeres automatisk som ejet, klar til at redigere videre."
-                )}
+                {existingTvShow
+                  ? t(
+                      wishlist ? "scan.seasonsExistingWish" : "scan.seasonsExistingShow",
+                      { name: existingTvShow.name }
+                    )
+                  : t(wishlist ? "scan.seasonsNewWish" : "scan.seasonsNewShow")}
               </p>
               <div className="chip-row">
                 {(existingTvShow?.seasons ?? previewSeasons).map((season) => (
                   <Chip
                     key={season.season_number}
-                    label={`${season.name ?? `Sæson ${season.season_number}`}${season.owned ? " ✓" : ""}`}
+                    label={`${
+                      season.name ?? t("scan.seasonFallback", { number: season.season_number })
+                    }${season.owned ? " ✓" : ""}`}
                     active={selectedSeasonNumbers.includes(season.season_number)}
                     onClick={() => toggleSeasonNumber(season.season_number)}
                   />
@@ -443,7 +449,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
               </div>
               {groupStatus === "error" && (
                 <div className="banner banner-error">
-                  {groupError ?? "Kunne ikke opdatere serien."}
+                  {groupError ?? t("scan.seasonUpdateFailed")}
                 </div>
               )}
               {existingTvShow && (
@@ -453,25 +459,25 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
                   onClick={addSeasonsToExistingShow}
                   disabled={selectedSeasonNumbers.length === 0 || groupStatus === "saving"}
                 >
-                  {groupStatus === "saving"
-                    ? "Tilføjer..."
-                    : wishlist
-                      ? "Tilføj sæson(er) til eksisterende ønske"
-                      : "Tilføj sæson(er) til eksisterende serie"}
+                  {t(
+                    groupStatus === "saving"
+                      ? "scan.addingSeasons"
+                      : wishlist
+                        ? "scan.addSeasonsToWish"
+                        : "scan.addSeasonsToShow"
+                  )}
                 </button>
               )}
             </div>
           )}
 
           {previewStatus === "error" && (
-            <div className="banner banner-error">
-              Kunne ikke hente fulde detaljer fra TMDb. Prøv igen.
-            </div>
+            <div className="banner banner-error">{t("scan.detailsFailed")}</div>
           )}
 
           <div className="review-actions">
             <button type="button" className="btn" onClick={() => setSelectedCandidate(null)}>
-              Annullér
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -479,13 +485,15 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
               onClick={proceedToEdit}
               disabled={previewStatus === "loading"}
             >
-              {previewStatus === "loading"
-                ? "Henter detaljer..."
-                : existingTvShow
-                  ? wishlist
-                    ? "Opret som nyt separat ønske i stedet"
-                    : "Opret som ny separat serie i stedet"
-                  : "Fortsæt til redigering"}
+              {t(
+                previewStatus === "loading"
+                  ? "scan.loadingDetails"
+                  : existingTvShow
+                    ? wishlist
+                      ? "scan.createSeparateWish"
+                      : "scan.createSeparateShow"
+                    : "scan.continueToEdit"
+              )}
             </button>
           </div>
         </div>
@@ -530,14 +538,15 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
 
       {saveStatus === "saved" && (
         <div className="banner banner-info">
-          {lastSavedKind === "tv" ? "TV-serie" : "Film"}{" "}
-          {wishlist ? "tilføjet til ønskeliste!" : "gemt i biblioteket!"}
+          {t(wishlist ? "scan.savedToWishlist" : "scan.savedToLibrary", {
+            kind: t(lastSavedKind === "tv" ? "scan.kindTv" : "scan.kindMovie"),
+          })}
         </div>
       )}
 
       {groupSavedShowName && (
         <div className="banner banner-info">
-          Sæson tilføjet til "{groupSavedShowName}"!
+          {t("scan.seasonAdded", { name: groupSavedShowName })}
         </div>
       )}
     </section>

@@ -10,7 +10,8 @@ import CinemaPublic from "./pages/CinemaPublic";
 import Login from "./pages/Login";
 import PendingApproval from "./pages/PendingApproval";
 import { api } from "./api/client";
-import { I18nProvider, SOURCE_LANGUAGE, useT } from "./i18n";
+import I18nProvider from "./i18n/I18nProvider";
+import { SOURCE_LANGUAGE, useT } from "./i18n";
 import "./App.css";
 
 /**

@@ -125,6 +125,8 @@ export const api = {
   updateSystemSettings: (payload) =>
     request("/settings/system", { method: "PATCH", body: JSON.stringify(payload) }),
   testSystemSetting: (key) => request(`/settings/system/test/${key}`, { method: "POST" }),
+  // Feature #94 — samlet optælling til app-hovedet.
+  getLibraryCounts: () => request("/library/counts"),
   exportLibrary: () => request("/library/export"),
   importLibrary: (payload) =>
     request("/library/import", { method: "POST", body: JSON.stringify(payload) }),

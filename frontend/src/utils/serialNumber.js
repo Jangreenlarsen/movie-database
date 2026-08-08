@@ -1,25 +1,45 @@
 /**
- * Serienummer-visning (feature #92).
+ * Serienummer-visning (feature #92, udvidet i #93).
  *
  * Lå tidligere som tre identiske `formatSerial`-kopier i Library.jsx,
- * TvShows.jsx og PrintList.jsx. Da præfikset kom til, skulle den samme regel
- * ellers vedligeholdes tre steder — og de tre kopier var allerede begyndt at
- * drive fra hinanden (kun PrintList håndterede et manglende nummer).
+ * TvShows.jsx og PrintList.jsx, som allerede var begyndt at drive fra
+ * hinanden (kun PrintList håndterede et manglende nummer).
  *
- * Film og TV-serier har hver sin nummer-serie i backenden
- * (`movie_serial`/`tv_show_serial`-tællerne), så M#0001 og T#0001 er to
- * forskellige poster. Præfikset er netop det der gør dem til at skelne på
- * en hylde.
+ * Tre serier tælles hver for sig i backenden, og præfikset er det der gør
+ * dem til at skelne på en hylde:
+ *
+ *   M#  fysiske film        (movie_serial-tælleren)
+ *   T#  fysiske TV-serier   (tv_show_serial-tælleren)
+ *   D#  alle digitale       (digital_serial-tælleren, delt mellem film og
+ *                            serier — så et D#-nummer altid peger på præcis
+ *                            én ting, Jans valg 2026-08-08)
+ *
+ * `#` læses som "nr.": M#0042 er film nr. 42.
  */
 
 export const MOVIE_SERIAL_PREFIX = "M#";
 export const TV_SERIAL_PREFIX = "T#";
+export const DIGITAL_SERIAL_PREFIX = "D#";
+
+const DIGITAL_MEDIA_TYPE = "Digital";
+
+/**
+ * Præfikset for én post. Medietypen vinder over ressourcen, fordi den
+ * digitale serie går på tværs af film og serier.
+ *
+ * @param mediaType postens `media_type` ("Fysisk"/"Digital"/tom)
+ * @param kind "movie" eller "tv" — afgør kun den fysiske serie
+ */
+export function serialPrefix(mediaType, kind) {
+  if (mediaType === DIGITAL_MEDIA_TYPE) return DIGITAL_SERIAL_PREFIX;
+  return kind === "tv" ? TV_SERIAL_PREFIX : MOVIE_SERIAL_PREFIX;
+}
 
 /**
  * @param serialNumber tallet, eller null/undefined for en post uden nummer
- *   (ønskeliste eller digital udgave — feature #92 nummererer kun fysiske)
+ *   (ønskelisten nummereres ikke)
  * @param paddingWidth antal foranstillede nuller, fra serienummer-opsætningen
- * @param prefix MOVIE_SERIAL_PREFIX eller TV_SERIAL_PREFIX
+ * @param prefix fra `serialPrefix()`
  */
 export function formatSerial(serialNumber, paddingWidth, prefix) {
   if (serialNumber == null) return "—";

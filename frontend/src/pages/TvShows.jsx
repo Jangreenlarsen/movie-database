@@ -8,7 +8,7 @@ import { PlexCardBadge, PlexPlayLink } from "../components/PlexAvailability";
 import { usePlexAvailability } from "../components/usePlexAvailability";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import { useLocale, useT } from "../i18n";
-import { TV_SERIAL_PREFIX, formatSerial } from "../utils/serialNumber";
+import { formatSerial, serialPrefix } from "../utils/serialNumber";
 import "../pages/Library.css";
 import "./TvShows.css";
 
@@ -93,7 +93,14 @@ function toggleValue(list, value) {
  * genvej til film-visningen når add-panelets scan/søgning endte med en film,
  * som denne side aldrig kan vise (BUGS.md #47).
  */
-export default function TvShows({ user, onSettingsChanged, wishlist = false, onGoToMovies }) {
+export default function TvShows({
+  user,
+  onSettingsChanged,
+  wishlist = false,
+  onGoToMovies,
+  // Feature #94 — se den identiske note i Library.jsx.
+  onLibraryChanged,
+}) {
   const t = useT();
   const isGuest = user.role === "guest";
   const [query, setQuery] = useState("");
@@ -232,6 +239,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
   }
 
   function refresh() {
+    onLibraryChanged?.();
     fetchShows()
       .then((data) => {
         setShows(data.items);
@@ -725,7 +733,7 @@ export default function TvShows({ user, onSettingsChanged, wishlist = false, onG
               {/* Feature #92 — se den identiske note i Library.jsx. */}
               {show.serial_number != null && (
                 <div className="movie-serial">
-                  {formatSerial(show.serial_number, serialPaddingWidth, TV_SERIAL_PREFIX)}
+                  {formatSerial(show.serial_number, serialPaddingWidth, serialPrefix(show.media_type, "tv"))}
                 </div>
               )}
               {show.format && <div className="movie-format-badge">{show.format}</div>}
@@ -995,7 +1003,7 @@ export function TvShowDetailModal({
                 <>
                   {" · "}
                   {t("detail.serialShort", {
-                    serial: formatSerial(show.serial_number, serialPaddingWidth, TV_SERIAL_PREFIX),
+                    serial: formatSerial(show.serial_number, serialPaddingWidth, serialPrefix(show.media_type, "tv")),
                   })}
                 </>
               )}
@@ -1055,7 +1063,7 @@ export function TvShowDetailModal({
                   <div>
                     <div className="modal-section-label">{t("field.serialNumber")}</div>
                     <p>
-                      {formatSerial(show.serial_number, serialPaddingWidth, TV_SERIAL_PREFIX)}
+                      {formatSerial(show.serial_number, serialPaddingWidth, serialPrefix(show.media_type, "tv"))}
                     </p>
                   </div>
                 )}

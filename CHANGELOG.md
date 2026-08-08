@@ -2,6 +2,38 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.71.0 build 0100] — 2026-08-08 — feature: D#-serie til digitale udgaver (#93) + samlet optælling i app-hovedet (#94)
+
+To ønsker fra Jan i samme omgang.
+
+### Digitale udgaver får deres egen nummerserie (FEATURES.md #93)
+
+Feature #92 lod digitale poster helt uden nummer. Jans justering: de skal også have et, med præfikset `D#`.
+
+Der er nu tre serier der tælles hver for sig — fysiske film (`M#`), fysiske TV-serier (`T#`) og alle digitale udgaver under ét (`D#`). Den digitale er delt på tværs af film og serier, så et D#-nummer altid peger på præcis én ting. To adskilte D#-serier ville give to forskellige udgaver der begge hed D#0001, netop den tvetydighed M#/T#-opdelingen fjernede.
+
+Fordi serien går på tværs af to collections, bor den i sit eget `digital_serial_repository` — det eneste sted der kan se begge. Entydighed på tværs af collections kan intet index udtrykke, så tildelingen springer optagne numre over, ligesom de fysiske serier gør.
+
+Det unikke index er lagt om fra `serial_number` alene til `(serial_number, media_type)`: M#5 og D#5 er to forskellige udgaver og skal kunne findes side om side. `partialFilterExpression` frem for `sparse`, fordi et sammensat sparse-index indekserer et dokument så snart ét af felterne findes — to nummerløse poster med samme medietype ville så kollidere på `(null, "Fysisk")`.
+
+Et skift af medietype flytter nu posten mellem serierne i stedet for bare at fjerne nummeret.
+
+Migreringen har to kriterier, begge valgt så den er idempotent og kan køre ved hver opstart: digitale poster uden nummer får et fra D#-rækken, og digitale poster hvis nummer kolliderer med en fysisk post omnummereres (det er poster fra før #92, hvis nummer stammer fra den fysiske serie). Efter første kørsel er ingen af kriterierne opfyldt længere.
+
+Fundet undervejs, og en reel fejl: de fysiske tællere sprang numre over, fordi kollisions-tjekket så på *alle* poster i collectionen og ikke kun dem i samme serie. En digital post med nummer 1 fik dermed den næste fysiske til at blive nummer 2 — de to serier kunne påvirke hinanden selvom de er uafhængige.
+
+### Samlet optælling i app-hovedet (FEATURES.md #94)
+
+"142 film · 38 serier" ved siden af brugernavnet, synligt fra enhver side uden at navigere hen til statistikken (Jans valg blandt tre placeringer).
+
+Film og TV-serier holdes adskilt — de er to bevidst adskilte ressourcer (CLAUDE.md), og et samlet tal ville skjule netop den opdeling resten af appen er bygget op om. Ønskelisten tælles for sig og indgår ikke i totalen; den er ikke noget man *har*.
+
+`GET /api/library/counts` bruger tre `count_documents` pr. ressource frem for at hente dokumenterne: tallet skal kunne stå i hovedet ved hver sideindlæsning og må ikke koste mere end et par index-opslag. Åbent for alle logget-ind brugere inklusive guests, da det er ren læsning.
+
+Tallet genhentes når biblioteket ændrer sig, så det ikke bliver stående til næste sideindlæsning. Fordelingen på fysisk/digital ligger i hover-teksten — hovedet skal ikke være et dashboard. På smalle skærme skjules optællingen sammen med brugernavnet, hvor pladsen allerede er knap.
+
+Berørte filer: `backend/app/repositories/digital_serial_repository.py` (ny), `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`, `backend/app/services/library_backup_service.py`, `backend/app/api/library_backup.py`, `backend/app/models/backup.py`, `backend/tests/test_serial_number_rules.py`, `backend/tests/test_library_counts.py` (ny), `frontend/src/utils/serialNumber.js`, `frontend/src/App.jsx`, `frontend/src/App.css`, `frontend/src/api/client.js`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/pages/PrintList.jsx`, `frontend/src/pages/Wishlist.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`, `FEATURES.md`, `version.json`.
+
 ## [0.69.1 build 0099] — 2026-08-08 — fix: en delvist hentet Plex-liste blev behandlet som hele biblioteket (BUGS.md #51)
 
 Jans fejlmelding: film importeret fra Plex blev bagefter vist som "Ikke fundet i Plex". Selvmodsigende, da de netop var oprettet ud fra Plex' eget index.

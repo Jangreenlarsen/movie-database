@@ -32,6 +32,7 @@ from app.models.movie import (
 )
 from app.models.settings import SerialNumberConfig, SerialNumberConfigUpdate
 from app.repositories import (
+    digital_serial_repository,
     movie_repository,
     screening_repository,
     screening_request_repository,
@@ -111,17 +112,28 @@ async def preview_from_tmdb(tmdb_id: int) -> MoviePreview:
     )
 
 
-def _should_have_serial_number(is_wishlist: bool, media_type) -> bool:
-    """Feature #92 — kun fysiske biblioteksposter bærer et serienummer.
+async def _assign_serial_number(db, is_wishlist: bool, media_type) -> int | None:
+    """Tildeler et serienummer fra den rigtige serie, eller None.
 
-    `media_type` er påkrævet ved oprettelse af en biblioteks-post (se
-    MovieCreate), så "ikke sat" kan kun forekomme på dokumenter oprettet før
-    denne regel. De behandles som ikke-fysiske her, men røres ikke
-    bagudrettet — se `movie_repository._migrate_digital_serial_numbers` for
-    den eneste oprydning der faktisk ændrer eksisterende data."""
+    Feature #92 gav kun fysiske udgaver et nummer; feature #93 gav digitale
+    deres egen serie i stedet (Jans ønske 2026-08-08). Ønskelisten står
+    fortsat udenfor — man ejer ikke det man ønsker sig endnu.
+
+    Tre serier tælles hver for sig: fysiske film (M#), fysiske TV-serier
+    (T#) og *alle* digitale udgaver under ét (D#, delt på tværs af film og
+    serier, så et D#-nummer altid peger på præcis én ting).
+
+    `media_type` er påkrævet ved oprettelse af en biblioteks-post, så "ikke
+    sat" kan kun forekomme på dokumenter fra før den regel. De får intet
+    nummer her; eksisterende dokumenter røres kun af migreringen i
+    `digital_serial_repository.backfill`."""
     if is_wishlist:
-        return False
-    return media_type == MediaType.PHYSICAL
+        return None
+    if media_type == MediaType.PHYSICAL:
+        return await movie_repository.next_serial_number(db)
+    if media_type == MediaType.DIGITAL:
+        return await digital_serial_repository.next_serial_number(db)
+    return None
 
 
 async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registered_by: str) -> Movie:
@@ -187,8 +199,9 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registere
     # null"-mønster som `barcode`, se BUGS.md #1/#10), så det sparse unikke
     # index på `serial_number` aldrig ser en kollision mellem to poster uden
     # nummer.
-    if _should_have_serial_number(payload.is_wishlist, payload.media_type):
-        document["serial_number"] = await movie_repository.next_serial_number(db)
+    serial_number = await _assign_serial_number(db, payload.is_wishlist, payload.media_type)
+    if serial_number is not None:
+        document["serial_number"] = serial_number
 
     trimmed_barcode = payload.barcode.strip() if payload.barcode else ""
     if trimmed_barcode:
@@ -470,8 +483,9 @@ async def update_movie(
             # Unrestricted, like POST /api/movies: this isn't "editing" an
             # existing number, it's assigning the first one. Kun hvis den
             # faktisk er fysisk (feature #92).
-            if _should_have_serial_number(False, media_type):
-                fields["serial_number"] = await movie_repository.next_serial_number(db)
+            assigned = await _assign_serial_number(db, False, media_type)
+            if assigned is not None:
+                fields["serial_number"] = assigned
         elif not was_wishlist and requested_wishlist:
             # The reverse direction strips an existing serial number, which
             # is at least as sensitive as changing one — same gate applies.
@@ -486,13 +500,20 @@ async def update_movie(
         # mening og frigives; går den den anden vej, tildeles et nyt. Uden
         # dette ville reglen kun holde på oprettelses-tidspunktet, og der
         # kunne ligge digitale poster med numre bagefter.
-        should_have = _should_have_serial_number(
-            current_doc.get("is_wishlist", False), requested_media_type
+        # Feature #93 — medietypen bestemmer *hvilken* serie nummeret hører
+        # til, ikke bare om der er et. Et skift mellem fysisk og digital
+        # flytter derfor posten til den anden serie: det gamle nummer
+        # frigives, og et nyt tildeles fra den rigtige.
+        was_digital = current_doc.get("media_type") == MediaType.DIGITAL.value
+        is_digital = requested_media_type == MediaType.DIGITAL.value
+        series_changed = was_digital != is_digital
+        assigned = await _assign_serial_number(
+            db, current_doc.get("is_wishlist", False), requested_media_type
         )
         has_now = current_doc.get("serial_number") is not None
-        if should_have and not has_now:
-            fields["serial_number"] = await movie_repository.next_serial_number(db)
-        elif not should_have and has_now:
+        if assigned is not None and (not has_now or series_changed):
+            fields["serial_number"] = assigned
+        elif assigned is None and has_now:
             _assert_can_edit_serial_number(current_user, current_doc)
             await movie_repository.clear_serial_number(db, movie_id)
 

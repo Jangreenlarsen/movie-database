@@ -14,7 +14,7 @@ import { useT } from "../i18n";
  * derefter usynlig i hele appen: ikke her (kun film), og heller ikke under
  * "TV-serier", som filtrerer ønsker fra.
  */
-export default function Wishlist({ user, onSettingsChanged }) {
+export default function Wishlist({ user, onSettingsChanged, onLibraryChanged }) {
   const t = useT();
   const [kind, setKind] = useState("movies");
 
@@ -41,6 +41,7 @@ export default function Wishlist({ user, onSettingsChanged }) {
         <Library
           user={user}
           onSettingsChanged={onSettingsChanged}
+          onLibraryChanged={onLibraryChanged}
           wishlist
           onGoToTvShows={() => setKind("tv")}
         />
@@ -48,6 +49,7 @@ export default function Wishlist({ user, onSettingsChanged }) {
         <TvShows
           user={user}
           onSettingsChanged={onSettingsChanged}
+          onLibraryChanged={onLibraryChanged}
           wishlist
           onGoToMovies={() => setKind("movies")}
         />

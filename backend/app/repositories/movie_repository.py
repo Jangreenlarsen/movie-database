@@ -5,6 +5,7 @@ from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
+from app.repositories import digital_serial_repository
 from app.repositories.text_search import build_text_query, drop_legacy_text_index
 
 COLLECTION = "movies"
@@ -13,6 +14,8 @@ COUNTERS_COLLECTION = "counters"
 SERIAL_COUNTER_ID = "movie_serial"
 DEFAULT_SERIAL_CONFIG = {"next_value": 1, "increment": 1, "padding_width": 0}
 MAX_SERIAL_ASSIGN_ATTEMPTS = 10_000
+# Den digitale serie tælles for sig (digital_serial_repository).
+DIGITAL_MEDIA_TYPE = "Digital"
 
 logger = logging.getLogger("moviedb")
 
@@ -95,34 +98,7 @@ async def _migrate_format_labels(db: AsyncIOMotorDatabase) -> None:
         await collection.update_many({"format": old_label}, {"$set": {"format": new_label}})
 
 
-async def _migrate_digital_serial_numbers(db: AsyncIOMotorDatabase) -> None:
-    """Feature #92 — fjerner serienumre fra digitale poster (Jans valg
-    2026-08-08: ryd op i det der allerede ligger).
-
-    Serienummeret svarer til en plads i den fysiske samling; en digital kopi
-    har ingen. Nøglen fjernes helt frem for at sættes til null — samme
-    "absent, not null"-mønster som resten af koden, så det sparse unikke
-    index aldrig ser to poster kollidere på ingenting. De frigivne numre kan
-    derefter genbruges af nye fysiske poster.
-
-    Rører kun poster hvor `media_type` eksplicit er "Digital". En post uden
-    medietype er fra før reglen fandtes, og kan lige så godt være en fysisk
-    udgave hvor feltet bare aldrig blev udfyldt — at fjerne dens nummer ville
-    slette noget Jan kan have skrevet på et cover."""
-    result = await db[COLLECTION].update_many(
-        {"media_type": "Digital", "serial_number": {"$exists": True}},
-        {"$unset": {"serial_number": ""}},
-    )
-    if result.modified_count:
-        logger.info(
-            "%s: fjernede serienummer fra %s digitale poster (feature #92)",
-            COLLECTION,
-            result.modified_count,
-        )
-
-
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
-    await _migrate_digital_serial_numbers(db)
     collection = db[COLLECTION]
     await _migrate_audio_type_labels(db)
     await _migrate_format_labels(db)
@@ -141,11 +117,26 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     # colliding `null`. Mongo refuses to silently redefine an existing index
     # under the same auto-generated name with different options, so an
     # old non-sparse index must be dropped before the sparse one is created.
+    # Feature #93 — det unikke index er nu sammensat af nummer *og* medietype.
+    # Den fysiske og den digitale serie tælles hver for sig, så M#5 og D#5 er
+    # to forskellige udgaver og skal kunne findes side om side; et unikt index
+    # på nummeret alene ville afvise den anden. `partialFilterExpression`
+    # frem for `sparse`: et sammensat sparse-index indekserer et dokument så
+    # snart *ét* af felterne findes, hvilket ville få to nummerløse poster med
+    # samme medietype til at kollidere på (null, "Fysisk").
     existing_indexes = await collection.index_information()
-    serial_index = existing_indexes.get("serial_number_1")
-    if serial_index is not None and not serial_index.get("sparse"):
-        await collection.drop_index("serial_number_1")
-    await collection.create_index("serial_number", unique=True, sparse=True)
+    for legacy_name in ("serial_number_1",):
+        if legacy_name in existing_indexes:
+            await collection.drop_index(legacy_name)
+    await collection.create_index(
+        [("serial_number", 1), ("media_type", 1)],
+        unique=True,
+        partialFilterExpression={"serial_number": {"$exists": True}},
+        name="serial_number_media_type",
+    )
+    # Krydset mellem de to collections kan et index ikke håndhæve — se
+    # digital_serial_repository.next_serial_number.
+    await digital_serial_repository.backfill(db, COLLECTION)
 
     await collection.create_index("is_wishlist")
     await collection.create_index("rating")
@@ -231,11 +222,40 @@ async def next_serial_number(db: AsyncIOMotorDatabase) -> int:
         )
         candidate = before["next_value"]
 
-        if await db[COLLECTION].find_one({"serial_number": candidate}, {"_id": 1}) is None:
+        # Feature #93 — kun den fysiske serie tælles her. Uden filteret på
+        # medietype ville en digital post med samme nummer få tælleren til at
+        # springe videre, og de to serier ville dermed påvirke hinanden
+        # selvom de er uafhængige. Poster helt uden medietype tælles med som
+        # fysiske: de er fra før reglen, og deres nummer kan stå skrevet på
+        # et cover.
+        taken = await db[COLLECTION].find_one(
+            {"serial_number": candidate, "media_type": {"$ne": DIGITAL_MEDIA_TYPE}}, {"_id": 1}
+        )
+        if taken is None:
             return candidate
 
     raise RuntimeError("Could not find a free serial number after many attempts")
 
+
+
+async def count_library_by_media_type(db: AsyncIOMotorDatabase) -> dict:
+    """Feature #94 — antal biblioteksposter (ønsker ekskluderet), delt op på
+    medietype. Tre `count_documents` frem for at hente dokumenterne: hele
+    optaellingen skal kunne staa i app-hovedet paa hver eneste sideindlaesning,
+    saa den maa ikke koste mere end et par index-opslag."""
+    library = {"is_wishlist": {"$ne": True}}
+    total = await db[COLLECTION].count_documents(library)
+    physical = await db[COLLECTION].count_documents({**library, "media_type": "Fysisk"})
+    digital = await db[COLLECTION].count_documents({**library, "media_type": DIGITAL_MEDIA_TYPE})
+    wishlist = await db[COLLECTION].count_documents({"is_wishlist": True})
+    return {
+        "total": total,
+        "physical": physical,
+        "digital": digital,
+        # Poster fra foer medietype blev paakraevet (feature #92).
+        "unclassified": total - physical - digital,
+        "wishlist": wishlist,
+    }
 
 async def insert(db: AsyncIOMotorDatabase, document: dict) -> dict:
     result = await db[COLLECTION].insert_one(document)

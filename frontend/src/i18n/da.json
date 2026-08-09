@@ -521,5 +521,7 @@
   "messages.dismiss": "Luk besked",
   "messages.dismissing": "Lukker...",
   "messages.dismissError": "Beskeden kunne ikke markeres som læst: {message}",
-  "audit.action.messageSent": "Besked sendt"
+  "audit.action.messageSent": "Besked sendt",
+  "detail.edit": "Redigér",
+  "lib.clearSearch": "Ryd søgning"
 }

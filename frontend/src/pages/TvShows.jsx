@@ -385,6 +385,18 @@ export default function TvShows({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
+            {/* Feature #102 — se den identiske note i Library.jsx. */}
+            {query && (
+              <button
+                type="button"
+                className="search-clear"
+                onClick={() => setQuery("")}
+                title={t("lib.clearSearch")}
+                aria-label={t("lib.clearSearch")}
+              >
+                ✕
+              </button>
+            )}
           </div>
 
           {!isGuest && (
@@ -870,6 +882,27 @@ export function TvShowDetailModal({
   const [moving, setMoving] = useState(false);
   const [error, setError] = useState(null);
   const isGuest = user.role === "guest";
+  // Feature #101 — se den identiske note i Library.MovieDetailModal.
+  const [editing, setEditing] = useState(!show.id);
+
+  /** Feature #101 — kaster ændringer væk og går tilbage til læsevisningen.
+   *  Holdes ens med useState-linjerne ovenfor; et nyt felt skal huskes
+   *  begge steder. `seasons` nulstilles ikke: sæson-/episode-markeringer
+   *  gemmes med det samme hver for sig og er ikke en del af formularen. */
+  function cancelEditing() {
+    setTagsInput(show.tags.join(", "));
+    setFormat(show.format ?? "");
+    setAudioTypes(show.audio_types);
+    setMediaType(show.media_type ?? "");
+    setLocation(show.location ?? "");
+    setOwner(show.owner ?? "");
+    setPersonalRating(show.personal_rating != null ? String(show.personal_rating) : "");
+    setPersonalNote(show.personal_note ?? "");
+    setWatched(show.watched);
+    setWatchedAt(show.watched_at ? show.watched_at.slice(0, 10) : "");
+    setError(null);
+    setEditing(false);
+  }
 
   function addTag(tag) {
     const current = tagsInput.split(",").map((t) => t.trim()).filter(Boolean);
@@ -1056,7 +1089,7 @@ export function TvShowDetailModal({
 
           {show.id && <PlexPlayLink availability={plexAvailability} plex={plex} />}
 
-          {isGuest ? (
+          {!editing ? (
             <>
               {/* Feature #87 — samme gruppering som i film-vinduet: korte
                   felter to og to, kun de brede står alene. */}
@@ -1286,6 +1319,12 @@ export function TvShowDetailModal({
                     // allerede låst fast fra det forudgående trin i
                     // MovieLookupForm.jsx — vises read-only her, ligesom for
                     // en guest, i stedet for at kalde et API der kræver et id.
+                    //
+                    // Feature #101 — sæsoner og episoder forbliver klikbare i
+                    // læsevisningen, modsat resten af formularen. De gemmes
+                    // hver for sig med det samme og hører ikke til Gem/Fortryd;
+                    // at skulle trykke "Redigér" for at hakke et afsnit af
+                    // ville lægge et ekstra klik på den hyppigste handling.
                     isGuest={isGuest || !show.id}
                     onToggleOwned={(owned) => setSeasonOwned(season.season_number, owned)}
                     onToggleEpisode={(episodeNumber, ep_watched) =>
@@ -1303,9 +1342,16 @@ export function TvShowDetailModal({
           )}
         </div>
 
-        {isGuest ? (
+        {!editing ? (
           <div className="modal-footer">
             {show.id && <ScreeningRequestButton mediaKind="tv" id={show.id} username={user.username} />}
+            {/* Feature #101 — kun rollen afgør om der kan redigeres; alle
+                andre ser den samme læsevisning. */}
+            {!isGuest && (
+              <button type="button" className="btn btn-primary" onClick={() => setEditing(true)}>
+                {t("detail.edit")}
+              </button>
+            )}
           </div>
         ) : (
           <div className="modal-footer">
@@ -1320,6 +1366,11 @@ export function TvShowDetailModal({
               </button>
             )}
             {show.id && <ScreeningRequestButton mediaKind="tv" id={show.id} username={user.username} />}
+            {show.id && (
+              <button type="button" className="btn" onClick={cancelEditing} disabled={saving}>
+                {t("common.cancel")}
+              </button>
+            )}
             <button
               type="button"
               className="btn btn-primary"

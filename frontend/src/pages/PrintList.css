@@ -2,9 +2,44 @@
   margin-bottom: 16px;
 }
 
-.print-search input {
+/* Feature #102 — egen wrapper frem for Library.css' `.search-input-wrap`:
+   print-siden importerer ikke det stylesheet, og en klasse defineret i en
+   anden sides fil ville kun virke sålænge begge tilfældigvis er i samme
+   bundle. */
+.print-search-wrap {
+  position: relative;
   width: 100%;
   max-width: 320px;
+}
+
+.print-search input {
+  width: 100%;
+  padding-right: 34px;
+}
+
+.print-search input[type="search"]::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.print-search .search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  appearance: none;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.print-search .search-clear:hover {
+  color: var(--text);
+  background: var(--surface);
 }
 
 .print-table {

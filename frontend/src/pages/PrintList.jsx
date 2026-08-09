@@ -95,12 +95,26 @@ export default function PrintList() {
       </div>
 
       <div className="no-print print-search">
-        <input
-          type="search"
-          placeholder={t("lib.searchPlaceholder")}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+        <div className="print-search-wrap">
+          <input
+            type="search"
+            placeholder={t("lib.searchPlaceholder")}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {/* Feature #102 — se noten i Library.jsx. */}
+          {query && (
+            <button
+              type="button"
+              className="search-clear"
+              onClick={() => setQuery("")}
+              title={t("lib.clearSearch")}
+              aria-label={t("lib.clearSearch")}
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
       {status === "loading" && <p className="muted">{t("common.loading")}</p>}

@@ -430,6 +430,21 @@ export default function Library({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
+            {/* Feature #102 — egen ryd-knap frem for at stole på browserens
+                indbyggede: `type="search"` viser kun et kryds i WebKit og
+                Chrome, ikke i Firefox, så den var usynlig for halvdelen af
+                brugerne. */}
+            {query && (
+              <button
+                type="button"
+                className="search-clear"
+                onClick={() => setQuery("")}
+                title={t("lib.clearSearch")}
+                aria-label={t("lib.clearSearch")}
+              >
+                ✕
+              </button>
+            )}
           </div>
 
           {!isGuest && (
@@ -936,6 +951,11 @@ export function MovieDetailModal({
   );
   const [personalNote, setPersonalNote] = useState(movie.personal_note ?? "");
   const isGuest = user.role === "guest";
+  // Feature #101 — vinduet åbner i læsevisning (Jans ønske 2026-08-09).
+  // Undtagelsen er "kladde"-tilstanden fra scan-flowet: en film der endnu
+  // ikke findes, er der intet at læse på, og man er kommet for at udfylde
+  // den. Guests kan aldrig skifte til redigering.
+  const [editing, setEditing] = useState(!movie.id);
 
   function addTag(tag) {
     const current = tagsInput.split(",").map((t) => t.trim()).filter(Boolean);
@@ -950,6 +970,26 @@ export function MovieDetailModal({
   const [deleting, setDeleting] = useState(false);
   const [moving, setMoving] = useState(false);
   const [error, setError] = useState(null);
+
+  /** Feature #101 — kaster ændringer væk og går tilbage til læsevisningen.
+   *  Sat lige efter alle useState-linjerne, så nulstillingen og
+   *  initialiseringen står tæt nok på hinanden til at kunne holdes ens —
+   *  et nyt felt skal huskes begge steder. */
+  function cancelEditing() {
+    setTagsInput(movie.tags.join(", "));
+    setFormat(movie.format ?? "");
+    setAudioTypes(movie.audio_types);
+    setMediaType(movie.media_type ?? "");
+    setSerialNumberInput(movie.serial_number != null ? String(movie.serial_number) : "");
+    setLocation(movie.location ?? "");
+    setOwner(movie.owner ?? "");
+    setPersonalRating(movie.personal_rating != null ? String(movie.personal_rating) : "");
+    setPersonalNote(movie.personal_note ?? "");
+    setWatched(movie.watched);
+    setWatchedAt(movie.watched_at ? movie.watched_at.slice(0, 10) : "");
+    setError(null);
+    setEditing(false);
+  }
 
   const canEditSerial = user.role === "admin" || user.username === movie.registered_by;
 
@@ -1186,7 +1226,7 @@ export function MovieDetailModal({
 
           {movie.id && <PlexPlayLink availability={plexAvailability} plex={plex} />}
 
-          {isGuest ? (
+          {!editing ? (
             <>
               {/* Feature #87 — korte felter står to og to (én kolonne på en
                   telefon), så vinduet ikke bliver en lang scroll af
@@ -1424,12 +1464,19 @@ export function MovieDetailModal({
           )}
         </div>
 
-        {isGuest ? (
+        {!editing ? (
           // Feature #72's later refinement: guests may still request a
           // screening (their one allowed write action) even though the
           // rest of the footer (save/delete/move) stays hidden for them.
+          // Feature #101 — samme fod bruges nu af alle i læsevisning; kun
+          // "Redigér" er betinget af rollen.
           <div className="modal-footer">
             {movie.id && <ScreeningRequestButton mediaKind="movie" id={movie.id} username={user.username} />}
+            {!isGuest && (
+              <button type="button" className="btn btn-primary" onClick={() => setEditing(true)}>
+                {t("detail.edit")}
+              </button>
+            )}
           </div>
         ) : (
           <div className="modal-footer">
@@ -1444,6 +1491,13 @@ export function MovieDetailModal({
               </button>
             )}
             {movie.id && <ScreeningRequestButton mediaKind="movie" id={movie.id} username={user.username} />}
+            {/* Kun for en film der allerede findes: i kladde-tilstand er
+                der ingen læsevisning at fortryde tilbage til. */}
+            {movie.id && (
+              <button type="button" className="btn" onClick={cancelEditing} disabled={saving}>
+                {t("common.cancel")}
+              </button>
+            )}
             <button
               type="button"
               className="btn btn-primary"

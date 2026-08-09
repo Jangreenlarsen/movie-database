@@ -521,5 +521,7 @@
   "messages.dismiss": "Close message",
   "messages.dismissing": "Closing...",
   "messages.dismissError": "The message could not be marked as read: {message}",
-  "audit.action.messageSent": "Message sent"
+  "audit.action.messageSent": "Message sent",
+  "detail.edit": "Edit",
+  "lib.clearSearch": "Clear search"
 }

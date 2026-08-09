@@ -2,6 +2,30 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.79.0 build 0109] — 2026-08-09 — feature: læsevisning som standard (#101) + ryd-knap i søgefelterne (#102)
+
+### Detaljevinduet åbner i læsevisning (FEATURES.md #101)
+
+Jans ønske: man skal ikke lande midt i en redigeringsformular, bare fordi man klikker på en film for at se hvad den handler om.
+
+Læsevisningen fandtes allerede — den blev bygget til guest-rollen i feature #72 og grupperet om i #87. Ændringen er derfor ikke en ny visning, men at den nu gælder alle der ikke aktivt har trykket Redigér, i stedet for at være bestemt af rollen. Kun selve knappen er rolle-betinget: en guest ser den ikke og bliver i læsevisningen.
+
+Undtagelsen er "kladde"-tilstanden fra scan-flowet, hvor filmen endnu ikke findes. Der er intet at læse, og man er kommet for at udfylde den, så den åbner direkte i redigering — og har af samme grund ingen Fortryd-knap at vende tilbage til.
+
+`cancelEditing` nulstiller felterne til postens gemte værdier og er placeret lige efter `useState`-linjerne. De to skal holdes ens når der kommer et felt til, og det er lettere at få øje på når de står ved siden af hinanden.
+
+Sæsoner og episoder forbliver klikbare i læsevisningen. De gemmes hver for sig med det samme og hører ikke til Gem/Fortryd; at kræve et klik på Redigér for at hakke et afsnit af ville lægge friktion på den hyppigste handling på en TV-serie.
+
+### Ryd-knap i søgefelterne (FEATURES.md #102)
+
+Et kryds i højre side af søgefeltet i Film, TV-serier og print-listen, som rydder søgningen.
+
+Egen knap frem for at stole på browserens indbyggede: `type="search"` viser kun et kryds i WebKit og Chrome, ikke i Firefox — så muligheden var usynlig for en del af brugerne. Browserens eget kryds skjules hvor det findes, så der ikke står to side om side.
+
+Print-siden har fået sin egen wrapper-klasse i stedet for at genbruge `.search-input-wrap` fra Library.css. Den importerer ikke det stylesheet, og en klasse defineret i en anden sides fil ville kun virke sålænge begge tilfældigvis endte i samme bundle.
+
+Berørte filer: `frontend/src/pages/Library.jsx`, `frontend/src/pages/Library.css`, `frontend/src/pages/TvShows.jsx`, `frontend/src/pages/PrintList.jsx`, `frontend/src/pages/PrintList.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`, `version.json`.
+
 ## [0.77.0 build 0108] — 2026-08-09 — feature: besked-system fra admin til brugerne (FEATURES.md #100)
 
 En admin skriver emne og tekst og vælger enten "alle aktive brugere" eller én enkelt. Modtagerne ser beskeden som en banner øverst i indholdet indtil de lukker den, og afsenderen kan se hvem der har gjort det.

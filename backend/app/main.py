@@ -11,6 +11,7 @@ from app.api import (
     auth,
     health,
     library_backup,
+    messages,
     movies,
     plex,
     scan,
@@ -35,8 +36,10 @@ from app.core.errors import (
     InvalidCredentialsError,
     InvalidUserStatusTransitionError,
     LastAdminError,
+    MessageNotFoundError,
     MovieNotFoundError,
     NoCertStagedError,
+    NoRecipientsError,
     NoPendingCsrError,
     NotAuthenticatedError,
     NotAuthorizedError,
@@ -54,6 +57,7 @@ from app.core.errors import (
 from app.db import close_client, get_client, get_database
 from app.repositories import (
     audit_log_repository,
+    message_repository,
     movie_repository,
     screening_repository,
     screening_request_repository,
@@ -86,6 +90,7 @@ async def lifespan(app: FastAPI):
     await screening_request_repository.ensure_indexes(db)
     await screening_repository.ensure_indexes(db)
     await audit_log_repository.ensure_indexes(db)
+    await message_repository.ensure_indexes(db)
     logger.info("MongoDB client initialized (%s)", settings.mongo_db_name)
     yield
     await close_client()
@@ -239,6 +244,16 @@ async def pkcs12_import_handler(request: Request, exc: Pkcs12ImportError) -> JSO
     return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
+@app.exception_handler(MessageNotFoundError)
+async def message_not_found_handler(request: Request, exc: MessageNotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(NoRecipientsError)
+async def no_recipients_handler(request: Request, exc: NoRecipientsError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
 @app.exception_handler(NoCertStagedError)
 async def no_cert_staged_handler(request: Request, exc: NoCertStagedError) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": str(exc)})
@@ -259,3 +274,4 @@ app.include_router(system.router)
 app.include_router(library_backup.router)
 app.include_router(screening_requests.router)
 app.include_router(screenings.router)
+app.include_router(messages.router)

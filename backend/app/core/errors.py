@@ -189,3 +189,22 @@ class NoCertStagedError(Exception):
 
     def __init__(self):
         super().__init__("Intet certifikat er klar til installation.")
+
+
+class MessageNotFoundError(Exception):
+    """Feature #100 — beskeden findes ikke, eller den aktuelle bruger er
+    ikke blandt dens modtagere. Samme fejl for begge tilfælde med vilje:
+    hvilke beskeder der findes til andre brugere, er ikke ens egen
+    oplysning."""
+
+    def __init__(self, message_id: str):
+        super().__init__(f"Besked {message_id} findes ikke")
+
+
+class NoRecipientsError(Exception):
+    """Feature #100 — en rundsendt besked uden nogen at sende til. Typisk
+    fordi afsenderen er den eneste aktive bruger; beskeden ville ellers se
+    ud som sendt uden at nå nogen."""
+
+    def __init__(self):
+        super().__init__("Der er ingen aktive brugere at sende beskeden til")

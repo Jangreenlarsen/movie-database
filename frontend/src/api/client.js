@@ -130,6 +130,13 @@ export const api = {
   updateSystemSettings: (payload) =>
     request("/settings/system", { method: "PATCH", body: JSON.stringify(payload) }),
   testSystemSetting: (key) => request(`/settings/system/test/${key}`, { method: "POST" }),
+  // Feature #100 — beskeder fra admin.
+  getInbox: () => request("/messages/inbox"),
+  markMessageRead: (id) => request(`/messages/${id}/read`, { method: "POST" }),
+  listMessages: () => request("/messages"),
+  sendMessage: (payload) =>
+    request("/messages", { method: "POST", body: JSON.stringify(payload) }),
+  deleteMessage: (id) => request(`/messages/${id}`, { method: "DELETE" }),
   // Feature #94 — samlet optælling til app-hovedet.
   getLibraryCounts: () => request("/library/counts"),
   exportLibrary: () => request("/library/export"),

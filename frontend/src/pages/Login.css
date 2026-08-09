@@ -53,3 +53,11 @@
   padding: 0;
   font-size: inherit;
 }
+
+/* Feature #97 — sprogvalget står øverst i login-boksen, over felterne:
+   man skal kunne skifte sprog *før* man læser dem, ikke bagefter. */
+.auth-language {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4px;
+}

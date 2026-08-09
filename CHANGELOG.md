@@ -2,6 +2,20 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.74.0 build 0104] — 2026-08-09 — feature: sprogvalg (DK/ENG) i login-boksen (FEATURES.md #97)
+
+Feature #89 gemte sproget pr. bruger i databasen — Jans valg, så det følger med mellem telefon og PC. Konsekvensen, som blev flaget dengang, var at login-skærmen og en udelogget besøgende på `/bio` altid var på dansk: der er ingen bruger at læse præferencen fra på det tidspunkt. Det er nu lukket.
+
+Valget på pre-auth-skærmene ligger i `localStorage` og er en *enheds*-præference, ikke en konkurrent til konto-indstillingen. Så snart man er logget ind, vinder kontoens eget sprog — så et login på en fremmed enhed, hvor nogen har valgt engelsk, aldrig ændrer ens egen konto.
+
+Ved registrering følger valget derimod med som den nye kontos startsprog. Det er dét, der giver det tidlige valg reel effekt: vælger man ENG i boksen og opretter sig, er man på engelsk fra første indlogning i stedet for at skulle finde Indstillinger bagefter. `UserRegister.language` er valgfri, så ældre klienter og rene API-kald stadig virker og får kildesproget.
+
+`auth_service.register` kopierer nu `DEFAULT_SETTINGS` frem for at referere det. Det er et modul-globalt dict, og et sprogvalg skrevet direkte ind i det ville have båret videre til hver eneste efterfølgende registrering — en test låser den fast.
+
+Vælgeren er to knapper frem for en dropdown: med kun to sprog ville en dropdown kræve et klik for overhovedet at afsløre at valget findes. På den offentlige BIO-side står den i modsatte hjørne af login-knappen, så de to ikke konkurrerer om samme plads, og får hero-gradientens gennemsigtige behandling i stedet for appens almindelige flade.
+
+Berørte filer: `backend/app/models/user.py`, `backend/app/services/auth_service.py`, `backend/tests/test_registration_language.py` (ny), `frontend/src/components/LanguagePicker.jsx` (ny), `frontend/src/components/LanguagePicker.css` (ny), `frontend/src/i18n/index.js`, `frontend/src/App.jsx`, `frontend/src/api/client.js`, `frontend/src/pages/Login.jsx`, `frontend/src/pages/Login.css`, `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `ARCHITECTURE.md`, `FEATURES.md`, `version.json`.
+
 ## [0.73.0 build 0103] — 2026-08-09 — feature: serienummer uden #, serie-grupperet sortering og søgning på nummer (FEATURES.md #96)
 
 Fire ting Jan bad om i samme omgang.

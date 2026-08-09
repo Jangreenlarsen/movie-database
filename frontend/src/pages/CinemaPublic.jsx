@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import CinemaShowcase from "../components/CinemaShowcase";
 import { formatShortDate, formatTime } from "../utils/cinemaFormat";
+import LanguagePicker from "../components/LanguagePicker";
 import { useLocale, useT } from "../i18n";
 import "./CinemaPublic.css";
 import "./Login.css";
@@ -19,7 +20,7 @@ import "./Login.css";
 // poster grid instead of being grouped under full per-day headings — with
 // mostly one screening per day, date-grouping just produced a long single
 // column of near-empty rows.
-export default function CinemaPublic({ user = null }) {
+export default function CinemaPublic({ user = null, language, onLanguageChange }) {
   const t = useT();
   const [screenings, setScreenings] = useState([]);
   const [status, setStatus] = useState("loading");
@@ -37,7 +38,12 @@ export default function CinemaPublic({ user = null }) {
   return (
     <div className="cinema-public-page">
       <header className="cinema-public-hero">
-        <PublicLoginToggle user={user} />
+        {onLanguageChange && (
+          <div className="cinema-public-language">
+            <LanguagePicker language={language} onChange={onLanguageChange} />
+          </div>
+        )}
+        <PublicLoginToggle user={user} language={language} />
         <h1>{t("cinema.title")}</h1>
         <p className="cinema-public-tagline">{t("public.tagline")}</p>
       </header>
@@ -78,7 +84,7 @@ export default function CinemaPublic({ user = null }) {
 // ren pathname-check for /bio, jf. kommentaren i App.jsx) — der tager
 // App.jsx over med den nu autentificerede bruger, landet på Voldby BIO
 // (samme feature #82's anden halvdel: login lander altid der).
-function PublicLoginToggle({ user }) {
+function PublicLoginToggle({ user, language }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   // Feature #83 — samme to-tilstands-mønster som appens egen Login.jsx, så
@@ -107,7 +113,8 @@ function PublicLoginToggle({ user }) {
         // "afventer godkendelse"-siden efter navigationen, præcis som når
         // man registrerer fra forsiden. Derfor samme redirect i begge
         // tilstande frem for en særskilt kvitteringsbesked her.
-        await api.register(username, password);
+        // Feature #97 — se den identiske note i Login.jsx.
+        await api.register(username, password, language);
       }
       window.location.assign("/");
     } catch (err) {

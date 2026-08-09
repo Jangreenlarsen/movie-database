@@ -30,8 +30,10 @@ export function hasCatalog(language) {
 export const SOURCE_LANGUAGE = "da";
 
 export const LANGUAGES = [
-  { code: "da", label: "Dansk" },
-  { code: "en", label: "English" },
+  // `short` er den korte form til sprogvælgeren før login (feature #97),
+  // hvor der kun er plads til et par tegn.
+  { code: "da", label: "Dansk", short: "DK" },
+  { code: "en", label: "English", short: "ENG" },
 ];
 
 // Eksporteret, fordi provider-komponenten ligger i sin egen fil
@@ -99,4 +101,32 @@ const LOCALES = { da: "da-DK", en: "en-GB" };
 /** Locale-tagget til dato-/talformatering — ikke en oversat streng. */
 export function useLocale() {
   return LOCALES[useContext(I18nContext)] ?? LOCALES[SOURCE_LANGUAGE];
+}
+
+// Feature #97 — sprogvalget fra login-boksen.
+//
+// Sproget gemmes normalt pr. bruger i databasen (feature #89), men på login-
+// skærmen og den offentlige /bio findes der ingen bruger endnu. Valget her
+// ligger derfor i browserens localStorage: det er en *enheds*-præference for
+// de skærme der kommer før man er logget ind, ikke en konkurrent til
+// konto-indstillingen. Så snart man er logget ind, vinder kontoens sprog.
+const STORAGE_KEY = "moviedb.language";
+
+export function readStoredLanguage() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return hasCatalog(stored) ? stored : SOURCE_LANGUAGE;
+  } catch {
+    // Privat browsing/blokeret storage — så er kildesproget svaret. Ikke
+    // værd at vise en fejl for: sproget er stadig valgbart i selve sessionen.
+    return SOURCE_LANGUAGE;
+  }
+}
+
+export function storeLanguage(language) {
+  try {
+    localStorage.setItem(STORAGE_KEY, language);
+  } catch {
+    // Se readStoredLanguage — valget gælder stadig for denne sidevisning.
+  }
 }

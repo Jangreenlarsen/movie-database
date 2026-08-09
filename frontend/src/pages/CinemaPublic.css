@@ -174,3 +174,42 @@
     gap: 14px;
   }
 }
+
+/* Feature #97 — sprogvalget i modsatte hjørne af login-knappen, så de to
+   ikke konkurrerer om samme plads i hero-området. */
+.cinema-public-language {
+  position: absolute;
+  top: 16px;
+  left: 20px;
+  z-index: 2;
+}
+
+/* Hero-området er en accent-gradient, ikke appens almindelige flade, så
+   vælgeren får samme gennemsigtige behandling som login-knappen ved siden
+   af — ellers ville den stå som en lys kasse midt i farven. */
+.cinema-public-language .language-picker {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.cinema-public-language .language-picker button {
+  color: var(--accent-contrast);
+  opacity: 0.75;
+}
+
+.cinema-public-language .language-picker button:hover {
+  opacity: 1;
+}
+
+.cinema-public-language .language-picker button.active {
+  background: var(--accent-contrast);
+  color: var(--accent-strong);
+  opacity: 1;
+}
+
+@media (max-width: 560px) {
+  .cinema-public-language {
+    top: 12px;
+    left: 12px;
+  }
+}

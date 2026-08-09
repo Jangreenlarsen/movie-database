@@ -1,5 +1,12 @@
 # Release Notes
 
+## v0.74.0 (build 0104) — 2026-08-09
+
+- **Du kan nu vælge sprog allerede i login-boksen** — DK eller ENG, øverst over felterne. Også på den offentlige BIO-side, i venstre hjørne.
+- Valget huskes på den enhed du sidder ved, så login-skærmen møder dig på det rigtige sprog næste gang.
+- **Opretter du en ny konto, starter den på det sprog du valgte** — så du ikke skal ind i Indstillinger bagefter.
+- Logger du ind på en konto der har et andet sprog gemt, er det kontoens sprog der gælder. Et login på en andens computer ændrer derfor ikke din egen indstilling.
+
 ## v0.73.0 (build 0103) — 2026-08-09
 
 - **Serienumre vises nu uden `#`** — `M0042` i stedet for `M#0042`.

@@ -25,8 +25,13 @@ async function request(path, options = {}) {
 
 export const api = {
   health: () => request("/health"),
-  register: (username, password) =>
-    request("/auth/register", { method: "POST", body: JSON.stringify({ username, password }) }),
+  // Feature #97 — `language` er valgfri: den sætter startsproget på den nye
+  // konto, så et valg truffet i login-boksen gælder fra første indlogning.
+  register: (username, password, language) =>
+    request("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ username, password, ...(language ? { language } : {}) }),
+    }),
   login: (username, password) =>
     request("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
   logout: () => request("/auth/logout", { method: "POST" }),

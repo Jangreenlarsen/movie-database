@@ -2,6 +2,24 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.79.1 build 0110] — 2026-08-09 — fix: valideringsfejl blev vist som "[object Object]" (BUGS.md #54)
+
+Jans melding: oprettelse fejler hvis brugeren skriver sin e-mailadresse.
+
+Selve afvisningen er tilsigtet. Brugernavne må kun indeholde bogstaver, tal, `-` og `_`, fordi navnet vises for alle andre i portalen — "Registreret af", "Ønsket af", audit-loggen, bruger-listen, modtagerlisten på beskeder. Registrerede folk sig med deres e-mail, ville adressen dermed være synlig for alle, også gæster. Jan valgte at beholde reglen.
+
+Fejlen lå i beskeden. Vores egne `HTTPException`-svar har `detail` som en streng, men FastAPIs indbyggede validering (422) sender en *liste* af `{loc, msg, type}`. `client.js` gav den direkte til `new Error(detail)`, og JavaScript gør et array til teksten "[object Object]". Brugeren fik altså en uforståelig fejl uden nogen anelse om hvad der skulle rettes.
+
+Det ramte alle valideringsfejl i appen, ikke kun brugernavnet: for kort adgangskode, ugyldigt format, ukendt sprog, tomt beskedemne. Og det er præcis det CLAUDE.md regel 16 forbyder — reglen var overholdt for vores egne fejl, men aldrig for rammeværkets, fordi de to har forskellig form på `detail`.
+
+`readableDetail()` håndterer nu begge: en streng bruges som den er, en 422-liste trækkes ned til sine `msg`-felter og samles med punktum-adskiller, da en formular sagtens kan have to felter galt. Pydantics `"Value error, "`-præfiks fjernes — det er en implementeringsdetalje fra valideringslaget, ikke noget der giver mening for den der læser fejlen.
+
+Beskeden om brugernavne nævner nu e-mail eksplicit, siden det er det folk faktisk prøver.
+
+Der er ingen frontend-testsuite i projektet (kun `oxlint`), så `readableDetail` er ikke dækket af en automatisk test. Backend-testen låser fast at 422-svaret rent faktisk indeholder den besked frontend nu viser.
+
+Berørte filer: `frontend/src/api/client.js`, `backend/app/models/user.py`, `backend/tests/test_auth.py`, `BUGS.md`, `version.json`.
+
 ## [0.79.0 build 0109] — 2026-08-09 — feature: læsevisning som standard (#101) + ryd-knap i søgefelterne (#102)
 
 ### Detaljevinduet åbner i læsevisning (FEATURES.md #101)

@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.79.1 (build 0110) — 2026-08-09
+
+- **Rettet: fejlbeskeder var uforståelige.** Skrev du fx din e-mail som brugernavn, eller en for kort adgangskode, stod der bare "[object Object]". Nu står der hvad der er galt.
+- Det gjaldt alle den slags fejl i appen, ikke kun ved oprettelse.
+- **Brugernavne kan stadig ikke være e-mailadresser** — dit brugernavn vises for de andre brugere i portalen ("Registreret af", "Ønsket af" osv.), så en e-mail dér ville være synlig for alle. Beskeden siger det nu direkte.
+
 ## v0.79.0 (build 0109) — 2026-08-09
 
 - **Film og TV-serier åbner nu i læsevisning.** Du lander ikke længere midt i en redigeringsformular, bare fordi du klikkede for at se hvad filmen handler om. Tryk **Redigér** for at ændre noget, og **Annullér** for at fortryde og gå tilbage.

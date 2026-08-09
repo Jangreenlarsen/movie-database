@@ -138,8 +138,17 @@ class UserRegister(BaseModel):
     @field_validator("username")
     @classmethod
     def username_alphanumeric(cls, value: str) -> str:
+        """BUGS.md #54 — beskeden nævner e-mail eksplicit, fordi det er det
+        folk faktisk prøver. Brugernavnet vises for alle andre i portalen
+        ("Registreret af", "Ønsket af", audit-loggen), så en e-mail som
+        brugernavn ville gøre adressen synlig for alle — reglen er bevaret
+        med vilje (Jans valg 2026-08-09), kun forklaringen er blevet
+        brugbar."""
         if not value.replace("_", "").replace("-", "").isalnum():
-            raise ValueError("Brugernavn må kun indeholde bogstaver, tal, - og _")
+            raise ValueError(
+                "Brugernavn må kun indeholde bogstaver, tal, - og _ "
+                "(en e-mailadresse kan derfor ikke bruges som brugernavn)"
+            )
         return value
 
     @field_validator("password")

@@ -1,5 +1,30 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
+/**
+ * BUGS.md #54 — gør backendens fejl læsbar for et menneske.
+ *
+ * Vores egne `HTTPException`-svar har `detail` som en streng, men FastAPIs
+ * indbyggede validering (422) sender en *liste* af `{loc, msg, type}`.
+ * Den blev før givet direkte til `new Error(...)`, hvor JavaScript gør
+ * arrayet til teksten "[object Object]" — så en bruger der fx skrev sin
+ * e-mail som brugernavn fik en uforståelig fejl i stedet for at få at vide
+ * hvad der var galt. CLAUDE.md regel 16 kræver netop den specifikke besked.
+ *
+ * Pydantics "Value error, "-præfiks fjernes: det er en implementeringsdetalje
+ * fra valideringslaget, ikke noget der giver mening for den der læser den.
+ */
+function readableDetail(detail) {
+  if (typeof detail === "string") return detail;
+  if (!Array.isArray(detail) || detail.length === 0) return null;
+  const messages = detail
+    .map((item) => item?.msg)
+    .filter(Boolean)
+    .map((msg) => msg.replace(/^Value error, /, ""));
+  // Flere fejl på én gang samles med punktum-adskiller frem for kun at vise
+  // den første — en formular kan sagtens have to felter galt.
+  return messages.length > 0 ? messages.join(" · ") : null;
+}
+
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
@@ -14,7 +39,9 @@ async function request(path, options = {}) {
     } catch {
       // ignore — no JSON body
     }
-    const error = new Error(detail ?? `API request failed: ${response.status} ${path}`);
+    const error = new Error(
+      readableDetail(detail) ?? `API request failed: ${response.status} ${path}`
+    );
     error.status = response.status;
     throw error;
   }

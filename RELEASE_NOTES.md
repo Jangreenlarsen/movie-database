@@ -1,5 +1,14 @@
 # Release Notes
 
+## v0.77.0 (build 0108) — 2026-08-09
+
+- **Nyt: du kan sende beskeder til brugerne.** Indstillinger → Beskeder. Vælg alle aktive brugere eller én enkelt, skriv emne og tekst, og send.
+- Modtagerne ser beskeden som en **banner øverst i appen**, indtil de trykker "Luk besked". Svær at overse.
+- **Du kan se hvem der har læst den** — "læst af 2 af 5" med navnene, i oversigten over sendte beskeder.
+- Beskeden går til dem der findes når du sender. En bruger der opretter sig bagefter får den ikke.
+- Du kan slette en besked igen; så forsvinder den også for dem der ikke har set den endnu.
+- Du får ikke selv en banner om din egen besked.
+
 ## v0.76.1 (build 0107) — 2026-08-09
 
 - **Rettet: login-boksen på BIO-siden blev mast helt sammen.** Den blev i sidste opdatering utilsigtet lagt inde i den lille hjørne-gruppe med sprogvalget og fik derfor kun dennes bredde. Nu folder den sig ud under knappen i fuld bredde igen.

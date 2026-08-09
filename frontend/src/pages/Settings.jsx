@@ -14,6 +14,7 @@ import "./Settings.css";
 function settingsTabs(isAdmin, isGuest) {
   return [
     { id: "brugere", labelKey: "settings.tab.users", visible: isAdmin },
+    { id: "beskeder", labelKey: "settings.tab.messages", visible: isAdmin },
     { id: "konto", labelKey: "settings.tab.account", visible: true },
     { id: "bibliotek", labelKey: "settings.tab.library", visible: !isGuest },
     { id: "backup", labelKey: "settings.tab.backup", visible: isAdmin },
@@ -54,6 +55,8 @@ export default function Settings({ user, onSettingsChanged }) {
           <AuditLogSection />
         </>
       )}
+
+      {activeTab === "beskeder" && isAdmin && <MessagesSection currentUserId={user.id} />}
 
       {activeTab === "konto" && (
         <>
@@ -1465,6 +1468,166 @@ function PlexImportSection() {
   );
 }
 
+/**
+ * Feature #100 — admin sender beskeder til alle eller til én bruger, og ser
+ * hvem der har læst dem.
+ *
+ * Modtagerlisten er et øjebliksbillede taget ved afsendelse (Jans valg), så
+ * en besked om fredagens visning ikke møder en bruger der opretter sig tre
+ * måneder senere. Det er også derfor "læst af 2 af 5" er et fast tal og
+ * ikke ændrer sig når der kommer nye brugere til.
+ */
+function MessagesSection({ currentUserId }) {
+  const t = useT();
+  const locale = useLocale();
+  const [users, setUsers] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [recipient, setRecipient] = useState("");
+  const [status, setStatus] = useState("idle");
+  const [error, setError] = useState(null);
+
+  function load() {
+    api.listMessages().then(setMessages).catch((err) => setError(err.message));
+    api.listUsers().then(setUsers).catch(() => {});
+  }
+
+  useEffect(load, []);
+
+  async function send(event) {
+    event.preventDefault();
+    setStatus("sending");
+    setError(null);
+    try {
+      await api.sendMessage({
+        subject,
+        body,
+        recipient_user_id: recipient || null,
+      });
+      setSubject("");
+      setBody("");
+      setRecipient("");
+      setStatus("idle");
+      load();
+    } catch (err) {
+      setError(err.message);
+      setStatus("error");
+    }
+  }
+
+  async function remove(messageId) {
+    if (!window.confirm(t("messages.confirmDelete"))) return;
+    try {
+      await api.deleteMessage(messageId);
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  // Kun aktive brugere kan modtage, og man sender ikke til sig selv — samme
+  // regel som backenden håndhæver, gentaget her så listen ikke tilbyder valg
+  // der ville blive afvist.
+  const selectableUsers = users.filter(
+    (u) => u.status === "active" && u.id !== currentUserId
+  );
+
+  return (
+    <div className="card settings-section">
+      <h2>{t("messages.heading")}</h2>
+      <p className="muted">{t("messages.description")}</p>
+
+      <form className="serial-config-form" onSubmit={send} style={{ maxWidth: 520 }}>
+        <label>
+          {t("messages.recipient")}
+          <select value={recipient} onChange={(e) => setRecipient(e.target.value)}>
+            <option value="">{t("messages.everyone")}</option>
+            {selectableUsers.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.username}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t("messages.subject")}
+          <input
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            maxLength={120}
+            required
+          />
+        </label>
+        <label>
+          {t("messages.body")}
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={4}
+            maxLength={2000}
+            required
+            style={{ resize: "vertical" }}
+          />
+        </label>
+
+        {error && <div className="banner banner-error">{error}</div>}
+
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={status === "sending" || !subject.trim() || !body.trim()}
+        >
+          {t(status === "sending" ? "messages.sending" : "messages.send")}
+        </button>
+      </form>
+
+      <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
+
+      <h3 style={{ marginTop: 0 }}>{t("messages.sentHeading")}</h3>
+      {messages.length === 0 ? (
+        <p className="muted">{t("messages.noneSent")}</p>
+      ) : (
+        <ul className="user-list">
+          {messages.map((message) => (
+            <li key={message.id} className="message-sent-row">
+              <div className="message-sent-main">
+                <strong>{message.subject}</strong>
+                <div className="muted message-sent-meta">
+                  {t(message.is_broadcast ? "messages.toEveryone" : "messages.toOne", {
+                    name: message.recipients[0]?.username ?? "",
+                    date: new Date(message.created_at).toLocaleDateString(locale),
+                  })}
+                  {" · "}
+                  {t("messages.readCount", {
+                    read: message.read_count,
+                    total: message.recipient_count,
+                  })}
+                </div>
+                {/* Kun de der faktisk har læst listes: "hvem mangler" er
+                    hurtigere at aflæse ud fra tallet end ud fra to lister. */}
+                {message.read_count > 0 && (
+                  <div className="muted message-sent-meta">
+                    {t("messages.readBy", {
+                      names: message.recipients
+                        .filter((r) => r.read_at)
+                        .map((r) => r.username)
+                        .join(", "),
+                    })}
+                  </div>
+                )}
+              </div>
+              <button type="button" className="btn" onClick={() => remove(message.id)}>
+                {t("common.delete")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 const AUDIT_ACTION_KEYS = {
   "user.role_changed": "audit.action.roleChanged",
   "system_settings.updated": "audit.action.settingsUpdated",
@@ -1475,6 +1638,7 @@ const AUDIT_ACTION_KEYS = {
   "library_backup.imported": "audit.action.libraryImported",
   "screening_request.declined": "audit.action.requestDeclined",
   "screening.scheduled": "audit.action.screeningScheduled",
+  "message.sent": "audit.action.messageSent",
   "plex.imported": "audit.action.plexImported",
 };
 

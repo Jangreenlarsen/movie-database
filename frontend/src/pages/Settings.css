@@ -133,3 +133,23 @@
   flex-direction: column;
   gap: 4px;
 }
+
+/* Feature #100 — én sendt besked i afsender-oversigten. Egen række frem for
+   .user-row, da indholdet er flere linjer og ikke en enkelt navnelinje. */
+.message-sent-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.message-sent-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.message-sent-meta {
+  font-size: 0.8rem;
+  margin-top: 2px;
+}

@@ -1,0 +1,62 @@
+/* Feature #100 — beskeder fra admin, øverst i indholdet. */
+.message-banners {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.message-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  /* Kantstriben gør beskeden til noget andet end appens almindelige
+     info-bannere: den er sendt af et menneske og skal besvares med et klik,
+     ikke bare læses. */
+  border-left: 4px solid var(--accent);
+}
+
+.message-banner-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.message-banner-subject {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.message-banner-text {
+  margin: 0;
+  font-size: 0.9rem;
+  /* Afsenderens linjeskift bevares — en besked skrevet i afsnit skal ikke
+     klappe sammen til én blok. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.message-banner-meta {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+@media (max-width: 560px) {
+  .message-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+}
+
+/* Beskeder er skærm-kommunikation, ikke en del af biblioteket — de skal
+   ikke med på en udskrift af film-listen. */
+@media print {
+  .message-banners {
+    display: none;
+  }
+}

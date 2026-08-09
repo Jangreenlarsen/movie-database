@@ -8,6 +8,7 @@ import Statistics from "./pages/Statistics";
 import Cinema from "./pages/Cinema";
 import CinemaPublic from "./pages/CinemaPublic";
 import Login from "./pages/Login";
+import MessageBanner from "./components/MessageBanner";
 import PendingApproval from "./pages/PendingApproval";
 import { api } from "./api/client";
 import I18nProvider from "./i18n/I18nProvider";
@@ -255,6 +256,10 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
       </header>
 
       <main className="app-main">
+        {/* Feature #100 — beskeder står øverst i indholdet, ikke i hovedet:
+            de kan fylde flere linjer, og et hoved der vokser ville skubbe
+            hele siden ned hver gang der kommer en ny. */}
+        <MessageBanner />
         {tab === "library" && (
           <Library
             user={user}

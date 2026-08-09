@@ -2,6 +2,28 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.77.0 build 0108] — 2026-08-09 — feature: besked-system fra admin til brugerne (FEATURES.md #100)
+
+En admin skriver emne og tekst og vælger enten "alle aktive brugere" eller én enkelt. Modtagerne ser beskeden som en banner øverst i indholdet indtil de lukker den, og afsenderen kan se hvem der har gjort det.
+
+Modtagerlisten er et øjebliksbillede taget ved afsendelse og gemmes på beskeden frem for at blive slået op ved hver visning. Det var Jans valg, og det har to konsekvenser der begge er ønskede: en besked om fredagens visning møder ikke en bruger der opretter sig tre måneder senere, og "læst af 2 af 5" er et fast tal i stedet for et der ændrer sig når der kommer nye brugere til.
+
+Kun aktive konti kommer med. En `pending` eller `disabled` bruger kan ikke bruge appen og ville bare stå som ulæst for evigt. Afsenderen springes over — man skal ikke mødes af en banner om sin egen besked.
+
+To detaljer i datalaget er værd at nævne, fordi begge er den slags der virker indtil to personer gør noget samtidig:
+
+Læse-markeringen er et punktum-sti-`$set` med positional operator (`recipients.$.read_at`), aldrig en read-modify-write af hele modtagerlisten. To brugere der lukker den samme rundsendte besked samtidig ville ellers kunne overskrive hinandens markering — netop mønstret CLAUDE.md regel 16 og BUGS.md #13 handler om.
+
+Indbakke-opslaget bruger `$elemMatch` frem for to separate `recipients.`-betingelser. Uden det kan de to betingelser opfyldes af hvert sit element i arrayet, så en besked dukker op i din indbakke fordi *en anden* modtager ikke har læst den.
+
+At markere en besked man ikke selv har modtaget giver 404 — samme svar som en besked der ikke findes. Hvilke beskeder der findes til andre brugere er ikke ens egen oplysning.
+
+Bannere frem for en klokke med ulæst-tæller er en bevidst afvejning, ikke en forenkling: beskeden er svær at overse, men en lukket besked er væk, og der er ingen historik at finde den frem i.
+
+Fundet under test: `Field(min_length=1)` tæller mellemrum med, så en besked med kun mellemrum i emnet slap igennem og blev tom når teksten trimmes ved gem. Feltet trimmes nu *før* validering — samme "tjek alle former for tom"-princip som CLAUDE.md regel 16 beskriver.
+
+Berørte filer: `backend/app/models/message.py` (ny), `backend/app/repositories/message_repository.py` (ny), `backend/app/services/message_service.py` (ny), `backend/app/api/messages.py` (ny), `backend/app/core/errors.py`, `backend/app/main.py`, `backend/tests/test_messages.py` (ny), `frontend/src/components/MessageBanner.jsx` (ny), `frontend/src/components/MessageBanner.css` (ny), `frontend/src/App.jsx`, `frontend/src/api/client.js`, `frontend/src/pages/Settings.jsx`, `frontend/src/pages/Settings.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`, `FEATURES.md`, `version.json`.
+
 ## [0.76.1 build 0107] — 2026-08-09 — fix: login-boksen på /bio blev mast sammen (BUGS.md #53)
 
 En regression fra feature #99 samme dag.

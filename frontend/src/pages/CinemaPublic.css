@@ -16,9 +16,8 @@
    either way — hence the explicit inline-block/text-decoration resets that
    a bare button wouldn't need. */
 .cinema-public-login-toggle {
-  position: absolute;
-  top: 16px;
-  right: 20px;
+  /* Feature #99 — placeringen ligger nu på .cinema-public-hero-actions,
+     som holder knappen og sprogvalget samlet. */
   display: inline-block;
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.45);
@@ -175,41 +174,46 @@
   }
 }
 
-/* Feature #97 — sprogvalget i modsatte hjørne af login-knappen, så de to
-   ikke konkurrerer om samme plads i hero-området. */
-.cinema-public-language {
+/* Feature #99 — sprogvalg og login-knap i én gruppe øverst til højre.
+   Feature #97 havde dem i hver sit hjørne, hvilket gjorde dem visuelt
+   afkoblede selvom de hører sammen som "det du gør før du er logget ind". */
+.cinema-public-hero-actions {
   position: absolute;
   top: 16px;
-  left: 20px;
+  right: 20px;
   z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 /* Hero-området er en accent-gradient, ikke appens almindelige flade, så
    vælgeren får samme gennemsigtige behandling som login-knappen ved siden
    af — ellers ville den stå som en lys kasse midt i farven. */
-.cinema-public-language .language-picker {
+.cinema-public-hero-actions .language-picker {
   background: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.45);
 }
 
-.cinema-public-language .language-picker button {
+.cinema-public-hero-actions .language-picker button {
   color: var(--accent-contrast);
   opacity: 0.75;
 }
 
-.cinema-public-language .language-picker button:hover {
+.cinema-public-hero-actions .language-picker button:hover {
   opacity: 1;
 }
 
-.cinema-public-language .language-picker button.active {
+.cinema-public-hero-actions .language-picker button.active {
   background: var(--accent-contrast);
   color: var(--accent-strong);
   opacity: 1;
 }
 
 @media (max-width: 560px) {
-  .cinema-public-language {
+  .cinema-public-hero-actions {
     top: 12px;
-    left: 12px;
+    right: 12px;
+    gap: 6px;
   }
 }

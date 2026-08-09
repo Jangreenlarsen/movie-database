@@ -21,6 +21,9 @@
   gap: 10px;
   font-weight: 700;
   font-size: 1.2rem;
+  /* Bevaret for PendingApproval.jsx, hvor .auth-brand står alene og fylder
+     kortets bredde. På login-siden er den et flex-item i .auth-header og
+     hugger sit indhold, så centreringen er uden virkning dér. */
   justify-content: center;
 }
 
@@ -54,10 +57,14 @@
   font-size: inherit;
 }
 
-/* Feature #97 — sprogvalget står øverst i login-boksen, over felterne:
-   man skal kunne skifte sprog *før* man læser dem, ikke bagefter. */
-.auth-language {
+/* Feature #99 — logo og sprogvalg på samme linje øverst i login-kortet.
+   Sprogvalget skal stadig kunne nås *før* man læser felterne, men det står
+   nu ved siden af det man er kommet for, ikke som et centreret element for
+   sig selv. */
+.auth-header {
   display: flex;
-  justify-content: center;
-  margin-bottom: 4px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }

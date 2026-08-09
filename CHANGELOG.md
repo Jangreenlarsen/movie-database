@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.76.0 build 0106] — 2026-08-09 — feature: sprogvalget står ved siden af login (FEATURES.md #99)
+
+Feature #97 satte sprogvalget i modsatte hjørne af login-knappen på den offentlige BIO-side, og som et centreret element for sig selv i login-kortet. Begge steder stod det visuelt afkoblet fra det man faktisk er kommet for.
+
+På BIO-siden ligger vælger og login-knap nu i én gruppe øverst til højre. Placeringen er flyttet fra de to elementer op på gruppen, så de ikke længere er absolut placeret hver for sig og kan komme til at overlappe hinanden ved en senere ændring.
+
+I login-kortet står vælgeren nu på linje med logoet i toppen — samme relative plads som på BIO-siden, så den sidder samme sted uanset hvilken vej man kom ind i appen.
+
+`.auth-brand`s `justify-content: center` er bevaret med vilje: `PendingApproval.jsx` deler klassen, og dér står logoet alene og fylder kortets bredde. På login-siden er `.auth-brand` nu et flex-item der hugger sit indhold, så centreringen er uden virkning — men fjernes den, rykker logoet på den anden side.
+
+Berørte filer: `frontend/src/pages/Login.jsx`, `frontend/src/pages/Login.css`, `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `FEATURES.md`, `version.json`.
+
 ## [0.75.0 build 0105] — 2026-08-09 — feature: sorterbare kolonner og lyd-type i print-listen (FEATURES.md #98)
 
 Print-listens kolonneoverskrifter er nu klikbare — Serienr., Titel/Navn, År, Format, Lokation og en ny Lyd-type-kolonne. Første klik sorterer stigende, næste vender retningen.

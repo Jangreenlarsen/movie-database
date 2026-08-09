@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.76.0 (build 0106) — 2026-08-09
+
+- **DK/ENG-valget står nu ved siden af login.** På BIO-siden sidder det lige til venstre for "Log ind" i stedet for i det modsatte hjørne, og i login-boksen står det på linje med logoet i toppen.
+- Samme placering begge steder, så det sidder hvor du forventer uanset hvilken vej du kom ind.
+
 ## v0.75.0 (build 0105) — 2026-08-09
 
 - **Print-listens kolonner kan nu sorteres.** Klik på en overskrift — Serienr., Titel, År, Format, Lyd-type eller Lokation. Klik igen for at vende rækkefølgen.

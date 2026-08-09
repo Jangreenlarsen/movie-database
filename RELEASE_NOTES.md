@@ -1,5 +1,12 @@
 # Release Notes
 
+## v0.79.0 (build 0109) — 2026-08-09
+
+- **Film og TV-serier åbner nu i læsevisning.** Du lander ikke længere midt i en redigeringsformular, bare fordi du klikkede for at se hvad filmen handler om. Tryk **Redigér** for at ændre noget, og **Annullér** for at fortryde og gå tilbage.
+- Scanner du en ny film ind, åbner den stadig direkte i redigering — der er jo ikke noget at læse endnu.
+- **Sæsoner og afsnit kan stadig hakkes af uden at trykke Redigér.** De gemmes med det samme, som de altid har gjort.
+- **Ryd-knap i søgefelterne** — et kryds i højre side af feltet i Film, TV-serier og print-listen. Virker også i Firefox, hvor browserens eget kryds ikke findes.
+
 ## v0.77.0 (build 0108) — 2026-08-09
 
 - **Nyt: du kan sende beskeder til brugerne.** Indstillinger → Beskeder. Vælg alle aktive brugere eller én enkelt, skriv emne og tekst, og send.

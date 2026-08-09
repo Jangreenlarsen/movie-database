@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.72.0 build 0102] — 2026-08-08 — feature: farvede tællere og "Log ud" helt til højre i app-hovedet (FEATURES.md #95)
+
+To justeringer Jan bad om.
+
+**"Log ud" står nu yderst til højre.** `.app-header-inner` bruger `justify-content: space-between`, hvilket virker så længe hovedet er én linje — men det ombryder på smallere skærme, og på den nye linje endte bruger-blokken midtstillet. `margin-left: auto` på `.header-user` skubber den ud til kanten uanset ombrydning.
+
+**Optællingen har fået farve**, og er samtidig delt i to selvstændige mærkater frem for én sætning: film og TV-serier er to adskilte ressourcer, og hvert tal skal kunne aflæses for sig. Film får den bløde accent-flade som `.brand-mark` og `.role-badge` allerede bruger; TV-serier en neutral flade med kant, så de to er til at skelne på et øjekast i stedet for at være to ens klatter.
+
+Rettet undervejs: optællingen forsvandt sammen med brugernavnet på telefon. Media query'en skjulte `.header-user span`, som rammer alle `span` i blokken — også tællerne. Nu skjules kun selve brugernavnet, og tællerne bliver stående i en lidt mindre udgave. De er hele pointen med feature #94 og fylder mindre end navnet gjorde.
+
+Berørte filer: `frontend/src/App.jsx`, `frontend/src/App.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`, `version.json`.
+
 ## [0.71.1 build 0101] — 2026-08-08 — fix: TV-serier fra Plex blev sprunget over ved import (BUGS.md #52)
 
 Jans fejlmelding: TV-serier importeret fra Plex dukkede ikke op under TV-serier.

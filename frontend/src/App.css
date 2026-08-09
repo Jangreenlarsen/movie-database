@@ -80,16 +80,40 @@
    Skjules på smalle skærme sammen med brugernavnet (se media query
    nederst): på en telefon er pladsen i hovedet allerede knap. */
 .header-counts {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   white-space: nowrap;
+}
+
+/* Hvert tal som sin egen mærkat, så de kan aflæses hver for sig. Samme
+   bløde accent-flade som .brand-mark og .role-badge bruger — hovedet skal
+   have farve uden at konkurrere med den aktive fane. */
+.header-count {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+/* TV-serier får en neutral flade, så de to tal er til at skelne på et
+   øjekast og ikke bare er to ens klatter. */
+.header-count--shows {
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
 }
 
 .header-user {
   display: flex;
   align-items: center;
   gap: 10px;
+  /* Skubber bruger-blokken helt ud til højre, også når fanerne fylder så
+     meget at hovedet ombrydes — `justify-content: space-between` alene
+     efterlod den midtstillet på den nye linje. */
+  margin-left: auto;
 }
 
 .app-main {
@@ -241,10 +265,15 @@
     white-space: nowrap;
   }
 
-  /* Feature #94 — både brugernavn og optælling ryger ud på smalle
-     skærme; hovedet har kun plads til fanerne og "Log ud". */
-  .header-user span {
+  /* Brugernavnet ryger ud på smalle skærme — men optællingen bliver, da
+     den er hele pointen med feature #94 og fylder mindre end navnet. */
+  .header-user > span.muted {
     display: none;
+  }
+
+  .header-count {
+    font-size: 0.72rem;
+    padding: 3px 7px;
   }
 
   .app-main {

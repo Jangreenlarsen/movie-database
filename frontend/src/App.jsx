@@ -206,10 +206,15 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
                   showDigital: counts.tv_shows.digital,
                 })}
               >
-                {t("counts.summary", {
-                  movies: counts.movies.total,
-                  shows: counts.tv_shows.total,
-                })}
+                {/* To separate mærkater frem for én streng: film og
+                    TV-serier er to adskilte ressourcer, og hvert tal skal
+                    kunne aflæses for sig uden at man læser en sætning. */}
+                <span className="header-count header-count--movies">
+                  {t("counts.movies", { count: counts.movies.total })}
+                </span>
+                <span className="header-count header-count--shows">
+                  {t("counts.shows", { count: counts.tv_shows.total })}
+                </span>
               </span>
             )}
             <span className="muted">{user.username}</span>

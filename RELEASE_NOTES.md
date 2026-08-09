@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.72.0 (build 0102) — 2026-08-08
+
+- **"Log ud" står nu yderst til højre** i toppen, også når skærmen er smal nok til at menuen ombryder.
+- **Optællingen har fået farve** og er delt i to mærkater — film i appens accentfarve, TV-serier i en neutral med kant, så de to tal er til at skelne på et øjekast.
+- Optællingen bliver nu også stående på telefon; før forsvandt den sammen med brugernavnet.
+
 ## v0.71.1 (build 0101) — 2026-08-08
 
 - **Rettet: TV-serier fra Plex blev sprunget over ved import.** Kunne Plex ikke fortælle hvilken opløsning en serie ligger i, blev den slet ikke oprettet — og dukkede derfor aldrig op under TV-serier. Det ramte serier langt oftere end film, fordi deres opløsning kræver et ekstra opslag pr. serie.

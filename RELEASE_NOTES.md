@@ -1,5 +1,12 @@
 # Release Notes
 
+## v0.75.0 (build 0105) — 2026-08-09
+
+- **Print-listens kolonner kan nu sorteres.** Klik på en overskrift — Serienr., Titel, År, Format, Lyd-type eller Lokation. Klik igen for at vende rækkefølgen.
+- **Ny kolonne: Lyd-type**, på både film- og TV-tabellen.
+- Sorterings-pilen kommer med på udskriften, så du kan se hvilken orden listen blev printet i.
+- Sæson-kolonnen kan ikke sorteres — tallet regnes ud fra hvilke sæsoner du ejer og findes ikke som et sorterbart felt.
+
 ## v0.74.0 (build 0104) — 2026-08-09
 
 - **Du kan nu vælge sprog allerede i login-boksen** — DK eller ENG, øverst over felterne. Også på den offentlige BIO-side, i venstre hjørne.

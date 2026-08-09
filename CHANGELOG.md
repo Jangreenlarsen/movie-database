@@ -2,6 +2,20 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.75.0 build 0105] — 2026-08-09 — feature: sorterbare kolonner og lyd-type i print-listen (FEATURES.md #98)
+
+Print-listens kolonneoverskrifter er nu klikbare — Serienr., Titel/Navn, År, Format, Lokation og en ny Lyd-type-kolonne. Første klik sorterer stigende, næste vender retningen.
+
+Sorterings-nøglen er logisk frem for et API-feltnavn. De to tabeller sorteres af det samme klik, men hedder forskelligt i backenden: film har `title`, serier har `name`. Hver kolonne oversætter derfor sig selv pr. ressource, og en kolonne der ikke findes for den ene tabel falder tilbage til serienummeret, så listen bevarer en fast orden i stedet for at komme i vilkårlig rækkefølge.
+
+Sæson-kolonnen er bevidst ikke sorterbar: tallet er beregnet ud fra `seasons[]` og findes ikke som sorterbart felt i backenden.
+
+Pilen printes med — en udskrift skal kunne vise hvilken orden den blev lavet i — mens klik-markøren kun gælder på skærm. Pilen har fast bredde, så overskrifterne ikke rykker sig når sorteringen skifter kolonne; en tabel der hopper ved hvert klik er svær at aflæse.
+
+En test tjekker hvert af print-listens kolonne-felter mod backendens faktiske sorterings-whitelist. `parse_sort_param` dropper ukendte felter stiltiende (så et gemt preset med et siden fjernet felt ikke brækker), hvilket betyder at en tastefejl her ville vise sig som "sorteringen gør ingenting" frem for som en fejl.
+
+Berørte filer: `frontend/src/pages/PrintList.jsx`, `frontend/src/pages/PrintList.css`, `backend/tests/test_serial_sort_and_search.py`, `FEATURES.md`, `version.json`.
+
 ## [0.74.0 build 0104] — 2026-08-09 — feature: sprogvalg (DK/ENG) i login-boksen (FEATURES.md #97)
 
 Feature #89 gemte sproget pr. bruger i databasen — Jans valg, så det følger med mellem telefon og PC. Konsekvensen, som blev flaget dengang, var at login-skærmen og en udelogget besøgende på `/bio` altid var på dansk: der er ingen bruger at læse præferencen fra på det tidspunkt. Det er nu lukket.

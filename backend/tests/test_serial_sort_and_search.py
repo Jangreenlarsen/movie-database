@@ -145,3 +145,35 @@ def test_build_text_query_without_prefixes_ignores_serial_terms():
 
     with_prefixes = build_text_query("42", ["title"], {"M": "Fysisk"})
     assert {"serial_number": 42} in with_prefixes["$or"]
+
+
+# --- print-listens kolonner (feature #98) ------------------------------------
+
+
+async def test_every_print_list_column_is_a_valid_sort_field(client):
+    """Print-listens kolonne-overskrifter sorterer via API'ets `sort`-parameter.
+    Ukendte felter droppes stiltiende af `parse_sort_param`, så en tastefejl
+    ville vise sig som "sorteringen gør ingenting" frem for som en fejl —
+    derfor tjekkes hvert felt her mod den faktiske whitelist."""
+    movie_fields = ["serial_number", "title", "year", "format", "audio_types", "location"]
+    tv_fields = ["serial_number", "name", "year", "format", "audio_types", "location"]
+
+    for field in movie_fields:
+        assert field in movie_repository.SORT_FIELDS, field
+    for field in tv_fields:
+        assert field in tv_show_repository.SORT_FIELDS, field
+
+
+async def test_sorting_by_audio_type_works_end_to_end(client):
+    """Den nye kolonne i print-listen. Mongo sorterer et array efter dets
+    mindste element, hvilket er den orden en liste over lydformater læses i."""
+    await client.post(
+        "/api/movies",
+        json={"title": "Med DTS", "audio_types": ["DTS"], **PHYSICAL},
+    )
+    await client.post(
+        "/api/movies",
+        json={"title": "Med Atmos", "audio_types": ["Atmos"], **PHYSICAL},
+    )
+
+    assert await _titles(client, sort="audio_types:asc") == ["Med Atmos", "Med DTS"]

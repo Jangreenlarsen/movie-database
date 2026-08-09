@@ -82,3 +82,41 @@
     page-break-before: always;
   }
 }
+
+/* Feature #98 — klikbare kolonne-overskrifter. Knappen arver overskriftens
+   typografi, så tabellen ser uændret ud; det er kun markøren og pilen der
+   røber at der kan klikkes. */
+.print-sort-header {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.print-sort-header:hover {
+  color: var(--text);
+}
+
+.print-sort-arrow {
+  font-size: 0.6rem;
+  /* Fast bredde, så overskrifterne ikke rykker sig når pilen skifter
+     kolonne — en tabel der hopper ved hvert klik er svær at aflæse. */
+  width: 8px;
+  display: inline-block;
+}
+
+@media print {
+  /* Markøren betyder intet på papir, men pilen gør: den viser hvilken
+     orden udskriften blev lavet i. */
+  .print-sort-header {
+    cursor: default;
+  }
+}

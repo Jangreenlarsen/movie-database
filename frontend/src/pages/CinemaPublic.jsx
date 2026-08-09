@@ -22,6 +22,10 @@ import "./Login.css";
 // column of near-empty rows.
 export default function CinemaPublic({ user = null, language, onLanguageChange }) {
   const t = useT();
+  // BUGS.md #53 — åben/lukket-tilstanden ligger her frem for i
+  // PublicLoginToggle, fordi knappen og panelet nu står to forskellige
+  // steder i træet.
+  const [loginOpen, setLoginOpen] = useState(false);
   const [screenings, setScreenings] = useState([]);
   const [status, setStatus] = useState("loading");
 
@@ -40,13 +44,23 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
       <header className="cinema-public-hero">
         {/* Feature #99 — sprogvalget står ved siden af login-knappen, ikke i
             modsatte hjørne: de to hører sammen som "det du gør før du er
-            logget ind", og var visuelt afkoblet da de stod hver sit sted. */}
+            logget ind", og var visuelt afkoblet da de stod hver sit sted.
+            Login-knappen står først (Jans ønske 2026-08-09).
+
+            BUGS.md #53 — kun *knappen* hører til i gruppen. Selve
+            login-panelet er en søskende, fordi gruppen er absolut placeret:
+            lå panelet indeni, ville dets egen absolutte placering og
+            `max-width: calc(100% - 40px)` regne mod gruppens få pixels i
+            stedet for mod hero-området, og panelet blev mast sammen. */}
         <div className="cinema-public-hero-actions">
+          <PublicLoginToggle user={user} open={loginOpen} onToggle={() => setLoginOpen((v) => !v)} />
           {onLanguageChange && (
             <LanguagePicker language={language} onChange={onLanguageChange} />
           )}
-          <PublicLoginToggle user={user} language={language} />
         </div>
+        {loginOpen && !user && (
+          <PublicLoginPanel language={language} onClose={() => setLoginOpen(false)} />
+        )}
         <h1>{t("cinema.title")}</h1>
         <p className="cinema-public-tagline">{t("public.tagline")}</p>
       </header>
@@ -87,9 +101,45 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
 // ren pathname-check for /bio, jf. kommentaren i App.jsx) — der tager
 // App.jsx over med den nu autentificerede bruger, landet på Voldby BIO
 // (samme feature #82's anden halvdel: login lander altid der).
-function PublicLoginToggle({ user, language }) {
+//
+// BUGS.md #53 — knappen og selve panelet er to komponenter, fordi de skal
+// stå to forskellige steder i træet: knappen sammen med sprogvalget i den
+// absolut placerede hjørne-gruppe, panelet som søskende direkte i hero'en,
+// hvor det kan få sin egen bredde.
+function PublicLoginToggle({ user, open, onToggle }) {
   const t = useT();
-  const [open, setOpen] = useState(false);
+
+  // Feature #84 — someone already signed in shouldn't be offered a login
+  // form on what is now also the site's front page; send them into the app
+  // instead. `user` is `undefined` while the session check is still in
+  // flight, which correctly falls through to the login badge — the public
+  // page must never block on that lookup (see App.jsx), and the badge
+  // simply upgrades itself once the session resolves.
+  if (user) {
+    return (
+      <a className="cinema-public-login-toggle" href="/">
+        {t("public.openLibrary")}
+      </a>
+    );
+  }
+
+  // Knappen bliver stående mens panelet er åbent — dels så hjørne-gruppen
+  // ikke skifter bredde og rykker sprogvalget rundt, dels så den kan lukke
+  // panelet igen.
+  return (
+    <button
+      type="button"
+      className={`cinema-public-login-toggle${open ? " active" : ""}`}
+      onClick={onToggle}
+      aria-expanded={open}
+    >
+      {t("auth.login")}
+    </button>
+  );
+}
+
+function PublicLoginPanel({ language, onClose }) {
+  const t = useT();
   // Feature #83 — samme to-tilstands-mønster som appens egen Login.jsx, så
   // en besøgende der har fået biograf-linket delt også kan oprette sin konto
   // her i stedet for først at skulle finde appens forside.
@@ -126,28 +176,6 @@ function PublicLoginToggle({ user, language }) {
     }
   }
 
-  // Feature #84 — someone already signed in shouldn't be offered a login
-  // form on what is now also the site's front page; send them into the app
-  // instead. `user` is `undefined` while the session check is still in
-  // flight, which correctly falls through to the login badge — the public
-  // page must never block on that lookup (see App.jsx), and the badge
-  // simply upgrades itself once the session resolves.
-  if (user) {
-    return (
-      <a className="cinema-public-login-toggle" href="/">
-        {t("public.openLibrary")}
-      </a>
-    );
-  }
-
-  if (!open) {
-    return (
-      <button type="button" className="cinema-public-login-toggle" onClick={() => setOpen(true)}>
-        {t("auth.login")}
-      </button>
-    );
-  }
-
   return (
     <div className="cinema-public-login-panel">
       <form className="auth-form" onSubmit={handleSubmit}>
@@ -177,7 +205,7 @@ function PublicLoginToggle({ user, language }) {
         </label>
         {error && <div className="banner banner-error">{error}</div>}
         <div className="cinema-public-login-actions">
-          <button type="button" className="btn" onClick={() => setOpen(false)} disabled={submitting}>
+          <button type="button" className="btn" onClick={onClose} disabled={submitting}>
             {t("common.cancel")}
           </button>
           <button type="submit" className="btn btn-primary" disabled={submitting}>

@@ -42,7 +42,11 @@
 
 .cinema-public-login-panel {
   position: absolute;
-  top: 16px;
+  /* BUGS.md #53 — under hjørne-gruppen, ikke oven i den: login-knappen
+     bliver stående mens panelet er åbent, så de to ville ellers overlappe.
+     Panelet er en søskende til gruppen og placeres derfor mod hero-området,
+     hvilket er det der giver det sin rigtige bredde igen. */
+  top: 62px;
   right: 20px;
   width: 260px;
   max-width: calc(100% - 40px);
@@ -210,10 +214,21 @@
   opacity: 1;
 }
 
+/* Den åbne knap markeres, så det er tydeligt hvad panelet hører til. */
+.cinema-public-login-toggle.active {
+  background: var(--accent-contrast);
+  color: var(--accent-strong);
+}
+
 @media (max-width: 560px) {
   .cinema-public-hero-actions {
     top: 12px;
     right: 12px;
     gap: 6px;
+  }
+
+  .cinema-public-login-panel {
+    top: 56px;
+    right: 12px;
   }
 }

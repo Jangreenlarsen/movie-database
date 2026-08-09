@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.76.1 (build 0107) — 2026-08-09
+
+- **Rettet: login-boksen på BIO-siden blev mast helt sammen.** Den blev i sidste opdatering utilsigtet lagt inde i den lille hjørne-gruppe med sprogvalget og fik derfor kun dennes bredde. Nu folder den sig ud under knappen i fuld bredde igen.
+- **Byttet om:** "Log ind" står nu først, DK/ENG efter.
+- Login-knappen kan nu også lukke boksen igen, og markeres mens den er åben.
+
 ## v0.76.0 (build 0106) — 2026-08-09
 
 - **DK/ENG-valget står nu ved siden af login.** På BIO-siden sidder det lige til venstre for "Log ind" i stedet for i det modsatte hjørne, og i login-boksen står det på linje med logoet i toppen.

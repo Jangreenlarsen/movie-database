@@ -2,6 +2,22 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.76.1 build 0107] — 2026-08-09 — fix: login-boksen på /bio blev mast sammen (BUGS.md #53)
+
+En regression fra feature #99 samme dag.
+
+#99 samlede sprogvælgeren og login-knappen i én gruppe øverst til højre. Gruppen er `position: absolute` og kun så bred som sit indhold. `PublicLoginToggle` returnerede enten knappen *eller* hele login-panelet — så da knappen flyttede ind i gruppen, fulgte panelet med. Panelets eget `position: absolute` og `max-width: calc(100% - 40px)` blev derefter beregnet mod gruppens få pixels i stedet for mod hero-området, og panelet blev nogle få pixels bredt.
+
+Fejlen slap gennem både bygge- og lint-trin: JSX og CSS var hver for sig gyldige, og det var kun kombinationen af de to placeringer der var forkert. Den slags viser sig kun ved at se på siden.
+
+`PublicLoginToggle` er nu splittet i to komponenter. Knappen bliver i hjørne-gruppen; `PublicLoginPanel` er en søskende direkte i `.cinema-public-hero` og får derfor igen sin bredde af hero-området. Åben/lukket-tilstanden er løftet op i `CinemaPublic`, da de to står hvert sit sted i træet.
+
+Panelet placeres under gruppen frem for oven i den, fordi knappen bliver stående mens panelet er åbent — dels så gruppen ikke skifter bredde og rykker sprogvalget rundt, dels så knappen kan lukke panelet igen. Den markeres som aktiv imens.
+
+Samtidig byttet om på rækkefølgen i gruppen: login-knappen står nu først og sprogvalget efter, som Jan bad om i samme melding.
+
+Berørte filer: `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `BUGS.md`, `version.json`.
+
 ## [0.76.0 build 0106] — 2026-08-09 — feature: sprogvalget står ved siden af login (FEATURES.md #99)
 
 Feature #97 satte sprogvalget i modsatte hjørne af login-knappen på den offentlige BIO-side, og som et centreret element for sig selv i login-kortet. Begge steder stod det visuelt afkoblet fra det man faktisk er kommet for.

@@ -295,3 +295,17 @@ async def test_preset_without_filter_fields_defaults_gracefully(client):
     assert saved["query"] is None
     assert saved["tags"] == []
     assert saved["watched"] is None
+
+
+async def test_email_as_username_is_rejected_with_a_usable_message(raw_client):
+    """BUGS.md #54 — reglen er bevaret (Jans valg 2026-08-09), men beskeden
+    skal fortælle hvad der er galt. Frontendens `readableDetail` trækker
+    `msg` ud af FastAPIs 422-liste; før blev hele listen givet til
+    `new Error(...)` og brugeren så "[object Object]"."""
+    response = await raw_client.post(
+        "/api/auth/register", json={"username": "jan@example.com", "password": "testpassword123"}
+    )
+    assert response.status_code == 422
+    messages = [item["msg"] for item in response.json()["detail"]]
+    assert any("e-mailadresse" in message for message in messages), messages
+    assert any("bogstaver, tal" in message for message in messages), messages

@@ -56,7 +56,7 @@
   "lib.title": "Movie library",
   "lib.wishlistTitle": "Wishlist",
   "lib.count": "{count} movies",
-  "lib.searchPlaceholder": "Search title, cast, genre...",
+  "lib.searchPlaceholder": "Search title, cast, genre, serial no...",
   "lib.addMovie": "+ Add movie",
   "lib.addWish": "+ Add wish",
   "lib.sort": "Sort",
@@ -183,7 +183,7 @@
   "tv.title": "TV shows",
   "tv.wishlistTitle": "TV wishes",
   "tv.count": "{count} shows",
-  "tv.searchPlaceholder": "Search name, cast, genre...",
+  "tv.searchPlaceholder": "Search name, cast, genre, serial no...",
   "tv.addShow": "+ Add show",
   "tv.loadError": "Could not load TV shows.",
   "tv.emptyFiltered": "No shows match your filters.",
@@ -493,8 +493,12 @@
   "plexImport.failedHeading": "Failed ({count})",
   "plexImport.failedHint": "These were recognised but could not be created. Try the import again — it is usually a temporary TMDb error.",
   "audit.action.plexImported": "Imported from Plex",
-  "plexImport.formatPending": "format decided on import",
   "detail.classificationRequired": "Media type and format must be chosen before this can be saved to the library. The media type decides which number series it gets — M#/T# for physical, D# for digital.",
-  "counts.summary": "{movies} movies · {shows} shows",
-  "counts.title": "In the library: {movies} movies ({movePhysical} physical, {movieDigital} digital) and {shows} TV shows ({showPhysical} physical, {showDigital} digital)"
+  "counts.title": "In the library: {movies} movies ({movePhysical} physical, {movieDigital} digital) and {shows} TV shows ({showPhysical} physical, {showDigital} digital)",
+  "plexImport.formatFallback": "resolution unknown in Plex — set to Digital-HD",
+  "counts.movies": "{count} movies",
+  "counts.shows": "{count} shows",
+  "sort.serialDigitalFirst": "Serial number (D first)",
+  "sort.serialMoviesFirst": "Serial number (M first)",
+  "sort.serialShowsFirst": "Serial number (T first)"
 }

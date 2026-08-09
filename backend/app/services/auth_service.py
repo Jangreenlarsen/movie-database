@@ -61,7 +61,14 @@ async def register(db: AsyncIOMotorDatabase, payload: UserRegister) -> User:
         "password_hash": hash_password(payload.password),
         "role": UserRole.ADMIN if is_first_user else UserRole.STANDARD,
         "status": UserStatus.ACTIVE if is_first_user else UserStatus.PENDING,
-        "settings": user_repository.DEFAULT_SETTINGS,
+        # Feature #97 — sprogvalget fra login-boksen bliver kontoens
+        # startsprog. Kopi frem for reference: DEFAULT_SETTINGS er et
+        # modul-globalt dict, og en ændring her ville ellers ramme hver
+        # eneste efterfølgende registrering.
+        "settings": {
+            **user_repository.DEFAULT_SETTINGS,
+            **({"language": payload.language} if payload.language else {}),
+        },
         "created_at": datetime.now(timezone.utc),
     }
     try:

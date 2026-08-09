@@ -130,6 +130,10 @@ class UserSettingsUpdate(BaseModel):
 class UserRegister(BaseModel):
     username: str = Field(min_length=3, max_length=32)
     password: str = Field(min_length=8, max_length=128)
+    # Feature #97 — sproget valgt i login-boksen, så en ny konto starter på
+    # det sprog brugeren allerede har valgt frem for altid på dansk.
+    # Valgfrit: ældre klienter og API-kald uden feltet får kildesproget.
+    language: Language | None = None
 
     @field_validator("username")
     @classmethod

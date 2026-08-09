@@ -1417,12 +1417,11 @@ function PlexImportSection() {
                   {item.year ? ` (${item.year})` : ""}
                   {/* Feature #91 — formatet kendes for film allerede i
                       forhåndsvisningen; for serier ligger opløsningen på
-                      episoderne og hentes først ved selve importen. */}
-                  {item.format ? (
-                    <span className="muted"> — {item.format}</span>
-                  ) : item.kind === "show" ? (
-                    <span className="muted"> — {t("plexImport.formatPending")}</span>
-                  ) : null}
+                      episoderne og afgøres først ved selve importen. */}
+                  {item.format && <span className="muted"> — {item.format}</span>}
+                  {item.format_is_fallback && (
+                    <span className="muted"> ({t("plexImport.formatFallback")})</span>
+                  )}
                   {item.resolved_via === "tmdb_search" && (
                     <span className="muted"> — {t("plexImport.viaSearch")}</span>
                   )}

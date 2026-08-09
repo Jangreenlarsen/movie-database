@@ -285,10 +285,13 @@ async def _resolve_tmdb_id(kind: str, title: str, year: int | None) -> int | Non
     return matches[0]["tmdb_id"] if len(matches) == 1 else None
 
 
-class MissingResolutionError(Exception):
-    """Feature #92 — Plex kunne ikke oplyse en opløsning, så det påkrævede
-    format kan ikke udledes. Intern for importen: fanges i løkken og bliver
-    til én rapporteret titel, aldrig til en fejl ud af endpointet."""
+# BUGS.md #52 — formatet når Plex ikke kan oplyse en opløsning. Ikke et gæt
+# på må og få: samme fallback som `movie_repository._FORMAT_LABEL_MIGRATIONS`
+# bruger for gamle "Digital"-poster uden kvalitetstrin, og HD er langt den
+# almindeligste. Alternativet — at springe elementet over — betød at en hel
+# kategori (typisk TV-serier, hvor opløsningen kræver et ekstra kald pr.
+# serie) stiltiende aldrig blev importeret.
+FALLBACK_DIGITAL_FORMAT = MovieFormat.DIGITAL_HD
 
 
 def format_for_resolution(resolution: str | None) -> MovieFormat | None:
@@ -329,7 +332,7 @@ async def _create_imported(
     Digital` — det ligger per definition på en medieserver, ikke på en
     hylde."""
     if item.kind == "movie":
-        movie_format = format_for_resolution(item.resolution)
+        movie_format = format_for_resolution(item.resolution) or FALLBACK_DIGITAL_FORMAT
         await movie_service.create_movie(
             db,
             MovieCreate(
@@ -347,12 +350,7 @@ async def _create_imported(
     # serie desuden lande med alt markeret "ikke ejet" selvom den står på
     # serveren.
     details = await plex_client.fetch_show_details(item.rating_key)
-    show_format = format_for_resolution(details.resolution)
-    if show_format is None:
-        # Feature #92 — uden format kan serien ikke oprettes i biblioteket.
-        # Signaleres frem for at lade Pydantic kaste en rå valideringsfejl,
-        # så importen kan rapportere den ene titel og fortsætte med resten.
-        raise MissingResolutionError(item.title)
+    show_format = format_for_resolution(details.resolution) or FALLBACK_DIGITAL_FORMAT
     await tv_show_service.create_tv_show(
         db,
         TvShowCreate(
@@ -465,21 +463,13 @@ async def import_from_plex(
                 format=format_for_resolution(item.resolution),
             )
 
-            # Feature #92 — format er påkrævet på en biblioteks-post, og for
-            # film kender vi det allerede her. Kan Plex ikke fortælle
-            # opløsningen, rapporteres titlen frem for at gætte et format på
-            # plads (samme princip som det entydige TMDb-match ovenfor).
-            if kind == "movie" and entry.format is None:
-                result.unmatched.append(
-                    PlexImportItem(
-                        kind=kind,
-                        title=item.title,
-                        year=item.year,
-                        tmdb_id=tmdb_id,
-                        reason="Plex oplyser ingen opløsning — formatet kan ikke udledes",
-                    )
-                )
-                continue
+            # BUGS.md #52 — kan Plex ikke oplyse opløsningen, importeres
+            # elementet alligevel med fallback-formatet og markeres som
+            # sådan. Før blev det sprunget over, hvilket betød at en hel
+            # kategori stiltiende aldrig nåede ind i portalen.
+            if entry.format is None:
+                entry.format = FALLBACK_DIGITAL_FORMAT
+                entry.format_is_fallback = True
 
             if request.dry_run:
                 result.imported.append(entry)
@@ -487,20 +477,6 @@ async def import_from_plex(
 
             try:
                 entry.format = await _create_imported(db, item, tmdb_id, tags, registered_by)
-            except MissingResolutionError:
-                # Serier: opløsningen kendes først her, når episoderne er
-                # hentet. Samme håndtering som film ovenfor, bare et trin
-                # senere i forløbet.
-                result.unmatched.append(
-                    PlexImportItem(
-                        kind=kind,
-                        title=item.title,
-                        year=item.year,
-                        tmdb_id=tmdb_id,
-                        reason="Plex oplyser ingen opløsning — formatet kan ikke udledes",
-                    )
-                )
-                continue
             except TmdbRateLimitedError:
                 result.stopped_early = True
                 break

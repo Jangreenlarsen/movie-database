@@ -1,5 +1,32 @@
 # Release Notes
 
+## v0.74.0 (build 0104) — 2026-08-09
+
+- **Du kan nu vælge sprog allerede i login-boksen** — DK eller ENG, øverst over felterne. Også på den offentlige BIO-side, i venstre hjørne.
+- Valget huskes på den enhed du sidder ved, så login-skærmen møder dig på det rigtige sprog næste gang.
+- **Opretter du en ny konto, starter den på det sprog du valgte** — så du ikke skal ind i Indstillinger bagefter.
+- Logger du ind på en konto der har et andet sprog gemt, er det kontoens sprog der gælder. Et login på en andens computer ændrer derfor ikke din egen indstilling.
+
+## v0.73.0 (build 0103) — 2026-08-09
+
+- **Serienumre vises nu uden `#`** — `M0042` i stedet for `M#0042`.
+- **Sorteringen på serienummer holder de tre rækker adskilt.** Standard sætter alle D-numre først, derefter de fysiske — før blandede M1 og D1 sig med hinanden.
+- **Nyt sorterings-valg:** "Serienummer (M først)" på film-siden og "(T først)" på TV-siden, hvis du hellere vil have de fysiske øverst.
+- **Du kan nu søge på serienummer.** Skriv `M42` for at finde den fysiske, `D42` for den digitale, eller bare `42` for at finde begge. Foranstillede nuller og små bogstaver virker også, så du kan skrive nummeret præcis som det står på skærmen.
+- Søger du på noget der ligner et nummer men ikke er et — fx `S1` — søges der som almindelig tekst, så titler med "S1" stadig kan findes.
+
+## v0.72.0 (build 0102) — 2026-08-08
+
+- **"Log ud" står nu yderst til højre** i toppen, også når skærmen er smal nok til at menuen ombryder.
+- **Optællingen har fået farve** og er delt i to mærkater — film i appens accentfarve, TV-serier i en neutral med kant, så de to tal er til at skelne på et øjekast.
+- Optællingen bliver nu også stående på telefon; før forsvandt den sammen med brugernavnet.
+
+## v0.71.1 (build 0101) — 2026-08-08
+
+- **Rettet: TV-serier fra Plex blev sprunget over ved import.** Kunne Plex ikke fortælle hvilken opløsning en serie ligger i, blev den slet ikke oprettet — og dukkede derfor aldrig op under TV-serier. Det ramte serier langt oftere end film, fordi deres opløsning kræver et ekstra opslag pr. serie.
+- Nu importeres de i stedet med formatet **Digital-HD**, og forhåndsvisningen skriver "format ukendt i Plex" på dem, så du kan rette dem der skulle have været UHD eller SD.
+- Kør importen igen for at hente de serier der blev sprunget over — det du allerede har, springes over som altid.
+
 ## v0.71.0 (build 0100) — 2026-08-08
 
 - **Digitale udgaver får nu også serienummer** — med præfikset `D#`. Der er tre rækker der tælles hver for sig: `M#` til fysiske film, `T#` til fysiske TV-serier og `D#` til alt digitalt. `#` læses som "nr.", så `M#0042` er film nr. 42.

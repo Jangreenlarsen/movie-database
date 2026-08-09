@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { api } from "../api/client";
+import LanguagePicker from "../components/LanguagePicker";
 import { useT } from "../i18n";
 import "./Login.css";
 
-export default function Login({ onAuthenticated }) {
+export default function Login({ onAuthenticated, language, onLanguageChange }) {
   const t = useT();
   const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
@@ -19,7 +20,9 @@ export default function Login({ onAuthenticated }) {
       const user =
         mode === "login"
           ? await api.login(username, password)
-          : await api.register(username, password);
+          // Feature #97 — sprogvalget følger med, så en ny konto starter på
+          // det sprog brugeren allerede har valgt her.
+          : await api.register(username, password, language);
       onAuthenticated(user);
     } catch (err) {
       setError(err.message);
@@ -37,6 +40,12 @@ export default function Login({ onAuthenticated }) {
           </span>
           {t("app.brand")}
         </div>
+
+        {onLanguageChange && (
+          <div className="auth-language">
+            <LanguagePicker language={language} onChange={onLanguageChange} />
+          </div>
+        )}
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <label>

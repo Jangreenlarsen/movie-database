@@ -56,7 +56,7 @@
   "lib.title": "Filmbibliotek",
   "lib.wishlistTitle": "Ønskeliste",
   "lib.count": "{count} film",
-  "lib.searchPlaceholder": "Søg på titel, skuespiller, genre...",
+  "lib.searchPlaceholder": "Søg på titel, skuespiller, genre, serienr...",
   "lib.addMovie": "+ Tilføj film",
   "lib.addWish": "+ Tilføj ønske",
   "lib.sort": "Sortér",
@@ -183,7 +183,7 @@
   "tv.title": "TV-serier",
   "tv.wishlistTitle": "TV-ønsker",
   "tv.count": "{count} serier",
-  "tv.searchPlaceholder": "Søg på navn, skuespiller, genre...",
+  "tv.searchPlaceholder": "Søg på navn, skuespiller, genre, serienr...",
   "tv.addShow": "+ Tilføj serie",
   "tv.loadError": "Kunne ikke hente TV-serier.",
   "tv.emptyFiltered": "Ingen serier matcher dine filtre.",
@@ -493,8 +493,12 @@
   "plexImport.failedHeading": "Fejlede ({count})",
   "plexImport.failedHint": "Disse blev genkendt, men kunne ikke oprettes. Prøv importen igen — det er typisk en midlertidig TMDb-fejl.",
   "audit.action.plexImported": "Importeret fra Plex",
-  "plexImport.formatPending": "format afgøres ved import",
   "detail.classificationRequired": "Medietype og format skal vælges, før den kan gemmes i biblioteket. Medietypen afgør hvilken nummer-serie den får — M#/T# for fysiske, D# for digitale.",
-  "counts.summary": "{movies} film · {shows} serier",
-  "counts.title": "I biblioteket: {movies} film ({movePhysical} fysiske, {movieDigital} digitale) og {shows} TV-serier ({showPhysical} fysiske, {showDigital} digitale)"
+  "counts.title": "I biblioteket: {movies} film ({movePhysical} fysiske, {movieDigital} digitale) og {shows} TV-serier ({showPhysical} fysiske, {showDigital} digitale)",
+  "plexImport.formatFallback": "format ukendt i Plex — sat til Digital-HD",
+  "counts.movies": "{count} film",
+  "counts.shows": "{count} serier",
+  "sort.serialDigitalFirst": "Serienummer (D først)",
+  "sort.serialMoviesFirst": "Serienummer (M først)",
+  "sort.serialShowsFirst": "Serienummer (T først)"
 }

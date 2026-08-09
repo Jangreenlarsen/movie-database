@@ -11,7 +11,7 @@ import Login from "./pages/Login";
 import PendingApproval from "./pages/PendingApproval";
 import { api } from "./api/client";
 import I18nProvider from "./i18n/I18nProvider";
-import { SOURCE_LANGUAGE, useT } from "./i18n";
+import { SOURCE_LANGUAGE, readStoredLanguage, storeLanguage, useT } from "./i18n";
 import "./App.css";
 
 /**
@@ -26,6 +26,16 @@ function App() {
   // for filmbiblioteket — gælder både et frisk login og en genindlæst side
   // med en allerede gyldig session, da begge ender her.
   const [tab, setTab] = useState("cinema");
+  // Feature #97 — sproget på de skærme der kommer før login. Ligger i
+  // localStorage, ikke i databasen: der er ingen bruger at gemme det på
+  // endnu. Så snart man er logget ind, vinder kontoens eget sprog.
+  const [preAuthLanguage, setPreAuthLanguage] = useState(readStoredLanguage);
+
+  function choosePreAuthLanguage(code) {
+    storeLanguage(code);
+    setPreAuthLanguage(code);
+  }
+
   const [user, setUser] = useState(undefined); // undefined = checking, null = logged out
   const [versionInfo, setVersionInfo] = useState(null);
 
@@ -64,8 +74,12 @@ function App() {
     // delte /bio-adresse er også en genvej for husets egne brugere),
     // kender vi præferencen og bruger den.
     return (
-      <I18nProvider language={user?.settings?.language ?? SOURCE_LANGUAGE}>
-        <CinemaPublic user={user} />
+      <I18nProvider language={user?.settings?.language ?? preAuthLanguage}>
+        <CinemaPublic
+          user={user}
+          language={preAuthLanguage}
+          onLanguageChange={choosePreAuthLanguage}
+        />
       </I18nProvider>
     );
   }
@@ -74,8 +88,15 @@ function App() {
   // orphaned by the landing-page change below, and so there's still a
   // direct link for "just let me sign in".
   if (window.location.pathname.startsWith("/login")) {
-    // Ingen bruger endnu — login-skærmen er altid på kildesproget.
-    return <Login onAuthenticated={setUser} />;
+    return (
+      <I18nProvider language={preAuthLanguage}>
+        <Login
+          onAuthenticated={setUser}
+          language={preAuthLanguage}
+          onLanguageChange={choosePreAuthLanguage}
+        />
+      </I18nProvider>
+    );
   }
 
   if (user === undefined) {
@@ -87,7 +108,15 @@ function App() {
   // badge) rather than a bare login form, so the shared /bio link and the
   // site root are the same shop window.
   if (user === null) {
-    return <CinemaPublic user={null} />;
+    return (
+      <I18nProvider language={preAuthLanguage}>
+        <CinemaPublic
+          user={null}
+          language={preAuthLanguage}
+          onLanguageChange={choosePreAuthLanguage}
+        />
+      </I18nProvider>
+    );
   }
 
   if (user.status !== "active") {
@@ -206,10 +235,15 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
                   showDigital: counts.tv_shows.digital,
                 })}
               >
-                {t("counts.summary", {
-                  movies: counts.movies.total,
-                  shows: counts.tv_shows.total,
-                })}
+                {/* To separate mærkater frem for én streng: film og
+                    TV-serier er to adskilte ressourcer, og hvert tal skal
+                    kunne aflæses for sig uden at man læser en sætning. */}
+                <span className="header-count header-count--movies">
+                  {t("counts.movies", { count: counts.movies.total })}
+                </span>
+                <span className="header-count header-count--shows">
+                  {t("counts.shows", { count: counts.tv_shows.total })}
+                </span>
               </span>
             )}
             <span className="muted">{user.username}</span>

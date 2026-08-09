@@ -2,6 +2,66 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.74.0 build 0104] — 2026-08-09 — feature: sprogvalg (DK/ENG) i login-boksen (FEATURES.md #97)
+
+Feature #89 gemte sproget pr. bruger i databasen — Jans valg, så det følger med mellem telefon og PC. Konsekvensen, som blev flaget dengang, var at login-skærmen og en udelogget besøgende på `/bio` altid var på dansk: der er ingen bruger at læse præferencen fra på det tidspunkt. Det er nu lukket.
+
+Valget på pre-auth-skærmene ligger i `localStorage` og er en *enheds*-præference, ikke en konkurrent til konto-indstillingen. Så snart man er logget ind, vinder kontoens eget sprog — så et login på en fremmed enhed, hvor nogen har valgt engelsk, aldrig ændrer ens egen konto.
+
+Ved registrering følger valget derimod med som den nye kontos startsprog. Det er dét, der giver det tidlige valg reel effekt: vælger man ENG i boksen og opretter sig, er man på engelsk fra første indlogning i stedet for at skulle finde Indstillinger bagefter. `UserRegister.language` er valgfri, så ældre klienter og rene API-kald stadig virker og får kildesproget.
+
+`auth_service.register` kopierer nu `DEFAULT_SETTINGS` frem for at referere det. Det er et modul-globalt dict, og et sprogvalg skrevet direkte ind i det ville have båret videre til hver eneste efterfølgende registrering — en test låser den fast.
+
+Vælgeren er to knapper frem for en dropdown: med kun to sprog ville en dropdown kræve et klik for overhovedet at afsløre at valget findes. På den offentlige BIO-side står den i modsatte hjørne af login-knappen, så de to ikke konkurrerer om samme plads, og får hero-gradientens gennemsigtige behandling i stedet for appens almindelige flade.
+
+Berørte filer: `backend/app/models/user.py`, `backend/app/services/auth_service.py`, `backend/tests/test_registration_language.py` (ny), `frontend/src/components/LanguagePicker.jsx` (ny), `frontend/src/components/LanguagePicker.css` (ny), `frontend/src/i18n/index.js`, `frontend/src/App.jsx`, `frontend/src/api/client.js`, `frontend/src/pages/Login.jsx`, `frontend/src/pages/Login.css`, `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `ARCHITECTURE.md`, `FEATURES.md`, `version.json`.
+
+## [0.73.0 build 0103] — 2026-08-09 — feature: serienummer uden #, serie-grupperet sortering og søgning på nummer (FEATURES.md #96)
+
+Fire ting Jan bad om i samme omgang.
+
+**`#` er væk fra visningen.** `M0042` frem for `M#0042`.
+
+**Sorteringen på serienummer er nu sammensat af serie + nummer.** De tre serier (M/T/D) tælles hver for sig, så en sortering på nummeret alene blandede M1 og D1 sammen i listen. Standard-valget grupperer digitale først, som Jan bad om.
+
+**Et andet valg vender grupperingen**, så den fysiske serie står først. Det krævede at `SORT_FIELDS` kan udvide ét valg til flere mongo-nøgler. Serie-nøglen har en *låst* retning og kun nummeret følger op/ned-knappen — vendte knappen også serien, ville et klik flytte hele den ene serie hen over den anden, hvilket er en anden sortering og ikke den omvendte.
+
+**Søgefeltet slår nu serienumre op.** `M42` afgrænser til den fysiske serie, `D42` til den digitale, og et bart `42` finder begge. Foranstillede nuller og små bogstaver accepteres, så man kan søge på nummeret præcis som det står på skærmen. Et ukendt bogstav som `S1` falder tilbage til almindelig tekstsøgning frem for at matche ingenting — ellers kunne man ikke længere finde en titel der indeholder "S1".
+
+Serienummeret er tilføjet som endnu et OR-alternativ i `build_text_query` frem for som en separat API-parameter: det er en ligeværdig måde at finde en titel på, ikke et særskilt felt, og skal virke i det samme søgefelt som "pacino".
+
+Sorteringen bygger på at "Digital" står før "Fysisk" alfabetisk. Det er en egenskab ved etiketterne, ikke et tilfælde — og etiketterne *er* blevet omdøbt før (v0.22.0). `test_serial_series_sort_order_depends_on_label_ordering` låser den fast, så en omdøbning brækker en test frem for stille at vende listen om.
+
+Berørte filer: `backend/app/repositories/text_search.py`, `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`, `backend/tests/test_serial_sort_and_search.py` (ny), `frontend/src/utils/serialNumber.js`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`, `FEATURES.md`, `version.json`.
+
+## [0.72.0 build 0102] — 2026-08-08 — feature: farvede tællere og "Log ud" helt til højre i app-hovedet (FEATURES.md #95)
+
+To justeringer Jan bad om.
+
+**"Log ud" står nu yderst til højre.** `.app-header-inner` bruger `justify-content: space-between`, hvilket virker så længe hovedet er én linje — men det ombryder på smallere skærme, og på den nye linje endte bruger-blokken midtstillet. `margin-left: auto` på `.header-user` skubber den ud til kanten uanset ombrydning.
+
+**Optællingen har fået farve**, og er samtidig delt i to selvstændige mærkater frem for én sætning: film og TV-serier er to adskilte ressourcer, og hvert tal skal kunne aflæses for sig. Film får den bløde accent-flade som `.brand-mark` og `.role-badge` allerede bruger; TV-serier en neutral flade med kant, så de to er til at skelne på et øjekast i stedet for at være to ens klatter.
+
+Rettet undervejs: optællingen forsvandt sammen med brugernavnet på telefon. Media query'en skjulte `.header-user span`, som rammer alle `span` i blokken — også tællerne. Nu skjules kun selve brugernavnet, og tællerne bliver stående i en lidt mindre udgave. De er hele pointen med feature #94 og fylder mindre end navnet gjorde.
+
+Berørte filer: `frontend/src/App.jsx`, `frontend/src/App.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`, `version.json`.
+
+## [0.71.1 build 0101] — 2026-08-08 — fix: TV-serier fra Plex blev sprunget over ved import (BUGS.md #52)
+
+Jans fejlmelding: TV-serier importeret fra Plex dukkede ikke op under TV-serier.
+
+Som ved BUGS.md #51 var første skridt at afgøre om placeringen var forkert. En rundtur-test — importér en Plex-serie, hent derefter `/api/tv-shows` — bestod: importen lagde serien korrekt i `tv_shows`. Så det var ikke dér, det gik galt.
+
+Årsagen var samspillet mellem to features fra tidligere samme dag. Feature #92 gjorde `format` påkrævet på en biblioteks-post, og #91 udledte det af Plex' `videoResolution`. Kunne opløsningen ikke afgøres, blev elementet sprunget over og kun listet som "kunne ikke matches".
+
+Det rammer TV-serier systematisk. En films opløsning står i det sektions-svar der alligevel hentes, så den er praktisk talt altid til stede. En series opløsning ligger derimod kun på episoderne og kræver et ekstra kald pr. serie — og enhver fejl dér, en langsom server, en serie uden hentede episoder, et uventet svar, kostede hele importen af den serie. Resultatet var en import der så ud til at virke, men hvor en hel kategori manglede.
+
+Afvejningen er nu vendt om. Elementet importeres med `Digital-HD` som fallback og markeres `format_is_fallback`. Det er ikke et gæt på må og få: `movie_repository._FORMAT_LABEL_MIGRATIONS` bruger allerede præcis den fallback for gamle "Digital"-poster uden kvalitetstrin, og HD er langt den almindeligste. Et enkelt felt der måske skal rettes er bedre end en titel der aldrig når ind i portalen — især når formatet ikke indgår i nogen anden beslutning: serienummer-serien afgøres af `media_type`, ikke af `format`.
+
+Forhåndsvisningen skriver "format ukendt i Plex — sat til Digital-HD" på de berørte, så de kan efterses bagefter.
+
+Berørte filer: `backend/app/services/plex_service.py`, `backend/app/models/plex.py`, `backend/tests/test_plex.py`, `frontend/src/pages/Settings.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `BUGS.md`, `version.json`.
+
 ## [0.71.0 build 0100] — 2026-08-08 — feature: D#-serie til digitale udgaver (#93) + samlet optælling i app-hovedet (#94)
 
 To ønsker fra Jan i samme omgang.

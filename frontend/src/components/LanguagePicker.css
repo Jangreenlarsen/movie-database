@@ -1,0 +1,34 @@
+/* Feature #97 — sprogvalget før login. Samme segmenterede udseende som
+   appens egne faner (.tabs i App.css), så det læses som et valg mellem to
+   ligeværdige muligheder og ikke som to knapper der gør noget. */
+.language-picker {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.language-picker button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 4px 12px;
+  border-radius: calc(var(--radius-md) - 3px);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.language-picker button:hover {
+  color: var(--text);
+}
+
+.language-picker button.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}

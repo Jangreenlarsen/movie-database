@@ -34,18 +34,20 @@ export default function Login({ onAuthenticated, language, onLanguageChange }) {
   return (
     <div className="auth-screen">
       <div className="card auth-card">
-        <div className="auth-brand">
-          <span className="brand-mark" aria-hidden="true">
-            🎬
-          </span>
-          {t("app.brand")}
-        </div>
-
-        {onLanguageChange && (
-          <div className="auth-language">
-            <LanguagePicker language={language} onChange={onLanguageChange} />
+        {/* Feature #99 — vælgeren står på linje med logoet i toppen af
+            login-kortet, samme relative plads som på den offentlige BIO-side,
+            så den sidder samme sted uanset hvilken vej man kom ind. */}
+        <div className="auth-header">
+          <div className="auth-brand">
+            <span className="brand-mark" aria-hidden="true">
+              🎬
+            </span>
+            {t("app.brand")}
           </div>
-        )}
+          {onLanguageChange && (
+            <LanguagePicker language={language} onChange={onLanguageChange} />
+          )}
+        </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <label>

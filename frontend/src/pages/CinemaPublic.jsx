@@ -38,12 +38,15 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
   return (
     <div className="cinema-public-page">
       <header className="cinema-public-hero">
-        {onLanguageChange && (
-          <div className="cinema-public-language">
+        {/* Feature #99 — sprogvalget står ved siden af login-knappen, ikke i
+            modsatte hjørne: de to hører sammen som "det du gør før du er
+            logget ind", og var visuelt afkoblet da de stod hver sit sted. */}
+        <div className="cinema-public-hero-actions">
+          {onLanguageChange && (
             <LanguagePicker language={language} onChange={onLanguageChange} />
-          </div>
-        )}
-        <PublicLoginToggle user={user} language={language} />
+          )}
+          <PublicLoginToggle user={user} language={language} />
+        </div>
         <h1>{t("cinema.title")}</h1>
         <p className="cinema-public-tagline">{t("public.tagline")}</p>
       </header>

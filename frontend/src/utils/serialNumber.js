@@ -8,18 +8,18 @@
  * Tre serier tælles hver for sig i backenden, og præfikset er det der gør
  * dem til at skelne på en hylde:
  *
- *   M#  fysiske film        (movie_serial-tælleren)
- *   T#  fysiske TV-serier   (tv_show_serial-tælleren)
- *   D#  alle digitale       (digital_serial-tælleren, delt mellem film og
- *                            serier — så et D#-nummer altid peger på præcis
- *                            én ting, Jans valg 2026-08-08)
+ *   M  fysiske film        (movie_serial-tælleren)
+ *   T  fysiske TV-serier   (tv_show_serial-tælleren)
+ *   D  alle digitale       (digital_serial-tælleren, delt mellem film og
+ *                           serier — så et D-nummer altid peger på præcis
+ *                           én ting, Jans valg 2026-08-08)
  *
- * `#` læses som "nr.": M#0042 er film nr. 42.
+ * Uden `#` (Jans ønske 2026-08-08): M0042 er film nr. 42.
  */
 
-export const MOVIE_SERIAL_PREFIX = "M#";
-export const TV_SERIAL_PREFIX = "T#";
-export const DIGITAL_SERIAL_PREFIX = "D#";
+export const MOVIE_SERIAL_PREFIX = "M";
+export const TV_SERIAL_PREFIX = "T";
+export const DIGITAL_SERIAL_PREFIX = "D";
 
 const DIGITAL_MEDIA_TYPE = "Digital";
 

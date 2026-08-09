@@ -15,7 +15,9 @@ import "./TvShows.css";
 // Feature #89 — se Library.jsx' identiske note: `labelKey` frem for
 // `label`, fordi listen evalueres ved import, før nogen oversætter findes.
 const SORT_OPTIONS = [
-  { value: "serial_number", labelKey: "field.serialNumber" },
+  // Feature #96 — se den identiske note i Library.jsx.
+  { value: "serial_number", labelKey: "sort.serialDigitalFirst" },
+  { value: "serial_number_physical", labelKey: "sort.serialShowsFirst" },
   { value: "created_at", labelKey: "field.added" },
   { value: "name", labelKey: "field.name" },
   { value: "year", labelKey: "field.year" },

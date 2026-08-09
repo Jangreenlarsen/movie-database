@@ -15,7 +15,10 @@ import "./Library.css";
 // modul-konstant, der evalueres én gang ved import, længe før nogen
 // oversætter findes. Nøglen slås derfor først op ved render.
 const SORT_OPTIONS = [
-  { value: "serial_number", labelKey: "field.serialNumber" },
+  // Feature #96 — to valg, fordi de tre nummer-serier tælles hver for sig:
+  // det ene grupperer digitale først, det andet fysiske først.
+  { value: "serial_number", labelKey: "sort.serialDigitalFirst" },
+  { value: "serial_number_physical", labelKey: "sort.serialMoviesFirst" },
   { value: "created_at", labelKey: "field.added" },
   { value: "title", labelKey: "field.title" },
   { value: "year", labelKey: "field.year" },

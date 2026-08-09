@@ -255,10 +255,17 @@ def parse_sort_param(sort: str | None) -> list[tuple[str, int]]:
     levels: list[tuple[str, int]] = []
     for token in sort.split(",")[: tv_show_repository.MAX_SORT_LEVELS]:
         field, _, direction = token.partition(":")
-        mongo_field = tv_show_repository.SORT_FIELDS.get(field)
-        if mongo_field is None:
+        keys = tv_show_repository.SORT_FIELDS.get(field)
+        if keys is None:
             continue
-        levels.append((mongo_field, -1 if direction == "desc" else 1))
+        user_direction = -1 if direction == "desc" else 1
+        # Feature #96 — ét valg kan udvide til flere mongo-nøgler (fx serie
+        # + nummer). "user" følger op/ned-knappen; en fast retning gør ikke.
+        for mongo_field, mode in keys:
+            if mode == "user":
+                levels.append((mongo_field, user_direction))
+            else:
+                levels.append((mongo_field, -1 if mode == "desc" else 1))
     return levels
 
 

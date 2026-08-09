@@ -1,5 +1,13 @@
 # Release Notes
 
+## v0.73.0 (build 0103) — 2026-08-09
+
+- **Serienumre vises nu uden `#`** — `M0042` i stedet for `M#0042`.
+- **Sorteringen på serienummer holder de tre rækker adskilt.** Standard sætter alle D-numre først, derefter de fysiske — før blandede M1 og D1 sig med hinanden.
+- **Nyt sorterings-valg:** "Serienummer (M først)" på film-siden og "(T først)" på TV-siden, hvis du hellere vil have de fysiske øverst.
+- **Du kan nu søge på serienummer.** Skriv `M42` for at finde den fysiske, `D42` for den digitale, eller bare `42` for at finde begge. Foranstillede nuller og små bogstaver virker også, så du kan skrive nummeret præcis som det står på skærmen.
+- Søger du på noget der ligner et nummer men ikke er et — fx `S1` — søges der som almindelig tekst, så titler med "S1" stadig kan findes.
+
 ## v0.72.0 (build 0102) — 2026-08-08
 
 - **"Log ud" står nu yderst til højre** i toppen, også når skærmen er smal nok til at menuen ombryder.

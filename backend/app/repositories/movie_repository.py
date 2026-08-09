@@ -17,25 +17,45 @@ MAX_SERIAL_ASSIGN_ATTEMPTS = 10_000
 # Den digitale serie tælles for sig (digital_serial_repository).
 DIGITAL_MEDIA_TYPE = "Digital"
 
+# Feature #96 — serie-bogstav -> medietype, så en søgning på "M42" kan
+# afgrænses til den fysiske serie og "D42" til den digitale. Bogstaverne
+# spejler præfikserne i frontendens `utils/serialNumber.js`.
+SERIAL_PREFIXES = {"M": "Fysisk", "D": "Digital"}
+
 logger = logging.getLogger("moviedb")
 
 # Whitelist mapping API-facing sort keys -> actual document fields, so an
 # arbitrary/unindexed field can never be requested via the query string.
+# Feature #96 — et sorterings-valg kan nu udvide til flere mongo-nøgler.
+# Hver post er en liste af (felt, tilstand): "user" følger brugerens
+# op/ned-knap, mens "asc"/"desc" er låst. Serienumrene sorteres sammensat,
+# fordi de tre serier (M/T/D) tælles hver for sig — uden serie-nøglen ville
+# M1 og D1 blande sig med hinanden i listen. Serie-nøglen er låst, så
+# op/ned-knappen kun vender selve nummer-rækkefølgen og ikke også flytter
+# den ene serie hen over den anden.
+#
+# "Digital" < "Fysisk" alfabetisk, så media_type stigende giver D først.
+# Det er en egenskab ved etiketterne, ikke et tilfælde vi må glemme —
+# test_serial_series_sort_order_depends_on_label_ordering låser den fast.
 SORT_FIELDS = {
-    "title": "title",
-    "year": "year",
-    "serial_number": "serial_number",
-    "created_at": "created_at",
-    "rating": "rating",
-    "personal_rating": "personal_rating",
-    "runtime": "runtime",
-    "format": "format",
-    "audio_types": "audio_types",
-    "media_type": "media_type",
-    "location": "location",
-    "owner": "owner",
-    "registered_by": "registered_by",
-    "watched_at": "watched_at",
+    "title": [("title", "user")],
+    "year": [("year", "user")],
+    # Standard-valget: alle D-numre først, derefter de fysiske (Jans krav
+    # 2026-08-08).
+    "serial_number": [("media_type", "asc"), ("serial_number", "user")],
+    # Samme liste, men med den fysiske serie først.
+    "serial_number_physical": [("media_type", "desc"), ("serial_number", "user")],
+    "created_at": [("created_at", "user")],
+    "rating": [("rating", "user")],
+    "personal_rating": [("personal_rating", "user")],
+    "runtime": [("runtime", "user")],
+    "format": [("format", "user")],
+    "audio_types": [("audio_types", "user")],
+    "media_type": [("media_type", "user")],
+    "location": [("location", "user")],
+    "owner": [("owner", "user")],
+    "registered_by": [("registered_by", "user")],
+    "watched_at": [("watched_at", "user")],
 }
 DEFAULT_SORT_FIELD = "created_at"
 MAX_SORT_LEVELS = 3
@@ -397,7 +417,7 @@ def _build_find_many_filter(
     match."""
     filter_: dict = {"is_wishlist": True if is_wishlist else {"$ne": True}}
     if query:
-        text_query = build_text_query(query, TEXT_SEARCH_FIELDS)
+        text_query = build_text_query(query, TEXT_SEARCH_FIELDS, SERIAL_PREFIXES)
         if text_query:
             filter_.update(text_query)
     if normalized_tags:

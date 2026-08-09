@@ -2,6 +2,24 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.73.0 build 0103] — 2026-08-09 — feature: serienummer uden #, serie-grupperet sortering og søgning på nummer (FEATURES.md #96)
+
+Fire ting Jan bad om i samme omgang.
+
+**`#` er væk fra visningen.** `M0042` frem for `M#0042`.
+
+**Sorteringen på serienummer er nu sammensat af serie + nummer.** De tre serier (M/T/D) tælles hver for sig, så en sortering på nummeret alene blandede M1 og D1 sammen i listen. Standard-valget grupperer digitale først, som Jan bad om.
+
+**Et andet valg vender grupperingen**, så den fysiske serie står først. Det krævede at `SORT_FIELDS` kan udvide ét valg til flere mongo-nøgler. Serie-nøglen har en *låst* retning og kun nummeret følger op/ned-knappen — vendte knappen også serien, ville et klik flytte hele den ene serie hen over den anden, hvilket er en anden sortering og ikke den omvendte.
+
+**Søgefeltet slår nu serienumre op.** `M42` afgrænser til den fysiske serie, `D42` til den digitale, og et bart `42` finder begge. Foranstillede nuller og små bogstaver accepteres, så man kan søge på nummeret præcis som det står på skærmen. Et ukendt bogstav som `S1` falder tilbage til almindelig tekstsøgning frem for at matche ingenting — ellers kunne man ikke længere finde en titel der indeholder "S1".
+
+Serienummeret er tilføjet som endnu et OR-alternativ i `build_text_query` frem for som en separat API-parameter: det er en ligeværdig måde at finde en titel på, ikke et særskilt felt, og skal virke i det samme søgefelt som "pacino".
+
+Sorteringen bygger på at "Digital" står før "Fysisk" alfabetisk. Det er en egenskab ved etiketterne, ikke et tilfælde — og etiketterne *er* blevet omdøbt før (v0.22.0). `test_serial_series_sort_order_depends_on_label_ordering` låser den fast, så en omdøbning brækker en test frem for stille at vende listen om.
+
+Berørte filer: `backend/app/repositories/text_search.py`, `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`, `backend/tests/test_serial_sort_and_search.py` (ny), `frontend/src/utils/serialNumber.js`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`, `FEATURES.md`, `version.json`.
+
 ## [0.72.0 build 0102] — 2026-08-08 — feature: farvede tællere og "Log ud" helt til højre i app-hovedet (FEATURES.md #95)
 
 To justeringer Jan bad om.

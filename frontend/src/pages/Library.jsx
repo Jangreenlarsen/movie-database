@@ -74,6 +74,7 @@ const VISIBLE_FIELD_OPTIONS = [
   { key: "rating", labelKey: "field.rating" },
   { key: "runtime", labelKey: "field.runtime" },
   { key: "plex", labelKey: "field.plex" },
+  { key: "genres", labelKey: "field.genres" },
 ];
 
 const DEFAULT_VISIBLE_FIELDS = {
@@ -85,6 +86,7 @@ const DEFAULT_VISIBLE_FIELDS = {
   rating: false,
   runtime: false,
   plex: false,
+  genres: false,
 };
 
 function visibleFieldsFromSettings(settings) {
@@ -98,6 +100,7 @@ function visibleFieldsFromSettings(settings) {
     rating: vf.rating ?? DEFAULT_VISIBLE_FIELDS.rating,
     runtime: vf.runtime ?? DEFAULT_VISIBLE_FIELDS.runtime,
     plex: vf.plex ?? DEFAULT_VISIBLE_FIELDS.plex,
+    genres: vf.genres ?? DEFAULT_VISIBLE_FIELDS.genres,
   };
 }
 
@@ -206,6 +209,7 @@ export default function Library({
         rating: nextVisible.rating,
         runtime: nextVisible.runtime,
         plex: nextVisible.plex,
+        genres: nextVisible.genres,
       },
     });
   }
@@ -909,6 +913,9 @@ export default function Library({
                   {visibleFields.mediaType && movie.media_type && (
                     <span className="movie-meta-item">{movie.media_type}</span>
                   )}
+                  {visibleFields.genres && movie.genres.length > 0 && (
+                    <span className="movie-meta-item">{movie.genres.join(", ")}</span>
+                  )}
                 </div>
                 {visibleFields.tags && movie.tags.length > 0 && (
                   <div className="movie-tags">
@@ -1220,7 +1227,6 @@ export function MovieDetailModal({
                 </>
               )}
             </p>
-            {movie.genres.length > 0 && <p className="muted">{movie.genres.join(", ")}</p>}
             {(movie.imdb_url || movie.trailer_url || movie.tmdb_id) && (
               <p className="external-links">
                 {movie.imdb_url && (
@@ -1342,6 +1348,12 @@ export function MovieDetailModal({
                 <div className="modal-section-label">{t("field.tags")}</div>
                 <p>{movie.tags.length > 0 ? movie.tags.join(", ") : t("detail.noTags")}</p>
               </div>
+              {movie.genres.length > 0 && (
+                <div>
+                  <div className="modal-section-label">{t("field.genres")}</div>
+                  <p>{movie.genres.join(", ")}</p>
+                </div>
+              )}
               <div className="modal-field-row">
                 <div>
                   <div className="modal-section-label">{t("field.location")}</div>

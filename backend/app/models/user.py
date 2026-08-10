@@ -55,6 +55,9 @@ class VisibleFields(BaseModel):
     # oplysning der kun giver mening for dem der faktisk har en Plex-server,
     # og et badge der aldrig kan blive sandt er kun støj for alle andre.
     plex: bool = False
+    # Feature #113 — genrer som kort-badge, samme "Vis felter"-mønster som
+    # de øvrige felter ovenfor.
+    genres: bool = False
 
 
 class SortLevel(BaseModel):

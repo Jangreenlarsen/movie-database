@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.89.0 (build 0120) — 2026-08-10
+
+- **Nyt: genrer på kortet.** I "Vis felter" (Film og TV) kan du nu slå "Genrer" til, så genrerne vises direkte på filmens/seriens kort i biblioteket — samme sted som Format, Lyd-type og de andre valgfrie kort-felter.
+- Detaljevisningens genre-linje er blevet til en tydelig, labeled "Genrer"-sektion, samme sted som Tags.
+
 ## v0.88.0 (build 0119) — 2026-08-10
 
 - **Nyt: filtrér på genre** i både Film og TV-serier — en ny knap-gruppe i filter-panelet, ved siden af tags/format/lyd-type/medietype.

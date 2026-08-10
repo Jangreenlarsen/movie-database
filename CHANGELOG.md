@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.89.0 build 0120] — 2026-08-10 — feature: genrer på detaljevisningen + "Vis felter"-kort-toggle (FEATURES.md #113)
+
+#111 gjorde genrer filtrerbare, men rørte hverken detaljevisningen (genrer stod kun som en ulabeled linje under titlen, sammen med år/rating) eller "Vis felter"-panelet, hvor de øvrige felter (Format, Lyd-type, Medietype, Rating, Spilletid, Plex) allerede kan slås til/fra som kort-badges. Jan: *"vi mangler også at Genre kan se på film detaje og at vi har den som en 'Show on card' funktion også"*.
+
+Rettet ens for film og TV: (1) den ulabelede genre-linje under titlen i detalje-modalen er erstattet af en `modal-section-label`-sektion ("Genrer") i den strukturerede felt-liste, samme placering/stil som Tags — ren tekst-omplacering, ingen ny data. (2) nyt `genres: bool = False`-felt på `VisibleFields`-modellen (`backend/app/models/user.py`) og i `DEFAULT_SETTINGS` (`user_repository.py`, begge `visible_fields`/`tv_visible_fields`) — jf. BUGS.md #22's lektion om at et manglende Pydantic-felt gør `PATCH /api/users/me/settings` tavst ignorerer værdien i stedet for at afvise den, hvilket ellers ville have givet en togglen-der-ikke-huskes-fejl identisk med #22's. Ny "Genrer"-toggle i "Vis felter"-panelet (samme generiske `VISIBLE_FIELD_OPTIONS`-liste som de øvrige felter, ingen særskilt UI-kode nødvendig) og en genre-liste på kortet i samme stil som Lyd-type (`movie-meta-item`), begge betinget af at filmen/serien rent faktisk har genrer registreret.
+
+Verificeret i browseren (CLAUDE.md regel 18): togglen tænder/slukker kortets genre-badge, overlever en fuld genindlæsning (persisteret via `PATCH /api/users/me/settings`), og detalje-modalens nye "Genrer"-sektion vises korrekt for en film med genrer. TV-siden verificeret uden fejl i konsollen (tom TV-bibliotek i test-databasen forhindrede en fuld kort/detalje-visning der, men toggle-panelet og dets tilstand virker identisk med filmsiden).
+
+Berørte filer: `backend/app/models/user.py`, `backend/app/repositories/user_repository.py`, `backend/tests/test_auth.py`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `FEATURES.md`, `version.json`.
+
 ## [0.88.0 build 0119] — 2026-08-10 — feature: genre-filter (FEATURES.md #111) + browser-tilbage mellem faner (FEATURES.md #112)
 
 To uafhængige features:

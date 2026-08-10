@@ -62,6 +62,7 @@ const VISIBLE_FIELD_OPTIONS = [
   { key: "mediaType", labelKey: "field.mediaType" },
   { key: "rating", labelKey: "field.rating" },
   { key: "plex", labelKey: "field.plex" },
+  { key: "genres", labelKey: "field.genres" },
 ];
 
 const DEFAULT_VISIBLE_FIELDS = {
@@ -72,6 +73,7 @@ const DEFAULT_VISIBLE_FIELDS = {
   mediaType: false,
   rating: false,
   plex: false,
+  genres: false,
 };
 
 function visibleFieldsFromSettings(settings) {
@@ -84,6 +86,7 @@ function visibleFieldsFromSettings(settings) {
     mediaType: vf.media_type ?? DEFAULT_VISIBLE_FIELDS.mediaType,
     rating: vf.rating ?? DEFAULT_VISIBLE_FIELDS.rating,
     plex: vf.plex ?? DEFAULT_VISIBLE_FIELDS.plex,
+    genres: vf.genres ?? DEFAULT_VISIBLE_FIELDS.genres,
   };
 }
 
@@ -172,6 +175,7 @@ export default function TvShows({
         media_type: nextVisible.mediaType,
         rating: nextVisible.rating,
         plex: nextVisible.plex,
+        genres: nextVisible.genres,
       },
     });
   }
@@ -835,6 +839,9 @@ export default function TvShows({
                   {visibleFields.mediaType && show.media_type && (
                     <span className="movie-meta-item">{show.media_type}</span>
                   )}
+                  {visibleFields.genres && show.genres.length > 0 && (
+                    <span className="movie-meta-item">{show.genres.join(", ")}</span>
+                  )}
                 </div>
                 {visibleFields.tags && show.tags.length > 0 && (
                   <div className="movie-tags">
@@ -1096,7 +1103,6 @@ export function TvShowDetailModal({
               )}
               {show.watched && <> · {t("detail.watchedShort")}</>}
             </p>
-            {show.genres.length > 0 && <p className="muted">{show.genres.join(", ")}</p>}
             {(show.imdb_url || show.tmdb_id) && (
               <p className="external-links">
                 {show.imdb_url && (
@@ -1187,6 +1193,12 @@ export function TvShowDetailModal({
                 <div className="modal-section-label">{t("field.tags")}</div>
                 <p>{show.tags.length > 0 ? show.tags.join(", ") : t("detail.noTags")}</p>
               </div>
+              {show.genres.length > 0 && (
+                <div>
+                  <div className="modal-section-label">{t("field.genres")}</div>
+                  <p>{show.genres.join(", ")}</p>
+                </div>
+              )}
               <div className="modal-field-row">
                 <div>
                   <div className="modal-section-label">{t("field.location")}</div>

@@ -138,6 +138,7 @@ async def test_update_and_read_settings(client):
                 "format": True,
                 "audio_types": False,
                 "rating": True,
+                "genres": True,
             },
         },
     )
@@ -146,6 +147,10 @@ async def test_update_and_read_settings(client):
     assert settings["sort_field"] == "rating"
     assert settings["sort_direction"] == "asc"
     assert settings["visible_fields"]["format"] is True
+    # Feature #113 — regression guard for BUGS.md #22's failure mode: a
+    # VisibleFields field missing from the Pydantic model makes PATCH
+    # silently drop it instead of persisting it.
+    assert settings["visible_fields"]["genres"] is True
 
     me = await client.get("/api/users/me")
     assert me.json()["settings"]["sort_field"] == "rating"
@@ -164,6 +169,8 @@ async def test_new_user_has_default_settings(client):
     assert settings["language"] == "da"
     # Feature #88 — Plex-badget er fra som standard.
     assert settings["visible_fields"]["plex"] is False
+    # Feature #113 — genre-badget er ligeledes fra som standard.
+    assert settings["visible_fields"]["genres"] is False
     # Feature #110 — usat betyder "følg systemets prefers-color-scheme",
     # ikke en fast standardværdi (se Theme's docstring i models/user.py).
     assert settings["theme"] is None

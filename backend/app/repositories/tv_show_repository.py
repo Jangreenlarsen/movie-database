@@ -5,6 +5,7 @@ from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
+from app.models.movie import MediaType
 from app.repositories import digital_serial_repository
 from app.repositories.text_search import build_text_query, drop_legacy_text_index
 
@@ -209,9 +210,13 @@ async def find_all_raw(db: AsyncIOMotorDatabase) -> list[dict]:
 
 
 async def find_all_for_plex_match(db: AsyncIOMotorDatabase) -> list[dict]:
-    """TV-siden af feature #88 — spejler movie_repository.find_all_for_plex_match,
-    bortset fra titel-feltet, som her hedder `name`."""
-    cursor = db[COLLECTION].find({}, {"_id": 1, "tmdb_id": 1, "name": 1, "year": 1})
+    """TV-siden af feature #88 — spejler movie_repository.find_all_for_plex_match
+    (inkl. 2026-08-10-udelukkelsen af fysiske poster), bortset fra
+    titel-feltet, som her hedder `name`."""
+    cursor = db[COLLECTION].find(
+        {"media_type": {"$ne": MediaType.PHYSICAL.value}},
+        {"_id": 1, "tmdb_id": 1, "name": 1, "year": 1},
+    )
     return await cursor.to_list(length=None)
 
 

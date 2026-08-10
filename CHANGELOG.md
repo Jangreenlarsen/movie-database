@@ -2,6 +2,26 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.86.0 build 0117] — 2026-08-10 — feature: nyt felt "Undertekst" på film og TV-serier (FEATURES.md #109)
+
+Jan bad om en ny "undertekst"-kategori. Forelagt valget mellem en struktureret attribut med fast værdiliste (som Lyd-type) og et almindeligt tag, valgte han i stedet en tredje mulighed: et helt nyt felt, men med fritekst-redigering — ingen fast liste at vælge fra.
+
+Samme mønster som `location`/`owner`: et fritekst `str | None`-felt på `Movie`/`TvShow` (`subtitles`), redigerbart i rediger-boksen og vist i læsevisningen. I modsætning til location/owner har det **ikke** fået sit eget Combobox-autocomplete-opslag (intet `find_all_subtitles`), da det ikke blev bedt om — et almindeligt tekstfelt er nok for et felt uden en naturlig, genbrugt værdimængde. Heller ikke sortering, filtrering eller en print-kolonne, af samme grund; nemt at tilføje senere hvis det viser sig at være ønsket.
+
+Placeret som sin egen fuld-bredde-række mellem Lyd-type og Din note i begge rediger-bokse (`Library.jsx`/`TvShows.jsx`). `movie_service.sync_all_from_tmdb`/`tv_show_service.sync_all_from_tmdb` rører uændret aldrig feltet — samme beskyttelse af brugerindtastede felter som location/owner/tags allerede har.
+
+Berørte filer: `backend/app/models/movie.py`, `backend/app/models/tv_show.py`, `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`, `backend/tests/test_movies.py`, `backend/tests/test_tv_shows.py`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/components/MovieLookupForm.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`, `version.json`.
+
+## [0.85.0 build 0116] — 2026-08-10 — feature: grid-/listevisning (FEATURES.md #108) + fix: fysisk kopi blokerede digital Plex-import/badge (BUGS.md #55)
+
+To uafhængige ændringer:
+
+**Grid-/listevisning** (Jans ønske: *"lave en tilførelse til view sådan man kan vælge om film/tv skal stå i list form eller i icon som nu"*). Ny `ViewModeToggle`-komponent (delt af Film- og TV-siden) i værktøjslinjen, ved siden af "Vis felter" — to ikon-knapper der skifter og gemmer valget øjeblikkeligt. Ny `view_mode`-indstilling på brugeren (`UserSettings.view_mode`, `"grid"`/`"list"`), fælles for begge faner, samme begrundelse som `card_size` (feature #59). Listevisningen genbruger bevidst samme `<li>`-markup som grid-kortene — kun en ny `.movie-grid--list`-CSS-klasse lægger om fra en grid af poster-kort til en lodret stak af kompakte rækker, så de to visninger aldrig kan vise forskellige felter eller badges. Posteren skrumpes til en 48px-miniature; serienummer-/format-badgene, der i grid-tilstand er absolut placeret oven på en fuld-bredde-poster, flyder i stedet med som almindelige piller via `order` — ellers ville deres position regne forkert mod hele den brede række i stedet for mod den lille poster.
+
+**Fix (BUGS.md #55)**: en fysisk registreret film/serie blokerede uforvarende den digitale Plex-udgave af samme titel — badget dukkede fejlagtigt op på den fysiske post, og Plex-importens dublet-tjek sprang den digitale udgave over fordi den fysiske allerede "fandtes". `find_all_for_plex_match` i begge repositories udelukker nu poster med `media_type: "Fysisk"` (via `$ne`, ikke et eksplicit `"Digital"`-filter, så ønskeliste-poster uden medietype stadig er med). Samme filter retter automatisk alle tre forbrugere: badget, import-dublet-tjekket og fejlsøgnings-panelets audit. Detaljevinduets "Ikke fundet i Plex"-linje er desuden skjult for fysiske poster — ellers støj på hver eneste DVD/Blu-ray for et rent fysisk bibliotek.
+
+Berørte filer: `frontend/src/components/ViewModeToggle.jsx` (ny), `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/pages/Library.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `backend/app/models/user.py`, `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/tests/test_plex.py`, `FEATURES.md`, `BUGS.md`, `version.json`.
+
 ## [0.84.0 build 0115] — 2026-08-10 — feature: header-optælling med fysisk/digital-fordeling + kortere digitale formatlabels (FEATURES.md #107)
 
 To uafhængige justeringer Jan bad om samme dag:

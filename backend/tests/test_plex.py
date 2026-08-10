@@ -208,7 +208,9 @@ async def test_availability_endpoint_degrades_when_plex_unconfigured(client, mon
 
 async def test_availability_endpoint_maps_library_ids(client, monkeypatch):
     _configure(monkeypatch)
-    created = await client.post("/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Fysisk", "format": "DVD"})
+    # Digital, ikke Fysisk — se test_availability_badge_never_shows_on_a_physical_copy
+    # for hvorfor det ikke er ligegyldigt hvilken det er her.
+    created = await client.post("/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Digital", "format": "D-HD"})
     movie_id = created.json()["id"]
     _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
 
@@ -219,6 +221,23 @@ async def test_availability_endpoint_maps_library_ids(client, monkeypatch):
     assert body["items"][movie_id]["available"] is True
     assert body["items"][movie_id]["matched_by"] == "title_year"
     assert "42" in body["items"][movie_id]["play_url"]
+
+
+async def test_availability_badge_never_shows_on_a_physical_copy(client, monkeypatch):
+    """Jans ønske 2026-08-10: en fysisk DVD man også har liggende digitalt i
+    Plex skal kunne stå som to separate poster — men badget skal kun vise sig
+    på den digitale, aldrig på den fysiske. En fysisk kopi ligger jo netop på
+    hylden, ikke i Plex, uanset om samme titel også findes derinde."""
+    _configure(monkeypatch)
+    created = await client.post(
+        "/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Fysisk", "format": "DVD"}
+    )
+    movie_id = created.json()["id"]
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
+
+    body = (await client.get("/api/plex/availability?kind=movie")).json()
+    assert body["ok"] is True
+    assert movie_id not in body["items"]
 
 
 async def test_availability_endpoint_omits_unmatched_movies(client, monkeypatch):
@@ -264,8 +283,10 @@ async def test_availability_uses_cache_until_refresh_is_forced(client, monkeypat
 
 async def test_diagnostics_reports_match_breakdown(client, monkeypatch):
     _configure(monkeypatch)
-    await client.post("/api/movies", json={"tmdb_id": None, "title": "The Matrix", "year": 1999, "media_type": "Fysisk", "format": "DVD"})
-    await client.post("/api/movies", json={"title": "Ikke I Plex", "year": 2020, "media_type": "Fysisk", "format": "DVD"})
+    # Digital, ikke Fysisk — fysiske poster tælles bevidst ikke med i denne
+    # audit (2026-08-10), samme udelukkelse som badget og import-dublet-tjekket.
+    await client.post("/api/movies", json={"tmdb_id": None, "title": "The Matrix", "year": 1999, "media_type": "Digital", "format": "D-HD"})
+    await client.post("/api/movies", json={"title": "Ikke I Plex", "year": 2020, "media_type": "Digital", "format": "D-HD"})
     _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
 
     response = await client.get("/api/plex/diagnostics")
@@ -356,11 +377,12 @@ async def test_import_creates_with_tag(client, monkeypatch):
     assert len(body["imported"]) == 1
 
 
-async def test_import_skips_what_we_already_have(client, monkeypatch):
-    """Genbruger feature #88s matchning i modsat retning — en film vi har på
-    titel+år må ikke importeres igen bare fordi Plex har et tmdb-id."""
+async def test_import_skips_what_we_already_have_digitally(client, monkeypatch):
+    """Genbruger feature #88s matchning i modsat retning — en digital film vi
+    allerede har på titel+år må ikke importeres igen bare fordi Plex har et
+    tmdb-id, ellers ville hver importkørsel oprette endnu en dublet."""
     _configure(monkeypatch)
-    await client.post("/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Digital", "format": "D-HD"})
     created = []
     _patch_create(monkeypatch, created)
     _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None, resolution="1080")]))
@@ -369,6 +391,25 @@ async def test_import_skips_what_we_already_have(client, monkeypatch):
     assert body["already_present"] == 1
     assert body["imported"] == []
     assert created == []
+
+
+async def test_import_does_not_skip_when_only_a_physical_copy_exists(client, monkeypatch):
+    """Jans ønske 2026-08-10: en fysisk DVD man allerede har registreret må
+    ikke blokere den digitale Plex-udgave af samme titel fra at blive
+    importeret — man skal kunne have begge som separate poster. Før denne
+    rettelse blev enhver eksisterende post (uanset medietype) talt som
+    "har den allerede", så en fysisk kopi stille og roligt forhindrede den
+    digitale i nogensinde at nå ind i portalen."""
+    _configure(monkeypatch)
+    await client.post("/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Fysisk", "format": "DVD"})
+    created = []
+    _patch_create(monkeypatch, created)
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None, resolution="1080")]))
+
+    body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
+    assert body["already_present"] == 0
+    assert created == [("movie", 603, ["Plex-import"])]
+    assert len(body["imported"]) == 1
 
 
 async def test_import_resolves_missing_tmdb_id_via_search(client, monkeypatch):

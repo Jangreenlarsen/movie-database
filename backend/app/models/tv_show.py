@@ -54,6 +54,8 @@ class TvShowCreate(BaseModel):
     cast: list[str] = Field(default_factory=list)
     location: str | None = None
     owner: str | None = None
+    # Feature #109 — se den identiske note i MovieCreate.
+    subtitles: str | None = None
     is_wishlist: bool = False
 
     @model_validator(mode="after")
@@ -116,6 +118,7 @@ class TvShowUpdate(BaseModel):
     media_type: MediaType | None = None
     location: str | None = None
     owner: str | None = None
+    subtitles: str | None = None
     is_wishlist: bool | None = None
     serial_number: int | None = Field(default=None, gt=0)
     personal_rating: int | None = Field(default=None, ge=1, le=10)
@@ -149,6 +152,7 @@ class TvShow(BaseModel):
     imdb_url: str | None = None
     location: str | None = None
     owner: str | None = None
+    subtitles: str | None = None
     registered_by: str | None = None
     is_wishlist: bool = False
     personal_rating: int | None = None

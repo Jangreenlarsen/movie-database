@@ -1,5 +1,14 @@
 # Release Notes
 
+## v0.86.0 (build 0117) — 2026-08-10
+
+- **Nyt felt: Undertekst.** Fritekst-felt på film og TV-serier, i rediger-boksen mellem Lyd-type og Din note — fx "DA, EN" eller "Fastbrændt DA".
+
+## v0.85.0 (build 0116) — 2026-08-10
+
+- **Nyt: vælg mellem ikon- og listevisning** i Film og TV-serier — en ny knap i værktøjslinjen ved siden af "Vis felter" skifter mellem posterkort og kompakte rækker. Valget gemmes og gælder begge faner.
+- **Rettet: en fysisk film/serie kunne blokere den digitale Plex-udgave af samme titel.** Du kan nu have begge som separate poster — kun den digitale får "ligger i Plex"-badget, og Plex-import springer ikke længere den digitale udgave over bare fordi du allerede har den fysisk.
+
 ## v0.84.0 (build 0115) — 2026-08-10
 
 - **Optællingen i toppen viser nu fysisk/digital direkte** — "142 film (98 fysisk / 44 digital)" i stedet for at skulle holde musen hen over tallet for at se fordelingen.

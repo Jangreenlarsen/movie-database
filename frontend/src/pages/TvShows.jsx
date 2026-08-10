@@ -7,6 +7,7 @@ import Pagination from "../components/Pagination";
 import { PlexCardBadge, PlexPlayLink } from "../components/PlexAvailability";
 import { usePlexAvailability } from "../components/usePlexAvailability";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
+import ViewModeToggle from "../components/ViewModeToggle";
 import { useLocale, useT } from "../i18n";
 import { formatSerial, serialPrefix } from "../utils/serialNumber";
 import "../pages/Library.css";
@@ -129,6 +130,8 @@ export default function TvShows({
   });
   const [activeShow, setActiveShow] = useState(null);
   const [visibleFields, setVisibleFields] = useState(() => visibleFieldsFromSettings(user.settings));
+  // Feature #108 — se den identiske note i Library.jsx.
+  const [viewMode, setViewMode] = useState(user.settings.view_mode ?? "grid");
   const [showFieldPanel, setShowFieldPanel] = useState(false);
   const [showSortPanel, setShowSortPanel] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
@@ -148,6 +151,12 @@ export default function TvShows({
       .updateMySettings(patch)
       .then(onSettingsChanged)
       .catch((err) => setSettingsError(err.message));
+  }
+
+  function changeViewMode(nextMode) {
+    if (nextMode === viewMode) return;
+    setViewMode(nextMode);
+    persistSettings({ view_mode: nextMode });
   }
 
   function persistVisibleFields(nextVisible) {
@@ -440,6 +449,8 @@ export default function TvShows({
           >
             {t("lib.fields")} {changedFieldCount > 0 ? "● " : ""}▾
           </button>
+
+          <ViewModeToggle viewMode={viewMode} onChange={changeViewMode} />
         </div>
 
         {showAddPanel && (
@@ -741,7 +752,11 @@ export default function TvShows({
       )}
 
       {status === "ready" && shows.length > 0 && (
-        <ul className={`movie-grid movie-grid--${user.settings.card_size ?? "medium"}`}>
+        <ul
+          className={`movie-grid movie-grid--${user.settings.card_size ?? "medium"}${
+            viewMode === "list" ? " movie-grid--list" : ""
+          }`}
+        >
           {shows.map((show) => (
             <li key={show.id} className="movie-card" onClick={() => setActiveShow(show)}>
               {/* Feature #92 — se den identiske note i Library.jsx. */}
@@ -873,6 +888,8 @@ export function TvShowDetailModal({
   const [mediaType, setMediaType] = useState(show.media_type ?? "");
   const [location, setLocation] = useState(show.location ?? "");
   const [owner, setOwner] = useState(show.owner ?? "");
+  // Feature #109 — se den identiske note i Library.jsx.
+  const [subtitles, setSubtitles] = useState(show.subtitles ?? "");
   const [personalRating, setPersonalRating] = useState(
     show.personal_rating != null ? String(show.personal_rating) : ""
   );
@@ -899,6 +916,7 @@ export function TvShowDetailModal({
     setMediaType(show.media_type ?? "");
     setLocation(show.location ?? "");
     setOwner(show.owner ?? "");
+    setSubtitles(show.subtitles ?? "");
     setPersonalRating(show.personal_rating != null ? String(show.personal_rating) : "");
     setPersonalNote(show.personal_note ?? "");
     setWatched(show.watched);
@@ -937,6 +955,7 @@ export function TvShowDetailModal({
         media_type: mediaType || null,
         location: location.trim() || null,
         owner: owner.trim() || null,
+        subtitles: subtitles.trim() || null,
         personal_rating: personalRating ? Number(personalRating) : null,
         personal_note: personalNote.trim() || null,
         watched,
@@ -1108,7 +1127,10 @@ export function TvShowDetailModal({
             </p>
           )}
 
-          {show.id && <PlexPlayLink availability={plexAvailability} plex={plex} />}
+          {/* Feature #88/2026-08-10 — se den identiske note i Library.jsx. */}
+          {show.id && show.media_type !== "Fysisk" && (
+            <PlexPlayLink availability={plexAvailability} plex={plex} />
+          )}
 
           {!editing ? (
             <>
@@ -1175,6 +1197,10 @@ export function TvShowDetailModal({
               <div>
                 <div className="modal-section-label">{t("field.audioType")}</div>
                 <p>{show.audio_types.length > 0 ? show.audio_types.join(", ") : "—"}</p>
+              </div>
+              <div>
+                <div className="modal-section-label">{t("field.subtitles")}</div>
+                <p>{show.subtitles || "—"}</p>
               </div>
               <div>
                 <div className="modal-section-label">{t("field.personalNote")}</div>
@@ -1313,6 +1339,15 @@ export function TvShowDetailModal({
                     />
                   ))}
                 </div>
+              </div>
+
+              <div>
+                <div className="modal-section-label">{t("field.subtitles")}</div>
+                <input
+                  value={subtitles}
+                  onChange={(e) => setSubtitles(e.target.value)}
+                  placeholder={t("detail.subtitlesPlaceholder")}
+                />
               </div>
 
               <div>

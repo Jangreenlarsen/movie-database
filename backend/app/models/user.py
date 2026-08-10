@@ -80,6 +80,10 @@ class SortPreset(BaseModel):
 
 CardSize = Literal["small", "medium", "large"]
 
+# Feature #108 — grid (poster-kort, som hidtil) eller liste (kompakte
+# rækker). Samme fælles-for-begge-faner begrundelse som CardSize ovenfor.
+ViewMode = Literal["grid", "list"]
+
 # Feature #89 — UI-sprog pr. bruger. Dansk er kildesproget (al tekst er
 # skrevet på dansk først), så det er også standarden; engelsk er tilvalget.
 Language = Literal["da", "en"]
@@ -104,6 +108,9 @@ class UserSettings(BaseModel):
     # bevidst adskilt pr. fane — kortstørrelse er en ren visuel præference,
     # ikke indholds-specifik.
     card_size: CardSize = "medium"
+    # Grid- eller listevisning (feature #108) — samme fælles-for-begge-faner
+    # begrundelse som card_size lige ovenfor.
+    view_mode: ViewMode = "grid"
     # Antal film/serier pr. side i biblioteksvisningen (feature #15) — én
     # fælles indstilling for begge faner, samme begrundelse som card_size.
     page_size: int = 50
@@ -123,6 +130,7 @@ class UserSettingsUpdate(BaseModel):
     tv_sort_levels: list[SortLevel] | None = None
     tv_sort_presets: list[SortPreset] | None = None
     card_size: CardSize | None = None
+    view_mode: ViewMode | None = None
     page_size: int | None = Field(default=None, ge=1, le=500)
     language: Language | None = None
 

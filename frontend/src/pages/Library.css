@@ -15,6 +15,43 @@
   flex-shrink: 0;
 }
 
+/* Feature #108 — grid/liste-valg, samme pille-gruppe-stil som App.css'
+   .tabs (nav-fanerne), gengivet lokalt her da resten af værktøjslinjen
+   allerede bor i denne fil. */
+.view-mode-toggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.view-mode-toggle button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: calc(var(--radius-md) - 3px);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.view-mode-toggle button:hover {
+  color: var(--text);
+}
+
+.view-mode-toggle button.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
 .search-input-wrap {
   position: relative;
   flex: 1;
@@ -192,6 +229,79 @@
 .movie-grid--large {
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 24px;
+}
+
+/* Liste-visning (feature #108) — samme <li>-markup som grid-visningen
+   (samme data, samme badges); kun layoutet skifter fra en grid af
+   poster-kort til en lodret stak af kompakte rækker. Kortstørrelsen
+   (small/medium/large) styrer stadig radeafstanden (`gap` — sat af
+   .movie-grid--small/medium/large ovenfor, ikke gentaget her), så
+   indstillingen forbliver meningsfuld i begge visninger. */
+.movie-grid--list {
+  display: flex;
+  flex-direction: column;
+  grid-template-columns: none;
+}
+
+.movie-grid--list .movie-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+}
+
+.movie-grid--list .movie-card:hover {
+  transform: none;
+  background: var(--accent-soft);
+}
+
+/* Poster-kortets JSX har `.movie-serial`/`.movie-format-badge` som søskende
+   til `.movie-poster`, absolut placeret mod hele kortet (som i grid-tilstand
+   *er* posteren, da den fylder 100% af kortets bredde). I liste-tilstand er
+   kortet en bred række, så de skal i stedet flyde med som almindelige
+   elementer — `order` sikrer at posteren (nu en lille miniature) stadig
+   kommer først, og de to badges lander som små piller lige efter den. */
+.movie-grid--list .movie-poster {
+  order: 1;
+  width: 48px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+}
+
+.movie-grid--list .movie-serial,
+.movie-grid--list .movie-format-badge {
+  position: static;
+  order: 2;
+  flex-shrink: 0;
+  backdrop-filter: none;
+}
+
+.movie-grid--list .movie-rating-badge,
+.movie-grid--list .movie-badge-stack > * {
+  font-size: 0.6rem;
+  padding: 1px 5px;
+}
+
+.movie-grid--list .movie-info {
+  order: 3;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+}
+
+.movie-grid--list .movie-title {
+  -webkit-line-clamp: 1;
+}
+
+.movie-grid--list .movie-meta-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+}
+
+.movie-grid--list .movie-tags {
+  margin-top: 2px;
 }
 
 /* Paginering (feature #15) */

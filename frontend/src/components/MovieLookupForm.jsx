@@ -19,6 +19,7 @@ function emptyDraftFields(user, wishlist) {
     media_type: null,
     location: "",
     owner: user?.username ?? "",
+    subtitles: null,
     is_wishlist: wishlist,
     personal_rating: null,
     personal_note: null,

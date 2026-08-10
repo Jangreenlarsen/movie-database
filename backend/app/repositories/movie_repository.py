@@ -5,6 +5,7 @@ from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
+from app.models.movie import MediaType
 from app.repositories import digital_serial_repository
 from app.repositories.text_search import build_text_query, drop_legacy_text_index
 
@@ -346,8 +347,22 @@ async def find_all_for_plex_match(db: AsyncIOMotorDatabase) -> list[dict]:
     mange gange så meget data for et opslag der kun ser på id, titel og år.
 
     Ønskelisten er bevidst med: at en ønsket film allerede ligger i Plex er
-    netop den slags man vil kunne se på kortet."""
-    cursor = db[COLLECTION].find({}, {"_id": 1, "tmdb_id": 1, "title": 1, "year": 1})
+    netop den slags man vil kunne se på kortet.
+
+    En *fysisk* post er derimod bevidst UDE (Jans ønske 2026-08-10): en
+    fysisk DVD man også har liggende digitalt i Plex skal kunne stå som to
+    separate poster i biblioteket — den fysiske skal aldrig få et "ligger i
+    Plex"-badge (den ligger jo netop på hylden, ikke i Plex), og skal aldrig
+    forhindre selve den digitale udgave i at blive importeret ved at blive
+    talt som "har den allerede" (se `plex_service.import_from_plex`'s brug
+    af denne funktion til dublet-tjek). `$ne` frem for et eksplicit
+    `"Digital"`-filter, så en ønske-post (intet medietype endnu) og en
+    endnu ikke klassificeret post fortsat er med, jf. CLAUDE.md regel 16
+    ("regler der kun gælder én gren")."""
+    cursor = db[COLLECTION].find(
+        {"media_type": {"$ne": MediaType.PHYSICAL.value}},
+        {"_id": 1, "tmdb_id": 1, "title": 1, "year": 1},
+    )
     return await cursor.to_list(length=None)
 
 

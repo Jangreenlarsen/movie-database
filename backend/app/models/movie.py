@@ -7,17 +7,19 @@ from app.models.scan import BarcodeSource
 
 
 class MovieFormat(str, Enum):
-    """Short labels (v0.22.0), digital split into quality tiers — see
-    `movie_repository._migrate_format_labels` for the one-time rename of
+    """Short labels (v0.22.0), digital split into quality tiers. The digital
+    tiers themselves were shortened again in v0.84.0 (Digital-HD -> D-HD
+    etc.) — see `movie_repository._migrate_format_labels` and
+    `tv_show_repository._migrate_format_labels` for the one-time rename of
     existing documents' stored values from the old, longer labels."""
 
     VHS = "VHS"
     DVD = "DVD"
     BLU_RAY = "BD"
     UHD_4K = "UHD"
-    DIGITAL_UHD = "Digital-UHD"
-    DIGITAL_HD = "Digital-HD"
-    DIGITAL_STD = "Digital-STD"
+    DIGITAL_UHD = "D-UHD"
+    DIGITAL_HD = "D-HD"
+    DIGITAL_STD = "D-SD"
 
 
 class MediaType(str, Enum):

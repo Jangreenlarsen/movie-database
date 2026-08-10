@@ -85,7 +85,7 @@ class PlexImportItem(BaseModel):
     # her er feltet tomt indtil da.
     format: str | None = None
     # BUGS.md #52 — True når Plex ikke kunne oplyse opløsningen, og formatet
-    # derfor faldt tilbage til Digital-HD i stedet for at blive udledt.
+    # derfor faldt tilbage til D-HD i stedet for at blive udledt.
     # Vises i forhåndsvisningen, så man ved hvilke der bør efterses.
     format_is_fallback: bool = False
     # Kun sat når elementet ikke kunne importeres.

@@ -106,6 +106,14 @@
   border: 1px solid var(--border);
 }
 
+/* Feature #107 — fysisk/digital-fordelingen er lidt lysere end totaltallet,
+   så det stadig er totaltallet blikket lander på først. Skjules på smalle
+   skærme, se media query nederst. */
+.header-count-breakdown {
+  opacity: 0.75;
+  font-weight: 600;
+}
+
 .header-user {
   display: flex;
   align-items: center;
@@ -274,6 +282,13 @@
   .header-count {
     font-size: 0.72rem;
     padding: 3px 7px;
+  }
+
+  /* Feature #107 — fordelingen på fysisk/digital er den del af mærkatet der
+     kan undværes på en telefon uden at totaltallet (hele pointen med
+     feature #94) også må vige. Fuld tekst er stadig i hover-titlen. */
+  .header-count-breakdown {
+    display: none;
   }
 
   .app-main {

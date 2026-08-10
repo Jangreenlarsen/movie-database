@@ -154,9 +154,9 @@ Importerede poster får `media_type: Digital` (feature #91) og `format` udledt a
 
 | Plex-værdi | Format i portalen |
 |---|---|
-| `4k`, `2160`, `2160p` | `Digital-UHD` |
-| `1080`, `720` (og alt ≥ 720) | `Digital-HD` |
-| `576`, `480`, `sd` | `Digital-STD` |
+| `4k`, `2160`, `2160p` | `D-UHD` |
+| `1080`, `720` (og alt ≥ 720) | `D-HD` |
+| `576`, `480`, `sd` | `D-SD` |
 | ukendt/manglende | tomt (gættes ikke) |
 
 For film står opløsningen i `Media[].videoResolution` allerede i `/all`-svaret. For serier findes den kun på episoderne, så `/library/metadata/{ratingKey}/allLeaves` bruges — det ene kald leverer både sæsonnumre (`parentIndex`) og episodernes opløsning. En serie med blandede opløsninger får den **hyppigste**, ikke den højeste: ét 4K-afsnit ud af tres gør ikke serien til en UHD-udgave. Ties brydes til fordel for højere kvalitet.

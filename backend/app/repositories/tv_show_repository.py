@@ -64,9 +64,28 @@ MAX_SORT_LEVELS = 3
 # hvor film har `director` (BUGS.md #48).
 TEXT_SEARCH_FIELDS = ["name", "overview", "cast", "creators", "genres"]
 
+# v0.84.0 — samme relabel som movie_repository._FORMAT_LABEL_MIGRATIONS, men
+# kun de digitale niveauer: TV-serier fandtes ikke endnu ved den første
+# format-omdøbning (v0.22.0), så Blu-ray/4K Ultra HD er der intet at
+# migrere. Plex-importen (feature #91) skriver derimod digitale
+# kvalitetsniveauer på TV-serier lige så vel som på film.
+_FORMAT_LABEL_MIGRATIONS = {
+    "Digital-UHD": "D-UHD",
+    "Digital-HD": "D-HD",
+    "Digital-STD": "D-SD",
+}
+
+
+async def _migrate_format_labels(db: AsyncIOMotorDatabase) -> None:
+    """Se den identiske funktion i movie_repository.py."""
+    collection = db[COLLECTION]
+    for old_label, new_label in _FORMAT_LABEL_MIGRATIONS.items():
+        await collection.update_many({"format": old_label}, {"$set": {"format": new_label}})
+
 
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     collection = db[COLLECTION]
+    await _migrate_format_labels(db)
     # BUGS.md #48 — se movie_repository: søgningen bruger ikke længere
     # `$text`, så det gamle index ryddes op i stedet for at ligge og koste
     # skrivetid.

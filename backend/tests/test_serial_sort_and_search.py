@@ -9,7 +9,7 @@ from app.repositories import movie_repository, tv_show_repository
 from app.repositories.text_search import build_text_query
 
 PHYSICAL = {"media_type": "Fysisk", "format": "DVD"}
-DIGITAL = {"media_type": "Digital", "format": "Digital-HD"}
+DIGITAL = {"media_type": "Digital", "format": "D-HD"}
 
 
 async def _titles(client, **params):

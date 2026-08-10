@@ -88,6 +88,15 @@ ViewMode = Literal["grid", "list"]
 # skrevet på dansk først), så det er også standarden; engelsk er tilvalget.
 Language = Literal["da", "en"]
 
+# Feature #110 — kun de to valg brugeren selv vælger imellem. `None` (feltets
+# default) er bevidst en tredje, ikke-eksponeret tilstand: "følg systemets
+# prefers-color-scheme". CSS'en i index.css har allerede fulde
+# :root[data-theme="light"]/[data-theme="dark"]-blokke plus en
+# prefers-color-scheme-fallback — uden et `None`-mønster ville enhver
+# eksisterende bruger med et mørkt system pludselig blive tvunget til lyst
+# tema den dag dette felt fik en fast standardværdi.
+Theme = Literal["light", "dark"]
+
 
 class UserSettings(BaseModel):
     sort_field: str | None = None
@@ -118,6 +127,9 @@ class UserSettings(BaseModel):
     # 2026-08-08), så sproget følger med på tværs af iPhone og PC i stedet for
     # at skulle vælges forfra på hver enhed.
     language: Language = "da"
+    # Feature #110 — se Theme-kommentaren ovenfor for hvorfor default er
+    # None og ikke "light".
+    theme: Theme | None = None
 
 
 class UserSettingsUpdate(BaseModel):
@@ -133,6 +145,7 @@ class UserSettingsUpdate(BaseModel):
     view_mode: ViewMode | None = None
     page_size: int | None = Field(default=None, ge=1, le=500)
     language: Language | None = None
+    theme: Theme | None = None
 
 
 class UserRegister(BaseModel):

@@ -2,6 +2,24 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.87.0 build 0118] — 2026-08-10 — feature: personligt lyst/mørkt tema (FEATURES.md #110)
+
+Jan bad om at kunne vælge lyst eller mørkt tema under Indstillinger, personligt pr. bruger.
+
+Det viste sig at være næsten intet nyt CSS-arbejde: `frontend/src/index.css` havde allerede fulde `:root[data-theme="light"]`/`:root[data-theme="dark"]`-variabelblokke plus en `prefers-color-scheme`-fallback fra projektets opstart — de var bare aldrig koblet til noget i JavaScript.
+
+Ny `theme`-indstilling på brugeren (`Theme = Literal["light", "dark"] | None`, samme mønster som `card_size`/`view_mode`), men bevidst *valgfri* (default `None`), i modsætning til de to andre: en eksisterende bruger hvis system allerede står i mørk tilstand skal ikke pludselig blive tvunget til lys bare fordi feltet fik en fast standardværdi ved denne udrulning. Usat betyder "følg systemets `prefers-color-scheme`" — præcis den adfærd alle har haft indtil nu.
+
+Selve koblingen er én `useEffect` øverst i `App()` (kører uanset hvilken betinget gren — login, afventer-godkendelse, den autentificerede app — der rent faktisk returneres, da hooks altid kaldes ubetinget), som sætter/fjerner `data-theme` på `document.documentElement`. Spejler `I18nProvider`s `document.documentElement.lang`-mønster for sprog stort set 1:1.
+
+Ny `ThemeSection` i Indstillinger → Konto, lige efter sprogvalget — samme chip-baserede UI-mønster som `CardSizeSection`/`LanguageSection`.
+
+Verificeret ved faktisk at åbne Film, TV-serier, Indstillinger, Print, login-siden og den offentlige BIO-side i browseren i begge temaer (CLAUDE.md regel 18). Det fangede én reel regression: `.cinema-public-hero`/`.cinema-public-tagline` (feature #104/#105) brugte `var(--accent-contrast)` til hero-teksten oven på skiltets faste, mørke baggrundsbillede — den variabel er beregnet til at kontrastere mod `var(--accent)` og skifter derfor betydning mellem temaerne (hvid i lyst tema, næsten sort i mørkt), så teksten blev praktisk talt usynlig i mørkt tema. Rettet til en fast hvid farve, da baggrunden bag den altid er mørk uanset app-tema. Alle øvrige `var(--accent-contrast)`-brug i kodebasen er korrekt parret med `background: var(--accent)` og er tema-sikre i forvejen.
+
+En anden, mere alvorlig regression blev fanget ved at emulere `@media print` med mørkt tema aktivt (Playwright): Print-sidens tabeltekst arvede mørkt temas næsten-hvide `--text` og blev praktisk talt usynlig oven på hvidt papir — baggrunde springes typisk over ved print, men tekstfarven gør ikke. Rettet med en ny `@media print` i `index.css`, der nulstiller `--bg`/`--surface`/`--text`/`--text-muted`/`--border`/`--accent*` til de lyse værdier med `!important` (nødvendigt fordi `:root[data-theme="dark"]` ellers vinder på specificitet uanset regel-rækkefølge) — samme "print skal aldrig følge skærm-tilstanden"-begrundelse som `PrintList.css`'s egne `!important`-regler for at skjule hoved/fod ved print.
+
+Berørte filer: `backend/app/models/user.py`, `backend/tests/test_auth.py`, `frontend/src/App.jsx`, `frontend/src/pages/Settings.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`, `version.json`.
+
 ## [0.86.0 build 0117] — 2026-08-10 — feature: nyt felt "Undertekst" på film og TV-serier (FEATURES.md #109)
 
 Jan bad om en ny "undertekst"-kategori. Forelagt valget mellem en struktureret attribut med fast værdiliste (som Lyd-type) og et almindeligt tag, valgte han i stedet en tredje mulighed: et helt nyt felt, men med fritekst-redigering — ingen fast liste at vælge fra.

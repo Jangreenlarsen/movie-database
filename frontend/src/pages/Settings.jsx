@@ -63,6 +63,7 @@ export default function Settings({ user, onSettingsChanged }) {
           <AccountSection user={user} />
           <CardSizeSection cardSize={user.settings.card_size} onSettingsChanged={onSettingsChanged} />
           <LanguageSection language={user.settings.language} onSettingsChanged={onSettingsChanged} />
+          <ThemeSection theme={user.settings.theme} onSettingsChanged={onSettingsChanged} />
         </>
       )}
 
@@ -285,6 +286,60 @@ function LanguageSection({ language, onSettingsChanged }) {
       {error && (
         <div className="banner banner-error" style={{ marginTop: 12 }}>
           {t("language.saveError", { message: error })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const THEME_OPTIONS = [
+  { value: "light", labelKey: "theme.light" },
+  { value: "dark", labelKey: "theme.dark" },
+];
+
+/**
+ * Feature #110 — tema-valget (Jans ønske 2026-08-10). Samme mønster som
+ * CardSizeSection/LanguageSection lige ovenfor: en personlig præference,
+ * ikke en system-indstilling. `theme` er `null` når intet er valgt endnu —
+ * ingen af de to chips er så aktive, og App.jsx lader CSS'ens egen
+ * `prefers-color-scheme` afgøre det i stedet (se den identiske note der).
+ */
+function ThemeSection({ theme, onSettingsChanged }) {
+  const t = useT();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  function selectTheme(value) {
+    if (value === theme) return;
+    setSaving(true);
+    setError(null);
+    api
+      .updateMySettings({ theme: value })
+      .then(onSettingsChanged)
+      .catch((err) => setError(err.message))
+      .finally(() => setSaving(false));
+  }
+
+  return (
+    <div className="card settings-section">
+      <h2>{t("theme.heading")}</h2>
+      <p className="muted">{t("theme.description")}</p>
+
+      <div className="chip-row">
+        {THEME_OPTIONS.map((option) => (
+          <Chip
+            key={option.value}
+            label={t(option.labelKey)}
+            active={theme === option.value}
+            onClick={() => selectTheme(option.value)}
+          />
+        ))}
+      </div>
+
+      {saving && <p className="muted" style={{ marginTop: 8 }}>{t("common.saving")}</p>}
+      {error && (
+        <div className="banner banner-error" style={{ marginTop: 12 }}>
+          {t("theme.saveError", { message: error })}
         </div>
       )}
     </div>

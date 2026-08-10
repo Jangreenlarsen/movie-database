@@ -85,6 +85,27 @@
   --accent-soft-strong: rgba(180, 83, 9, 0.18);
 }
 
+/* Feature #110 — papir er altid lyst, uanset skærmens tema. Uden dette ville
+   Print-sidens tabeltekst arve mørkt temas næsten-hvide --text og blive
+   ulæselig oven på hvidt papir (baggrunde springes typisk over ved print,
+   men tekstfarven gør ikke). `!important`, fordi `:root[data-theme="dark"]`
+   ellers vinder på specificitet uanset rækkefølge — samme "print skal aldrig
+   følge skærm-tilstanden"-begrundelse som PrintList.css's egne
+   `!important`-regler for at skjule hoved/fod ved print. */
+@media print {
+  :root {
+    --bg: #ffffff !important;
+    --surface: #ffffff !important;
+    --surface-hover: #ffffff !important;
+    --text: #16161b !important;
+    --text-muted: #6b6b76 !important;
+    --border: #e3e3e8 !important;
+    --accent: #b45309 !important;
+    --accent-strong: #92400e !important;
+    --accent-contrast: #ffffff !important;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

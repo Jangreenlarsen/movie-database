@@ -40,6 +40,20 @@ function emptyDraftFields(user, wishlist) {
  * TMDb-databaser, så den der viser formularen kan ikke selv vide hvilken
  * collection resultatet endte i. Uden det kunne en TV-serie gemt fra
  * ønskelisten/filmbiblioteket se ud som om den forsvandt (BUGS.md #47).
+ *
+ * Feature #106 — et klik på en kandidat går direkte til rediger-boksen i
+ * stedet for at kræve et scroll ned til et separat "Fortsæt til
+ * redigering"-kort. Det gælder ubetinget for film: et evt. dublet-fund
+ * ændrer intet ved selve oprettelsen, så det vises som et banner *inde i*
+ * rediger-boksen i stedet for at stoppe flowet. For TV-serier er der ét
+ * reelt valg der ikke kan springes stiltiende over — findes der allerede en
+ * post af samme slags (bibliotek/ønske), skal brugeren selv vælge mellem at
+ * tilføje sæson(er) til den eller oprette en ny separat serie, ellers ville
+ * hvert scan af en ny sæson-boks stille og roligt oprette sin egen serie
+ * (feature #53's oprindelige formål). Det valg vises nu som en rigtig
+ * modal-dialog (ingen scroll nødvendig) i stedet for et in-page-kort, og kun
+ * når der reelt er noget at vælge — er der intet at gruppere ind i, går
+ * flowet lige så direkte til redigering som for film.
  */
 export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
   const t = useT();
@@ -171,7 +185,11 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
     setPreviewData(null);
     setPreviewStatus("idle");
     if (candidate.media_kind !== "tv") {
+      // Dublet-tjekket for film ændrer intet ved selve flowet — det er
+      // rent informativt og vises som et banner inde i rediger-boksen — så
+      // det behøver ikke afventes før vi går videre (feature #106).
       api.checkDuplicate(candidate.tmdb_id).then(setDuplicates).catch(() => {});
+      proceedToEdit(candidate);
       return;
     }
     api
@@ -189,6 +207,9 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
         // fortæller uændret at den anden findes.
         const groupable = matches.find((match) => match.is_wishlist === wishlist);
         if (groupable) {
+          // Feature #106 — dette er det ene reelle valg der ikke kan
+          // springes stiltiende over: vises som modal så snart
+          // `existingTvShow` er sat.
           api
             .getTvShow(groupable.id)
             .then((show) => {
@@ -196,29 +217,38 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
               const preselect = show.seasons.find((s) => !s.owned) ?? show.seasons[0];
               setSelectedSeasonNumbers(preselect ? [preselect.season_number] : []);
             })
-            .catch(() => {});
+            .catch(() => proceedToEdit(candidate));
         } else {
           // Ingen dublet at gruppere ind i — vis en sæson-vælger til
-          // forhåndsvisning, så
-          // brugeren kan afkrydse hvilke sæsoner udgaven indeholder inden
-          // der springes videre til rediger-boksen (feature #54).
-          api.tvTmdbPreview(candidate.tmdb_id).then(setPreviewSeasons).catch(() => {});
+          // forhåndsvisning, så brugeren kan afkrydse hvilke sæsoner
+          // udgaven indeholder inden der springes videre til
+          // rediger-boksen (feature #54). Findes der ingen sæsoner at
+          // vælge imellem (eller slår opslaget fejl), er der intet valg
+          // tilbage, og flowet fortsætter selv direkte til redigering.
+          api
+            .tvTmdbPreview(candidate.tmdb_id)
+            .then((seasons) => {
+              setPreviewSeasons(seasons);
+              if (seasons.length === 0) proceedToEdit(candidate);
+            })
+            .catch(() => proceedToEdit(candidate));
         }
       })
-      .catch(() => {});
+      .catch(() => proceedToEdit(candidate));
   }
 
   function toggleSeasonNumber(seasonNumber) {
     setSelectedSeasonNumbers((prev) => toggleValue(prev, seasonNumber));
   }
 
-  function resetFormAfterSave() {
+  // Feature #106 — går tilbage til kandidat-gitteret uden at rydde selve
+  // søge-/scan-resultatet, så et forkert valgt match kan erstattes med et
+  // andet uden at starte scanningen/søgningen forfra. `resetFormAfterSave`
+  // nedenfor rydder derudover også `candidates` m.fl. — den bruges når hele
+  // flowet er afsluttet (gemt, eller sæson(er) tilføjet til en eksisterende
+  // serie), ikke når man blot fortryder et enkelt kandidat-valg.
+  function backToCandidates() {
     setSelectedCandidate(null);
-    setCandidates([]);
-    setBarcode(null);
-    setBarcodeSource(null);
-    setGuessedTitle(null);
-    setManualQuery("");
     setDuplicates([]);
     setExistingTvShow(null);
     setPreviewSeasons([]);
@@ -229,11 +259,26 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
     setPreviewStatus("idle");
   }
 
-  async function proceedToEdit() {
+  function resetFormAfterSave() {
+    backToCandidates();
+    setCandidates([]);
+    setBarcode(null);
+    setBarcodeSource(null);
+    setGuessedTitle(null);
+    setManualQuery("");
+  }
+
+  async function proceedToEdit(candidateOverride) {
+    // `candidateOverride` findes fordi denne funktion nogle gange kaldes
+    // synkront lige efter `setSelectedCandidate` i samme funktion (feature
+    // #106) — React har på det tidspunkt endnu ikke opdateret
+    // `selectedCandidate`, så den nye kandidat skal medbringes eksplicit i
+    // stedet for at læses fra state.
+    const candidate = candidateOverride ?? selectedCandidate;
     setPreviewStatus("loading");
     try {
-      if (selectedCandidate.media_kind === "tv") {
-        const preview = await api.tvTmdbFullPreview(selectedCandidate.tmdb_id);
+      if (candidate.media_kind === "tv") {
+        const preview = await api.tvTmdbFullPreview(candidate.tmdb_id);
         setPreviewData({
           ...preview,
           barcode,
@@ -246,7 +291,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
           })),
         });
       } else {
-        const preview = await api.movieTmdbPreview(selectedCandidate.tmdb_id);
+        const preview = await api.movieTmdbPreview(candidate.tmdb_id);
         setPreviewData({ ...preview, barcode, barcode_source: barcodeSource, ...emptyDraftFields(user, wishlist) });
       }
       setPreviewStatus("ready");
@@ -377,127 +422,163 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
         </div>
       )}
 
-      {selectedCandidate && previewStatus !== "ready" && (
-        <div className="card review-form">
-          <div className="review-header">
-            <div className="candidate-poster">
-              {selectedCandidate.poster_url ? (
-                <img src={selectedCandidate.poster_url} alt={selectedCandidate.title} />
-              ) : (
-                "🎬"
-              )}
-            </div>
-            <div>
-              <h2>{selectedCandidate.title}</h2>
-              <p className="muted">{selectedCandidate.year}</p>
-            </div>
+      {/* Feature #106 — resten af "vent"-tilstandene: film der endnu ikke
+          har fået deres fulde forhåndsvisning hjem, en TV-kandidat hvis
+          dublet-/grupperings-tjek stadig kører, eller en fejl fra selve
+          forhåndsvisnings-hentningen. Vises kun når TV-mellemtrinnet
+          nedenfor IKKE er relevant — findes der noget at vælge mellem for
+          en TV-serie, er det den modal der har ordet. */}
+      {selectedCandidate &&
+        previewStatus !== "ready" &&
+        !(selectedCandidate.media_kind === "tv" && (existingTvShow || previewSeasons.length > 0)) && (
+          <div className="card scan-loading-card">
+            {previewStatus === "error" ? (
+              <>
+                <div className="banner banner-error">{t("scan.detailsFailed")}</div>
+                <button type="button" className="btn" onClick={backToCandidates}>
+                  {t("scan.backToCandidates")}
+                </button>
+              </>
+            ) : (
+              <p className="muted">{t("scan.loadingDetails")}</p>
+            )}
           </div>
+        )}
 
-          {duplicates.length > 0 && (
-            <div className="banner banner-error">
-              {t("scan.duplicateIntro", {
-                what: t(
-                  selectedCandidate.media_kind === "tv" ? "scan.duplicateShow" : "scan.duplicateMovie"
-                ),
-                where: duplicates
-                  .map((d) =>
-                    d.is_wishlist
-                      ? t("scan.duplicateOnWishlist")
-                      : `${t("scan.duplicateInLibrary")}${d.serial_number ? ` (#${d.serial_number})` : ""}`
-                  )
-                  .join(t("scan.duplicateJoin")),
-              })}
-            </div>
-          )}
-
-          {(existingTvShow?.seasons.length > 0 || previewSeasons.length > 0) && (
-            <div className="season-group-panel">
-              {/* BUGS.md #50 — panelet deles af bibliotekets og ønskelistens
-                  tilføj-panel, men talte kun om "ejerskab". Man ejer per
-                  definition ikke det man er ved at ønske sig, så teksten
-                  følger nu `wishlist`-prop'en. */}
-              <h3>
-                {t(
-                  existingTvShow
-                    ? wishlist
-                      ? "scan.seasonsAddToWish"
-                      : "scan.seasonsAddToShow"
-                    : wishlist
-                      ? "scan.seasonsPickWished"
-                      : "scan.seasonsPickOwned"
-                )}
-              </h3>
-              <p className="muted" style={{ margin: 0 }}>
-                {existingTvShow
-                  ? t(
-                      wishlist ? "scan.seasonsExistingWish" : "scan.seasonsExistingShow",
-                      { name: existingTvShow.name }
-                    )
-                  : t(wishlist ? "scan.seasonsNewWish" : "scan.seasonsNewShow")}
-              </p>
-              <div className="chip-row">
-                {(existingTvShow?.seasons ?? previewSeasons).map((season) => (
-                  <Chip
-                    key={season.season_number}
-                    label={`${
-                      season.name ?? t("scan.seasonFallback", { number: season.season_number })
-                    }${season.owned ? " ✓" : ""}`}
-                    active={selectedSeasonNumbers.includes(season.season_number)}
-                    onClick={() => toggleSeasonNumber(season.season_number)}
-                  />
-                ))}
-              </div>
-              {groupStatus === "error" && (
-                <div className="banner banner-error">
-                  {groupError ?? t("scan.seasonUpdateFailed")}
+      {/* Feature #106 — det ene TV-valg der ikke kan springes over: findes
+          der allerede en post af samme slags at gruppere sæson(er) ind i,
+          eller er der sæsoner at afkrydse på en helt ny serie, vises det
+          som en rigtig modal (ingen scroll nødvendig, dukker op med det
+          samme ved klik på kandidaten) i stedet for det tidligere in-page
+          "review-form"-kort. */}
+      {selectedCandidate &&
+        selectedCandidate.media_kind === "tv" &&
+        previewStatus !== "ready" &&
+        (existingTvShow || previewSeasons.length > 0) && (
+          <div className="modal-backdrop" onClick={backToCandidates}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <div className="modal-poster">
+                  {selectedCandidate.poster_url ? (
+                    <img src={selectedCandidate.poster_url} alt={selectedCandidate.title} />
+                  ) : (
+                    "📺"
+                  )}
                 </div>
-              )}
-              {existingTvShow && (
+                <div>
+                  <h2>{selectedCandidate.title}</h2>
+                  <p className="muted">{selectedCandidate.year}</p>
+                </div>
+                <button type="button" className="btn modal-close" onClick={backToCandidates}>
+                  ✕
+                </button>
+              </div>
+
+              <div className="modal-body">
+                {duplicates.length > 0 && (
+                  <div className="banner banner-error">
+                    {t("scan.duplicateIntro", {
+                      what: t("scan.duplicateShow"),
+                      where: duplicates
+                        .map((d) =>
+                          d.is_wishlist
+                            ? t("scan.duplicateOnWishlist")
+                            : `${t("scan.duplicateInLibrary")}${d.serial_number ? ` (#${d.serial_number})` : ""}`
+                        )
+                        .join(t("scan.duplicateJoin")),
+                    })}
+                  </div>
+                )}
+
+                <div className="season-group-panel">
+                  {/* BUGS.md #50 — panelet deles af bibliotekets og
+                      ønskelistens tilføj-panel, men talte kun om
+                      "ejerskab". Man ejer per definition ikke det man er
+                      ved at ønske sig, så teksten følger nu
+                      `wishlist`-prop'en. */}
+                  <h3>
+                    {t(
+                      existingTvShow
+                        ? wishlist
+                          ? "scan.seasonsAddToWish"
+                          : "scan.seasonsAddToShow"
+                        : wishlist
+                          ? "scan.seasonsPickWished"
+                          : "scan.seasonsPickOwned"
+                    )}
+                  </h3>
+                  <p className="muted" style={{ margin: 0 }}>
+                    {existingTvShow
+                      ? t(
+                          wishlist ? "scan.seasonsExistingWish" : "scan.seasonsExistingShow",
+                          { name: existingTvShow.name }
+                        )
+                      : t(wishlist ? "scan.seasonsNewWish" : "scan.seasonsNewShow")}
+                  </p>
+                  <div className="chip-row">
+                    {(existingTvShow?.seasons ?? previewSeasons).map((season) => (
+                      <Chip
+                        key={season.season_number}
+                        label={`${
+                          season.name ?? t("scan.seasonFallback", { number: season.season_number })
+                        }${season.owned ? " ✓" : ""}`}
+                        active={selectedSeasonNumbers.includes(season.season_number)}
+                        onClick={() => toggleSeasonNumber(season.season_number)}
+                      />
+                    ))}
+                  </div>
+                  {groupStatus === "error" && (
+                    <div className="banner banner-error">
+                      {groupError ?? t("scan.seasonUpdateFailed")}
+                    </div>
+                  )}
+                  {existingTvShow && (
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={addSeasonsToExistingShow}
+                      disabled={selectedSeasonNumbers.length === 0 || groupStatus === "saving"}
+                    >
+                      {t(
+                        groupStatus === "saving"
+                          ? "scan.addingSeasons"
+                          : wishlist
+                            ? "scan.addSeasonsToWish"
+                            : "scan.addSeasonsToShow"
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {previewStatus === "error" && (
+                  <div className="banner banner-error">{t("scan.detailsFailed")}</div>
+                )}
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn" onClick={backToCandidates}>
+                  {t("common.cancel")}
+                </button>
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={addSeasonsToExistingShow}
-                  disabled={selectedSeasonNumbers.length === 0 || groupStatus === "saving"}
+                  onClick={() => proceedToEdit()}
+                  disabled={previewStatus === "loading"}
                 >
                   {t(
-                    groupStatus === "saving"
-                      ? "scan.addingSeasons"
-                      : wishlist
-                        ? "scan.addSeasonsToWish"
-                        : "scan.addSeasonsToShow"
+                    previewStatus === "loading"
+                      ? "scan.loadingDetails"
+                      : existingTvShow
+                        ? wishlist
+                          ? "scan.createSeparateWish"
+                          : "scan.createSeparateShow"
+                        : "scan.continueToEdit"
                   )}
                 </button>
-              )}
+              </div>
             </div>
-          )}
-
-          {previewStatus === "error" && (
-            <div className="banner banner-error">{t("scan.detailsFailed")}</div>
-          )}
-
-          <div className="review-actions">
-            <button type="button" className="btn" onClick={() => setSelectedCandidate(null)}>
-              {t("common.cancel")}
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={proceedToEdit}
-              disabled={previewStatus === "loading"}
-            >
-              {t(
-                previewStatus === "loading"
-                  ? "scan.loadingDetails"
-                  : existingTvShow
-                    ? wishlist
-                      ? "scan.createSeparateWish"
-                      : "scan.createSeparateShow"
-                    : "scan.continueToEdit"
-              )}
-            </button>
           </div>
-        </div>
-      )}
+        )}
 
       {previewStatus === "ready" && previewData && selectedCandidate.media_kind === "tv" && (
         <TvShowDetailModal
@@ -508,6 +589,8 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
           allLocations={allLocations}
           attributeOptions={attributeOptions}
           serialPaddingWidth={serialPaddingWidth}
+          duplicates={duplicates}
+          onBackToCandidates={backToCandidates}
           onClose={resetFormAfterSave}
           onChanged={() => {
             setLastSavedKind("tv");
@@ -526,6 +609,8 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
           allLocations={allLocations}
           attributeOptions={attributeOptions}
           serialPaddingWidth={serialPaddingWidth}
+          duplicates={duplicates}
+          onBackToCandidates={backToCandidates}
           onClose={resetFormAfterSave}
           onChanged={() => {
             setLastSavedKind("movie");

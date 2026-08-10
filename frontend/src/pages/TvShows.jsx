@@ -859,6 +859,9 @@ export function TvShowDetailModal({
   // Feature #88 — valgfri, se den identiske note i Library.MovieDetailModal.
   plex,
   plexAvailability,
+  // Feature #106 — se den identiske note i Library.MovieDetailModal.
+  duplicates,
+  onBackToCandidates,
   onClose,
   onChanged,
 }) {
@@ -1075,6 +1078,24 @@ export function TvShowDetailModal({
         </div>
 
         <div className="modal-body">
+          {/* Feature #106 — se den identiske note i Library.MovieDetailModal.
+              Kun relevant her når TV-mellemtrinnet ikke selv har vist et
+              dublet-fund (dvs. kun sjældne kant-tilfælde), men banneret
+              koster intet at have med for en sikkerheds skyld. */}
+          {!show.id && duplicates?.length > 0 && (
+            <div className="banner banner-error">
+              {t("scan.duplicateIntro", {
+                what: t("scan.duplicateShow"),
+                where: duplicates
+                  .map((d) =>
+                    d.is_wishlist
+                      ? t("scan.duplicateOnWishlist")
+                      : `${t("scan.duplicateInLibrary")}${d.serial_number ? ` (#${d.serial_number})` : ""}`
+                  )
+                  .join(t("scan.duplicateJoin")),
+              })}
+            </div>
+          )}
           {show.overview && <p>{show.overview}</p>}
           {show.creators.length > 0 && (
             <p className="muted">
@@ -1369,6 +1390,12 @@ export function TvShowDetailModal({
             {show.id && (
               <button type="button" className="btn" onClick={cancelEditing} disabled={saving}>
                 {t("common.cancel")}
+              </button>
+            )}
+            {/* Feature #106 — se den identiske note i Library.MovieDetailModal. */}
+            {!show.id && onBackToCandidates && (
+              <button type="button" className="btn" onClick={onBackToCandidates} disabled={saving}>
+                {t("scan.backToCandidates")}
               </button>
             )}
             <button

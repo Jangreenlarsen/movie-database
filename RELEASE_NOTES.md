@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.83.0 (build 0114) — 2026-08-10
+
+- **Et klik på en film i scan/søg går nu direkte til redigering** — intet mere scroll ned til et separat "Fortsæt til redigering"-kort.
+- **TV-serier har fået en rigtig dialog** til det ene valg der stadig kræver et klik: tilføj sæson(er) til en serie du allerede har, eller opret som ny.
+- **Ny "← Vælg en anden"-knap** i rediger-boksen: valgte du forkert, går du tilbage til kandidat-listen uden at skulle scanne/søge forfra.
+
 ## v0.82.0 (build 0113) — 2026-08-10
 
 - **BIO-sidens banner glider nu blødt ud i resten af siden** i stedet for at stå i en skarpkantet mørk boks — en varm, sløret farvetone fra skiltet selv toner ud nedad.

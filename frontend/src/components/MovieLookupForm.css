@@ -96,26 +96,6 @@
   color: var(--text-muted);
 }
 
-.review-form {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 20px;
-}
-
-.review-header {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-}
-
-.review-header .candidate-poster {
-  width: 70px;
-  flex-shrink: 0;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
 .field-label {
   font-size: 0.78rem;
   font-weight: 700;
@@ -126,10 +106,15 @@
   display: block;
 }
 
-.review-actions {
+/* Feature #106 — kort "vent"-tilstand mens en films fulde forhåndsvisning
+   hentes, eller mens en TV-kandidats dublet-/grupperings-tjek kører, før vi
+   ved om der er et valg at vise. */
+.scan-loading-card {
   display: flex;
-  gap: 8px;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 20px;
 }
 
 .season-group-panel {
@@ -154,14 +139,5 @@
   .candidate-grid {
     grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     gap: 10px;
-  }
-
-  .review-actions {
-    flex-direction: column-reverse;
-  }
-
-  .review-actions .btn {
-    width: 100%;
-    justify-content: center;
   }
 }

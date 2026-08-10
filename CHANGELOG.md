@@ -2,6 +2,20 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.83.0 build 0114] — 2026-08-10 — feature: scan/søg går direkte til redigering, med tilbage-knap i rediger-boksen (FEATURES.md #106)
+
+Jans ønske: et klik på en kandidat i scan-/søge-flowet skulle gå direkte til redigering i stedet for at kræve et scroll ned til et separat "review-form"-kort og et ekstra klik på "Fortsæt til redigering" dernede — og rediger-boksen manglede en vej tilbage til kandidat-valget hvis det viste sig at være det forkerte match.
+
+For film er det tidligere mellemtrin fjernet helt: `selectCandidate` kalder nu `proceedToEdit` med det samme, og dublet-tjekket (som ikke ændrer noget ved selve oprettelsen) kører parallelt og vises som et banner *inde i* `MovieDetailModal` i stedet for at stoppe flowet. `proceedToEdit` tager nu en valgfri `candidateOverride`, fordi den kaldes synkront lige efter `setSelectedCandidate` — React har på det tidspunkt endnu ikke opdateret `selectedCandidate`.
+
+For TV-serier er der ét reelt valg der ikke kan springes stiltiende over: findes der allerede en post af samme slags (bibliotek/ønske), skal brugeren selv vælge mellem at tilføje sæson(er) til den (feature #53) eller oprette en ny separat serie — ellers ville hvert scan af en ny sæson-boks stille oprette sin egen serie. Det samme gælder sæson-forudvalget for en helt ny serie (feature #54): det skal ske *før* rediger-boksen, fordi dens sæson-liste er read-only i kladde-tilstand (ingen `show.id` at gemme et toggle imod endnu). Begge vises nu som en rigtig `modal-backdrop`/`modal-card`-dialog (dukker op med det samme, intet scroll) i stedet for det gamle in-page `.review-form`-kort — og kun når der reelt er et valg; er der intet at gruppere ind i og ingen sæsoner at vælge, fortsætter flowet selv direkte til redigering ligesom for film.
+
+`MovieDetailModal`/`TvShowDetailModal` har fået to nye, valgfri props — `duplicates` og `onBackToCandidates` — kun sat af `MovieLookupForm` i kladde-tilstand (`!movie.id`/`!show.id`). En ny "← Vælg en anden"-knap i rediger-boksens fod kalder `onBackToCandidates`, som rydder det aktuelle valg uden at rydde `candidates`/`barcode`/`manualQuery` — modsat `resetFormAfterSave`, som stadig bruges når hele flowet er afsluttet (gemt, eller sæson(er) tilføjet til en eksisterende serie).
+
+De nu ubrugte `.review-form`/`.review-header`/`.review-actions`-CSS-klasser er fjernet fra `MovieLookupForm.css`.
+
+Berørte filer: `frontend/src/components/MovieLookupForm.jsx`, `frontend/src/components/MovieLookupForm.css`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`, `version.json`.
+
 ## [0.82.0 build 0113] — 2026-08-10 — feature: skiltets farver som udtonet baggrund for toppen af BIO-siden (FEATURES.md #105)
 
 Jan pegede direkte på det #104 efterlod: banneret stod i en flad, mørk boks — en isoleret enhed frem for en del af siden. Ønsket var at klippe baggrunden fra skiltet og bruge den som baggrund for resten af siden, så toppen glider ind i helheden.

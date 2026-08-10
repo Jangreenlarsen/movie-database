@@ -177,6 +177,7 @@
   "scan.createSeparateWish": "Opret som nyt separat ønske i stedet",
   "scan.createSeparateShow": "Opret som ny separat serie i stedet",
   "scan.continueToEdit": "Fortsæt til redigering",
+  "scan.backToCandidates": "← Vælg en anden",
   "scan.savedToWishlist": "{kind} tilføjet til ønskeliste!",
   "scan.savedToLibrary": "{kind} gemt i biblioteket!",
   "scan.seasonAdded": "Sæson tilføjet til \"{name}\"!",

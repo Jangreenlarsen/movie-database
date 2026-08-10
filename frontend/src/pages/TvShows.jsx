@@ -111,6 +111,9 @@ export default function TvShows({
   const [selectedFormats, setSelectedFormats] = useState([]);
   const [selectedAudioTypes, setSelectedAudioTypes] = useState([]);
   const [selectedMediaTypes, setSelectedMediaTypes] = useState([]);
+  // Feature #111 — se den identiske note i Library.jsx.
+  const [selectedGenres, setSelectedGenres] = useState([]);
+  const [allGenres, setAllGenres] = useState([]);
   const [watchedFilter, setWatchedFilter] = useState(null);
   const [sortLevels, setSortLevels] = useState(() => initialSortLevels(user.settings));
   const [presets, setPresets] = useState(user.settings.tv_sort_presets ?? []);
@@ -186,6 +189,7 @@ export default function TvShows({
     api.listOwners().then(setAllOwners).catch(() => {});
     api.listLocations().then(setAllLocations).catch(() => {});
     api.tvAttributeOptions().then(setAttributeOptions).catch(() => {});
+    api.listTvGenres().then(setAllGenres).catch(() => {});
     api
       .getSerialNumberConfig()
       .then((config) => setSerialPaddingWidth(config.padding_width))
@@ -199,6 +203,7 @@ export default function TvShows({
       format: selectedFormats,
       audioTypes: selectedAudioTypes,
       mediaTypes: selectedMediaTypes,
+      genres: selectedGenres,
       sort: sortLevels,
       wishlist,
       watched: watchedFilter,
@@ -218,6 +223,7 @@ export default function TvShows({
     selectedFormats,
     selectedAudioTypes,
     selectedMediaTypes,
+    selectedGenres,
     sortLevels,
     watchedFilter,
     pageSize,
@@ -239,6 +245,7 @@ export default function TvShows({
     selectedFormats,
     selectedAudioTypes,
     selectedMediaTypes,
+    selectedGenres,
     sortLevels,
     watchedFilter,
     page,
@@ -351,6 +358,7 @@ export default function TvShows({
     selectedFormats.length +
     selectedAudioTypes.length +
     selectedMediaTypes.length +
+    selectedGenres.length +
     (watchedFilter != null ? 1 : 0);
   const hasActiveFilters = activeFilterCount > 0;
   const sortIsDefault = sortLevelsAreDefault(sortLevels);
@@ -368,6 +376,7 @@ export default function TvShows({
     setSelectedFormats([]);
     setSelectedAudioTypes([]);
     setSelectedMediaTypes([]);
+    setSelectedGenres([]);
     setWatchedFilter(null);
   }
 
@@ -609,6 +618,22 @@ export default function TvShows({
                       label={tag}
                       active={selectedTags.includes(tag)}
                       onClick={() => setSelectedTags((prev) => toggleValue(prev, tag))}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Feature #111 — se den identiske note i Library.jsx. */}
+            {allGenres.length > 0 && (
+              <div className="filter-group">
+                <span className="filter-group-label">{t("field.genres")}</span>
+                <div className="chip-row">
+                  {allGenres.map((genre) => (
+                    <Chip
+                      key={genre}
+                      label={genre}
+                      active={selectedGenres.includes(genre)}
+                      onClick={() => setSelectedGenres((prev) => toggleValue(prev, genre))}
                     />
                   ))}
                 </div>

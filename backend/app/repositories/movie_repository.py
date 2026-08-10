@@ -406,6 +406,19 @@ async def distinct_locations(db: AsyncIOMotorDatabase) -> list[str]:
     return [v for v in values if v]
 
 
+async def distinct_genres(db: AsyncIOMotorDatabase) -> list[str]:
+    """Feature #111 — genre-værdier der rent faktisk findes i biblioteket, til
+    filter-panelets afkrydsning. `.distinct()` på et array-felt unwinder det
+    automatisk til de enkelte værdier — samme mekanisme som
+    `distinct_owners`/`distinct_locations`, bare på et array-felt i stedet
+    for et skalar-felt. Bevidst IKKE slået sammen med TV-seriernes genrer
+    (modsat owner/location i attribute_service): TMDb's film- og
+    serie-genrer er to forskellige lister med delvist overlap, og hver fane
+    filtrerer alligevel kun sin egen ressource."""
+    values = await db[COLLECTION].distinct("genres")
+    return sorted({v for v in values if v}, key=str.casefold)
+
+
 async def set_serial_number(db: AsyncIOMotorDatabase, movie_id: str, serial_number: int) -> None:
     await db[COLLECTION].update_one(
         {"_id": ObjectId(movie_id)}, {"$set": {"serial_number": serial_number}}
@@ -431,6 +444,7 @@ def _build_find_many_filter(
     watched: bool | None = None,
     cast: str | None = None,
     director: str | None = None,
+    genres: list[str] | None = None,
 ) -> dict:
     """`is_wishlist=False` matches both `is_wishlist: false` *and* documents
     that predate this field entirely (`$ne: True`, not a `False` equality
@@ -451,6 +465,11 @@ def _build_find_many_filter(
         filter_["audio_types"] = {"$in": audio_types}
     if media_types:
         filter_["media_type"] = {"$in": media_types}
+    if genres:
+        # $in, ikke $all — samme "vis alt der matcher mindst én valgt chip"
+        # semantik som format/audio_types/media_types ovenfor, ikke
+        # tags_normalized's "skal have dem alle".
+        filter_["genres"] = {"$in": genres}
     if watched is not None:
         # Same "missing field != False" pitfall as is_wishlist above — movies
         # created before this feature (or simply never marked) have no
@@ -478,6 +497,7 @@ async def find_many(
     director: str | None = None,
     skip: int = 0,
     limit: int | None = None,
+    genres: list[str] | None = None,
 ) -> list[dict]:
     """`sort_spec` is a list of up to `MAX_SORT_LEVELS` (already-whitelisted
     mongo field name, direction) tuples for compound multi-level sorting
@@ -490,7 +510,7 @@ async def find_many(
     library view (feature #15), which used to be silently capped at 500
     with no way to see or reach anything past it."""
     filter_ = _build_find_many_filter(
-        query, normalized_tags, formats, audio_types, media_types, is_wishlist, watched, cast, director
+        query, normalized_tags, formats, audio_types, media_types, is_wishlist, watched, cast, director, genres
     )
     cursor = db[COLLECTION].find(filter_)
     cursor = cursor.sort(sort_spec) if sort_spec else cursor.sort(DEFAULT_SORT_FIELD, -1)
@@ -512,9 +532,10 @@ async def count_many(
     watched: bool | None = None,
     cast: str | None = None,
     director: str | None = None,
+    genres: list[str] | None = None,
 ) -> int:
     filter_ = _build_find_many_filter(
-        query, normalized_tags, formats, audio_types, media_types, is_wishlist, watched, cast, director
+        query, normalized_tags, formats, audio_types, media_types, is_wishlist, watched, cast, director, genres
     )
     return await db[COLLECTION].count_documents(filter_)
 

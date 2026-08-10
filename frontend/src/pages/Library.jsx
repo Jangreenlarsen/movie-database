@@ -136,6 +136,11 @@ export default function Library({
   const [selectedFormats, setSelectedFormats] = useState([]);
   const [selectedAudioTypes, setSelectedAudioTypes] = useState([]);
   const [selectedMediaTypes, setSelectedMediaTypes] = useState([]);
+  // Feature #111 — genrer der rent faktisk findes i biblioteket (distinct
+  // fra backend, ikke en fast enum som format/audio_types/media_type), så
+  // filter-panelet kun viser genrer der reelt kan matche noget.
+  const [selectedGenres, setSelectedGenres] = useState([]);
+  const [allGenres, setAllGenres] = useState([]);
   const [watchedFilter, setWatchedFilter] = useState(null); // null | true | false
   const [personFilter, setPersonFilter] = useState(null); // null | { type: "cast" | "director", name }
   const [sortLevels, setSortLevels] = useState(() => initialSortLevels(user.settings));
@@ -218,6 +223,7 @@ export default function Library({
     api.listOwners().then(setAllOwners).catch(() => {});
     api.listLocations().then(setAllLocations).catch(() => {});
     api.attributeOptions().then(setAttributeOptions).catch(() => {});
+    api.listMovieGenres().then(setAllGenres).catch(() => {});
     api
       .getSerialNumberConfig()
       .then((config) => setSerialPaddingWidth(config.padding_width))
@@ -231,6 +237,7 @@ export default function Library({
       format: selectedFormats,
       audioTypes: selectedAudioTypes,
       mediaTypes: selectedMediaTypes,
+      genres: selectedGenres,
       sort: sortLevels,
       wishlist,
       watched: watchedFilter,
@@ -254,6 +261,7 @@ export default function Library({
     selectedFormats,
     selectedAudioTypes,
     selectedMediaTypes,
+    selectedGenres,
     sortLevels,
     watchedFilter,
     personFilter,
@@ -276,6 +284,7 @@ export default function Library({
     selectedFormats,
     selectedAudioTypes,
     selectedMediaTypes,
+    selectedGenres,
     sortLevels,
     watchedFilter,
     personFilter,
@@ -395,6 +404,7 @@ export default function Library({
     selectedFormats.length +
     selectedAudioTypes.length +
     selectedMediaTypes.length +
+    selectedGenres.length +
     (watchedFilter != null ? 1 : 0) +
     (personFilter != null ? 1 : 0);
   const hasActiveFilters = activeFilterCount > 0;
@@ -413,6 +423,7 @@ export default function Library({
     setSelectedFormats([]);
     setSelectedAudioTypes([]);
     setSelectedMediaTypes([]);
+    setSelectedGenres([]);
     setWatchedFilter(null);
     setPersonFilter(null);
   }
@@ -654,6 +665,7 @@ export default function Library({
 
         {showFilterPanel &&
           (allTags.length > 0 ||
+            allGenres.length > 0 ||
             attributeOptions.formats.length > 0 ||
             attributeOptions.media_types.length > 0) && (
           <div className="filter-panel">
@@ -667,6 +679,24 @@ export default function Library({
                       label={tag}
                       active={selectedTags.includes(tag)}
                       onClick={() => setSelectedTags((prev) => toggleValue(prev, tag))}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Feature #111 — samme "distinct fra biblioteket" mønster som
+                tags ovenfor, ikke en fast enum som format/lyd-type/medietype
+                nedenfor. */}
+            {allGenres.length > 0 && (
+              <div className="filter-group">
+                <span className="filter-group-label">{t("field.genres")}</span>
+                <div className="chip-row">
+                  {allGenres.map((genre) => (
+                    <Chip
+                      key={genre}
+                      label={genre}
+                      active={selectedGenres.includes(genre)}
+                      onClick={() => setSelectedGenres((prev) => toggleValue(prev, genre))}
                     />
                   ))}
                 </div>

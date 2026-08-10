@@ -162,6 +162,53 @@ async def test_get_missing_tv_show_returns_404(client):
     assert response.status_code == 404
 
 
+async def test_filter_tv_shows_by_genre_matches_any_selected(client):
+    """Feature #111 — se den identiske test i test_movies.py."""
+    await client.post(
+        "/api/tv-shows",
+        json={"name": "Horror Show", "genres": ["Horror"], "media_type": "Fysisk", "format": "DVD"},
+    )
+    await client.post(
+        "/api/tv-shows",
+        json={
+            "name": "Action Comedy Show",
+            "genres": ["Action", "Comedy"],
+            "media_type": "Fysisk",
+            "format": "DVD",
+        },
+    )
+
+    by_horror = await client.get("/api/tv-shows", params={"genres": "Horror"})
+    assert [s["name"] for s in by_horror.json()["items"]] == ["Horror Show"]
+
+    by_either = await client.get("/api/tv-shows", params={"genres": "Horror,Comedy"})
+    assert sorted(s["name"] for s in by_either.json()["items"]) == [
+        "Action Comedy Show",
+        "Horror Show",
+    ]
+
+
+async def test_list_tv_genres_returns_distinct_values_from_library(client):
+    """Feature #111 — se den identiske test i test_movies.py."""
+    await client.post(
+        "/api/tv-shows",
+        json={"name": "Horror 1", "genres": ["Horror"], "media_type": "Fysisk", "format": "DVD"},
+    )
+    await client.post(
+        "/api/tv-shows",
+        json={
+            "name": "Horror Comedy",
+            "genres": ["Horror", "Comedy"],
+            "media_type": "Fysisk",
+            "format": "DVD",
+        },
+    )
+
+    response = await client.get("/api/tv-shows/genres")
+    assert response.status_code == 200
+    assert response.json() == ["Comedy", "Horror"]
+
+
 async def test_update_tv_show_tags_and_location(client):
     created = await client.post("/api/tv-shows", json={"name": "Editable Show", "media_type": "Fysisk", "format": "DVD"})
     show_id = created.json()["id"]

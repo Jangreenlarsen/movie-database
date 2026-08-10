@@ -46,12 +46,14 @@ async def list_movies(
     director: str | None = Query(default=None, description="Exact director name match."),
     page: int | None = Query(default=None, ge=1),
     page_size: int | None = Query(default=None, ge=1, le=500),
+    genres: str | None = Query(default=None),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     tag_list = tags.split(",") if tags else None
     format_list = format.split(",") if format else None
     audio_type_list = audio_types.split(",") if audio_types else None
     media_type_list = media_types.split(",") if media_types else None
+    genre_list = genres.split(",") if genres else None
     return await movie_service.list_movies(
         db,
         q,
@@ -66,6 +68,7 @@ async def list_movies(
         director,
         page,
         page_size,
+        genre_list,
     )
 
 
@@ -125,6 +128,15 @@ async def attribute_options() -> dict:
         "audio_types": [a.value for a in AudioType],
         "media_types": [m.value for m in MediaType],
     }
+
+
+@router.get("/genres", response_model=list[str])
+async def list_genres(db: AsyncIOMotorDatabase = Depends(get_database)):
+    """Feature #111 — genrer der rent faktisk findes i biblioteket, til
+    filter-panelet. I modsætning til attribute-options er dette ikke en fast
+    enum (TMDb's genre-liste er ikke modelleret som en Python-enum her),
+    så det er et distinct-opslag som owner/location, ikke en statisk liste."""
+    return await movie_service.list_genres(db)
 
 
 @router.get(

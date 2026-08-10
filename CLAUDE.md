@@ -63,7 +63,7 @@ Hver film/serie kan tildeles frie, **brugerdefinerede tags** (fx "Julefilm", "Se
 
 11. **Runtime-logging**: Backend skal logge alle eksterne API-kald (TMDb/UPC) samt fejl via Python `logging`-modulet med struktureret kontekst (fx UPC/TMDb-id). Log-niveau konfigureres via miljøvariabel (`LOG_LEVEL`).
 
-12. **Read/write rettigheder**: Claude har forhåndsgodkendelse (via [.claude/settings.local.json](.claude/settings.local.json)) til at læse, skrive og redigere filer i projektmappen.
+12. **Read/write rettigheder**: Claude har forhåndsgodkendelse (via [.claude/settings.local.json](.claude/settings.local.json)) til at læse, skrive og redigere filer i projektmappen. Samme forhåndsgodkendelse dækker **alle kommandoer der er relevante for at køre og teste projektet** — uden at spørge først: `pytest` (backend), `npm test`/`npm run lint`/`npm run build` (frontend), samt at starte/stoppe `uvicorn`/`npm run dev` lokalt til visuel verifikation (regel 18). Kun ægte destruktive handlinger (force-push, `git reset --hard`, sletning af andet end egne midlertidige testdata) kræver stadig eksplicit accept, jf. [.claude/settings.local.json](.claude/settings.local.json)'s `deny`-liste.
 
 13. **Versionskontrol**: Projektet er et git-repo. Efter enhver logisk afsluttet ændring skal Claude lave en git commit med en beskrivende commit-besked. Aldrig bulk-commits af urelaterede ændringer.
 

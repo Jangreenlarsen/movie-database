@@ -92,6 +92,7 @@ export const api = {
       director,
       page,
       pageSize,
+      genres,
     } = {}
   ) => {
     const params = new URLSearchParams();
@@ -114,6 +115,7 @@ export const api = {
     // — used by Print/Voldby BIO, which need the whole filtered set.
     if (page != null) params.set("page", String(page));
     if (pageSize != null) params.set("page_size", String(pageSize));
+    if (genres?.length) params.set("genres", genres.join(","));
     const query = params.toString();
     return request(`/movies${query ? `?${query}` : ""}`);
   },
@@ -130,6 +132,7 @@ export const api = {
   listOwners: () => request("/owners"),
   listLocations: () => request("/locations"),
   attributeOptions: () => request("/movies/attribute-options"),
+  listMovieGenres: () => request("/movies/genres"),
   checkDuplicate: (tmdbId) =>
     request(`/movies/check-duplicate?${new URLSearchParams({ tmdb_id: tmdbId })}`),
   getCollection: (collectionId) => request(`/movies/collections/${collectionId}`),
@@ -229,7 +232,7 @@ export const api = {
 
   // TV-serier (feature #47) — egen ressource, samme kontrakt-form som film.
   listTvShows: (
-    { q, tags, format, audioTypes, mediaTypes, sort, wishlist, watched, page, pageSize } = {}
+    { q, tags, format, audioTypes, mediaTypes, sort, wishlist, watched, page, pageSize, genres } = {}
   ) => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
@@ -245,6 +248,7 @@ export const api = {
     if (watched != null) params.set("watched", String(watched));
     if (page != null) params.set("page", String(page));
     if (pageSize != null) params.set("page_size", String(pageSize));
+    if (genres?.length) params.set("genres", genres.join(","));
     const query = params.toString();
     return request(`/tv-shows${query ? `?${query}` : ""}`);
   },
@@ -256,6 +260,7 @@ export const api = {
   deleteTvShow: (id) => request(`/tv-shows/${id}`, { method: "DELETE" }),
   listDeletedTvShows: () => request("/tv-shows/deleted"),
   tvAttributeOptions: () => request("/tv-shows/attribute-options"),
+  listTvGenres: () => request("/tv-shows/genres"),
   checkTvDuplicate: (tmdbId) =>
     request(`/tv-shows/check-duplicate?${new URLSearchParams({ tmdb_id: tmdbId })}`),
   tvTmdbSearch: (query) =>

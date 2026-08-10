@@ -15,6 +15,22 @@ import I18nProvider from "./i18n/I18nProvider";
 import { SOURCE_LANGUAGE, readStoredLanguage, storeLanguage, useT } from "./i18n";
 import "./App.css";
 
+// Feature #112 — browser-tilbage-knappen skal kunne bladre gennem fanerne.
+// Ingen router-bibliotek (samme begrundelse som /bio og /login's rene
+// pathname-tjek nedenfor): et hash er nok til at give hver fane sin egen
+// historik-post uden at pille ved pathname, som /bio og /login allerede
+// bruger. `window.location.hash = "..."` skubber selv en historik-post og
+// udløser `hashchange` — ingen manuel `history.pushState` nødvendig.
+const TAB_NAMES = ["library", "tv", "wishlist", "cinema", "print", "stats", "settings"];
+// Faner en guest ikke må lande på via et gammelt/delt hash-link — se
+// AppShell's identiske `!isGuest`-betingelser i navigationen.
+const GUEST_RESTRICTED_TABS = ["wishlist", "print", "stats"];
+
+function tabFromHash() {
+  const hash = window.location.hash.slice(1);
+  return TAB_NAMES.includes(hash) ? hash : "cinema";
+}
+
 /**
  * Feature #89 — sproget kommer fra brugerens egne indstillinger, så det
  * følger med på tværs af enheder. De offentlige skærme (Voldby BIO på /bio
@@ -25,8 +41,10 @@ import "./App.css";
 function App() {
   // Jans ønske 2026-08-04: efter login lander man på Voldby BIO i stedet
   // for filmbiblioteket — gælder både et frisk login og en genindlæst side
-  // med en allerede gyldig session, da begge ender her.
-  const [tab, setTab] = useState("cinema");
+  // med en allerede gyldig session, da begge ender her. Initialiseres fra et
+  // evt. hash i URL'en, så et direkte/delt link til en bestemt fane (eller
+  // et tryk på tilbage-knappen efter en genindlæsning) rammer rigtigt.
+  const [tab, setTabState] = useState(tabFromHash);
   // Feature #97 — sproget på de skærme der kommer før login. Ligger i
   // localStorage, ikke i databasen: der er ingen bruger at gemme det på
   // endnu. Så snart man er logget ind, vinder kontoens eget sprog.
@@ -39,6 +57,39 @@ function App() {
 
   const [user, setUser] = useState(undefined); // undefined = checking, null = logged out
   const [versionInfo, setVersionInfo] = useState(null);
+  // Feature #72 — se den identiske note nedenfor ved AppShell-kaldet. Regnet
+  // ud her (ikke kun nede ved returnen) så hash-vagten nedenfor kan bruge
+  // den, uden at bryde reglen om at hooks altid kaldes ubetinget.
+  const isGuest = user?.role === "guest";
+
+  // Feature #112 — selve tilbage-knap-koblingen: et fane-skift sætter
+  // hash'et, og `hashchange` (udløst af browserens frem/tilbage-knapper
+  // lige såvel som af linjen ovenfor) er den ENESTE ting der opdaterer
+  // `tab`-state — ét kodespor for begge veje ind, i stedet for at skulle
+  // holde et programmatisk sæt og en event-lytter synkroniseret hver for
+  // sig.
+  function setTab(next) {
+    if (next === tab) return;
+    window.location.hash = next;
+  }
+
+  useEffect(() => {
+    function onHashChange() {
+      setTabState(tabFromHash());
+    }
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
+  // En guest der lander på en begrænset fane via et gammelt hash (fx et
+  // bogmærke sat dengang de var standard-bruger) sendes til Voldby BIO i
+  // stedet for at se en fane der reelt intet indhold viser for dem.
+  useEffect(() => {
+    if (isGuest && GUEST_RESTRICTED_TABS.includes(tab)) {
+      setTab("cinema");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGuest, tab]);
 
   useEffect(() => {
     api
@@ -147,8 +198,8 @@ function App() {
 
   // Feature #72 — guest is read-only: Ønsker/Print/Statistik all involve
   // either writing (ønske en film) or aren't part of "se film/TV-bibliotek",
-  // so they're hidden entirely rather than just disabled.
-  const isGuest = user.role === "guest";
+  // so they're hidden entirely rather than just disabled. (Computed once,
+  // near the top of App() — see the comment there.)
 
   return (
     <I18nProvider language={user.settings?.language ?? SOURCE_LANGUAGE}>

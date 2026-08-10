@@ -37,15 +37,17 @@ async def list_tv_shows(
     watched: bool | None = Query(default=None),
     page: int | None = Query(default=None, ge=1),
     page_size: int | None = Query(default=None, ge=1, le=500),
+    genres: str | None = Query(default=None),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     tag_list = tags.split(",") if tags else None
     format_list = format.split(",") if format else None
     audio_type_list = audio_types.split(",") if audio_types else None
     media_type_list = media_types.split(",") if media_types else None
+    genre_list = genres.split(",") if genres else None
     return await tv_show_service.list_tv_shows(
         db, q, tag_list, format_list, audio_type_list, media_type_list, sort, wishlist, watched,
-        page, page_size,
+        page, page_size, genre_list,
     )
 
 
@@ -98,6 +100,12 @@ async def attribute_options() -> dict:
         "audio_types": [a.value for a in AudioType],
         "media_types": [m.value for m in MediaType],
     }
+
+
+@router.get("/genres", response_model=list[str])
+async def list_genres(db: AsyncIOMotorDatabase = Depends(get_database)):
+    """Feature #111 — se den identiske note i api/movies.py."""
+    return await tv_show_service.list_genres(db)
 
 
 @router.get("/deleted", response_model=list[DeletedTvShow])

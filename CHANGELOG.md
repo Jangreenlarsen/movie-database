@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.88.0 build 0119] — 2026-08-10 — feature: genre-filter (FEATURES.md #111) + browser-tilbage mellem faner (FEATURES.md #112)
+
+To uafhængige features:
+
+**Genrer som filtrerbart felt**: `genres` fandtes allerede som TMDb-hentet metadata (vist i detaljevisningen, og allerede med i `sync_all_from_tmdb` for både film og TV-serier — verificeret eksplicit efter Jans opfølgning "synkronisering fra TMDB skal opdatere det ny felt også", ingen kodeændring nødvendig dér). Det nye er filtrerbarheden. TMDb's genre-liste er ikke modelleret som en Python-enum her (i modsætning til Format/Lyd-type/Medietype), så genrer følger tags/lokation/ejers "distinct fra biblioteket"-mønster i stedet for attribute-options' faste liste: `movie_repository.distinct_genres`/`tv_show_repository.distinct_genres` (nye funktioner) bag nye `GET /api/movies/genres`/`GET /api/tv-shows/genres`-endpoints — kaldt fra service-laget (`movie_service.list_genres`/`tv_show_service.list_genres`), ikke direkte fra API-routeren, jf. CLAUDE.md regel 5's lag-arkitektur. Bevidst IKKE slået sammen på tværs af film/TV (modsat owner/location i `attribute_service.py`): TMDb's film- og serie-genre-lister er reelt forskellige lister, og hver fanes filter-panel filtrerer alligevel kun sin egen ressource. `$in`-semantik (mindst én valgt genre matcher), samme som format/audio_types/media_types, ikke tags' `$all`.
+
+**Browser-tilbage mellem fanerne**: appen har bevidst intet router-bibliotek (samme begrundelse som `/bio`/`/login`'s rene pathname-tjek), så løsningen er et URL-hash pr. fane (`#library`, `#tv`, `#wishlist`, `#cinema`, `#print`, `#stats`, `#settings`). `window.location.hash = "..."` skubber selv en historik-post og udløser `hashchange` — den ENESTE ting der opdaterer `tab`-state, så et klik og browserens egen frem/tilbage-knap går gennem samme kodesti i stedet for to der kan drive fra hinanden. `tab` initialiseres fra et evt. hash ved opstart (direkte/delt link til en bestemt fane virker nu også). En guest der lander på en begrænset fane (Ønsker/Print/Statistik) via et gammelt hash sendes til Voldby BIO.
+
+**Derudover**: `.claude/settings.local.json` og denne fils regel 12 er udvidet til eksplicit at nævne at test-/build-/dev-server-kommandoer (`pytest`, `npm test`, `npm run lint`, `npm run build`, `npm run dev`, `uvicorn`) er forhåndsgodkendt uden at skulle spørge — var reelt allerede dækket af den eksisterende `bypassPermissions`-tilstand, men er nu skrevet eksplicit ind i stedet for kun underforstået.
+
+Berørte filer: `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`, `backend/app/api/movies.py`, `backend/app/api/tv_shows.py`, `frontend/src/api/client.js`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/App.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `.claude/settings.local.json`, `CLAUDE.md`, `FEATURES.md`, `version.json`.
+
 ## [0.87.0 build 0118] — 2026-08-10 — feature: personligt lyst/mørkt tema (FEATURES.md #110)
 
 Jan bad om at kunne vælge lyst eller mørkt tema under Indstillinger, personligt pr. bruger.

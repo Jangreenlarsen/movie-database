@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.88.0 (build 0119) — 2026-08-10
+
+- **Nyt: filtrér på genre** i både Film og TV-serier — en ny knap-gruppe i filter-panelet, ved siden af tags/format/lyd-type/medietype.
+- **Nyt: browser-tilbage-knappen virker nu mellem fanerne.** Skifter du fra Film til TV-serier til Indstillinger, kan du bladre tilbage gennem dem med telefonens/browserens egen tilbage-knap, i stedet for at forlade appen.
+
 ## v0.87.0 (build 0118) — 2026-08-10
 
 - **Nyt: vælg lyst eller mørkt tema.** Under Indstillinger → Konto, lige under sprogvalget. Personligt pr. bruger og følger med uanset hvilken enhed du logger ind fra. Vælger du ingen af delene, følger appen automatisk din enheds egen indstilling, som hidtil.

@@ -200,6 +200,58 @@ async def test_filter_by_format_and_audio_type(client):
     assert [m["title"] for m in by_audio.json()["items"]] == ["DVD Stereo"]
 
 
+async def test_filter_by_genre_matches_any_selected(client):
+    """Feature #111 — $in-semantik: mindst én valgt genre skal matche, samme
+    som format/audio_types/media_types, ikke tags' $all."""
+    await client.post(
+        "/api/movies",
+        json={"title": "Horror Movie", "genres": ["Horror"], "media_type": "Fysisk", "format": "DVD"},
+    )
+    await client.post(
+        "/api/movies",
+        json={
+            "title": "Action Comedy",
+            "genres": ["Action", "Comedy"],
+            "media_type": "Fysisk",
+            "format": "DVD",
+        },
+    )
+    await client.post(
+        "/api/movies",
+        json={"title": "Drama Movie", "genres": ["Drama"], "media_type": "Fysisk", "format": "DVD"},
+    )
+
+    by_horror = await client.get("/api/movies", params={"genres": "Horror"})
+    assert [m["title"] for m in by_horror.json()["items"]] == ["Horror Movie"]
+
+    by_either = await client.get("/api/movies", params={"genres": "Horror,Comedy"})
+    assert sorted(m["title"] for m in by_either.json()["items"]) == [
+        "Action Comedy",
+        "Horror Movie",
+    ]
+
+
+async def test_list_genres_returns_distinct_values_from_library(client):
+    """Feature #111 — distinct fra biblioteket, ikke en fast enum-liste."""
+    await client.post(
+        "/api/movies",
+        json={"title": "Horror 1", "genres": ["Horror"], "media_type": "Fysisk", "format": "DVD"},
+    )
+    await client.post(
+        "/api/movies",
+        json={
+            "title": "Horror Comedy",
+            "genres": ["Horror", "Comedy"],
+            "media_type": "Fysisk",
+            "format": "DVD",
+        },
+    )
+
+    response = await client.get("/api/movies/genres")
+    assert response.status_code == 200
+    assert response.json() == ["Comedy", "Horror"]
+
+
 async def test_media_type_roundtrip_and_filter(client):
     """Regression test for FEATURES.md #35."""
     physical = await client.post(

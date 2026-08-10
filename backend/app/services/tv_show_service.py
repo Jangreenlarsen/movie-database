@@ -283,6 +283,7 @@ async def list_tv_shows(
     watched: bool | None = None,
     page: int | None = None,
     page_size: int | None = None,
+    genres: list[str] | None = None,
 ) -> TvShowPage:
     """`page`/`page_size` omitted (the default) fetches every match, no cap
     — used by callers that need the whole filtered set (Print-siden, Voldby
@@ -306,18 +307,24 @@ async def list_tv_shows(
         watched,
         skip,
         limit,
+        genres or None,
     )
     items = [_to_model(doc) for doc in documents]
 
     if paginating:
         total = await tv_show_repository.count_many(
             db, q, normalized_tags or None, formats or None, audio_types or None,
-            media_types or None, is_wishlist, watched,
+            media_types or None, is_wishlist, watched, genres or None,
         )
     else:
         total = len(items)
 
     return TvShowPage(items=items, total=total)
+
+
+async def list_genres(db: AsyncIOMotorDatabase) -> list[str]:
+    """Feature #111 — se den identiske funktion i movie_service.py."""
+    return await tv_show_repository.distinct_genres(db)
 
 
 async def check_tmdb_duplicates(db: AsyncIOMotorDatabase, tmdb_id: int) -> list[DuplicateTvShowMatch]:

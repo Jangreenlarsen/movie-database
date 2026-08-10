@@ -259,6 +259,7 @@ async def list_movies(
     director: str | None = None,
     page: int | None = None,
     page_size: int | None = None,
+    genres: list[str] | None = None,
 ) -> MoviePage:
     """`page`/`page_size` omitted (the default) fetches every match, no cap
     — used by callers that need the whole filtered set (Print-siden, Voldby
@@ -284,18 +285,24 @@ async def list_movies(
         director,
         skip,
         limit,
+        genres or None,
     )
     items = [_to_model(doc) for doc in documents]
 
     if paginating:
         total = await movie_repository.count_many(
             db, q, normalized_tags or None, formats or None, audio_types or None,
-            media_types or None, is_wishlist, watched, cast, director,
+            media_types or None, is_wishlist, watched, cast, director, genres or None,
         )
     else:
         total = len(items)
 
     return MoviePage(items=items, total=total)
+
+
+async def list_genres(db: AsyncIOMotorDatabase) -> list[str]:
+    """Feature #111 — se `movie_repository.distinct_genres`'s docstring."""
+    return await movie_repository.distinct_genres(db)
 
 
 async def get_collection_info(db: AsyncIOMotorDatabase, collection_id: int) -> CollectionInfo:

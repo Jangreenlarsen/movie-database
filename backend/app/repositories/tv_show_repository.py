@@ -262,6 +262,12 @@ async def distinct_locations(db: AsyncIOMotorDatabase) -> list[str]:
     return [v for v in values if v]
 
 
+async def distinct_genres(db: AsyncIOMotorDatabase) -> list[str]:
+    """Feature #111 — se den identiske funktion i movie_repository.py."""
+    values = await db[COLLECTION].distinct("genres")
+    return sorted({v for v in values if v}, key=str.casefold)
+
+
 async def set_serial_number(db: AsyncIOMotorDatabase, tv_show_id: str, serial_number: int) -> None:
     await db[COLLECTION].update_one(
         {"_id": ObjectId(tv_show_id)}, {"$set": {"serial_number": serial_number}}
@@ -282,6 +288,7 @@ def _build_find_many_filter(
     media_types: list[str] | None = None,
     is_wishlist: bool = False,
     watched: bool | None = None,
+    genres: list[str] | None = None,
 ) -> dict:
     """Shared by `find_many`/`count_many` (feature #15) so the two can never
     drift apart on what counts as a match."""
@@ -298,6 +305,8 @@ def _build_find_many_filter(
         filter_["audio_types"] = {"$in": audio_types}
     if media_types:
         filter_["media_type"] = {"$in": media_types}
+    if genres:
+        filter_["genres"] = {"$in": genres}
     if watched is not None:
         filter_["watched"] = True if watched else {"$ne": True}
     return filter_
@@ -315,6 +324,7 @@ async def find_many(
     watched: bool | None = None,
     skip: int = 0,
     limit: int | None = None,
+    genres: list[str] | None = None,
 ) -> list[dict]:
     """`limit=None` (the default) fetches every match, no cap — used by
     callers that need the whole filtered set (Print-siden, Voldby BIO's
@@ -322,7 +332,7 @@ async def find_many(
     paginated library view (feature #15), which used to be silently capped
     at 500 with no way to see or reach anything past it."""
     filter_ = _build_find_many_filter(
-        query, normalized_tags, formats, audio_types, media_types, is_wishlist, watched
+        query, normalized_tags, formats, audio_types, media_types, is_wishlist, watched, genres
     )
     cursor = db[COLLECTION].find(filter_)
     cursor = cursor.sort(sort_spec) if sort_spec else cursor.sort(DEFAULT_SORT_FIELD, -1)
@@ -342,9 +352,10 @@ async def count_many(
     media_types: list[str] | None = None,
     is_wishlist: bool = False,
     watched: bool | None = None,
+    genres: list[str] | None = None,
 ) -> int:
     filter_ = _build_find_many_filter(
-        query, normalized_tags, formats, audio_types, media_types, is_wishlist, watched
+        query, normalized_tags, formats, audio_types, media_types, is_wishlist, watched, genres
     )
     return await db[COLLECTION].count_documents(filter_)
 

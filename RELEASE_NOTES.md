@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.87.0 (build 0118) — 2026-08-10
+
+- **Nyt: vælg lyst eller mørkt tema.** Under Indstillinger → Konto, lige under sprogvalget. Personligt pr. bruger og følger med uanset hvilken enhed du logger ind fra. Vælger du ingen af delene, følger appen automatisk din enheds egen indstilling, som hidtil.
+- Print-listen forbliver altid sort tekst på hvidt papir, uanset om du har mørkt tema slået til på skærmen.
+
 ## v0.86.0 (build 0117) — 2026-08-10
 
 - **Nyt felt: Undertekst.** Fritekst-felt på film og TV-serier, i rediger-boksen mellem Lyd-type og Din note — fx "DA, EN" eller "Fastbrændt DA".

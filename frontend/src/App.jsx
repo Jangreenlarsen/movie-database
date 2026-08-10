@@ -51,6 +51,23 @@ function App() {
       .catch(() => {});
   }, []);
 
+  // Feature #110 — personligt tema. Sat her (øverst i App, uafhængigt af
+  // hvilken betinget gren der rent faktisk returneres — login,
+  // afventer-godkendelse, den autentificerede app) frem for i en dedikeret
+  // provider, da intet andet i træet behøver temaet som en værdi; CSS'ens
+  // egne :root[data-theme="..."]-blokke (index.css) gør resten. Spejler
+  // I18nProvider's `document.documentElement.lang`-mønster. Intet valgt
+  // (usat bruger, eller endnu ingen bruger) fjerner attributten helt, så
+  // `prefers-color-scheme` i CSS'en får lov at afgøre det i stedet.
+  useEffect(() => {
+    const theme = user?.settings?.theme;
+    if (theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
+  }, [user?.settings?.theme]);
+
   async function handleLogout() {
     await api.logout();
     setUser(null);

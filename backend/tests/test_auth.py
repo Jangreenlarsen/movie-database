@@ -164,6 +164,9 @@ async def test_new_user_has_default_settings(client):
     assert settings["language"] == "da"
     # Feature #88 — Plex-badget er fra som standard.
     assert settings["visible_fields"]["plex"] is False
+    # Feature #110 — usat betyder "følg systemets prefers-color-scheme",
+    # ikke en fast standardværdi (se Theme's docstring i models/user.py).
+    assert settings["theme"] is None
 
 
 async def test_language_roundtrip_and_rejects_unknown_language(client):
@@ -193,6 +196,25 @@ async def test_card_size_roundtrip_and_rejects_invalid_value(client):
     assert me.json()["settings"]["card_size"] == "large"
 
     invalid = await client.patch("/api/users/me/settings", json={"card_size": "huge"})
+    assert invalid.status_code == 422
+
+
+async def test_theme_roundtrip_and_rejects_invalid_value(client):
+    """Feature #110 — personligt tema-valg (Jans ønske 2026-08-10)."""
+    response = await client.patch("/api/users/me/settings", json={"theme": "dark"})
+    assert response.status_code == 200
+    assert response.json()["settings"]["theme"] == "dark"
+
+    me = await client.get("/api/users/me")
+    assert me.json()["settings"]["theme"] == "dark"
+
+    # Nulstilling til systemets egen præference (usat) skal stadig kunne
+    # sættes eksplicit tilbage til null.
+    reset = await client.patch("/api/users/me/settings", json={"theme": None})
+    assert reset.status_code == 200
+    assert reset.json()["settings"]["theme"] is None
+
+    invalid = await client.patch("/api/users/me/settings", json={"theme": "sepia"})
     assert invalid.status_code == 422
 
 

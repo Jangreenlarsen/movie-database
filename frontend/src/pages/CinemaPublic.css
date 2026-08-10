@@ -39,7 +39,13 @@
   z-index: 1;
   padding: 16px 20px 28px;
   text-align: center;
-  color: var(--accent-contrast);
+  /* Feature #110 — bevidst ikke var(--accent-contrast): den variabel er
+     beregnet til at kontrastere mod var(--accent) og skifter derfor
+     betydning mellem lyst/mørkt tema (hvid i lyst, næsten sort i mørkt).
+     Denne tekst står altid oven på #105's mørke, slørede skilt-baggrund,
+     uanset app-tema — en fast lys farve er derfor korrekt her i begge
+     temaer, ikke en tema-afhængig variabel. */
+  color: #fff;
 }
 
 /* Rendered as a <button> for the login/opret panel and as an <a> for the
@@ -129,7 +135,8 @@
 
 .cinema-public-tagline {
   margin: 10px 0 0;
-  color: var(--accent-contrast);
+  /* Feature #110 — se den identiske note på .cinema-public-hero. */
+  color: #fff;
   opacity: 0.85;
   font-size: 1.1rem;
 }

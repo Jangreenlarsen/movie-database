@@ -5,9 +5,14 @@
 
 .cinema-public-hero {
   position: relative;
-  padding: 56px 24px 44px;
+  /* Feature #104 — mørk bund bag skiltet i stedet for accent-gradienten som
+     selve baggrunden. Skiltet har sit eget kraftige farvesæt (guld/rødbrunt
+     på cremefarvet pergament), og en accent-farvet ramme omkring det ville
+     konkurrere frem for at ramme. Bunden ses kun som en tynd kant og mens
+     billedet indlæses. */
+  padding: 16px 20px 28px;
   text-align: center;
-  background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+  background: #1c1712;
   color: var(--accent-contrast);
 }
 
@@ -17,11 +22,18 @@
    a bare button wouldn't need. */
 .cinema-public-login-toggle {
   /* Feature #99 — placeringen ligger nu på .cinema-public-hero-actions,
-     som holder knappen og sprogvalget samlet. */
+     som holder knappen og sprogvalget samlet.
+
+     Feature #104 — mørk, halvgennemsigtig "glas"-flade med `backdrop-filter`
+     frem for den lyse flade der virkede på en ensfarvet accent-gradient.
+     Skiltets baggrund varierer fra cremefarvet til mørkt rødbrunt alt efter
+     hvor gruppen lander, og en lys flade ville forsvinde på de lyse
+     partier. Mørk virker uanset hvad der ligger bagved. */
   display: inline-block;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  color: var(--accent-contrast);
+  background: rgba(20, 14, 8, 0.65);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
   padding: 6px 16px;
   border-radius: 999px;
   font-size: 0.85rem;
@@ -29,15 +41,13 @@
   line-height: 1.4;
   text-decoration: none;
   cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 .cinema-public-login-toggle:hover {
-  color: var(--accent-contrast);
+  color: #fff;
   text-decoration: none;
-}
-
-.cinema-public-login-toggle:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(20, 14, 8, 0.8);
 }
 
 .cinema-public-login-panel {
@@ -69,15 +79,26 @@
   gap: 8px;
 }
 
-.cinema-public-hero h1 {
-  margin: 0 0 10px;
-  font-size: 2.9rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+/* Feature #104 — skiltet. `aspect-ratio` bevarer billedets facon (2.5:1) på
+   alle skærmbredder i stedet for at lade `img`s naturlige højde afgøre
+   layoutet, så .cinema-public-hero-actions' faste `top`-position altid
+   rammer samme sted på billedet. `object-fit: cover` beskærer symmetrisk
+   fra siderne på smalle skærme, hvor 2.5:1 er bredere end skærmen selv. */
+.cinema-public-sign {
+  margin: 0 auto;
+  max-width: 900px;
+}
+
+.cinema-public-sign img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2.5 / 1;
+  object-fit: cover;
+  border-radius: var(--radius-md);
 }
 
 .cinema-public-tagline {
-  margin: 0;
+  margin: 10px 0 0;
   color: var(--accent-contrast);
   opacity: 0.85;
   font-size: 1.1rem;
@@ -160,11 +181,7 @@
 
 @media (max-width: 640px) {
   .cinema-public-hero {
-    padding: 32px 16px 24px;
-  }
-
-  .cinema-public-hero h1 {
-    font-size: 1.9rem;
+    padding: 12px 12px 20px;
   }
 
   .cinema-public-main {
@@ -177,6 +194,15 @@
     gap: 14px;
   }
 }
+
+/* Bevidst INGEN aspect-ratio-ændring her. Et første forsøg gjorde billedet
+   højere på smalle skærme for at "gøre teksten større" — men med
+   `object-fit: cover` beskærer en SMALLERE aspect-ratio (relativt højere)
+   MERE fra siderne, ikke mindre: at gøre containeren højere tvang "VOLDBY"
+   og "BIO" til delvist at blive skåret af i hver sin kant (opdaget ved
+   faktisk at se siden, jf. CLAUDE.md regel 18). Ved 2.5/1 hele vejen ned er
+   der intet sidebeskæring nogensinde — skiltet bliver bare kortere og
+   teksten mindre, hvilket er den rigtige måde et wordmark skal skalere. */
 
 /* Feature #99 — sprogvalg og login-knap i én gruppe øverst til højre.
    Feature #97 havde dem i hver sit hjørne, hvilket gjorde dem visuelt
@@ -191,16 +217,18 @@
   gap: 10px;
 }
 
-/* Hero-området er en accent-gradient, ikke appens almindelige flade, så
-   vælgeren får samme gennemsigtige behandling som login-knappen ved siden
-   af — ellers ville den stå som en lys kasse midt i farven. */
+/* Feature #104 — se den identiske note på .cinema-public-login-toggle:
+   samme mørke "glas"-flade, så gruppen er læselig uanset hvilken del af
+   skiltet den overlapper. */
 .cinema-public-hero-actions .language-picker {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(20, 14, 8, 0.65);
+  backdrop-filter: blur(6px);
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 .cinema-public-hero-actions .language-picker button {
-  color: var(--accent-contrast);
+  color: #fff;
   opacity: 0.75;
 }
 
@@ -209,26 +237,37 @@
 }
 
 .cinema-public-hero-actions .language-picker button.active {
-  background: var(--accent-contrast);
-  color: var(--accent-strong);
+  background: #fff;
+  color: #1c1712;
   opacity: 1;
 }
 
 /* Den åbne knap markeres, så det er tydeligt hvad panelet hører til. */
 .cinema-public-login-toggle.active {
-  background: var(--accent-contrast);
-  color: var(--accent-strong);
+  background: #fff;
+  color: #1c1712;
 }
 
 @media (max-width: 560px) {
   .cinema-public-hero-actions {
-    top: 12px;
-    right: 12px;
+    top: 8px;
+    right: 8px;
     gap: 6px;
   }
 
   .cinema-public-login-panel {
-    top: 56px;
-    right: 12px;
+    top: 52px;
+    right: 8px;
+  }
+}
+
+/* Feature #104 — under ca. 380px er der ikke plads til begge pilller ved
+   siden af hinanden oven på skiltet uden at dække "VOLDBY"-teksten. De
+   lægges i to rækker i stedet for at skrumpe skriften til ulæselighed. */
+@media (max-width: 380px) {
+  .cinema-public-hero-actions {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
   }
 }

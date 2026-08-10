@@ -71,4 +71,20 @@ export default defineConfig({
       },
     }),
   ],
+  // Feature #103 — Vitest laeser denne config, saa test-opsaetningen bor her
+  // frem for i en egen vitest.config.js: aliasser, plugins og alt andet der
+  // gaelder for appen gaelder saa ogsaa i testene, uden at skulle holdes ens
+  // to steder.
+  test: {
+    // jsdom frem for node: komponent-testene skal bruge et DOM at rendere i.
+    environment: 'jsdom',
+    // Goer describe/it/expect globale, saa testfilerne ligner backendens
+    // pytest-filer: ingen import-stoej oeverst i hver fil.
+    globals: true,
+    setupFiles: './src/test/setup.js',
+    css: false,
+    // PWA-pluginet genererer en service worker ved build. Under test er det
+    // ren stoej, og det skriver filer til dist/.
+    exclude: ['node_modules', 'dist'],
+  },
 })

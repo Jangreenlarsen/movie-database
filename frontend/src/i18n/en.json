@@ -523,5 +523,6 @@
   "messages.dismissError": "The message could not be marked as read: {message}",
   "audit.action.messageSent": "Message sent",
   "detail.edit": "Edit",
-  "lib.clearSearch": "Clear search"
+  "lib.clearSearch": "Clear search",
+  "public.signAlt": "Voldby BIO — home cinema, where friends and good folk meet"
 }

@@ -177,6 +177,7 @@
   "scan.createSeparateWish": "Create as a new separate wish instead",
   "scan.createSeparateShow": "Create as a new separate show instead",
   "scan.continueToEdit": "Continue to editing",
+  "scan.backToCandidates": "← Choose a different one",
   "scan.savedToWishlist": "{kind} added to the wishlist!",
   "scan.savedToLibrary": "{kind} saved to the library!",
   "scan.seasonAdded": "Season added to \"{name}\"!",

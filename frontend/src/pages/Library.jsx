@@ -931,6 +931,13 @@ export function MovieDetailModal({
   // netop scannet film, hvor der endnu ikke findes nogen Plex-status at vise.
   plex,
   plexAvailability,
+  // Feature #106 — begge valgfri, kun sat af MovieLookupForm i
+  // "kladde"-tilstand: `duplicates` er dublet-tjekket der tidligere stod i
+  // et separat mellemtrin, `onBackToCandidates` går tilbage til
+  // kandidat-gitteret uden at gemme noget, hvis det viste sig at være det
+  // forkerte match.
+  duplicates,
+  onBackToCandidates,
   onClose,
   onChanged,
   onFilterByPerson,
@@ -1189,6 +1196,23 @@ export function MovieDetailModal({
         </div>
 
         <div className="modal-body">
+          {/* Feature #106 — dette mellemtrin flyttede fra et separat kort
+              før rediger-boksen ind i selve boksen: et dublet-fund ændrer
+              intet ved oprettelsen, kun brugeren skal have besked om det. */}
+          {!movie.id && duplicates?.length > 0 && (
+            <div className="banner banner-error">
+              {t("scan.duplicateIntro", {
+                what: t("scan.duplicateMovie"),
+                where: duplicates
+                  .map((d) =>
+                    d.is_wishlist
+                      ? t("scan.duplicateOnWishlist")
+                      : `${t("scan.duplicateInLibrary")}${d.serial_number ? ` (#${d.serial_number})` : ""}`
+                  )
+                  .join(t("scan.duplicateJoin")),
+              })}
+            </div>
+          )}
           {movie.overview && <p>{movie.overview}</p>}
           {movie.director && (
             <p className="muted">
@@ -1496,6 +1520,15 @@ export function MovieDetailModal({
             {movie.id && (
               <button type="button" className="btn" onClick={cancelEditing} disabled={saving}>
                 {t("common.cancel")}
+              </button>
+            )}
+            {/* Feature #106 — modstykket til den tidligere "Annullér" i
+                kladde-tilstand: viste det sig at være det forkerte match,
+                går man tilbage til kandidat-gitteret i stedet for helt at
+                forlade scan-/søge-flowet. */}
+            {!movie.id && onBackToCandidates && (
+              <button type="button" className="btn" onClick={onBackToCandidates} disabled={saving}>
+                {t("scan.backToCandidates")}
               </button>
             )}
             <button

@@ -7,6 +7,7 @@ import Pagination from "../components/Pagination";
 import { PlexCardBadge, PlexPlayLink } from "../components/PlexAvailability";
 import { usePlexAvailability } from "../components/usePlexAvailability";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
+import ViewModeToggle from "../components/ViewModeToggle";
 import { useLocale, useT } from "../i18n";
 import { formatSerial, serialPrefix } from "../utils/serialNumber";
 import "./Library.css";
@@ -155,6 +156,10 @@ export default function Library({
   });
   const [activeMovie, setActiveMovie] = useState(null);
   const [visibleFields, setVisibleFields] = useState(() => visibleFieldsFromSettings(user.settings));
+  // Feature #108 — grid/liste, læst direkte fra brugerens indstillinger
+  // ligesom card_size; ingen lokal "ikke gemt endnu"-tilstand nødvendig, da
+  // valget skal slå igennem med det samme og altid er én af de to.
+  const [viewMode, setViewMode] = useState(user.settings.view_mode ?? "grid");
   const [showFieldPanel, setShowFieldPanel] = useState(false);
   const [showSortPanel, setShowSortPanel] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
@@ -177,6 +182,12 @@ export default function Library({
       .updateMySettings(patch)
       .then(onSettingsChanged)
       .catch((err) => setSettingsError(err.message));
+  }
+
+  function changeViewMode(nextMode) {
+    if (nextMode === viewMode) return;
+    setViewMode(nextMode);
+    persistSettings({ view_mode: nextMode });
   }
 
   function persistVisibleFields(nextVisible) {
@@ -492,6 +503,8 @@ export default function Library({
           >
             {t("lib.fields")} {changedFieldCount > 0 ? "● " : ""}▾
           </button>
+
+          <ViewModeToggle viewMode={viewMode} onChange={changeViewMode} />
         </div>
 
         {showAddPanel && (
@@ -812,7 +825,11 @@ export default function Library({
       )}
 
       {status === "ready" && movies.length > 0 && (
-        <ul className={`movie-grid movie-grid--${user.settings.card_size ?? "medium"}`}>
+        <ul
+          className={`movie-grid movie-grid--${user.settings.card_size ?? "medium"}${
+            viewMode === "list" ? " movie-grid--list" : ""
+          }`}
+        >
           {movies.map((movie) => (
             <li key={movie.id} className="movie-card" onClick={() => setActiveMovie(movie)}>
               {/* Feature #92 — betinget af nummeret selv, ikke af
@@ -1248,7 +1265,13 @@ export function MovieDetailModal({
             <CollectionSection movie={movie} onChanged={onChanged} />
           )}
 
-          {movie.id && <PlexPlayLink availability={plexAvailability} plex={plex} />}
+          {/* Feature #88/2026-08-10 — en fysisk kopi er per definition ikke i
+              Plex; at vise "Ikke fundet i Plex" på hver eneste DVD/Blu-ray
+              ville bare være støj for den der udelukkende har et fysisk
+              bibliotek. */}
+          {movie.id && movie.media_type !== "Fysisk" && (
+            <PlexPlayLink availability={plexAvailability} plex={plex} />
+          )}
 
           {!editing ? (
             <>

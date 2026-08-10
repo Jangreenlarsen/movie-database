@@ -7,6 +7,7 @@ import Pagination from "../components/Pagination";
 import { PlexCardBadge, PlexPlayLink } from "../components/PlexAvailability";
 import { usePlexAvailability } from "../components/usePlexAvailability";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
+import ViewModeToggle from "../components/ViewModeToggle";
 import { useLocale, useT } from "../i18n";
 import { formatSerial, serialPrefix } from "../utils/serialNumber";
 import "../pages/Library.css";
@@ -129,6 +130,8 @@ export default function TvShows({
   });
   const [activeShow, setActiveShow] = useState(null);
   const [visibleFields, setVisibleFields] = useState(() => visibleFieldsFromSettings(user.settings));
+  // Feature #108 — se den identiske note i Library.jsx.
+  const [viewMode, setViewMode] = useState(user.settings.view_mode ?? "grid");
   const [showFieldPanel, setShowFieldPanel] = useState(false);
   const [showSortPanel, setShowSortPanel] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
@@ -148,6 +151,12 @@ export default function TvShows({
       .updateMySettings(patch)
       .then(onSettingsChanged)
       .catch((err) => setSettingsError(err.message));
+  }
+
+  function changeViewMode(nextMode) {
+    if (nextMode === viewMode) return;
+    setViewMode(nextMode);
+    persistSettings({ view_mode: nextMode });
   }
 
   function persistVisibleFields(nextVisible) {
@@ -440,6 +449,8 @@ export default function TvShows({
           >
             {t("lib.fields")} {changedFieldCount > 0 ? "● " : ""}▾
           </button>
+
+          <ViewModeToggle viewMode={viewMode} onChange={changeViewMode} />
         </div>
 
         {showAddPanel && (
@@ -741,7 +752,11 @@ export default function TvShows({
       )}
 
       {status === "ready" && shows.length > 0 && (
-        <ul className={`movie-grid movie-grid--${user.settings.card_size ?? "medium"}`}>
+        <ul
+          className={`movie-grid movie-grid--${user.settings.card_size ?? "medium"}${
+            viewMode === "list" ? " movie-grid--list" : ""
+          }`}
+        >
           {shows.map((show) => (
             <li key={show.id} className="movie-card" onClick={() => setActiveShow(show)}>
               {/* Feature #92 — se den identiske note i Library.jsx. */}
@@ -1108,7 +1123,10 @@ export function TvShowDetailModal({
             </p>
           )}
 
-          {show.id && <PlexPlayLink availability={plexAvailability} plex={plex} />}
+          {/* Feature #88/2026-08-10 — se den identiske note i Library.jsx. */}
+          {show.id && show.media_type !== "Fysisk" && (
+            <PlexPlayLink availability={plexAvailability} plex={plex} />
+          )}
 
           {!editing ? (
             <>

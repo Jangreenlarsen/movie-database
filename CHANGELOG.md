@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.85.0 build 0116] — 2026-08-10 — feature: grid-/listevisning (FEATURES.md #108) + fix: fysisk kopi blokerede digital Plex-import/badge (BUGS.md #55)
+
+To uafhængige ændringer:
+
+**Grid-/listevisning** (Jans ønske: *"lave en tilførelse til view sådan man kan vælge om film/tv skal stå i list form eller i icon som nu"*). Ny `ViewModeToggle`-komponent (delt af Film- og TV-siden) i værktøjslinjen, ved siden af "Vis felter" — to ikon-knapper der skifter og gemmer valget øjeblikkeligt. Ny `view_mode`-indstilling på brugeren (`UserSettings.view_mode`, `"grid"`/`"list"`), fælles for begge faner, samme begrundelse som `card_size` (feature #59). Listevisningen genbruger bevidst samme `<li>`-markup som grid-kortene — kun en ny `.movie-grid--list`-CSS-klasse lægger om fra en grid af poster-kort til en lodret stak af kompakte rækker, så de to visninger aldrig kan vise forskellige felter eller badges. Posteren skrumpes til en 48px-miniature; serienummer-/format-badgene, der i grid-tilstand er absolut placeret oven på en fuld-bredde-poster, flyder i stedet med som almindelige piller via `order` — ellers ville deres position regne forkert mod hele den brede række i stedet for mod den lille poster.
+
+**Fix (BUGS.md #55)**: en fysisk registreret film/serie blokerede uforvarende den digitale Plex-udgave af samme titel — badget dukkede fejlagtigt op på den fysiske post, og Plex-importens dublet-tjek sprang den digitale udgave over fordi den fysiske allerede "fandtes". `find_all_for_plex_match` i begge repositories udelukker nu poster med `media_type: "Fysisk"` (via `$ne`, ikke et eksplicit `"Digital"`-filter, så ønskeliste-poster uden medietype stadig er med). Samme filter retter automatisk alle tre forbrugere: badget, import-dublet-tjekket og fejlsøgnings-panelets audit. Detaljevinduets "Ikke fundet i Plex"-linje er desuden skjult for fysiske poster — ellers støj på hver eneste DVD/Blu-ray for et rent fysisk bibliotek.
+
+Berørte filer: `frontend/src/components/ViewModeToggle.jsx` (ny), `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/pages/Library.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `backend/app/models/user.py`, `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/tests/test_plex.py`, `FEATURES.md`, `BUGS.md`, `version.json`.
+
 ## [0.84.0 build 0115] — 2026-08-10 — feature: header-optælling med fysisk/digital-fordeling + kortere digitale formatlabels (FEATURES.md #107)
 
 To uafhængige justeringer Jan bad om samme dag:

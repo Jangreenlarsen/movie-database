@@ -523,5 +523,6 @@
   "messages.dismissError": "Beskeden kunne ikke markeres som læst: {message}",
   "audit.action.messageSent": "Besked sendt",
   "detail.edit": "Redigér",
-  "lib.clearSearch": "Ryd søgning"
+  "lib.clearSearch": "Ryd søgning",
+  "public.signAlt": "Voldby BIO — hjemmebiograf, hvor venner og godtfolk mødes"
 }

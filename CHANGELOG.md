@@ -2,6 +2,22 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.81.0 build 0112] — 2026-08-10 — feature: Voldby BIOs eget skilt som topbillede på den offentlige side (FEATURES.md #104)
+
+Jan leverede en billedfil af Voldby BIOs eget skilt (bioklassisk pergament-look, guld/rødbrunt, "VOLDBY BIO" + undertekst indbygget i grafikken). Den erstatter nu tekstoverskriften øverst på `/bio`.
+
+Skiltet ligger i `frontend/public/cinema/voldby-bio-sign.jpg` (omdøbt fra den leverede filnavn til samme navnekonvention som de tre eksisterende showcase-fotos) og vises i et `<h1>` der ombryder billedet — alt-teksten giver skærmlæsere en rigtig overskrift uden en visuelt skjult tekst-duplikat ved siden af.
+
+Hero-baggrunden skiftede fra accent-gradienten til en fast mørk bund. Skiltets eget stærke farvesæt ville have konkurreret med en farvet ramme rundt om det.
+
+Login-knappen og sprogvælgeren fra feature #99 fik en ny stil: en mørk, halvgennemsigtig "glas"-flade med `backdrop-filter: blur` i stedet for den lyse flade der virkede på en ensfarvet gradient. Skiltets baggrund varierer fra cremefarvet til mørkt rødbrunt alt efter hvor gruppen lander i hjørnet, og kun en mørk flade er sikkert læselig uanset det.
+
+Mobiltilpasningen fandt en reel fejl på egen hånd, netop den slags CLAUDE.md regel 18 (indført tidligere samme session) findes for at fange. Et første forsøg gjorde billedcontaineren højere ved smalle bredder for at "forstørre" teksten. Med `object-fit: cover` gør en smallere aspect-ratio (relativt højere container) at kilden beskæres *mere* fra siderne, ikke mindre — det modsatte af hensigten. Et screenshot ved 390px viste "VOLDBY" og "BIO" delvist skåret af i hver sin kant. Rettelsen er at lade billedet beholde sin naturlige 2,5:1-facon på alle bredder: uden nogen aspect-ratio-ændring er der intet sidebeskæring nogensinde, skiltet bliver bare kortere og teksten mindre — den rigtige måde et wordmark skal skalere. Under 380px lægges knap-gruppen i to rækker i stedet for at skrumpe knap-teksten til ulæselighed.
+
+Verificeret ved faktisk at åbne `/bio` i en browser (Playwright, headless) ved 1400px, 390px og 360px, samt med login-panelet åbent for at bekræfte at BUGS.md #53's rettelse stadig holder oven på det nye banner — ikke kun ved `build`/`lint`, som ikke kan fange den slags kombinations-fejl.
+
+Berørte filer: `frontend/public/cinema/voldby-bio-sign.jpg` (ny), `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`, `version.json`.
+
 ## [0.80.0 build 0111] — 2026-08-09 — feature: frontend-testramme sat op (FEATURES.md #103)
 
 BUGS.md #54 satte spørgsmålet skarpt: en fejl i `client.js` sad urørt indtil en bruger ramte den, fordi der ikke fandtes noget der kunne have fanget den før. Frontend havde `oxlint`, men ingen tests.

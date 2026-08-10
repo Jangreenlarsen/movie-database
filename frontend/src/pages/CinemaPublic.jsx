@@ -61,7 +61,14 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
         {loginOpen && !user && (
           <PublicLoginPanel language={language} onClose={() => setLoginOpen(false)} />
         )}
-        <h1>{t("cinema.title")}</h1>
+        {/* Feature #104 — Voldby BIOs eget skilt som topbillede, i stedet for
+            en tekst-overskrift på en accent-gradient. `<h1>` ombryder
+            billedet frem for at stå separat: en skærmlæser skal stadig have
+            en rigtig overskrift, og alt-teksten på billedet giver den —
+            uden behov for en visuelt skjult duplikat-tekst ved siden af. */}
+        <h1 className="cinema-public-sign">
+          <img src="/cinema/voldby-bio-sign.jpg" alt={t("public.signAlt")} />
+        </h1>
         <p className="cinema-public-tagline">{t("public.tagline")}</p>
       </header>
 

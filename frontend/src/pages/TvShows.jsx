@@ -888,6 +888,8 @@ export function TvShowDetailModal({
   const [mediaType, setMediaType] = useState(show.media_type ?? "");
   const [location, setLocation] = useState(show.location ?? "");
   const [owner, setOwner] = useState(show.owner ?? "");
+  // Feature #109 — se den identiske note i Library.jsx.
+  const [subtitles, setSubtitles] = useState(show.subtitles ?? "");
   const [personalRating, setPersonalRating] = useState(
     show.personal_rating != null ? String(show.personal_rating) : ""
   );
@@ -914,6 +916,7 @@ export function TvShowDetailModal({
     setMediaType(show.media_type ?? "");
     setLocation(show.location ?? "");
     setOwner(show.owner ?? "");
+    setSubtitles(show.subtitles ?? "");
     setPersonalRating(show.personal_rating != null ? String(show.personal_rating) : "");
     setPersonalNote(show.personal_note ?? "");
     setWatched(show.watched);
@@ -952,6 +955,7 @@ export function TvShowDetailModal({
         media_type: mediaType || null,
         location: location.trim() || null,
         owner: owner.trim() || null,
+        subtitles: subtitles.trim() || null,
         personal_rating: personalRating ? Number(personalRating) : null,
         personal_note: personalNote.trim() || null,
         watched,
@@ -1195,6 +1199,10 @@ export function TvShowDetailModal({
                 <p>{show.audio_types.length > 0 ? show.audio_types.join(", ") : "—"}</p>
               </div>
               <div>
+                <div className="modal-section-label">{t("field.subtitles")}</div>
+                <p>{show.subtitles || "—"}</p>
+              </div>
+              <div>
                 <div className="modal-section-label">{t("field.personalNote")}</div>
                 <p>{show.personal_note || "—"}</p>
               </div>
@@ -1331,6 +1339,15 @@ export function TvShowDetailModal({
                     />
                   ))}
                 </div>
+              </div>
+
+              <div>
+                <div className="modal-section-label">{t("field.subtitles")}</div>
+                <input
+                  value={subtitles}
+                  onChange={(e) => setSubtitles(e.target.value)}
+                  placeholder={t("detail.subtitlesPlaceholder")}
+                />
               </div>
 
               <div>

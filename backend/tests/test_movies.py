@@ -152,6 +152,23 @@ async def test_create_movie_with_format_and_audio_types(client):
     assert movie["audio_types"] == ["DD5.1", "DTS"]
 
 
+async def test_create_and_update_movie_subtitles_free_text(client):
+    """Feature #109 — fritekst-felt, ingen fast værdiliste (Jans valg)."""
+    create_response = await client.post(
+        "/api/movies",
+        json={"title": "Undertekst-film", "media_type": "Fysisk", "format": "DVD", "subtitles": "DA, EN"},
+    )
+    assert create_response.status_code == 201
+    movie = create_response.json()
+    assert movie["subtitles"] == "DA, EN"
+
+    update_response = await client.patch(
+        f"/api/movies/{movie['id']}", json={"subtitles": "Fastbrændt DA"}
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["subtitles"] == "Fastbrændt DA"
+
+
 async def test_create_movie_rejects_invalid_format(client):
     response = await client.post(
         "/api/movies", json={"title": "Bad Format", "format": "Laserdisc", "media_type": "Fysisk"}

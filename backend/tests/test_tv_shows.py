@@ -174,6 +174,23 @@ async def test_update_tv_show_tags_and_location(client):
     assert response.json()["location"] == "Stuen"
 
 
+async def test_create_and_update_tv_show_subtitles_free_text(client):
+    """Feature #109 — se den identiske test i test_movies.py."""
+    create_response = await client.post(
+        "/api/tv-shows",
+        json={"name": "Undertekst-serie", "media_type": "Fysisk", "format": "DVD", "subtitles": "DA, EN"},
+    )
+    assert create_response.status_code == 201
+    show = create_response.json()
+    assert show["subtitles"] == "DA, EN"
+
+    update_response = await client.patch(
+        f"/api/tv-shows/{show['id']}", json={"subtitles": "Fastbrændt DA"}
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["subtitles"] == "Fastbrændt DA"
+
+
 async def test_delete_tv_show_logs_and_allows_manual_serial_reuse(client):
     created = await client.post("/api/tv-shows", json={"name": "Doomed Show", "media_type": "Fysisk", "format": "DVD"})
     show_id = created.json()["id"]

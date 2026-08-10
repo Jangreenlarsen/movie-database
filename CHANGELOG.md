@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.86.0 build 0117] — 2026-08-10 — feature: nyt felt "Undertekst" på film og TV-serier (FEATURES.md #109)
+
+Jan bad om en ny "undertekst"-kategori. Forelagt valget mellem en struktureret attribut med fast værdiliste (som Lyd-type) og et almindeligt tag, valgte han i stedet en tredje mulighed: et helt nyt felt, men med fritekst-redigering — ingen fast liste at vælge fra.
+
+Samme mønster som `location`/`owner`: et fritekst `str | None`-felt på `Movie`/`TvShow` (`subtitles`), redigerbart i rediger-boksen og vist i læsevisningen. I modsætning til location/owner har det **ikke** fået sit eget Combobox-autocomplete-opslag (intet `find_all_subtitles`), da det ikke blev bedt om — et almindeligt tekstfelt er nok for et felt uden en naturlig, genbrugt værdimængde. Heller ikke sortering, filtrering eller en print-kolonne, af samme grund; nemt at tilføje senere hvis det viser sig at være ønsket.
+
+Placeret som sin egen fuld-bredde-række mellem Lyd-type og Din note i begge rediger-bokse (`Library.jsx`/`TvShows.jsx`). `movie_service.sync_all_from_tmdb`/`tv_show_service.sync_all_from_tmdb` rører uændret aldrig feltet — samme beskyttelse af brugerindtastede felter som location/owner/tags allerede har.
+
+Berørte filer: `backend/app/models/movie.py`, `backend/app/models/tv_show.py`, `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`, `backend/tests/test_movies.py`, `backend/tests/test_tv_shows.py`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/components/MovieLookupForm.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`, `version.json`.
+
 ## [0.85.0 build 0116] — 2026-08-10 — feature: grid-/listevisning (FEATURES.md #108) + fix: fysisk kopi blokerede digital Plex-import/badge (BUGS.md #55)
 
 To uafhængige ændringer:

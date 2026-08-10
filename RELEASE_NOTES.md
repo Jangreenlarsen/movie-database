@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.86.0 (build 0117) — 2026-08-10
+
+- **Nyt felt: Undertekst.** Fritekst-felt på film og TV-serier, i rediger-boksen mellem Lyd-type og Din note — fx "DA, EN" eller "Fastbrændt DA".
+
 ## v0.85.0 (build 0116) — 2026-08-10
 
 - **Nyt: vælg mellem ikon- og listevisning** i Film og TV-serier — en ny knap i værktøjslinjen ved siden af "Vis felter" skifter mellem posterkort og kompakte rækker. Valget gemmes og gælder begge faner.

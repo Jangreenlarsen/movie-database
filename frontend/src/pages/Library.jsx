@@ -970,6 +970,10 @@ export function MovieDetailModal({
   );
   const [location, setLocation] = useState(movie.location ?? "");
   const [owner, setOwner] = useState(movie.owner ?? "");
+  // Feature #109 — fritekst, ingen fast værdiliste (Jans valg), derfor
+  // almindeligt `useState` uden Combobox/autocomplete, i modsætning til
+  // location/owner ovenfor.
+  const [subtitles, setSubtitles] = useState(movie.subtitles ?? "");
   const [personalRating, setPersonalRating] = useState(
     movie.personal_rating != null ? String(movie.personal_rating) : ""
   );
@@ -1007,6 +1011,7 @@ export function MovieDetailModal({
     setSerialNumberInput(movie.serial_number != null ? String(movie.serial_number) : "");
     setLocation(movie.location ?? "");
     setOwner(movie.owner ?? "");
+    setSubtitles(movie.subtitles ?? "");
     setPersonalRating(movie.personal_rating != null ? String(movie.personal_rating) : "");
     setPersonalNote(movie.personal_note ?? "");
     setWatched(movie.watched);
@@ -1038,6 +1043,7 @@ export function MovieDetailModal({
       mediaType !== (movie.media_type ?? "") ||
       location !== (movie.location ?? "") ||
       owner !== (movie.owner ?? "") ||
+      subtitles !== (movie.subtitles ?? "") ||
       personalRating !== (movie.personal_rating != null ? String(movie.personal_rating) : "") ||
       personalNote !== (movie.personal_note ?? "") ||
       watched !== movie.watched ||
@@ -1052,6 +1058,7 @@ export function MovieDetailModal({
     serialNumberInput,
     location,
     owner,
+    subtitles,
     personalRating,
     personalNote,
     watched,
@@ -1081,6 +1088,7 @@ export function MovieDetailModal({
         media_type: mediaType || null,
         location: location.trim() || null,
         owner: owner.trim() || null,
+        subtitles: subtitles.trim() || null,
         personal_rating: personalRating ? Number(personalRating) : null,
         personal_note: personalNote.trim() || null,
         watched,
@@ -1341,6 +1349,10 @@ export function MovieDetailModal({
                 <p>{movie.audio_types.length > 0 ? movie.audio_types.join(", ") : "—"}</p>
               </div>
               <div>
+                <div className="modal-section-label">{t("field.subtitles")}</div>
+                <p>{movie.subtitles || "—"}</p>
+              </div>
+              <div>
                 <div className="modal-section-label">{t("field.personalNote")}</div>
                 <p>{movie.personal_note || "—"}</p>
               </div>
@@ -1490,6 +1502,15 @@ export function MovieDetailModal({
                     />
                   ))}
                 </div>
+              </div>
+
+              <div>
+                <div className="modal-section-label">{t("field.subtitles")}</div>
+                <input
+                  value={subtitles}
+                  onChange={(e) => setSubtitles(e.target.value)}
+                  placeholder={t("detail.subtitlesPlaceholder")}
+                />
               </div>
 
               <div>

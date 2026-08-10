@@ -558,7 +558,7 @@ async def test_import_sets_digital_media_type_and_format_from_resolution(client,
 
     body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
     assert captured == [(MediaType.DIGITAL, MovieFormat.DIGITAL_UHD)]
-    assert body["imported"][0]["format"] == "Digital-UHD"
+    assert body["imported"][0]["format"] == "D-UHD"
 
 
 async def test_import_preview_shows_movie_format_without_creating(client, monkeypatch):
@@ -571,7 +571,7 @@ async def test_import_preview_shows_movie_format_without_creating(client, monkey
     )
 
     body = (await client.post("/api/plex/import", json={"dry_run": True})).json()
-    assert body["imported"][0]["format"] == "Digital-STD"
+    assert body["imported"][0]["format"] == "D-SD"
 
 
 async def test_import_falls_back_to_hd_when_resolution_is_unknown(client, monkeypatch):
@@ -590,7 +590,7 @@ async def test_import_falls_back_to_hd_when_resolution_is_unknown(client, monkey
     body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
     assert created == [("movie", 12, ["Plex-import"])]
     assert body["unmatched"] == []
-    assert body["imported"][0]["format"] == "Digital-HD"
+    assert body["imported"][0]["format"] == "D-HD"
     assert body["imported"][0]["format_is_fallback"] is True
 
 
@@ -623,7 +623,7 @@ async def test_known_resolution_is_not_marked_as_fallback(client, monkeypatch):
     )
 
     body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
-    assert body["imported"][0]["format"] == "Digital-UHD"
+    assert body["imported"][0]["format"] == "D-UHD"
     assert body["imported"][0]["format_is_fallback"] is False
 
 
@@ -644,7 +644,7 @@ async def test_import_show_takes_format_and_seasons_from_episodes(client, monkey
 
     body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
     assert captured == [(MediaType.DIGITAL, MovieFormat.DIGITAL_HD, [1, 2])]
-    assert body["imported"][0]["format"] == "Digital-HD"
+    assert body["imported"][0]["format"] == "D-HD"
 
 
 
@@ -912,7 +912,7 @@ async def test_show_without_episode_resolution_still_reaches_tv_shows(client, mo
 
     assert body["unmatched"] == []
     assert [show["name"] for show in listed["items"]] == ["Fargo"]
-    assert listed["items"][0]["format"] == "Digital-HD"
+    assert listed["items"][0]["format"] == "D-HD"
 
 
 async def test_dry_run_preview_includes_tv_shows(client, monkeypatch):

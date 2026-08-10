@@ -1,7 +1,7 @@
 """Samlet optaelling til app-hovedet (feature #94)."""
 
 PHYSICAL = {"media_type": "Fysisk", "format": "DVD"}
-DIGITAL = {"media_type": "Digital", "format": "Digital-HD"}
+DIGITAL = {"media_type": "Digital", "format": "D-HD"}
 
 
 async def test_counts_are_zero_for_an_empty_library(client):

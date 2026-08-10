@@ -101,10 +101,18 @@ async def _migrate_audio_type_labels(db: AsyncIOMotorDatabase) -> None:
 # quality tier before this version, so it can't be migrated exactly — it
 # defaults to "Digital-HD" (the most common digital-purchase quality); check
 # BUGS.md/CHANGELOG.md and correct any that should be UHD/STD instead.
+#
+# v0.84.0 — the digital tiers themselves got the same short-label treatment
+# ("Digital-HD" -> "D-HD" etc.). These entries run in dict-insertion order
+# (Python 3.7+), so a still-unmigrated bare "Digital" cascades through both
+# passes below in the same call: "Digital" -> "Digital-HD" -> "D-HD".
 _FORMAT_LABEL_MIGRATIONS = {
     "Blu-ray": "BD",
     "4K Ultra HD": "UHD",
     "Digital": "Digital-HD",
+    "Digital-UHD": "D-UHD",
+    "Digital-HD": "D-HD",
+    "Digital-STD": "D-SD",
 }
 
 

@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.84.0 (build 0115) — 2026-08-10
+
+- **Optællingen i toppen viser nu fysisk/digital direkte** — "142 film (98 fysisk / 44 digital)" i stedet for at skulle holde musen hen over tallet for at se fordelingen.
+- **Digitale formater har kortere navne**: `Digital-UHD`/`Digital-HD`/`Digital-STD` hedder nu `D-UHD`/`D-HD`/`D-SD` på kort og i rediger-boksen. Dine eksisterende film og TV-serier omdøbes automatisk.
+
 ## v0.83.0 (build 0114) — 2026-08-10
 
 - **Et klik på en film i scan/søg går nu direkte til redigering** — intet mere scroll ned til et separat "Fortsæt til redigering"-kort.

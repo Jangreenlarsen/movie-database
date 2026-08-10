@@ -191,7 +191,7 @@ async def test_media_type_roundtrip_and_filter(client):
     assert physical.json()["media_type"] == "Fysisk"
     await client.post(
         "/api/movies",
-        json={"title": "Digital Copy", "media_type": "Digital", "format": "Digital-HD"},
+        json={"title": "Digital Copy", "media_type": "Digital", "format": "D-HD"},
     )
 
     by_media_type = await client.get("/api/movies", params={"media_types": "Digital"})

@@ -9,7 +9,7 @@ og et skift af medietype flytter posten til den anden serie.
 from app.repositories import digital_serial_repository, movie_repository, tv_show_repository
 
 PHYSICAL = {"media_type": "Fysisk", "format": "DVD"}
-DIGITAL = {"media_type": "Digital", "format": "Digital-HD"}
+DIGITAL = {"media_type": "Digital", "format": "D-HD"}
 
 
 # --- krav om medietype og format --------------------------------------------

@@ -238,12 +238,29 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
               >
                 {/* To separate mærkater frem for én streng: film og
                     TV-serier er to adskilte ressourcer, og hvert tal skal
-                    kunne aflæses for sig uden at man læser en sætning. */}
+                    kunne aflæses for sig uden at man læser en sætning.
+                    Feature #107 — fordelingen på fysisk/digital stod før kun
+                    i hover-teksten (usynlig på en telefon uden mus); den
+                    står nu i selve mærkatet, i sit eget span, så den kan
+                    skjules på en smal skærm (se media query i App.css) uden
+                    at totaltallet også forsvinder. */}
                 <span className="header-count header-count--movies">
                   {t("counts.movies", { count: counts.movies.total })}
+                  <span className="header-count-breakdown">
+                    {t("counts.breakdown", {
+                      physical: counts.movies.physical,
+                      digital: counts.movies.digital,
+                    })}
+                  </span>
                 </span>
                 <span className="header-count header-count--shows">
                   {t("counts.shows", { count: counts.tv_shows.total })}
+                  <span className="header-count-breakdown">
+                    {t("counts.breakdown", {
+                      physical: counts.tv_shows.physical,
+                      digital: counts.tv_shows.digital,
+                    })}
+                  </span>
                 </span>
               </span>
             )}

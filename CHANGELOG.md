@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.84.0 build 0115] — 2026-08-10 — feature: header-optælling med fysisk/digital-fordeling + kortere digitale formatlabels (FEATURES.md #107)
+
+To uafhængige justeringer Jan bad om samme dag:
+
+**Header-optællingen** (feature #94/#95): "142 film" / "38 serier" ved siden af login/logout viste allerede fordelingen på fysisk/digital, men kun i hover-teksten — usynlig på en telefon uden mus. Selve mærkatet viser nu fordelingen direkte: "142 film (98 fysisk / 44 digital)". `counts.movies`/`counts.shows` i18n-nøglerne fik to nye pladsholdere (`{physical}`/`{digital}`); ingen backend-ændring, da `/api/library/counts` allerede returnerede tallene (bare ubrugt til andet end hover-titlen).
+
+**Digitale format-labels forkortet**: `Digital-UHD`/`Digital-HD`/`Digital-STD` hedder nu `D-UHD`/`D-HD`/`D-SD` — samme korte-labels-behandling som v0.22.0 gav VHS/DVD/BD/UHD (og Blu-ray→BD, 4K Ultra HD→UHD dengang). `MovieFormat`-enummet i `backend/app/models/movie.py` er kilden; formatet vises direkte fra det gemte felt på biblioteks-kortene (`.movie-format-badge`), så ingen separat frontend-label-tabel skulle opdateres. `movie_repository._FORMAT_LABEL_MIGRATIONS` fik tre nye rækker, tilføjet *efter* den eksisterende "Digital"→"Digital-HD"-række — dict-rækkefølgen betyder at en gammel, ren "Digital"-post (fra før v0.22.0) kaskaderer korrekt gennem begge omdøbninger i samme kørsel: "Digital" → "Digital-HD" → "D-HD". TV-serier fandtes ikke endnu ved v0.22.0's første omdøbning og har derfor ingen ældre labels at rydde op i, men *kan* have digitale format-værdier fra Plex-importen (feature #91) — `tv_show_repository.py` fik sin egen kopi af migrationen (kun de tre digitale rækker) kørt fra `ensure_indexes`.
+
+Berørte filer: `frontend/src/App.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `backend/app/models/movie.py`, `backend/app/models/plex.py`, `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/tests/test_label_migrations.py`, `backend/tests/test_library_counts.py`, `backend/tests/test_movies.py`, `backend/tests/test_serial_sort_and_search.py`, `backend/tests/test_serial_number_rules.py`, `backend/tests/test_plex.py`, `MOVIE_API_REFERENCE.md`, `ARCHITECTURE.md`, `FEATURES.md`, `version.json`.
+
 ## [0.83.0 build 0114] — 2026-08-10 — feature: scan/søg går direkte til redigering, med tilbage-knap i rediger-boksen (FEATURES.md #106)
 
 Jans ønske: et klik på en kandidat i scan-/søge-flowet skulle gå direkte til redigering i stedet for at kræve et scroll ned til et separat "review-form"-kort og et ekstra klik på "Fortsæt til redigering" dernede — og rediger-boksen manglede en vej tilbage til kandidat-valget hvis det viste sig at være det forkerte match.

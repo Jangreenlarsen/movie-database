@@ -2,6 +2,20 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.82.0 build 0113] — 2026-08-10 — feature: skiltets farver som udtonet baggrund for toppen af BIO-siden (FEATURES.md #105)
+
+Jan pegede direkte på det #104 efterlod: banneret stod i en flad, mørk boks — en isoleret enhed frem for en del af siden. Ønsket var at klippe baggrunden fra skiltet og bruge den som baggrund for resten af siden, så toppen glider ind i helheden.
+
+Der var intet billedredigeringsværktøj installeret — hverken PIL eller ImageMagick. Løsningen er derfor ren CSS: samme skilt-JPG genbruges som `background-image` på et separat lag bag hero'en, zoomet langt ind og slørt kraftigt, så kun farvestemningen (guld/rødbrun/cremet) er tilbage. Ingen genkendelige objekter, ingen tekst — kun stemning. Et `mask-image`-gradient toner laget ud nedad, så det kun farver toppen af siden og ikke bliver ved med at konkurrere med "Om Voldby BIO" og billedgalleriet længere nede.
+
+Den flade mørke bund fra #104 (`#1c1712`) er fjernet. Skiltet selv har i stedet fået en skygge til at løfte det af den nye, bløde baggrund — samme visuelle dybde, uden en hård kant omkring det.
+
+Et første forsøg brugte samme baggrundshøjde (620px) uanset skærmbredde. På en smal telefon, hvor hero'en i forvejen er lavere fordi skiltet holder sin 2,5:1-facon, strakte den udtonede baggrund sig ned bag hele billedgalleriet i stedet for at være færdig med at fade ud før det. Det blev opdaget ved faktisk at se skærmbilledet ved 390px — ikke af `npm run build` eller `npm run lint`, som begge var grønne hele vejen (jf. CLAUDE.md regel 18, indført tidligere samme session, netop af denne grund). Rettet med en kortere baggrund under 640px.
+
+Verificeret i browseren (Playwright, headless) ved 1400px og 390px, samt med login-panelet åbent, før noget blev meldt færdigt.
+
+Berørte filer: `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `FEATURES.md`, `version.json`.
+
 ## [0.81.0 build 0112] — 2026-08-10 — feature: Voldby BIOs eget skilt som topbillede på den offentlige side (FEATURES.md #104)
 
 Jan leverede en billedfil af Voldby BIOs eget skilt (bioklassisk pergament-look, guld/rødbrunt, "VOLDBY BIO" + undertekst indbygget i grafikken). Den erstatter nu tekstoverskriften øverst på `/bio`.

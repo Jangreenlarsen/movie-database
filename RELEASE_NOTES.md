@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.82.0 (build 0113) — 2026-08-10
+
+- **BIO-sidens banner glider nu blødt ud i resten af siden** i stedet for at stå i en skarpkantet mørk boks — en varm, sløret farvetone fra skiltet selv toner ud nedad.
+
 ## v0.81.0 (build 0112) — 2026-08-10
 
 - **Voldby BIOs eget skilt pryder nu toppen af den offentlige side** (`/bio`) — i stedet for almindelig tekst.

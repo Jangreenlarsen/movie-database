@@ -1,18 +1,44 @@
 .cinema-public-page {
+  position: relative;
   min-height: 100%;
   background: var(--bg);
+  /* Backdroppen er absolut placeret i toppen af denne container og skal
+     ikke kunne skubbe et vandret scroll frem, hvis den skulle blive en
+     smule for bred pga. zoom-faktoren. */
+  overflow-x: clip;
+}
+
+/* Feature #105 — Jans ønske: skiltets egne farver som baggrund for toppen
+   af siden, så banneret glider over i resten af siden i stedet for at
+   stoppe brat ved en hård kant.
+   
+   Ingen separat beskåret billedfil — samme JPG genbruges, men zoomet langt
+   ind (`background-size`) og sløret kraftigt (`filter: blur`), så kun
+   farvestemningen (guld/rødbrun/cremet) er tilbage, ikke genkendelige
+   objekter eller tekst. `mask-image` toner den ud nedad, så den kun farver
+   toppen af siden og ikke konkurrerer med indholdet længere nede. */
+.cinema-public-backdrop {
+  position: absolute;
+  top: -60px;
+  left: -60px;
+  right: -60px;
+  height: 620px;
+  background-image: url("/cinema/voldby-bio-sign.jpg");
+  background-size: 280% auto;
+  background-position: 50% 40%;
+  background-repeat: no-repeat;
+  filter: blur(50px) brightness(0.55) saturate(1.15);
+  z-index: 0;
+  pointer-events: none;
+  mask-image: linear-gradient(to bottom, black, black 40%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black, black 40%, transparent 100%);
 }
 
 .cinema-public-hero {
   position: relative;
-  /* Feature #104 — mørk bund bag skiltet i stedet for accent-gradienten som
-     selve baggrunden. Skiltet har sit eget kraftige farvesæt (guld/rødbrunt
-     på cremefarvet pergament), og en accent-farvet ramme omkring det ville
-     konkurrere frem for at ramme. Bunden ses kun som en tynd kant og mens
-     billedet indlæses. */
+  z-index: 1;
   padding: 16px 20px 28px;
   text-align: center;
-  background: #1c1712;
   color: var(--accent-contrast);
 }
 
@@ -95,6 +121,10 @@
   aspect-ratio: 2.5 / 1;
   object-fit: cover;
   border-radius: var(--radius-md);
+  /* Feature #105 — hero'en har ikke længere en flad mørk boks bagved til at
+     give skiltet kontrast/dybde. Skyggen gør det samme job: løfter det
+     visuelt af den bløde, udtonede baggrund. */
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
 }
 
 .cinema-public-tagline {
@@ -105,6 +135,8 @@
 }
 
 .cinema-public-main {
+  position: relative;
+  z-index: 1;
   max-width: 1100px;
   margin: 0 auto;
   padding: 32px 24px;
@@ -192,6 +224,15 @@
   .bio-poster-grid {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 14px;
+  }
+
+  /* Feature #105 — 620px er en fornuftig andel af en bred desktop-side,
+     men på en smal telefonskærm (kortere hero pga. 2.5:1-facon, samme
+     620px baggrund) strakte den udtonede baggrund sig ned bag hele
+     billedgalleriet i stedet for at være færdig med at tone ud før det
+     (fundet ved at se skærmbilledet, jf. CLAUDE.md regel 18). */
+  .cinema-public-backdrop {
+    height: 380px;
   }
 }
 

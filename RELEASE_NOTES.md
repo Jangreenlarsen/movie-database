@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.80.0 (build 0111) — 2026-08-09
+
+- Ingen synlig ændring for dig — dette er en intern opgradering. Frontend har fået en automatisk testsuite, så fremtidige fejl af samme slags som "[object Object]"-beskeden (BUGS.md #54) opdages før de rammer dig.
+
 ## v0.79.1 (build 0110) — 2026-08-09
 
 - **Rettet: fejlbeskeder var uforståelige.** Skrev du fx din e-mail som brugernavn, eller en for kort adgangskode, stod der bare "[object Object]". Nu står der hvad der er galt.

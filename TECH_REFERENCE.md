@@ -81,6 +81,29 @@ Egen ~60-linjers motor i `frontend/src/i18n/`, ikke react-i18next — to sprog, 
 - `.env` (git-ignoreret) leverer secrets til `backend`-servicen via `env_file`.
 - Se `docker-compose.yml` i repo-rod for den konkrete opsætning.
 
-## Test-strategi (efterhånden som features implementeres)
-- Backend: `pytest` + `httpx.AsyncClient` mod FastAPI-app (ingen ægte MongoDB i unit-tests — brug `mongomock` eller en test-database).
-- Frontend: komponent-tests efter behov (fx `vitest` + `@testing-library/react`) for søge-/tag-filtrering-logik.
+## Test-strategi
+
+**Backend**: `pytest` + `httpx.AsyncClient` mod FastAPI-appen, med `mongomock_motor` i stedet for en rigtig MongoDB.
+
+```bash
+cd backend && ./.venv/Scripts/python.exe -m pytest -q
+```
+
+`conftest.py` fastlåser de eksterne API-nøgler til åbenlyst falske værdier, så suiten aldrig afhænger af udviklerens `.env` (BUGS.md #31). Bemærk at mongomock ikke implementerer alt: `$text` mangler helt (BUGS.md #48), og sparse/partielle index-regler håndhæves ikke som i produktion (BUGS.md #1) — en test kan derfor ikke bevise at et unikt index virker.
+
+**Frontend** (feature #103): Vitest + Testing Library, konfigureret i `vite.config.js`' `test`-blok så appens egne aliasser og plugins gælder i testene uden at skulle holdes ens to steder.
+
+```bash
+cd frontend && npm test          # én kørsel
+cd frontend && npm run test:watch
+cd frontend && npm run test:coverage
+```
+
+Testfiler ligger ved siden af det de tester (`client.test.js` ved siden af `client.js`). `src/test/setup.js` kører før hver fil og rydder DOM'en op mellem tests.
+
+Hvad der skal testes på frontend:
+- **Logik der kan fejle stille**: fejlbesked-oversættelse (`readableDetail`), formatering (`formatSerial`), oversætter-fallback. Det er her BUGS.md #54 lå i månedsvis uden at nogen så det.
+- **Katalog-konsistens**: `i18n.test.js` tjekker at `da.json` og `en.json` har samme nøgler og samme pladsholdere. En nøgle der kun findes på det ene sprog er usynlig i koden, men synlig for brugeren.
+- **Tilstands-skift i komponenter**: fx at et banner bliver stående når markeringen fejler (`MessageBanner.test.jsx`) — netop de tilfælde hvor en optimistisk UI-opdatering ville lyve over for brugeren.
+
+Hvad der **ikke** skal testes her: rent visuelle ændringer. Til dem gælder CLAUDE.md regel 18 — se på siden i en browser.

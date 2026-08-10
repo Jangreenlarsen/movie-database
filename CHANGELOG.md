@@ -2,6 +2,25 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.80.0 build 0111] — 2026-08-09 — feature: frontend-testramme sat op (FEATURES.md #103)
+
+BUGS.md #54 satte spørgsmålet skarpt: en fejl i `client.js` sad urørt indtil en bruger ramte den, fordi der ikke fandtes noget der kunne have fanget den før. Frontend havde `oxlint`, men ingen tests.
+
+Vitest + Testing Library, konfigureret i `vite.config.js`s egen `test`-blok frem for en separat `vitest.config.js` — appens aliasser og plugins gælder så automatisk i testene, uden at de to konfigurationer kan drive fra hinanden. `npm test` kører suiten én gang, `test:watch` holder den kørende, `test:coverage` lægger dækning oveni.
+
+De første fire testfiler er ikke vilkårlige eksempler — de dækker netop de klasser af fejl sessionen allerede havde stødt på uden en test til at fange dem:
+
+- `client.test.js` låser BUGS.md #54's rettelse fast: `HTTPException` giver `detail` som en streng, FastAPIs validering giver en liste, og begge skal blive til en læsbar besked.
+- `serialNumber.test.js` dækker serienummer-reglen, som skiftede tre gange på én dag (#92 → #93 → #96) — kun fysiske, så tre serier, så uden `#`.
+- `i18n.test.js` tjekker at `da.json` og `en.json` har samme nøgler og samme pladsholdere. En nøgle der kun findes på det ene sprog er usynlig i koden, men synlig for brugeren.
+- `MessageBanner.test.jsx` beviser at et banner bliver stående når læse-markeringen fejler, i stedet for at forsvinde og lyve over for brugeren om at han har kvitteret.
+
+33 tests i alt, alle grønne. `npm audit fix` rettede en `nanoid`-sårbarhed der fulgte med som transitiv afhængighed af testværktøjerne.
+
+CLAUDE.md er opdateret med to lektioner fra sessionens fejlrettelser (et rammeværks fejl har typisk en anden form end koden vores egen, og en regel indført for én gren skal gennemgås for de øvrige grene med det samme) og en ny regel 18: layout-ændringer skal ses i en browser, fordi `npm run build`/`lint` ikke kan fange at en absolut placeret container kom til at indeholde en anden (BUGS.md #53).
+
+Berørte filer: `frontend/vite.config.js`, `frontend/package.json`, `frontend/package-lock.json`, `frontend/src/test/setup.js` (ny), `frontend/src/api/client.test.js` (ny), `frontend/src/utils/serialNumber.test.js` (ny), `frontend/src/i18n/i18n.test.js` (ny), `frontend/src/components/MessageBanner.test.jsx` (ny), `CLAUDE.md`, `TECH_REFERENCE.md`, `FEATURES.md`, `version.json`.
+
 ## [0.79.1 build 0110] — 2026-08-09 — fix: valideringsfejl blev vist som "[object Object]" (BUGS.md #54)
 
 Jans melding: oprettelse fejler hvis brugeren skriver sin e-mailadresse.

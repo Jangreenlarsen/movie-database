@@ -91,9 +91,15 @@ Hver film/serie kan tildeles frie, **brugerdefinerede tags** (fx "Julefilm", "Se
     - **Samtidige delvise opdateringer ("last write wins")**: en service-funktion der opdaterer et dokument må aldrig læse hele dokumentet, ændre ét felt i hukommelsen og skrive det hele tilbage igen ("read-modify-write") hvis flere sådanne kald kan ske i hurtig rækkefølge uden kø (typisk fra en frontend der sender flere uafhængige PATCH-kald på kort tid). Brug i stedet punktum-sti `$set` (kun de faktisk ændrede felter) så to samtidige kald der rører *forskellige* felter aldrig kan overskrive hinandens skrivning, uanset rækkefølge (jf. BUGS.md #13).
     - **Bulk-operationer mod eksterne API'er**: når en handling itererer over mange elementer og kalder en ekstern API for hvert (fx en "synkroniser alt"-funktion), skal fejl der rammer *hele batchen* (manglende/ugyldig API-nøgle, rate-limit) håndteres adskilt fra fejl der kun rammer ét element. Tjek forudsætninger (API-nøgle sat) *før* løkken startes i stedet for at lade hvert element fejle for samme grundårsag, og stop batchen med det samme ved et rate-limit-svar i stedet for at blive ved med at forsøge resten mod en allerede-blokeret API (jf. BUGS.md #15/#16).
     - **Test i den faktiske runtime-kontekst, ikke kun logikken**: når en funktion skal køre under en bestemt runtime-sandkasse/isolation (fx en systemd-service med `ProtectSystem=strict`/`NoNewPrivileges=true`, en container, en begrænset bruger), er det ikke nok at teste logikken i et almindeligt/privilegeret shell — det kan give falsk tryghed, fordi sandkassen kan blokere ting (filskrivning, `sudo`, netværk) som slet ikke rammes af den manuelle test. Verificér i stedet direkte i den kontekst koden rent faktisk kører i produktion (fx via `nsenter` ind i den kørende proces' namespace, eller ved at udløse den rigtige, sandboxede vej end-to-end) *før* en feature der afhænger af servicens egne rettigheder meldes færdig (jf. BUGS.md #18 — OTA-deploy-featuren blev "verificeret" via et almindeligt SSH-shell, hvilket skjulte to reelle sandbox-relaterede fejl der først viste sig ved Jans egen brug).
+    - **Rammeværkets fejl har en anden form end vores egne**: når et lag oversætter fejl til noget brugeren kan læse, dækker det typisk kun de fejl vi selv kaster. Rammeværket kaster sine egne, i sit eget format, ad samme vej — og de rammer først når nogen indtaster noget forkert. Tjek derfor eksplicit *begge* former, ikke kun den kode selv producerer (jf. BUGS.md #54: `HTTPException` giver `detail` som en streng, mens FastAPIs validering giver en **liste** af objekter; frontend gav listen direkte til `new Error(...)` og viste brugeren "[object Object]" ved enhver valideringsfejl i hele appen).
+    - **Regler der kun gælder én gren**: når en regel indføres for ét tilfælde (kun ved oprettelse, kun for fysiske, kun for film), så gennemgå de øvrige grene *med det samme* — opdatering, den anden ressource, import-vejen. En regel der kun holder halvvejs opdages typisk først som en fejlmelding fra Jan (jf. BUGS.md #52: kravet om `format` blev håndhævet ens for film og serier, men kun film havde deres opløsning ved hånden, så hele TV-kategorien blev stiltiende sprunget over ved Plex-import).
     - Ved større funktioner (auth, permissions, betalinger, data-integritet) skal Claude proaktivt overveje disse punkter under implementering, ikke først vente på at Jan beder om en fejl-gennemgang.
 
 17. **Produktions-deployment**: [DEPLOYMENT.md](DEPLOYMENT.md) indeholder den bindende reference for hvordan produktion faktisk kører (native services på en dedikeret Debian-server — MongoDB, backend via systemd/uvicorn, Caddy som reverse proxy/TLS — *ikke* `docker-compose.yml`, som er et uverificeret scaffold). Konsultér og hold opdateret ved enhver ændring der påvirker hvordan appen deployes, opdateres eller driftes (nye systemd-services, nye miljøvariabler, ændret portbrug osv.).
+
+18. **Visuel verifikation af layout-ændringer (UFRAVIGELIG)**: en ændring af *placering* — absolut positionering, flex/grid-containere, hjørne-grupper, z-index, ombrydning — skal ses i browseren før den meldes færdig. `npm run build` og `npm run lint` kan ikke fange den slags: JSX og CSS er hver for sig gyldige, og det er kun kombinationen der er forkert. Regel 16's "test i den faktiske runtime-kontekst" gælder også her, og browseren *er* runtime-konteksten for layout. Jf. BUGS.md #53, hvor en absolut placeret gruppe kom til at indeholde et absolut placeret panel: panelets bredde blev derefter regnet mod gruppens få pixels, login-boksen blev mast sammen, og både build og lint var grønne hele vejen. Brug `/run`-skillen eller start dev-serveren og kig — og sig eksplicit i afrapporteringen om ændringen er set eller kun bygget.
+
+19. **Frontend-tests**: `frontend/src/**/*.test.{js,jsx}` køres med `npm test` (Vitest + Testing Library, feature #103). Ny frontend-logik der kan gå galt uden at nogen opdager det — fejlbesked-oversættelse, formatering, oversætter-fallback, tilstands-skift i et vindue — skal have en test. Rene visuelle ændringer skal ikke; til dem gælder regel 18 i stedet. Katalog-testene i `i18n.test.js` fanger manglende oversættelser og pladsholdere på tværs af sprog og skal blive ved med at dække begge kataloger.
 
 ---
 
@@ -104,7 +110,7 @@ Hver film/serie kan tildeles frie, **brugerdefinerede tags** (fx "Julefilm", "Se
 3. Opdater `version.json`: bump build (altid), bump version (hvis feature/bugfix/breaking).
 4. Tilføj entry i `CHANGELOG.md` med `[version build NNNN]` prefix.
 5. Opdater `RELEASE_NOTES.md` hvis kode er ændret.
-6. Kør backend-/frontend-tests hvis relevant.
+6. Kør **begge** testsuiter før noget meldes færdigt: `cd backend && ./.venv/Scripts/python.exe -m pytest -q` og `cd frontend && npm test`. Frontend havde ingen suite indtil feature #103; "hvis relevant" gælder derfor ikke længere som undskyldning for at springe den over. Rør ændringen ved layout eller placering, gælder desuden regel 18.
 7. `git add` + `git commit` med besked der inkluderer version: `v0.1.0-b0001: beskrivelse`.
 8. `git push origin dev` til GitHub.
 9. Spørg Jan: *"Vil du også merge til `main`?"* — merge og push `origin main` hvis ja.
@@ -167,13 +173,17 @@ Scan cover (UPC/EAN) → UPC-opslag (titel-gæt) → TMDb-søgning på gættet t
     ├── src/
     │   ├── api/                 # backend API-client (fetch-wrapper)
     │   ├── components/          # genanvendelige UI-komponenter
+    │   ├── i18n/                 # oversætter + da.json/en.json (feature #89)
     │   ├── pages/                # Library, TvShows, ScanMovie, Statistics
-    │   └── scanner/              # kamera + stregkode-detection
+    │   ├── scanner/              # kamera + stregkode-detection
+    │   ├── utils/                # rene hjælpefunktioner (serienr., datoformat)
+    │   ├── test/                 # setup.js til Vitest (feature #103)
+    │   └── **/*.test.{js,jsx}    # tests ligger ved siden af det de tester
     ├── public/
     │   └── manifest.json         # PWA manifest
     ├── index.html
     ├── package.json
-    ├── vite.config.js
+    ├── vite.config.js            # også Vitest-konfiguration (test-blokken)
     └── Dockerfile
 ```
 

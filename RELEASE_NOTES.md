@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.93.0 (build 0125) — 2026-08-11
+
+- **Omdøbt: "Ønsker" hedder nu "Indkøbsønsker".** Fanen og sektionen for de film/TV-serier du gerne vil købe, er omdøbt til "Indkøbsønsker" i hele appen. Funktionen er den samme — kun navnet er ændret. (Voldby BIO's "ønsk en visning" er ikke berørt.)
+
 ## v0.92.0 (build 0124) — 2026-08-11
 
 - **Nyt: gæster kan nu tilføje ønsker.** Gæste-brugere (ellers kun læseadgang) kan nu åbne Ønsker-fanen og tilføje film og TV-serier til ønskelisten, ligesom de kan anmode om visninger i Voldby BIO. De kan fortsat ikke ændre i selve biblioteket, og bestillingsstatus på et ønske er forbeholdt almindelige brugere og administratorer.

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.96.0 (build 0130) — 2026-08-11
+
+- **Nyt baggrundsmotiv på Voldby BIO-siden.** Toppen af den offentlige side har nu en stemningsfuld collage af film-frames bag skiltet, i varme toner der matcher resten af siden. Den toner blødt ud ned mod indholdet, så alt forbliver let at læse — i både lyst og mørkt tema.
+
 ## v0.95.0 (build 0129) — 2026-08-11
 
 - **Dato og tid i hjørnet på de offentlige program-kort.** På Voldby BIO-siden vises visningstidspunktet nu som en badge i øverste højre hjørne af hvert film-/serie-kort, så titlen og resten af teksten får mere plads.

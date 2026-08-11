@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.93.0 build 0125] — 2026-08-11 — feature: omdøb "Ønsker" → "Indkøbsønsker" i UI'et (FEATURES.md #117)
+
+Jan: *"rename 'ønske' til 'indkøbs ønsker'"*. Ren tekst-ændring i de to i18n-kataloger (`da.json`/`en.json`) — ingen kode-, endpoint- eller datamodel-ændring (feltet hedder fortsat `is_wishlist` internt).
+
+Dansk: feature-navnet er nu **"Indkøbsønsker"** (nav-fane + sidetitel), enkelt-post "indkøbsønske", og "på indkøbslisten" hvor teksten refererer til listen som sted (fx franchise-badge og dublet-advarsel). Engelsk følger med som **"Shopping list"**. Kun selve indkøbsliste-teksterne er rørt — `request.*`/`cinema.*` ("Send ønske", "✓ Ønsket til Voldby BIO", "Ønsket tidspunkt", "Ønsket af") handler om Voldby BIO-visningsanmodninger, ikke indkøbslisten, og er bevidst uændrede.
+
+Nav'ens `.tabs` bruger `white-space: nowrap` + `overflow-x: auto` på mobil, så den længere label scroller vandret frem for at ombryde (rule 18-relevant, men allerede afværget i eksisterende CSS; længden er på niveau med "Indstillinger"/"TV-serier"). i18n-katalogtesten (feature #103) bekræfter at begge kataloger stadig har samme nøgler og pladsholdere efter renamet.
+
+Berørte filer: `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`, `version.json`.
+
 ## [0.92.0 build 0124] — 2026-08-11 — feature: gæster kan oprette ønsker (FEATURES.md #116)
 
 Jan: *"lave det muligt for guest user at kunne oprette ønsker også men ikke noget med status på order"*. Feature #72 gjorde gæste-rollen fuldstændig læse-kun; denne feature åbner **kun** oprettelse af ønskeliste-poster for dem — de kan stadig ikke oprette bibliotekspost, redigere/flytte/slette eksisterende poster eller sætte bestillingsstatus.

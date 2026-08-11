@@ -133,6 +133,7 @@ export default function TvShows({
     formats: [],
     audio_types: [],
     media_types: [],
+    order_statuses: [],
   });
   const [activeShow, setActiveShow] = useState(null);
   const [visibleFields, setVisibleFields] = useState(() => visibleFieldsFromSettings(user.settings));
@@ -843,6 +844,16 @@ export default function TvShows({
                     <span className="movie-meta-item">{show.genres.join(", ")}</span>
                   )}
                 </div>
+                {/* Feature #114 — se den identiske note i Library.jsx. */}
+                {show.is_wishlist && (
+                  <div className="movie-tags">
+                    <span
+                      className={`movie-order-badge${show.order_status ? "" : " movie-order-badge--none"}`}
+                    >
+                      {show.order_status || t("orderStatus.notOrdered")}
+                    </span>
+                  </div>
+                )}
                 {visibleFields.tags && show.tags.length > 0 && (
                   <div className="movie-tags">
                     {show.tags.map((tag) => (
@@ -922,6 +933,8 @@ export function TvShowDetailModal({
   const [owner, setOwner] = useState(show.owner ?? "");
   // Feature #109 — se den identiske note i Library.jsx.
   const [subtitles, setSubtitles] = useState(show.subtitles ?? "");
+  // Feature #114 — se den identiske note i Library.MovieDetailModal.
+  const [orderStatus, setOrderStatus] = useState(show.order_status ?? "");
   const [personalRating, setPersonalRating] = useState(
     show.personal_rating != null ? String(show.personal_rating) : ""
   );
@@ -949,6 +962,7 @@ export function TvShowDetailModal({
     setLocation(show.location ?? "");
     setOwner(show.owner ?? "");
     setSubtitles(show.subtitles ?? "");
+    setOrderStatus(show.order_status ?? "");
     setPersonalRating(show.personal_rating != null ? String(show.personal_rating) : "");
     setPersonalNote(show.personal_note ?? "");
     setWatched(show.watched);
@@ -988,6 +1002,7 @@ export function TvShowDetailModal({
         location: location.trim() || null,
         owner: owner.trim() || null,
         subtitles: subtitles.trim() || null,
+        order_status: orderStatus || null,
         personal_rating: personalRating ? Number(personalRating) : null,
         personal_note: personalNote.trim() || null,
         watched,
@@ -1239,6 +1254,12 @@ export function TvShowDetailModal({
                 <div className="modal-section-label">{t("field.subtitles")}</div>
                 <p>{show.subtitles || "—"}</p>
               </div>
+              {show.is_wishlist && (
+                <div>
+                  <div className="modal-section-label">{t("field.orderStatus")}</div>
+                  <p>{show.order_status || t("orderStatus.notOrdered")}</p>
+                </div>
+              )}
               <div>
                 <div className="modal-section-label">{t("field.personalNote")}</div>
                 <p>{show.personal_note || "—"}</p>
@@ -1386,6 +1407,20 @@ export function TvShowDetailModal({
                   placeholder={t("detail.subtitlesPlaceholder")}
                 />
               </div>
+
+              {show.is_wishlist && (
+                <div>
+                  <div className="modal-section-label">{t("field.orderStatus")}</div>
+                  <select value={orderStatus} onChange={(e) => setOrderStatus(e.target.value)}>
+                    <option value="">{t("orderStatus.notOrdered")}</option>
+                    {attributeOptions.order_statuses.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <div className="modal-section-label">{t("field.personalNote")}</div>

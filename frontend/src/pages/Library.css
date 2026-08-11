@@ -544,6 +544,26 @@
   color: var(--accent-strong);
 }
 
+/* Feature #114 — bestillingsstatus-pille på ønske-kort. Bestilt: fast rav-farve
+   med hvid tekst, så den læser oven på ethvert kort i både lyst og mørkt tema
+   (samme begrundelse som .movie-watched-badges faste grønne). Ikke bestilt:
+   dæmpet, samme accent-tokens som tag-pillen. */
+.movie-order-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(217, 119, 6, 0.92);
+  color: #fff;
+}
+
+.movie-order-badge--none {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 600;
+  opacity: 0.75;
+}
+
 .empty-state {
   text-align: center;
   padding: 64px 20px;

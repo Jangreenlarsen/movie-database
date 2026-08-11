@@ -4,7 +4,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.api.deps import get_current_user, require_admin, require_not_guest
 from app.db import get_database
 from app.integrations import tmdb_client
-from app.models.movie import AudioType, MediaType, MovieFormat, TmdbSyncResult
+from app.models.movie import AudioType, MediaType, MovieFormat, OrderStatus, TmdbSyncResult
 from app.models.scan import MovieCandidate
 from app.models.tv_show import (
     DeletedTvShow,
@@ -99,6 +99,7 @@ async def attribute_options() -> dict:
         "formats": [f.value for f in MovieFormat],
         "audio_types": [a.value for a in AudioType],
         "media_types": [m.value for m in MediaType],
+        "order_statuses": [s.value for s in OrderStatus],
     }
 
 

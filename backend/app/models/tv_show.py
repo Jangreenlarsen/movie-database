@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.models.movie import AudioType, MediaType, MovieFormat
+from app.models.movie import AudioType, MediaType, MovieFormat, OrderStatus
 from app.models.scan import BarcodeSource
 
 
@@ -56,6 +56,8 @@ class TvShowCreate(BaseModel):
     owner: str | None = None
     # Feature #109 — se den identiske note i MovieCreate.
     subtitles: str | None = None
+    # Feature #114 — se den identiske note i MovieCreate.
+    order_status: OrderStatus | None = None
     is_wishlist: bool = False
 
     @model_validator(mode="after")
@@ -119,6 +121,7 @@ class TvShowUpdate(BaseModel):
     location: str | None = None
     owner: str | None = None
     subtitles: str | None = None
+    order_status: OrderStatus | None = None
     is_wishlist: bool | None = None
     serial_number: int | None = Field(default=None, gt=0)
     personal_rating: int | None = Field(default=None, ge=1, le=10)
@@ -153,6 +156,7 @@ class TvShow(BaseModel):
     location: str | None = None
     owner: str | None = None
     subtitles: str | None = None
+    order_status: str | None = None
     registered_by: str | None = None
     is_wishlist: bool = False
     personal_rating: int | None = None

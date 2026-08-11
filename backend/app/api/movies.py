@@ -17,6 +17,7 @@ from app.models.movie import (
     MoviePage,
     MoviePreview,
     MovieUpdate,
+    OrderStatus,
     SerialHolder,
     TmdbSyncResult,
 )
@@ -128,6 +129,7 @@ async def attribute_options() -> dict:
         "formats": [f.value for f in MovieFormat],
         "audio_types": [a.value for a in AudioType],
         "media_types": [m.value for m in MediaType],
+        "order_statuses": [s.value for s in OrderStatus],
     }
 
 

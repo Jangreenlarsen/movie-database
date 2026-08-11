@@ -16,6 +16,7 @@ function settingsTabs(isAdmin, isGuest) {
     { id: "brugere", labelKey: "settings.tab.users", visible: isAdmin },
     { id: "beskeder", labelKey: "settings.tab.messages", visible: isAdmin },
     { id: "konto", labelKey: "settings.tab.account", visible: true },
+    { id: "nyt", labelKey: "settings.tab.whatsNew", visible: true },
     { id: "bibliotek", labelKey: "settings.tab.library", visible: !isGuest },
     { id: "backup", labelKey: "settings.tab.backup", visible: isAdmin },
     { id: "noegler", labelKey: "settings.tab.keys", visible: isAdmin },
@@ -66,6 +67,8 @@ export default function Settings({ user, onSettingsChanged }) {
           <ThemeSection theme={user.settings.theme} onSettingsChanged={onSettingsChanged} />
         </>
       )}
+
+      {activeTab === "nyt" && <FeatureListSection />}
 
       {activeTab === "bibliotek" && !isGuest && (
         <>
@@ -961,6 +964,65 @@ function SerialNumberSection({ isAdmin }) {
             </button>
           )}
         </form>
+      )}
+    </div>
+  );
+}
+
+// Feature #115 — Nyheder-fanen: viser oversigts-tabellen fra FEATURES.md
+// (hentet server-side), så portalens brugere kan se hvad der bliver lavet
+// uden adgang til det private GitHub-repo. Synlig for alle roller.
+const FEATURE_STATUS_META = {
+  done: { labelKey: "features.status.done", className: "feature-status--done" },
+  "in-progress": { labelKey: "features.status.inProgress", className: "feature-status--progress" },
+  planned: { labelKey: "features.status.planned", className: "feature-status--planned" },
+  droppet: { labelKey: "features.status.dropped", className: "feature-status--dropped" },
+};
+
+function FeatureListSection() {
+  const t = useT();
+  const [items, setItems] = useState([]);
+  const [status, setStatus] = useState("loading");
+
+  useEffect(() => {
+    api
+      .getFeatureList()
+      .then((data) => {
+        setItems(data);
+        setStatus("ready");
+      })
+      .catch(() => setStatus("error"));
+  }, []);
+
+  return (
+    <div className="card settings-section">
+      <h2>{t("features.heading")}</h2>
+      <p className="muted">{t("features.description")}</p>
+
+      {status === "loading" && <p className="muted">{t("common.loading")}</p>}
+      {status === "error" && (
+        <div className="banner banner-error">{t("features.loadError")}</div>
+      )}
+
+      {status === "ready" && items.length === 0 && (
+        <p className="muted">{t("features.none")}</p>
+      )}
+
+      {status === "ready" && items.length > 0 && (
+        <ul className="feature-list">
+          {items.map((item) => {
+            // Ukendt status vises råt frem for at forsvinde (fejlsikkert).
+            const meta = FEATURE_STATUS_META[item.status];
+            return (
+              <li key={item.number} className="feature-row">
+                <span className="feature-name">{item.name}</span>
+                <span className={`feature-status ${meta?.className ?? ""}`}>
+                  {meta ? t(meta.labelKey) : item.status}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );

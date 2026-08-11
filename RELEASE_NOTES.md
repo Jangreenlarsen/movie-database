@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.98.0 (build 0134) — 2026-08-11
+
+- **Flere lyd-typer.** Du kan nu vælge **DTS:X** og **DTS-HD-MA-7.1** under lyd-type på både film og TV-serier — de dukker automatisk op i listen ved tilføj og redigér.
+
 ## v0.97.1 (build 0133) — 2026-08-11
 
 - **"+ Tilføj" på en samling virker nu fra indkøbslisten.** Ser du en film på indkøbslisten som er del af en samling (fx John Wick Collection), kan du nu tilføje de øvrige film i samlingen direkte fra listen — de lægges på indkøbslisten (knappen hedder "+ Ønskeliste"). Tidligere skete der ingenting når man trykkede. Tilføjer du fra en film du allerede ejer, henviser appen til den fulde tilføj-flow, hvor du kan vælge format og medietype. Går noget galt, vises fejlen nu tydeligt i stedet for at forsvinde.

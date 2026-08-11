@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.98.0 build 0134] — 2026-08-11 — feature: nye lyd-typer DTS:X og DTS-HD-MA-7.1 (FEATURES.md #122)
+
+To nye værdier i `AudioType`-enummet (`backend/app/models/movie.py`): `DTS:X` og `DTS-HD-MA-7.1`, placeret ved de øvrige DTS-varianter. Enummet deles af film og TV-serier, og frontend henter lyd-typerne dynamisk fra `attribute-options`, så begge dukker automatisk op i afkrydsnings-listerne på tilføj/rediger uden frontend-ændring. Ingen datamigration. `test_attribute_options_endpoint` udvidet til at dække begge nye værdier.
+
+Berørte filer: `backend/app/models/movie.py`, `backend/tests/test_movies.py`, `FEATURES.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `version.json`.
+
 ## [0.97.1 build 0133] — 2026-08-11 — fix: "+ Tilføj" på samlings-del fra ønskelisten virker nu (BUGS.md #58)
 
 `CollectionSection.addPart` i `Library.jsx` sendte ikke `is_wishlist` med til `createMovie`, så en tilføjelse fra ønskelisten blev afvist af backend-validatoren (`format`/`media_type` kræves for biblioteksposter) og fejlen blev slugt tavst — knappen så ud til ikke at gøre noget. Nu følger tilføjelsen forælderen: fra ønskelisten tilføjes søsterfilmen til ønskelisten (knap: "+ Ønskeliste"); fra en ejet film henvises til det fulde tilføj-flow, da format/medietype ikke kan vælges i samlingslisten. Fejl vises nu i et banner i stedet for at sluges (CLAUDE.md regel 16).

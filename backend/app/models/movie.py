@@ -50,6 +50,8 @@ class AudioType(str, Enum):
     DOLBY_DIGITAL_7_1 = "DD7.1"
     DTS = "DTS"
     DTS_HD_MASTER_AUDIO = "DTS-HD-M"
+    DTS_HD_MA_7_1 = "DTS-HD-MA-7.1"
+    DTS_X = "DTS:X"
     DOLBY_ATMOS = "Atmos"
     DOLBY_TRUEHD = "D-true-HD"
 

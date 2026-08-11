@@ -456,4 +456,6 @@ async def test_attribute_options_endpoint(client):
     data = response.json()
     assert "BD" in data["formats"]
     assert "Atmos" in data["audio_types"]
+    assert "DTS:X" in data["audio_types"]  # feature #122
+    assert "DTS-HD-MA-7.1" in data["audio_types"]  # feature #122
     assert data["media_types"] == ["Fysisk", "Digital"]

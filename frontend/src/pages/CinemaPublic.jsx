@@ -286,7 +286,7 @@ function PublicScreeningCard({ screening }) {
   const t = useT();
   const locale = useLocale();
   return (
-    <div className="cinema-card">
+    <div className="cinema-card cinema-card--public">
       <div className="cinema-card-poster">
         {screening.poster_url ? (
           <img src={screening.poster_url} alt={screening.title ?? ""} loading="lazy" />
@@ -295,6 +295,8 @@ function PublicScreeningCard({ screening }) {
         )}
       </div>
       <div className="cinema-card-body">
+        {/* Feature #120 — dato/tid-badgen placeres i kortets øverste højre
+            hjørne via .cinema-card--public (se CinemaPublic.css). */}
         <div className="cinema-card-time">
           {formatShortDate(screening.scheduled_at, locale)} ·{" "}
           {formatTime(screening.scheduled_at, locale)}

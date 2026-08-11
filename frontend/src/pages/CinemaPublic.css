@@ -168,6 +168,29 @@
   font-size: 1.5rem;
 }
 
+/* Feature #120 — på de offentlige visnings-kort sidder dato/tid-badgen i
+   kortets øverste højre hjørne (Jans ønske) i stedet for som første linje i
+   teksten. Kun public: den indloggede `.cinema-card` (Cinema.jsx) er urørt, da
+   den er dag-grupperet og har admin-værktøjer der forventer badgen i flowet.
+   `.cinema-card-body` får luft foroven, så titlen ikke løber ind under badgen
+   i desktop-layoutet (poster til venstre, tekst til højre). */
+.cinema-card--public {
+  position: relative;
+}
+
+.cinema-card--public .cinema-card-time {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  margin: 0;
+  z-index: 1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.cinema-card--public .cinema-card-body {
+  padding-top: 22px;
+}
+
 /* Feature #118 — visnings-programmet på den offentlige side genbruger nu den
    indloggede Voldby BIO-fanes brede `.cinema-card`-kort (Cinema.css) i stedet
    for et kompakt poster-grid, så en besøgende ser plot + trailer + IMDb som en

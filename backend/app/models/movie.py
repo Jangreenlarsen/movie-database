@@ -27,6 +27,17 @@ class MediaType(str, Enum):
     DIGITAL = "Digital"
 
 
+class OrderStatus(str, Enum):
+    """Feature #114 — bestillingsstatus for en ønskeliste-post. Kun de
+    *bestilte* tilstande er enum-værdier; "ikke bestilt" repræsenteres som
+    fravær (`None`), så feltet følger `subtitles`' valgfri-mønster i stedet
+    for at gemme en fjerde "tom" værdi. Genbruges af tv_show.py."""
+
+    LASERDISKEN = "Bestilt ved Laserdisken"
+    IMUSIC = "Bestilt ved iMusic"
+    OTHER = "Bestilt ved div."
+
+
 class AudioType(str, Enum):
     """Short labels (v0.22.0) — less horizontal space on cards/chips. See
     `movie_repository._migrate_audio_type_labels` for the one-time rename of
@@ -74,6 +85,8 @@ class MovieCreate(BaseModel):
     # fast enum), fx "DA, EN" eller "Fastbrændt DA". Ingen fast værdiliste,
     # så ingen enum og intet autocomplete-opslag som location/owner har.
     subtitles: str | None = None
+    # Feature #114 — kun relevant for ønskeliste-poster; None = ikke bestilt.
+    order_status: OrderStatus | None = None
     is_wishlist: bool = False
 
     @model_validator(mode="after")
@@ -150,6 +163,7 @@ class MovieUpdate(BaseModel):
     location: str | None = None
     owner: str | None = None
     subtitles: str | None = None
+    order_status: OrderStatus | None = None
     is_wishlist: bool | None = None
     serial_number: int | None = Field(default=None, gt=0)
     personal_rating: int | None = Field(default=None, ge=1, le=10)
@@ -182,6 +196,7 @@ class Movie(BaseModel):
     location: str | None = None
     owner: str | None = None
     subtitles: str | None = None
+    order_status: str | None = None
     registered_by: str | None = None
     is_wishlist: bool = False
     personal_rating: int | None = None

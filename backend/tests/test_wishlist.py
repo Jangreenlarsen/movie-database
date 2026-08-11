@@ -85,6 +85,48 @@ async def test_moving_a_wishlist_movie_to_the_library_is_not_gated_by_registrant
     assert response.json()["serial_number"] is not None
 
 
+async def test_order_status_persists_on_create_and_update(client):
+    """Feature #114 — bestillingsstatus gemmes ved oprettelse og kan ændres
+    via PATCH; en gyldig enum-værdi accepteres, og None rydder den igen."""
+    create = await client.post(
+        "/api/movies",
+        json={"title": "On Order", "is_wishlist": True, "order_status": "Bestilt ved iMusic"},
+    )
+    assert create.status_code == 201
+    movie = create.json()
+    assert movie["order_status"] == "Bestilt ved iMusic"
+
+    # Skift kilde, og ryd den derefter (None = ikke bestilt).
+    changed = await client.patch(
+        f"/api/movies/{movie['id']}", json={"order_status": "Bestilt ved Laserdisken"}
+    )
+    assert changed.json()["order_status"] == "Bestilt ved Laserdisken"
+
+    cleared = await client.patch(f"/api/movies/{movie['id']}", json={"order_status": None})
+    assert cleared.json()["order_status"] is None
+
+
+async def test_order_status_rejects_unknown_value(client):
+    """En ukendt kilde er ikke en gyldig OrderStatus — backend afviser den
+    (422) i stedet for at gemme fritekst."""
+    response = await client.post(
+        "/api/movies",
+        json={"title": "Bad Source", "is_wishlist": True, "order_status": "Bestilt ved Netto"},
+    )
+    assert response.status_code == 422
+
+
+async def test_order_status_is_exposed_in_attribute_options(client):
+    response = await client.get("/api/movies/attribute-options")
+    assert response.status_code == 200
+    statuses = response.json()["order_statuses"]
+    assert statuses == [
+        "Bestilt ved Laserdisken",
+        "Bestilt ved iMusic",
+        "Bestilt ved div.",
+    ]
+
+
 async def test_moving_a_library_movie_to_the_wishlist_clears_its_serial_number(client):
     create = await client.post("/api/movies", json={"title": "Regretted Purchase", "media_type": "Fysisk", "format": "DVD"})
     movie_id = create.json()["id"]

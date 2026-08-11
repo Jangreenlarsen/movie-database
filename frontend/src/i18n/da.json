@@ -48,6 +48,8 @@
   "field.location": "Lokation",
   "field.owner": "Ejer",
   "field.subtitles": "Undertekst",
+  "field.orderStatus": "Bestillingsstatus",
+  "orderStatus.notOrdered": "Ikke bestilt",
   "field.registeredBy": "Registreret af",
   "field.tags": "Tags",
   "field.genres": "Genrer",

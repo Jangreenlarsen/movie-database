@@ -161,6 +161,7 @@ export default function Library({
     formats: [],
     audio_types: [],
     media_types: [],
+    order_statuses: [],
   });
   const [activeMovie, setActiveMovie] = useState(null);
   const [visibleFields, setVisibleFields] = useState(() => visibleFieldsFromSettings(user.settings));
@@ -917,6 +918,17 @@ export default function Library({
                     <span className="movie-meta-item">{movie.genres.join(", ")}</span>
                   )}
                 </div>
+                {/* Feature #114 — bestillingsstatus vises kun på ønske-kort,
+                    i både grid- og liste-visning (samme markup, jf. #108). */}
+                {movie.is_wishlist && (
+                  <div className="movie-tags">
+                    <span
+                      className={`movie-order-badge${movie.order_status ? "" : " movie-order-badge--none"}`}
+                    >
+                      {movie.order_status || t("orderStatus.notOrdered")}
+                    </span>
+                  </div>
+                )}
                 {visibleFields.tags && movie.tags.length > 0 && (
                   <div className="movie-tags">
                     {movie.tags.map((tag) => (
@@ -1011,6 +1023,9 @@ export function MovieDetailModal({
   // almindeligt `useState` uden Combobox/autocomplete, i modsætning til
   // location/owner ovenfor.
   const [subtitles, setSubtitles] = useState(movie.subtitles ?? "");
+  // Feature #114 — bestillingsstatus, kun relevant/synligt for ønskeliste-poster.
+  // Tom streng = "Ikke bestilt" (gemmes som null); de tre bestilte kilder er enum-værdier.
+  const [orderStatus, setOrderStatus] = useState(movie.order_status ?? "");
   const [personalRating, setPersonalRating] = useState(
     movie.personal_rating != null ? String(movie.personal_rating) : ""
   );
@@ -1049,6 +1064,7 @@ export function MovieDetailModal({
     setLocation(movie.location ?? "");
     setOwner(movie.owner ?? "");
     setSubtitles(movie.subtitles ?? "");
+    setOrderStatus(movie.order_status ?? "");
     setPersonalRating(movie.personal_rating != null ? String(movie.personal_rating) : "");
     setPersonalNote(movie.personal_note ?? "");
     setWatched(movie.watched);
@@ -1081,6 +1097,7 @@ export function MovieDetailModal({
       location !== (movie.location ?? "") ||
       owner !== (movie.owner ?? "") ||
       subtitles !== (movie.subtitles ?? "") ||
+      orderStatus !== (movie.order_status ?? "") ||
       personalRating !== (movie.personal_rating != null ? String(movie.personal_rating) : "") ||
       personalNote !== (movie.personal_note ?? "") ||
       watched !== movie.watched ||
@@ -1096,6 +1113,7 @@ export function MovieDetailModal({
     location,
     owner,
     subtitles,
+    orderStatus,
     personalRating,
     personalNote,
     watched,
@@ -1126,6 +1144,7 @@ export function MovieDetailModal({
         location: location.trim() || null,
         owner: owner.trim() || null,
         subtitles: subtitles.trim() || null,
+        order_status: orderStatus || null,
         personal_rating: personalRating ? Number(personalRating) : null,
         personal_note: personalNote.trim() || null,
         watched,
@@ -1405,6 +1424,12 @@ export function MovieDetailModal({
                 <div className="modal-section-label">{t("field.subtitles")}</div>
                 <p>{movie.subtitles || "—"}</p>
               </div>
+              {movie.is_wishlist && (
+                <div>
+                  <div className="modal-section-label">{t("field.orderStatus")}</div>
+                  <p>{movie.order_status || t("orderStatus.notOrdered")}</p>
+                </div>
+              )}
               <div>
                 <div className="modal-section-label">{t("field.personalNote")}</div>
                 <p>{movie.personal_note || "—"}</p>
@@ -1565,6 +1590,20 @@ export function MovieDetailModal({
                   placeholder={t("detail.subtitlesPlaceholder")}
                 />
               </div>
+
+              {movie.is_wishlist && (
+                <div>
+                  <div className="modal-section-label">{t("field.orderStatus")}</div>
+                  <select value={orderStatus} onChange={(e) => setOrderStatus(e.target.value)}>
+                    <option value="">{t("orderStatus.notOrdered")}</option>
+                    {attributeOptions.order_statuses.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <div className="modal-section-label">{t("field.personalNote")}</div>

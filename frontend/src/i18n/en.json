@@ -48,6 +48,8 @@
   "field.location": "Location",
   "field.owner": "Owner",
   "field.subtitles": "Subtitles",
+  "field.orderStatus": "Order status",
+  "orderStatus.notOrdered": "Not ordered",
   "field.registeredBy": "Registered by",
   "field.tags": "Tags",
   "field.genres": "Genres",

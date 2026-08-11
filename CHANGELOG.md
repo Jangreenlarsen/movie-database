@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.90.0 build 0122] — 2026-08-11 — feature: bestillingsstatus på ønskeliste-poster (FEATURES.md #114)
+
+Jan: *"vi skal have en status felt i ønske seksion på film/tv hvor vi kan sætte status for om film/tv er bestilt"* — som dropdown med Ikke bestilt / Bestilt ved Laserdisken / Bestilt ved iMusic / Bestilt ved div. Efterfulgt af *"lave også en list form i ønske med kolon status m.m."*, som blev afklaret med ham: genbrug den eksisterende grid/liste-toggle (#108) og vis status som en badge på ønske-kortene, frem for en helt ny tabel-visning.
+
+Nyt `order_status`-felt på både `Movie` og `TvShow`, kun meningsfuldt for ønskeliste-poster (man ejer ikke det man ønsker sig endnu, så der er intet at bestille i biblioteket). Backend: ny `OrderStatus`-enum i `models/movie.py`, genbrugt af `tv_show.py` som de øvrige delte enums. Kun de *tre bestilte* tilstande er enum-værdier; "ikke bestilt" repræsenteres bevidst som fravær (`None`), så feltet følger `subtitles`' valgfri-mønster i stedet for at gemme en fjerde "tom" værdi (jf. CLAUDE.md regel 16's "tomhed"-punkt). Feltet er tilføjet til create-/update-/read-modellerne for begge ressourcer, til `attribute-options` (film + TV) og til dokument-mappingen i service-laget (create gemmer `.value`; update går via det eksisterende `model_dump(exclude_unset=True)`→`$set`, så en `None` også rydder feltet igen). En ukendt kilde afvises som 422 frem for at blive gemt som fritekst.
+
+Frontend: dropdown i rediger-boksen vises **kun** når posten er en ønskeliste-post (`is_wishlist`) — første valg "Ikke bestilt" (tom → `None`), derefter de tre kilder fra `attribute-options`. Tilsvarende læse-linje i detaljevisningen, og en farvet `.movie-order-badge`-pille på ønske-kortene i både grid- og liste-visning (samme markup begge steder, jf. #108 — de to visninger kan aldrig vise forskelligt). Bestilt = fast rav-farve med hvid tekst (læser på ethvert kort i begge temaer, samme begrundelse som den grønne set-badge); ikke bestilt = dæmpet med accent-tokens. Film og TV ens.
+
+Visuelt verificeret i browseren (CLAUDE.md regel 18) i både lyst og mørkt tema, grid + liste — rav-pillen er tydelig, "Ikke bestilt" er dæmpet men læsbar, og pillen flyder korrekt i begge visninger uden at forstyrre format-badgen i liste-tilstand.
+
+Berørte filer: `backend/app/models/movie.py`, `backend/app/models/tv_show.py`, `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`, `backend/app/api/movies.py`, `backend/app/api/tv_shows.py`, `backend/tests/test_wishlist.py`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/pages/Library.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`, `version.json`.
+
 ## [0.89.1 build 0121] — 2026-08-11 — fix: serienummer-redigering byttede forkert serie / fejlede rå + byt-plads-bekræftelse (BUGS.md #56)
 
 Jan: redigering af en films serienummer gav ingen klar tilbagemelding om, hvorvidt byttet skete, og han spurgte om det samme gjaldt digitale. Analysen fandt en dybere fejl: byt-plads-omnummereringen (`_reassign_serial_number` i både `movie_service` og `tv_show_service`) slog den kolliderende post op på **tallet alene** (`find_by_serial_number`), uden hensyn til hvilken serie nummeret hørte til. Men et serienummer er kun entydigt inden for sin serie (fysisk M#/T#, eller den delte digitale D#), så et fysisk skift til et optaget nummer kunne gribe en digital post med samme tal — enten omnummerere den forkerte post stiltiende, ramme en `DuplicateKeyError` (rå 500), eller (for den delte digitale serie på tværs af collections) få to poster til at hedde D#-samme-nummer. Se BUGS.md #56 for de tre udfald.

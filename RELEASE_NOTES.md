@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.90.0 (build 0122) — 2026-08-11
+
+- **Nyt: bestillingsstatus på ønskelisten.** På et ønske (film eller TV-serie) kan du nu sætte om det er bestilt — vælg mellem *Ikke bestilt*, *Bestilt ved Laserdisken*, *Bestilt ved iMusic* eller *Bestilt ved div.* i ønskets rediger-boks.
+- Status vises som en farvet mærkat direkte på ønske-kortet, både i grid- og liste-visning, så du hurtigt kan se hvad der er bestilt og hvad der mangler. Feltet vises kun på ønsker, ikke på film/serier du allerede ejer.
+
 ## v0.89.1 (build 0121) — 2026-08-11
 
 - **Rettet: at ændre en films serienummer virker nu korrekt — og siger tydeligt til.** Skifter du et nummer til et der allerede er i brug, spørger appen nu først *"Nr. X er i brug af 'Titel'. De to bytter plads. Fortsæt?"* så du kan nå at fortryde. Du taster stadig kun selve tallet — om det bliver et M- eller D-nummer følger automatisk af, om filmen er fysisk eller digital.

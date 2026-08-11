@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.96.1 (build 0131) — 2026-08-11
+
+- **Baggrundsmotivet dækker nu hele Voldby BIO-siden.** Film-frame-collagen er justeret efter feedback: den er ikke længere grynet (vises skarpt i naturlig størrelse i stedet for at blive zoomet op), og den er nu synlig hele vejen ned ad siden i stedet for kun i toppen — stadig dæmpet, så teksten er let at læse i både lyst og mørkt tema.
+
 ## v0.96.0 (build 0130) — 2026-08-11
 
 - **Nyt baggrundsmotiv på Voldby BIO-siden.** Toppen af den offentlige side har nu en stemningsfuld collage af film-frames bag skiltet, i varme toner der matcher resten af siden. Den toner blødt ud ned mod indholdet, så alt forbliver let at læse — i både lyst og mørkt tema.

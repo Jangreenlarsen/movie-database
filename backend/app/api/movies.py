@@ -17,6 +17,7 @@ from app.models.movie import (
     MoviePage,
     MoviePreview,
     MovieUpdate,
+    SerialHolder,
     TmdbSyncResult,
 )
 from app.models.scan import MovieCandidate
@@ -156,6 +157,18 @@ async def sync_movies_from_tmdb(db: AsyncIOMotorDatabase = Depends(get_database)
 @router.get("/{movie_id}", response_model=Movie)
 async def get_movie(movie_id: str, db: AsyncIOMotorDatabase = Depends(get_database)):
     return await movie_service.get_movie(db, movie_id)
+
+
+@router.get("/{movie_id}/serial-holder", response_model=SerialHolder)
+async def serial_holder(
+    movie_id: str,
+    serial_number: int = Query(..., ge=1),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """BUGS.md #56 — hvem holder `serial_number` i samme serie som denne film?
+    Bibliotekets rediger-vindue kalder dette før et serienummer ændres: er
+    nummeret optaget, bekræfter brugeren først at de to bytter plads."""
+    return await movie_service.find_serial_swap_target(db, movie_id, serial_number)
 
 
 @router.patch("/{movie_id}", response_model=Movie)

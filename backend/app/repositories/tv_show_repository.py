@@ -189,10 +189,6 @@ async def find_by_id(db: AsyncIOMotorDatabase, tv_show_id: str) -> dict | None:
     return await db[COLLECTION].find_one({"_id": ObjectId(tv_show_id)})
 
 
-async def find_by_serial_number(db: AsyncIOMotorDatabase, serial_number: int) -> dict | None:
-    return await db[COLLECTION].find_one({"serial_number": serial_number})
-
-
 async def find_by_tmdb_id(db: AsyncIOMotorDatabase, tmdb_id: int) -> list[dict]:
     cursor = db[COLLECTION].find({"tmdb_id": tmdb_id})
     return await cursor.to_list(length=100)

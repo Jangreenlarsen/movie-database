@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.core.errors import (
     DuplicateBarcodeError,
     NotAuthorizedError,
+    SerialNumberConflictError,
     TmdbNotFoundError,
     TmdbRateLimitedError,
     TmdbUnavailableError,
@@ -353,16 +354,31 @@ _TEMP_SERIAL_NUMBER = -1
 async def _reassign_serial_number(
     db: AsyncIOMotorDatabase, tv_show_id: str, current_doc: dict, new_serial: int
 ) -> None:
+    """Serie-bevidst byt-plads, se movie_service._reassign_serial_number og
+    BUGS.md #56. En fysisk TV-serie bytter kun inden for T#-rækken; en digital
+    inden for den delte D#-række, som kan have en digital *film* som holder — så
+    swap'et kan skulle skrive i movies-collection."""
     old_serial = current_doc["serial_number"]
     if new_serial == old_serial:
         return
 
-    conflicting = await tv_show_repository.find_by_serial_number(db, new_serial)
-    if conflicting is not None and conflicting["_id"] != current_doc["_id"]:
-        await tv_show_repository.set_serial_number(db, tv_show_id, _TEMP_SERIAL_NUMBER)
-        await tv_show_repository.set_serial_number(db, str(conflicting["_id"]), old_serial)
-
-    await tv_show_repository.set_serial_number(db, tv_show_id, new_serial)
+    holder = await digital_serial_repository.find_series_holder(
+        db,
+        current_doc.get("media_type"),
+        new_serial,
+        tv_show_repository.COLLECTION,
+        current_doc["_id"],
+    )
+    try:
+        if holder is not None:
+            collection_name, doc = holder
+            await tv_show_repository.set_serial_number(db, tv_show_id, _TEMP_SERIAL_NUMBER)
+            await digital_serial_repository.set_serial(
+                db, collection_name, doc["_id"], old_serial
+            )
+        await tv_show_repository.set_serial_number(db, tv_show_id, new_serial)
+    except DuplicateKeyError as exc:
+        raise SerialNumberConflictError(new_serial) from exc
 
 
 def _assert_can_edit_serial_number(current_user: dict, tv_show_doc: dict) -> None:

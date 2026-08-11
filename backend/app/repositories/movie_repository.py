@@ -297,10 +297,6 @@ async def find_by_id(db: AsyncIOMotorDatabase, movie_id: str) -> dict | None:
     return await db[COLLECTION].find_one({"_id": ObjectId(movie_id)})
 
 
-async def find_by_serial_number(db: AsyncIOMotorDatabase, serial_number: int) -> dict | None:
-    return await db[COLLECTION].find_one({"serial_number": serial_number})
-
-
 async def find_by_tmdb_id(db: AsyncIOMotorDatabase, tmdb_id: int) -> list[dict]:
     """All existing documents (library and/or wishlist) for a given TMDb id —
     used for the pre-save duplicate warning (FEATURES.md #38). More than one

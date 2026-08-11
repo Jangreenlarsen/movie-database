@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.89.1 build 0121] — 2026-08-11 — fix: serienummer-redigering byttede forkert serie / fejlede rå + byt-plads-bekræftelse (BUGS.md #56)
+
+Jan: redigering af en films serienummer gav ingen klar tilbagemelding om, hvorvidt byttet skete, og han spurgte om det samme gjaldt digitale. Analysen fandt en dybere fejl: byt-plads-omnummereringen (`_reassign_serial_number` i både `movie_service` og `tv_show_service`) slog den kolliderende post op på **tallet alene** (`find_by_serial_number`), uden hensyn til hvilken serie nummeret hørte til. Men et serienummer er kun entydigt inden for sin serie (fysisk M#/T#, eller den delte digitale D#), så et fysisk skift til et optaget nummer kunne gribe en digital post med samme tal — enten omnummerere den forkerte post stiltiende, ramme en `DuplicateKeyError` (rå 500), eller (for den delte digitale serie på tværs af collections) få to poster til at hedde D#-samme-nummer. Se BUGS.md #56 for de tre udfald.
+
+Rettelse: opslaget er nu serie-bevidst (`digital_serial_repository.find_series_holder` — fysisk matches kun mod ikke-digitale i egen collection, digital mod digitale i begge collections), swap'et skriver tilbage i den rigtige collection (også digital film ↔ digital TV-serie) og er wrappet i `try/except DuplicateKeyError` → ny `SerialNumberConflictError` (409) frem for en rå 500. De serie-blinde `find_by_serial_number` er fjernet fra begge repositories.
+
+Tilbagemelding (Jans valg 2026-08-11 — "bekræft før, kan annulleres"): bibliotekets rediger-vindue slår først op via nyt `GET /api/movies/{id}/serial-holder`, og er nummeret optaget i samme serie, beder det brugeren bekræfte at de to bytter plads — med titlen på den post man bytter med (kan være en digital TV-serie). Serie-præfikset M/D styres fortsat af medietypen; man taster kun selve tallet.
+
+Berørte filer: `backend/app/core/errors.py`, `backend/app/main.py`, `backend/app/repositories/digital_serial_repository.py`, `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`, `backend/app/models/movie.py`, `backend/app/api/movies.py`, `backend/tests/test_serial_number_rules.py`, `frontend/src/api/client.js`, `frontend/src/pages/Library.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`, `BUGS.md`, `version.json`.
+
 ## [0.89.0 build 0120] — 2026-08-10 — feature: genrer på detaljevisningen + "Vis felter"-kort-toggle (FEATURES.md #113)
 
 #111 gjorde genrer filtrerbare, men rørte hverken detaljevisningen (genrer stod kun som en ulabeled linje under titlen, sammen med år/rating) eller "Vis felter"-panelet, hvor de øvrige felter (Format, Lyd-type, Medietype, Rating, Spilletid, Plex) allerede kan slås til/fra som kort-badges. Jan: *"vi mangler også at Genre kan se på film detaje og at vi har den som en 'Show on card' funktion også"*.

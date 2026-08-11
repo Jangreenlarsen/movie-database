@@ -120,6 +120,10 @@ export const api = {
     return request(`/movies${query ? `?${query}` : ""}`);
   },
   getMovie: (id) => request(`/movies/${id}`),
+  // BUGS.md #56 — hvem holder et serienummer i samme serie som denne film?
+  // Bruges til byt-plads-bekræftelsen før et serienummer ændres.
+  getSerialSwapTarget: (id, serialNumber) =>
+    request(`/movies/${id}/serial-holder?${new URLSearchParams({ serial_number: serialNumber })}`),
   createMovie: (payload) =>
     request("/movies", { method: "POST", body: JSON.stringify(payload) }),
   updateMovie: (id, payload) =>

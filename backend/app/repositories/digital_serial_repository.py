@@ -74,6 +74,57 @@ async def next_serial_number(db: AsyncIOMotorDatabase) -> int:
     raise RuntimeError("Kunne ikke finde et ledigt digitalt serienummer")
 
 
+async def find_series_holder(
+    db: AsyncIOMotorDatabase,
+    media_type: str | None,
+    serial_number: int,
+    physical_collection: str,
+    exclude_id=None,
+) -> tuple[str, dict] | None:
+    """BUGS.md #56 — den post der pt. holder `serial_number` i *samme serie*
+    som `media_type`, eller None.
+
+    Serie-bevidstheden er hele pointen: et serienummer er kun entydigt inden
+    for sin egen serie (M/T/D), så et byt-plads-opslag der kun matcher på tallet
+    ville kunne gribe en post fra en *anden* serie (fx en digital D#10 når man
+    redigerer en fysisk M#16). Digitale poster deles på tværs af begge
+    collections (samme grund som `_is_taken`); fysiske/uklassificerede tælles kun
+    i deres egen collection og udelukker digitale.
+
+    Returnerer `(collection_name, doc)`, så en swap kan skrive tilbage i den
+    rigtige collection — også når en digital film bytter med en digital TV-serie.
+    """
+    if media_type == DIGITAL:
+        for collection in (MOVIE_COLLECTION, TV_SHOW_COLLECTION):
+            doc = await db[collection].find_one(
+                {"serial_number": serial_number, "media_type": DIGITAL}
+            )
+            if doc is not None and doc["_id"] != exclude_id:
+                return collection, doc
+        return None
+
+    # Fysisk eller uklassificeret: kun den angivne collection, og aldrig en
+    # digital post — `$ne` frem for `"Fysisk"`-lighed, så en gammel post uden
+    # medietype (talt med som fysisk) også kan bytte plads.
+    doc = await db[physical_collection].find_one(
+        {"serial_number": serial_number, "media_type": {"$ne": DIGITAL}}
+    )
+    if doc is not None and doc["_id"] != exclude_id:
+        return physical_collection, doc
+    return None
+
+
+async def set_serial(
+    db: AsyncIOMotorDatabase, collection_name: str, doc_id, serial_number: int
+) -> None:
+    """Sætter et serienummer i en vilkårlig af de to collections — bruges af
+    byt-plads-omnummereringen, som (for den delte digitale serie) kan skulle
+    skrive i den *anden* collection end den redigerede post."""
+    await db[collection_name].update_one(
+        {"_id": doc_id}, {"$set": {"serial_number": serial_number}}
+    )
+
+
 async def backfill(db: AsyncIOMotorDatabase, collection_name: str) -> int:
     """Feature #93 — giver digitale poster et D#-nummer.
 

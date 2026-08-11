@@ -10,6 +10,7 @@ from app.core.errors import (
     DuplicateBarcodeError,
     MovieNotFoundError,
     NotAuthorizedError,
+    SerialNumberConflictError,
     TmdbNotFoundError,
     TmdbRateLimitedError,
     TmdbUnavailableError,
@@ -28,6 +29,7 @@ from app.models.movie import (
     MoviePreview,
     MovieUpdate,
     NamedCount,
+    SerialHolder,
     TmdbSyncResult,
 )
 from app.models.settings import SerialNumberConfig, SerialNumberConfigUpdate
@@ -433,21 +435,69 @@ _TEMP_SERIAL_NUMBER = -1
 async def _reassign_serial_number(
     db: AsyncIOMotorDatabase, movie_id: str, current_doc: dict, new_serial: int
 ) -> None:
-    """Swap with whichever movie currently holds `new_serial`, if any — serial
-    numbers are unique, so a direct move would otherwise raise a duplicate-key
-    error. See BUGS.md / FEATURES.md #16 for why this trades a hop through a
-    sentinel value instead of a single atomic update (Mongo has no built-in
-    "swap two unique values" operation without transactions)."""
+    """Swap with whichever item currently holds `new_serial` *in the same
+    series*, if any — serial numbers are unique per series, so a direct move
+    would otherwise raise a duplicate-key error. See BUGS.md #56 for why the
+    lookup must be series-aware (a plain by-number lookup could grab a post from
+    another series — a digital D#10 while editing a physical M#16 — and either
+    renumber the wrong item or, with both series present, hit a duplicate key).
+    The digital series is shared across movies and TV shows, so the holder can
+    live in the *other* collection; the swap writes back wherever it is.
+
+    Trades a hop through a sentinel value instead of a single atomic update
+    (Mongo has no built-in "swap two unique values" without transactions, and
+    this app runs against a standalone MongoDB). A concurrent write can still
+    race in between — that surfaces as `SerialNumberConflictError` (a clean
+    409) rather than a raw 500."""
     old_serial = current_doc["serial_number"]
     if new_serial == old_serial:
         return
 
-    conflicting = await movie_repository.find_by_serial_number(db, new_serial)
-    if conflicting is not None and conflicting["_id"] != current_doc["_id"]:
-        await movie_repository.set_serial_number(db, movie_id, _TEMP_SERIAL_NUMBER)
-        await movie_repository.set_serial_number(db, str(conflicting["_id"]), old_serial)
+    holder = await digital_serial_repository.find_series_holder(
+        db,
+        current_doc.get("media_type"),
+        new_serial,
+        movie_repository.COLLECTION,
+        current_doc["_id"],
+    )
+    try:
+        if holder is not None:
+            collection_name, doc = holder
+            await movie_repository.set_serial_number(db, movie_id, _TEMP_SERIAL_NUMBER)
+            await digital_serial_repository.set_serial(
+                db, collection_name, doc["_id"], old_serial
+            )
+        await movie_repository.set_serial_number(db, movie_id, new_serial)
+    except DuplicateKeyError as exc:
+        raise SerialNumberConflictError(new_serial) from exc
 
-    await movie_repository.set_serial_number(db, movie_id, new_serial)
+
+async def find_serial_swap_target(
+    db: AsyncIOMotorDatabase, movie_id: str, new_serial: int
+) -> SerialHolder:
+    """BUGS.md #56 — hvem holder `new_serial` i samme serie som filmen `movie_id`?
+    Bruges af bibliotekets byt-plads-bekræftelse: er nummeret optaget, skal
+    brugeren først se hvilken titel de to bytter plads med. Titlen kan komme fra
+    den anden collection (en digital TV-serie), da den digitale serie er delt."""
+    current_doc = await movie_repository.find_by_id(db, movie_id)
+    if current_doc is None:
+        raise MovieNotFoundError(movie_id)
+    if current_doc.get("serial_number") == new_serial:
+        return SerialHolder(title=None)
+
+    holder = await digital_serial_repository.find_series_holder(
+        db,
+        current_doc.get("media_type"),
+        new_serial,
+        movie_repository.COLLECTION,
+        current_doc["_id"],
+    )
+    if holder is None:
+        return SerialHolder(title=None)
+    _, doc = holder
+    # Film har `title`, TV-serier `name` — den delte digitale serie kan give en
+    # holder af hver slags.
+    return SerialHolder(title=doc.get("title") or doc.get("name"))
 
 
 def _assert_can_edit_serial_number(current_user: dict, movie_doc: dict) -> None:

@@ -1134,6 +1134,17 @@ export function MovieDetailModal({
       if (movie.id) {
         const nextSerial = Number(serialNumberInput);
         if (canEditSerial && nextSerial > 0 && nextSerial !== movie.serial_number) {
+          // BUGS.md #56 — er nummeret allerede taget i samme serie, bytter de
+          // to poster plads. Bekræft først, og vis hvilken titel man bytter med
+          // (kan være en digital TV-serie, da D#-serien er delt). Prefikset
+          // (M/D) styres af medietypen, ikke af noget man taster her.
+          const holder = await api.getSerialSwapTarget(movie.id, nextSerial);
+          if (holder?.title) {
+            const confirmed = window.confirm(
+              t("detail.serialSwapConfirm", { serial: nextSerial, title: holder.title })
+            );
+            if (!confirmed) return; // finally nulstiller saving
+          }
           payload.serial_number = nextSerial;
         }
         await api.updateMovie(movie.id, payload);

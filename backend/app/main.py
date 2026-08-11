@@ -44,6 +44,7 @@ from app.core.errors import (
     NotAuthenticatedError,
     NotAuthorizedError,
     Pkcs12ImportError,
+    SerialNumberConflictError,
     ScreeningNotFoundError,
     ScreeningRequestNotFoundError,
     TmdbNotFoundError,
@@ -131,6 +132,13 @@ async def screening_not_found_handler(request: Request, exc: ScreeningNotFoundEr
 
 @app.exception_handler(DuplicateBarcodeError)
 async def duplicate_barcode_handler(request: Request, exc: DuplicateBarcodeError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(SerialNumberConflictError)
+async def serial_number_conflict_handler(
+    request: Request, exc: SerialNumberConflictError
+) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 

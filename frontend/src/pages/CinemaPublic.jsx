@@ -44,13 +44,12 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
 
   return (
     <div className="cinema-public-page">
-      {/* Feature #105 — samme skiltebillede, kraftigt zoomet og sløret, som
-          en farvet baggrund bag toppen af siden. `aria-hidden`: rent
-          dekorativt, det rigtige skilt med sin alt-tekst ligger i <h1>
-          nedenfor. Ligger som søskende til .cinema-public-hero (ikke inde
-          i), så dens `position: absolute` regner sin højde ud fra hele
-          .cinema-public-page og ikke bliver klemt af hero'ens egen
-          indpakning. */}
+      {/* Feature #119 — `baggrund2.png` som stemningsfuldt top-motiv bag
+          hero'en (afløser #105's slørede skilt-baggrund). `aria-hidden`: rent
+          dekorativt. Ligger som søskende til .cinema-public-hero (ikke inde i),
+          så dens `position: absolute` regner sin højde ud fra hele
+          .cinema-public-page og ikke bliver klemt af hero'ens egen indpakning.
+          Se CinemaPublic.css for udtoning + dæmpning. */}
       <div className="cinema-public-backdrop" aria-hidden="true" />
       <header className="cinema-public-hero">
         {/* Feature #99 — sprogvalget står ved siden af login-knappen, ikke i

@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.96.0 build 0130] — 2026-08-11 — feature: film-collage som top-motiv på den offentlige BIO-side (FEATURES.md #119)
+
+Jan ville have et billede som baggrund på den offentlige Voldby BIO-side, i sidens nuværende (varme) farver. Et første forsøg med en selv-tegnet SVG-film-stribe blev droppet (*"drop den opgave vi bruger et andet billede"*); i stedet leverede Jan `baggrund2.png` — en RGBA-collage af film-frames i varme orange/sorte/creme-toner.
+
+`.cinema-public-backdrop` skifter billede fra #105's slørede skilt-JPG til `baggrund2.png` (`background-size: cover`, `center top`). `filter: brightness(0.5) saturate(1.05)` dæmper collagen, så hero'ens hvide tekst forbliver læsbar oven på dens lyse partier i begge temaer, og den eksisterende `mask-image`-udtoning nedad (til 45%) beholdes, så motivet kun præger toppen bag hero'en og toner blødt ud i indholdet.
+
+Bevidst valg: IKKE et fuldside-billede bag alt indhold. Et billede bag den gennemsigtige `main` ville give mørk tekst på et mørkt billede og ødelægge læsbarheden; hero-top-udtoningen (samme struktur som #105) giver et stemningsfuldt motiv uden at røre læsbarheden længere nede. Farverne matcher den nuværende palette (Jans ønske).
+
+Visuelt verificeret i browseren (CLAUDE.md regel 18) desktop lyst/mørkt + mobil — collagen står bag hero'en, toner ud i indholdet, og al tekst er læsbar.
+
+Berørte filer: `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `frontend/public/cinema/baggrund2.png` (ny), `FEATURES.md`, `version.json`.
+
 ## [0.95.0 build 0129] — 2026-08-11 — feature: dato/tid-badge i hjørnet på offentlige visnings-kort (FEATURES.md #120)
 
 Jan: *"for public film side kan du ikke flytte tidspunkt og dato badge op til højre hjørne på visnings kort for de film som stå til display"*. Følger #118's brede kort.

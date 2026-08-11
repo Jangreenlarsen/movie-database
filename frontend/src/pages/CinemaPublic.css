@@ -8,30 +8,27 @@
   overflow-x: clip;
 }
 
-/* Feature #105 — Jans ønske: skiltets egne farver som baggrund for toppen
-   af siden, så banneret glider over i resten af siden i stedet for at
-   stoppe brat ved en hård kant.
-   
-   Ingen separat beskåret billedfil — samme JPG genbruges, men zoomet langt
-   ind (`background-size`) og sløret kraftigt (`filter: blur`), så kun
-   farvestemningen (guld/rødbrun/cremet) er tilbage, ikke genkendelige
-   objekter eller tekst. `mask-image` toner den ud nedad, så den kun farver
-   toppen af siden og ikke konkurrerer med indholdet længere nede. */
+/* Feature #119 — `baggrund2.png` (collage af film-frames i varme toner) som
+   stemningsfuldt top-motiv bag hero'en. Afløser #105's slørede skilt-baggrund.
+   Billedet vises i fuld bredde i toppen og tones ud nedad med `mask-image`, så
+   det ikke konkurrerer med indholdet længere nede (samme rolle/struktur som
+   #105). `brightness` dæmper det, så hero'ens hvide tekst forbliver læsbar oven
+   på collage'ns lyse partier, i begge temaer. */
 .cinema-public-backdrop {
   position: absolute;
   top: -60px;
   left: -60px;
   right: -60px;
   height: 620px;
-  background-image: url("/cinema/voldby-bio-sign.jpg");
-  background-size: 280% auto;
-  background-position: 50% 40%;
+  background-image: url("/cinema/baggrund2.png");
+  background-size: cover;
+  background-position: center top;
   background-repeat: no-repeat;
-  filter: blur(50px) brightness(0.55) saturate(1.15);
+  filter: brightness(0.5) saturate(1.05);
   z-index: 0;
   pointer-events: none;
-  mask-image: linear-gradient(to bottom, black, black 40%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black, black 40%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black, black 45%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black, black 45%, transparent 100%);
 }
 
 .cinema-public-hero {

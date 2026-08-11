@@ -9,26 +9,26 @@
 }
 
 /* Feature #119 — `baggrund2.png` (collage af film-frames i varme toner) som
-   stemningsfuldt top-motiv bag hero'en. Afløser #105's slørede skilt-baggrund.
-   Billedet vises i fuld bredde i toppen og tones ud nedad med `mask-image`, så
-   det ikke konkurrerer med indholdet længere nede (samme rolle/struktur som
-   #105). `brightness` dæmper det, så hero'ens hvide tekst forbliver læsbar oven
-   på collage'ns lyse partier, i begge temaer. */
+   baggrundsmotiv over HELE den offentlige side. Afløser #105's slørede
+   skilt-baggrund.
+
+   Jans feedback (2026-08-11): et enkelt `cover`-billede blev opskaleret (kilden
+   er kun 712px bred) og dermed grynet, og var kun synligt i toppen. Derfor
+   vises billedet nu i sin naturlige/nedskalerede størrelse og GENTAGES (fliser)
+   ud over hele siden (`inset: 0` + `repeat`) — nedskalering giver skarpe fliser
+   uden gryn, og det dækker hele siden i stedet for kun toppen. Lav `opacity`
+   holder det som et motiv bag indholdet, så teksten forbliver læsbar; farverne
+   matcher sidens varme palette. */
 .cinema-public-backdrop {
   position: absolute;
-  top: -60px;
-  left: -60px;
-  right: -60px;
-  height: 620px;
-  background-image: url("/cinema/baggrund2.png");
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
-  filter: brightness(0.5) saturate(1.05);
+  inset: 0;
   z-index: 0;
   pointer-events: none;
-  mask-image: linear-gradient(to bottom, black, black 45%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black, black 45%, transparent 100%);
+  background-image: url("/cinema/baggrund2.png");
+  background-repeat: repeat;
+  background-position: center top;
+  background-size: 460px auto;
+  opacity: 0.16;
 }
 
 .cinema-public-hero {
@@ -203,13 +203,10 @@
     gap: 32px;
   }
 
-  /* Feature #105 — 620px er en fornuftig andel af en bred desktop-side,
-     men på en smal telefonskærm (kortere hero pga. 2.5:1-facon, samme
-     620px baggrund) strakte den udtonede baggrund sig ned bag hele
-     billedgalleriet i stedet for at være færdig med at tone ud før det
-     (fundet ved at se skærmbilledet, jf. CLAUDE.md regel 18). */
+  /* Feature #119 — mindre fliser på smalle skærme, så collagens frames ikke
+     bliver uforholdsmæssigt store på en telefon. */
   .cinema-public-backdrop {
-    height: 380px;
+    background-size: 340px auto;
   }
 }
 

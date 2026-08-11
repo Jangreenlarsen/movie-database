@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.96.1 build 0131] — 2026-08-11 — juster: film-collage-baggrunden dækker nu hele siden og er ikke længere grynet (FEATURES.md #119)
+
+Opfølgning på #119. Jans feedback på første udgave (v0.96.0): *"baggrunds billede er for stor, den bliver for grynet og den er kun synlig i den øverste del af siden"*.
+
+Årsag: `baggrund2.png` er kun 712px bred, så `background-size: cover` opskalerede den kraftigt på brede skærme (→ gryn), og backdrop'en lå kun i toppen (620px høj + udtoning).
+
+Rettet: `.cinema-public-backdrop` er nu `inset: 0` (hele siden) med `background-repeat: repeat` og `background-size: 460px auto` (340px på mobil). Billedet vises altså i naturlig/nedskaleret størrelse og gentages som fliser — nedskalering giver skarpe fliser uden gryn, og de dækker hele siden i stedet for kun toppen. `filter`/`mask`-udtoningen er fjernet; i stedet holder `opacity: 0.16` det som et dæmpet motiv bag indholdet, så tekst og kort forbliver læsbare i begge temaer.
+
+Visuelt verificeret i browseren (CLAUDE.md regel 18) desktop lyst/mørkt + mobil — collagen er nu synlig hele vejen ned, skarp, og alt er læsbart.
+
+Berørte filer: `frontend/src/pages/CinemaPublic.css`, `frontend/src/pages/CinemaPublic.jsx` (kommentar), `FEATURES.md`, `version.json`.
+
 ## [0.96.0 build 0130] — 2026-08-11 — feature: film-collage som top-motiv på den offentlige BIO-side (FEATURES.md #119)
 
 Jan ville have et billede som baggrund på den offentlige Voldby BIO-side, i sidens nuværende (varme) farver. Et første forsøg med en selv-tegnet SVG-film-stribe blev droppet (*"drop den opgave vi bruger et andet billede"*); i stedet leverede Jan `baggrund2.png` — en RGBA-collage af film-frames i varme orange/sorte/creme-toner.

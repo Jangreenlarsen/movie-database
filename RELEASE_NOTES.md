@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.89.1 (build 0121) — 2026-08-11
+
+- **Rettet: at ændre en films serienummer virker nu korrekt — og siger tydeligt til.** Skifter du et nummer til et der allerede er i brug, spørger appen nu først *"Nr. X er i brug af 'Titel'. De to bytter plads. Fortsæt?"* så du kan nå at fortryde. Du taster stadig kun selve tallet — om det bliver et M- eller D-nummer følger automatisk af, om filmen er fysisk eller digital.
+- **Rettet: byttet ramte den rigtige film.** Tidligere kunne et fysisk nummer forveksles med et digitalt med samme tal, så en helt anden post blev omnummereret — eller redigeringen fejlede med en uforståelig fejl. Det gælder også digitale udgaver, hvor film og TV-serier deler samme nummerrække.
+
 ## v0.89.0 (build 0120) — 2026-08-10
 
 - **Nyt: genrer på kortet.** I "Vis felter" (Film og TV) kan du nu slå "Genrer" til, så genrerne vises direkte på filmens/seriens kort i biblioteket — samme sted som Format, Lyd-type og de andre valgfrie kort-felter.

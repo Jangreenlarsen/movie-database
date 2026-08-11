@@ -28,6 +28,20 @@ class DuplicateBarcodeError(Exception):
         super().__init__(f"An item with barcode '{barcode}' already exists")
 
 
+class SerialNumberConflictError(Exception):
+    """BUGS.md #56 — en byt-plads-omnummerering endte alligevel med to poster
+    på samme (nummer, serie). Bør ikke ske efter at opslaget blev serie-bevidst,
+    men en samtidig skrivning kan stadig nå at optage nummeret mellem tjek og
+    skrivning. Oversættes til en pæn 409 frem for en rå 500 (CLAUDE.md regel 16
+    — rammeværkets/databasens fejl skal ikke slippe rå ud til brugeren)."""
+
+    def __init__(self, serial_number: int):
+        self.serial_number = serial_number
+        super().__init__(
+            f"Serienummer {serial_number} er allerede i brug — prøv igen."
+        )
+
+
 class TmdbNotFoundError(Exception):
     """Covers both /movie/{id} and /tv/{id} 404s — reused by
     tmdb_client.get_movie_details, get_tv_show_details and

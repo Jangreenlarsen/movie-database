@@ -255,6 +255,15 @@ class DuplicateMatch(BaseModel):
     is_wishlist: bool = False
 
 
+class SerialHolder(BaseModel):
+    """BUGS.md #56 — svar på "hvem holder dette nummer i samme serie?", brugt af
+    bibliotekets byt-plads-bekræftelse før et serienummer ændres. `title` er
+    None hvis nummeret er frit (så viser UI'et ingen bekræftelse og gemmer
+    direkte)."""
+
+    title: str | None = None
+
+
 class DeletedMovie(BaseModel):
     id: str
     serial_number: int | None = None

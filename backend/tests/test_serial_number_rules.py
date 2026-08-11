@@ -241,3 +241,105 @@ async def test_digital_series_skips_a_number_used_in_the_other_collection(db):
 
     assigned = await digital_serial_repository.next_serial_number(db)
     assert assigned != 1
+
+
+# --- byt-plads ved redigering af serienummer (BUGS.md #56) ------------------
+
+
+async def test_editing_serial_swaps_with_the_holder_in_the_same_series(client):
+    """Den centrale byt-plads: to fysiske film bytter M#-nummer."""
+    a = await client.post("/api/movies", json={"title": "Film A", **PHYSICAL})  # M#1
+    b = await client.post("/api/movies", json={"title": "Film B", **PHYSICAL})  # M#2
+    a_id, b_id = a.json()["id"], b.json()["id"]
+
+    response = await client.patch(f"/api/movies/{b_id}", json={"serial_number": 1})
+    assert response.status_code == 200
+    assert response.json()["serial_number"] == 1
+
+    moved_a = await client.get(f"/api/movies/{a_id}")
+    assert moved_a.json()["serial_number"] == 2  # fik B's gamle nummer
+
+
+async def test_physical_swap_does_not_touch_a_digital_holder_of_the_same_number(client):
+    """BUGS.md #56 — et fysisk M#-skift må aldrig gribe en digital D#-post med
+    samme tal. Digital D#1 skal stå urørt, mens de to fysiske bytter."""
+    digital = await client.post("/api/movies", json={"title": "Digital", **DIGITAL})  # D#1
+    a = await client.post("/api/movies", json={"title": "Fysisk A", **PHYSICAL})  # M#1
+    b = await client.post("/api/movies", json={"title": "Fysisk B", **PHYSICAL})  # M#2
+    digital_id, a_id, b_id = digital.json()["id"], a.json()["id"], b.json()["id"]
+
+    response = await client.patch(f"/api/movies/{b_id}", json={"serial_number": 1})
+    assert response.status_code == 200
+    assert response.json()["serial_number"] == 1
+
+    assert (await client.get(f"/api/movies/{a_id}")).json()["serial_number"] == 2
+    # Den digitale post er en anden serie og må ikke være rørt.
+    assert (await client.get(f"/api/movies/{digital_id}")).json()["serial_number"] == 1
+
+
+async def test_physical_move_onto_a_number_only_a_digital_holds_is_a_clean_move(client, db):
+    """Er tallet kun brugt i den *digitale* serie, er der intet at bytte i den
+    fysiske: filmen tager bare nummeret, og den digitale post står urørt. Før
+    #56 blev den digitale fejlagtigt omnummereret."""
+    await db[movie_repository.COLLECTION].insert_one(
+        {"title": "Digital 10", "media_type": "Digital", "serial_number": 10}
+    )
+    physical = await client.post("/api/movies", json={"title": "Fysisk", **PHYSICAL})  # M#1
+    physical_id = physical.json()["id"]
+
+    response = await client.patch(f"/api/movies/{physical_id}", json={"serial_number": 10})
+    assert response.status_code == 200
+    assert response.json()["serial_number"] == 10
+
+    digital = await db[movie_repository.COLLECTION].find_one({"title": "Digital 10"})
+    assert digital["serial_number"] == 10  # urørt
+
+
+async def test_digital_swap_crosses_collections_between_movie_and_tv_show(client):
+    """Den digitale serie er delt: en digital film kan bytte D#-nummer med en
+    digital TV-serie i den anden collection."""
+    movie = await client.post("/api/movies", json={"title": "Digital Film", **DIGITAL})  # D#1
+    show = await client.post("/api/tv-shows", json={"name": "Digital Serie", **DIGITAL})  # D#2
+    movie_id, show_id = movie.json()["id"], show.json()["id"]
+
+    response = await client.patch(f"/api/movies/{movie_id}", json={"serial_number": 2})
+    assert response.status_code == 200
+    assert response.json()["serial_number"] == 2
+
+    assert (await client.get(f"/api/tv-shows/{show_id}")).json()["serial_number"] == 1
+
+
+# --- byt-plads-bekræftelsens opslag (serial-holder) -------------------------
+
+
+async def test_serial_holder_returns_the_title_in_the_same_series(client):
+    a = await client.post("/api/movies", json={"title": "Holder", **PHYSICAL})  # M#1
+    b = await client.post("/api/movies", json={"title": "Redigeres", **PHYSICAL})  # M#2
+    b_id = b.json()["id"]
+
+    response = await client.get(f"/api/movies/{b_id}/serial-holder?serial_number=1")
+    assert response.status_code == 200
+    assert response.json()["title"] == "Holder"
+
+
+async def test_serial_holder_is_null_when_the_number_is_free(client):
+    b = await client.post("/api/movies", json={"title": "Redigeres", **PHYSICAL})  # M#1
+    b_id = b.json()["id"]
+
+    response = await client.get(f"/api/movies/{b_id}/serial-holder?serial_number=99")
+    assert response.status_code == 200
+    assert response.json()["title"] is None
+
+
+async def test_serial_holder_ignores_a_holder_in_another_series(client, db):
+    """Slår man op fra en fysisk film, tæller en digital post med samme tal
+    ikke som en kollision — de er ikke i samme serie."""
+    await db[movie_repository.COLLECTION].insert_one(
+        {"title": "Digital 3", "media_type": "Digital", "serial_number": 3}
+    )
+    b = await client.post("/api/movies", json={"title": "Fysisk", **PHYSICAL})  # M#1
+    b_id = b.json()["id"]
+
+    response = await client.get(f"/api/movies/{b_id}/serial-holder?serial_number=3")
+    assert response.status_code == 200
+    assert response.json()["title"] is None

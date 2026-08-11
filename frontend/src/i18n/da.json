@@ -115,6 +115,7 @@
   "detail.notSpecified": "Ikke angivet",
   "detail.createHint": "Ikke oprettet endnu — tryk \"Opret\" nedenfor for at gemme i biblioteket. Serienummer tildeles automatisk ved oprettelse.",
   "detail.serialSwapHint": "Er nummeret allerede i brug af en anden film, bytter de to film automatisk plads.",
+  "detail.serialSwapConfirm": "Nr. {serial} er allerede i brug af \"{title}\". De to bytter plads. Fortsæt?",
   "detail.serialLockedHint": "Kun en admin eller {who} kan ændre serienummeret.",
   "detail.serialLockedFallback": "den der registrerede filmen",
   "detail.locationPlaceholder": "Stue, reol 2...",

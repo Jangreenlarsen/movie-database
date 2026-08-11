@@ -66,6 +66,85 @@
   }
 }
 
+/* Feature #115 — Nyheder-fanens funktionsliste. Genbruger user-list-mønsteret,
+   med en status-badge til højre. Badge-farverne er semi-transparente, så de
+   læser på både lyst og mørkt kort-underlag. */
+.feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feature-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.feature-name {
+  flex: 1;
+  min-width: 140px;
+  font-weight: 600;
+}
+
+.feature-status {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.feature-status--done {
+  background: rgba(30, 130, 76, 0.16);
+  color: #1e824c;
+}
+
+.feature-status--progress {
+  background: rgba(217, 119, 6, 0.18);
+  color: #b45309;
+}
+
+.feature-status--planned {
+  background: var(--accent-soft);
+  color: var(--text-muted);
+}
+
+.feature-status--dropped {
+  background: transparent;
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .feature-status--done {
+    background: rgba(52, 199, 123, 0.18);
+    color: #6ee7a8;
+  }
+  :root:not([data-theme="light"]) .feature-status--progress {
+    background: rgba(242, 169, 59, 0.2);
+    color: #f2a93b;
+  }
+}
+
+:root[data-theme="dark"] .feature-status--done {
+  background: rgba(52, 199, 123, 0.18);
+  color: #6ee7a8;
+}
+
+:root[data-theme="dark"] .feature-status--progress {
+  background: rgba(242, 169, 59, 0.2);
+  color: #f2a93b;
+}
+
 /* Feature #88 — Plex-fejlsøgningens output. Nøgletal i et grid der falder
    til én kolonne på telefon, og en sektions-tabel der scroller vandret i
    sin egen boks frem for at presse siden bred. */

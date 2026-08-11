@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.91.0 build 0123] — 2026-08-11 — feature: feature-liste synlig i portalen (FEATURES.md #115)
+
+Jan: *"feature listen kan du lave et url til den på github under settings på portal sådan folk kan se hvad bliver lavet på film portal"*. Oprindeligt ønske var et GitHub-link, men repo'et er **privat** — et link ville ramme en login-væg for alle uden repo-adgang, så det ville ikke opfylde formålet. Forelagt tre muligheder (vis listen inde i appen / GitHub-link alligevel / gør repo'et offentligt) valgte Jan at vise listen inde i portalen.
+
+Ny `GET /api/system/feature-list` (kræver login, ikke admin — enhver rolle, inkl. guest) der server-side parser **kun** oversigts-tabellen i `FEATURES.md` (nummer/navn/status/version) og returnerer den nyeste-først. Detalje-tabellen med de interne implementerings-noter og Jans egne citater parses bevidst ikke — kun de fire offentlige kolonner eksponeres. Ny `feature_list_service.py` finder filen via samme `parents[3]`-mønster som `core/version_info.py` (repo-roden) og degraderer til en tom liste hvis filen mangler i et afvigende deploy-layout (CLAUDE.md regel 16), i stedet for at kaste en 500. Klipper `FEATURES.md` ved "## Detaljer" før parsning, så detalje-tabellens rækker (samme markdown-format) ikke tælles med — verificeret af en test der kræver unikke feature-numre. Holder FEATURES.md som single source of truth i stedet for en dublet-liste at vedligeholde.
+
+Frontend: ny "Nyheder"-fane på Indstillinger-siden (synlig for alle roller, i modsætning til de admin-gatede faner), der henter listen og viser hver feature nyeste-først med en status-badge (Færdig=grøn, I gang=rav, Planlagt=dæmpet, Droppet=overstreget). En ukendt status vises råt frem for at forsvinde. Badge-farverne er tema-tilpassede (egne `data-theme`/`prefers-color-scheme`-regler i `Settings.css`).
+
+Visuelt verificeret i browseren (CLAUDE.md regel 18) i både lyst og mørkt tema — fanen, rækkerne og alle fire status-badges læser korrekt i begge temaer.
+
+Berørte filer: `backend/app/models/feature.py` (ny), `backend/app/services/feature_list_service.py` (ny), `backend/app/api/system.py`, `backend/tests/test_feature_list.py` (ny), `frontend/src/api/client.js`, `frontend/src/pages/Settings.jsx`, `frontend/src/pages/Settings.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`, `FEATURES.md`, `version.json`.
+
 ## [0.90.0 build 0122] — 2026-08-11 — feature: bestillingsstatus på ønskeliste-poster (FEATURES.md #114)
 
 Jan: *"vi skal have en status felt i ønske seksion på film/tv hvor vi kan sætte status for om film/tv er bestilt"* — som dropdown med Ikke bestilt / Bestilt ved Laserdisken / Bestilt ved iMusic / Bestilt ved div. Efterfulgt af *"lave også en list form i ønske med kolon status m.m."*, som blev afklaret med ham: genbrug den eksisterende grid/liste-toggle (#108) og vis status som en badge på ønske-kortene, frem for en helt ny tabel-visning.

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.91.0 (build 0123) — 2026-08-11
+
+- **Nyt: "Nyheder"-fane under Indstillinger.** Alle brugere kan nu se en liste over hvad der bliver lavet på film- & TV-portalen — færdige, igangværende og planlagte funktioner, nyeste øverst, hver med en status-mærkat. Listen opdaterer sig selv efterhånden som nye funktioner tilføjes.
+
 ## v0.90.0 (build 0122) — 2026-08-11
 
 - **Nyt: bestillingsstatus på ønskelisten.** På et ønske (film eller TV-serie) kan du nu sætte om det er bestilt — vælg mellem *Ikke bestilt*, *Bestilt ved Laserdisken*, *Bestilt ved iMusic* eller *Bestilt ved div.* i ønskets rediger-boks.

@@ -16,15 +16,29 @@ from app.models.cert import (
     CsrResult,
     Pkcs12Import,
 )
+from app.models.feature import FeatureListItem
 from app.services import (
     audit_log_service,
     auth_service,
     cert_service,
     deploy_service,
+    feature_list_service,
     system_backup_service,
 )
 
 router = APIRouter(prefix="/api/system", tags=["system"])
+
+
+@router.get(
+    "/feature-list",
+    response_model=list[FeatureListItem],
+    dependencies=[Depends(get_current_user)],
+)
+async def feature_list() -> list[FeatureListItem]:
+    """Feature #115 — oversigts-tabellen fra FEATURES.md (navn/status/version),
+    nyeste først, så portalens brugere kan se hvad der bliver lavet uden adgang
+    til det private GitHub-repo. Åben for enhver rolle, ikke kun admin."""
+    return feature_list_service.get_feature_list()
 
 
 @router.post("/deploy", status_code=202, dependencies=[Depends(require_admin)])

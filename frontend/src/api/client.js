@@ -52,6 +52,8 @@ async function request(path, options = {}) {
 
 export const api = {
   health: () => request("/health"),
+  // Feature #115 — oversigts-tabellen fra FEATURES.md, til Nyheder-fanen.
+  getFeatureList: () => request("/system/feature-list"),
   // Feature #97 — `language` er valgfri: den sætter startsproget på den nye
   // konto, så et valg truffet i login-boksen gælder fra første indlogning.
   register: (username, password, language) =>

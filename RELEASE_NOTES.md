@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.94.1 (build 0128) — 2026-08-11
+
+- **Login-/opret-boksen åbner nu som en dialog midt på skærmen.** På den offentlige Voldby BIO-side lå login-/opret-boksen før oppe i hjørnet, hvor "Opret bruger" ikke kunne trykkes når telefonen blev holdt stående. Den vises nu som en centreret boks med dæmpet baggrund — og knapperne virker uanset om telefonen holdes stående eller liggende. (Den tidligere rettelse i v0.93.1 løste det ikke i praksis.)
+
 ## v0.94.0 (build 0127) — 2026-08-11
 
 - **Rigere program-kort på den offentlige Voldby BIO-side.** Hver kommende visning vises nu med samme detaljer som når man er logget ind: plot-resumé, genrer og direkte links til trailer og IMDb — i stedet for kun poster og titel. Så en besøgende der har fået biograf-linket delt, kan læse om filmene med det samme.

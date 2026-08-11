@@ -55,23 +55,21 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
       <header className="cinema-public-hero">
         {/* Feature #99 — sprogvalget står ved siden af login-knappen, ikke i
             modsatte hjørne: de to hører sammen som "det du gør før du er
-            logget ind", og var visuelt afkoblet da de stod hver sit sted.
-            Login-knappen står først (Jans ønske 2026-08-09).
+            logget ind". Login-knappen står først (Jans ønske 2026-08-09).
 
-            BUGS.md #53 — kun *knappen* hører til i gruppen. Selve
-            login-panelet er en søskende, fordi gruppen er absolut placeret:
-            lå panelet indeni, ville dets egen absolutte placering og
-            `max-width: calc(100% - 40px)` regne mod gruppens få pixels i
-            stedet for mod hero-området, og panelet blev mast sammen. */}
+            BUGS.md #57 — kun *knappen* bor her i hero'en. Selve login-/opret-
+            dialogen er nu et centreret modal-overlay (renderet sidst i
+            .cinema-public-page, se nedenfor), så den ikke længere afhænger af
+            hero'ens højde eller stacking. Et tidligere forsøg placerede
+            panelet absolut i hero'en; i portræt var hero'en for kort, så
+            panelet flød ud under den og blev dækket af hovedindholdet, der
+            opsnappede trykkene på "Opret bruger". */}
         <div className="cinema-public-hero-actions">
           <PublicLoginToggle user={user} open={loginOpen} onToggle={() => setLoginOpen((v) => !v)} />
           {onLanguageChange && (
             <LanguagePicker language={language} onChange={onLanguageChange} />
           )}
         </div>
-        {loginOpen && !user && (
-          <PublicLoginPanel language={language} onClose={() => setLoginOpen(false)} />
-        )}
         {/* Feature #104 — Voldby BIOs eget skilt som topbillede, i stedet for
             en tekst-overskrift på en accent-gradient. `<h1>` ombryder
             billedet frem for at stå separat: en skærmlæser skal stadig have
@@ -108,6 +106,15 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
           )}
         </section>
       </main>
+
+      {/* BUGS.md #57 — login-/opret-dialogen som centreret modal-overlay.
+          `position: fixed` gør den viewport-centreret uanset hero-højde og
+          orientering; den ligger sidst i .cinema-public-page, men fixed-
+          elementer klippes ikke af containerens overflow, og der er intet
+          transform/filter-ancestor her, så den centreres mod viewporten. */}
+      {loginOpen && !user && (
+        <PublicLoginPanel language={language} onClose={() => setLoginOpen(false)} />
+      )}
     </div>
   );
 }
@@ -195,8 +202,16 @@ function PublicLoginPanel({ language, onClose }) {
   }
 
   return (
-    <div className="cinema-public-login-panel">
-      <form className="auth-form" onSubmit={handleSubmit}>
+    <div
+      className="cinema-public-login-overlay"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      {/* stopPropagation: klik inde i selve dialogen må ikke lukke den — kun
+          klik på det mørke backdrop udenom (eller Annullér-knappen). */}
+      <div className="cinema-public-login-panel" onClick={(e) => e.stopPropagation()}>
+        <form className="auth-form" onSubmit={handleSubmit}>
         <label>
           {t("auth.username")}
           <input
@@ -255,7 +270,8 @@ function PublicLoginPanel({ language, onClose }) {
             </>
           )}
         </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }

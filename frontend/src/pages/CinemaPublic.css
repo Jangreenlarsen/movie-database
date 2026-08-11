@@ -36,12 +36,7 @@
 
 .cinema-public-hero {
   position: relative;
-  /* BUGS.md #57 — over .cinema-public-main (også z-index:1, men senere i
-     DOM). I portræt er skiltet lavt → hero'en kort → det absolut placerede
-     login-panel flyder ud under hero'ens boks, og med lige z-index malede
-     main ovenpå panelets nederste knapper og opsnappede trykkene. Hero over
-     main løfter hele hero'ens stacking-kontekst (inkl. panelet) op foran. */
-  z-index: 2;
+  z-index: 1;
   padding: 16px 20px 28px;
   text-align: center;
   /* Feature #110 — bevidst ikke var(--accent-contrast): den variabel er
@@ -87,23 +82,34 @@
   background: rgba(20, 14, 8, 0.8);
 }
 
+/* BUGS.md #57 — login-/opret-dialogen er nu et centreret modal-overlay i
+   stedet for et panel klistret op i hero-hjørnet. Det tidligere absolut
+   placerede panel kunne i portræt (kort hero) flyde ud under hero'en og blive
+   dækket af hovedindholdet, så knapperne ikke kunne trykkes. Et fixed,
+   viewport-centreret overlay har ingen af de afhængigheder — samme mønster som
+   appens egen .modal-backdrop (Library.css). */
+.cinema-public-login-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+
 .cinema-public-login-panel {
-  position: absolute;
-  /* BUGS.md #53 — under hjørne-gruppen, ikke oven i den: login-knappen
-     bliver stående mens panelet er åbent, så de to ville ellers overlappe.
-     Panelet er en søskende til gruppen og placeres derfor mod hero-området,
-     hvilket er det der giver det sin rigtige bredde igen. */
-  top: 62px;
-  right: 20px;
-  width: 260px;
-  max-width: calc(100% - 40px);
+  width: 320px;
+  max-width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
   background: var(--surface);
   color: var(--text);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  padding: 16px;
+  box-shadow: var(--shadow-lg);
+  padding: 20px;
   text-align: left;
-  z-index: 1;
 }
 
 .cinema-public-login-panel .auth-form {
@@ -245,11 +251,6 @@
     top: 8px;
     right: 8px;
     gap: 6px;
-  }
-
-  .cinema-public-login-panel {
-    top: 52px;
-    right: 8px;
   }
 }
 

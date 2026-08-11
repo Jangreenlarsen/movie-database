@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.api.deps import get_current_user, require_admin, require_not_guest
+from app.api.deps import (
+    enforce_guest_wishlist_only,
+    get_current_user,
+    require_admin,
+    require_not_guest,
+)
 from app.db import get_database
 from app.integrations import tmdb_client
 from app.models.movie import AudioType, MediaType, MovieFormat, OrderStatus, TmdbSyncResult
@@ -54,9 +59,11 @@ async def list_tv_shows(
 @router.post("", response_model=TvShow, status_code=201)
 async def create_tv_show(
     payload: TvShowCreate,
-    current_user: dict = Depends(require_not_guest),
+    current_user: dict = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
+    # Feature #116 — se den identiske note i api/movies.create_movie.
+    enforce_guest_wishlist_only(current_user, payload)
     return await tv_show_service.create_tv_show(db, payload, current_user["username"])
 
 

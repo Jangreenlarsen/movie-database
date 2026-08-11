@@ -422,7 +422,8 @@ export default function TvShows({
             )}
           </div>
 
-          {!isGuest && (
+          {/* Feature #116 — gæster må oprette ønsker (kun i ønske-fanen). */}
+          {(!isGuest || wishlist) && (
             <button type="button" className="btn btn-primary" onClick={() => setShowAddPanel((v) => !v)}>
               {showAddPanel
                 ? t("common.close")
@@ -844,8 +845,9 @@ export default function TvShows({
                     <span className="movie-meta-item">{show.genres.join(", ")}</span>
                   )}
                 </div>
-                {/* Feature #114 — se den identiske note i Library.jsx. */}
-                {show.is_wishlist && (
+                {/* Feature #114/#116 — se den identiske note i Library.jsx
+                    (kun ønske-kort, skjult for gæster). */}
+                {show.is_wishlist && !isGuest && (
                   <div className="movie-tags">
                     <span
                       className={`movie-order-badge${show.order_status ? "" : " movie-order-badge--none"}`}
@@ -1254,7 +1256,8 @@ export function TvShowDetailModal({
                 <div className="modal-section-label">{t("field.subtitles")}</div>
                 <p>{show.subtitles || "—"}</p>
               </div>
-              {show.is_wishlist && (
+              {/* Feature #116 — bestillingsstatus skjules helt for gæster. */}
+              {show.is_wishlist && !isGuest && (
                 <div>
                   <div className="modal-section-label">{t("field.orderStatus")}</div>
                   <p>{show.order_status || t("orderStatus.notOrdered")}</p>
@@ -1408,7 +1411,7 @@ export function TvShowDetailModal({
                 />
               </div>
 
-              {show.is_wishlist && (
+              {show.is_wishlist && !isGuest && (
                 <div>
                   <div className="modal-section-label">{t("field.orderStatus")}</div>
                   <select value={orderStatus} onChange={(e) => setOrderStatus(e.target.value)}>

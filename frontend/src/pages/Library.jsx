@@ -474,7 +474,9 @@ export default function Library({
             )}
           </div>
 
-          {!isGuest && (
+          {/* Feature #116 — gæster må oprette ønsker, så add-knappen vises for
+              dem i ønske-fanen, men aldrig i selve biblioteket. */}
+          {(!isGuest || wishlist) && (
             <button
               type="button"
               className="btn btn-primary"
@@ -919,8 +921,9 @@ export default function Library({
                   )}
                 </div>
                 {/* Feature #114 — bestillingsstatus vises kun på ønske-kort,
-                    i både grid- og liste-visning (samme markup, jf. #108). */}
-                {movie.is_wishlist && (
+                    i både grid- og liste-visning (samme markup, jf. #108).
+                    Feature #116 — skjult for gæster, som ikke ser order-status. */}
+                {movie.is_wishlist && !isGuest && (
                   <div className="movie-tags">
                     <span
                       className={`movie-order-badge${movie.order_status ? "" : " movie-order-badge--none"}`}
@@ -1424,7 +1427,8 @@ export function MovieDetailModal({
                 <div className="modal-section-label">{t("field.subtitles")}</div>
                 <p>{movie.subtitles || "—"}</p>
               </div>
-              {movie.is_wishlist && (
+              {/* Feature #116 — bestillingsstatus skjules helt for gæster. */}
+              {movie.is_wishlist && !isGuest && (
                 <div>
                   <div className="modal-section-label">{t("field.orderStatus")}</div>
                   <p>{movie.order_status || t("orderStatus.notOrdered")}</p>
@@ -1591,7 +1595,7 @@ export function MovieDetailModal({
                 />
               </div>
 
-              {movie.is_wishlist && (
+              {movie.is_wishlist && !isGuest && (
                 <div>
                   <div className="modal-section-label">{t("field.orderStatus")}</div>
                   <select value={orderStatus} onChange={(e) => setOrderStatus(e.target.value)}>

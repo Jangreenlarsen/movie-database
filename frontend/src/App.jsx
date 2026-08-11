@@ -112,12 +112,12 @@ function App() {
   // (usat bruger, eller endnu ingen bruger) fjerner attributten helt, så
   // `prefers-color-scheme` i CSS'en får lov at afgøre det i stedet.
   useEffect(() => {
+    // Feature #121 (Jans ønske 2026-08-11) — mørkt tema er nu default. En usat
+    // bruger (eller endnu ingen bruger: den offentlige /bio-side og login-siden)
+    // får "dark" i stedet for at følge systemets `prefers-color-scheme` som før
+    // (#110). Et eksplicit personligt valg (light/dark) vinder stadig.
     const theme = user?.settings?.theme;
-    if (theme) {
-      document.documentElement.setAttribute("data-theme", theme);
-    } else {
-      document.documentElement.removeAttribute("data-theme");
-    }
+    document.documentElement.setAttribute("data-theme", theme || "dark");
   }, [user?.settings?.theme]);
 
   async function handleLogout() {

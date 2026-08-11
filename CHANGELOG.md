@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.97.0 build 0132] — 2026-08-11 — feature: mørkt tema som default + baggrund tilbage til blødt udtonet top-motiv (FEATURES.md #121, #119)
+
+To ting fra Jans feedback (2026-08-11).
+
+**#121 — mørkt tema som default** (*"mørk team skal være default"*). #110 gjorde tema personligt med "usat = følg systemets `prefers-color-scheme`". Nu er default mørkt: `App.jsx` sætter `data-theme="dark"` når intet er valgt (usat bruger, plus de ikke-autentificerede /bio- og login-sider) i stedet for at fjerne attributten. Et eksplicit personligt valg (Lyst/Mørkt under Indstillinger → Konto) vinder stadig, og tema-vælgeren markerer nu "Mørkt" som aktiv når intet er valgt. Selve CSS-variabelsystemet er uændret.
+
+**#119 — baggrunden tilbage til top-motiv** (*"kun i toppen men tonet blødt ud ned mod bund ... ikke fliser"*). v0.96.1's fuldside-fliser er droppet igen. `.cinema-public-backdrop` er nu ét billede (`no-repeat`) i toppen (760px, 560px på mobil) med en lang, blød `mask-image`-udtoning (opaque til 12% → gennemsigtig ved bunden), så collagen glider umærkeligt over i sidens baggrund. Ingen dæmpning nødvendig: den hvide hero-tekst ligger enten på det uigennemsigtige skilt eller i den udtonede zone over den nu mørke baggrund. Grynetheden fra `cover`-opskaleringen er langt mindre synlig nu, hvor mørkt tema er default og collagens mørke frames dominerer.
+
+Visuelt verificeret i browseren (CLAUDE.md regel 18): den offentlige side i mørkt (default) og lyst tema, desktop + mobil — collagen toner blødt ud i toppen, teksten er læsbar, ingen fliser.
+
+Berørte filer: `frontend/src/App.jsx`, `frontend/src/pages/Settings.jsx`, `frontend/src/pages/CinemaPublic.css`, `FEATURES.md`, `version.json`.
+
 ## [0.96.1 build 0131] — 2026-08-11 — juster: film-collage-baggrunden dækker nu hele siden og er ikke længere grynet (FEATURES.md #119)
 
 Opfølgning på #119. Jans feedback på første udgave (v0.96.0): *"baggrunds billede er for stor, den bliver for grynet og den er kun synlig i den øverste del af siden"*.

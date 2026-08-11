@@ -9,26 +9,31 @@
 }
 
 /* Feature #119 — `baggrund2.png` (collage af film-frames i varme toner) som
-   baggrundsmotiv over HELE den offentlige side. Afløser #105's slørede
+   stemningsmotiv i toppen af den offentlige side. Afløser #105's slørede
    skilt-baggrund.
 
-   Jans feedback (2026-08-11): et enkelt `cover`-billede blev opskaleret (kilden
-   er kun 712px bred) og dermed grynet, og var kun synligt i toppen. Derfor
-   vises billedet nu i sin naturlige/nedskalerede størrelse og GENTAGES (fliser)
-   ud over hele siden (`inset: 0` + `repeat`) — nedskalering giver skarpe fliser
-   uden gryn, og det dækker hele siden i stedet for kun toppen. Lav `opacity`
-   holder det som et motiv bag indholdet, så teksten forbliver læsbar; farverne
-   matcher sidens varme palette. */
+   Jans feedback-forløb (2026-08-11): fuldside-fliser blev droppet igen — han
+   ville have det tilbage til KUN toppen, men "tonet blødt ud ned mod bund"
+   (ingen fliser). Derfor: ét billede (`no-repeat`) i toppen, og en lang, blød
+   `mask-image`-udtoning fra fuldt synligt øverst til helt gennemsigtigt mod
+   bunden af backdrop-området, så det glider umærkeligt over i sidens baggrund.
+   Ingen dæmpning: al hvid hero-tekst ligger enten på det uigennemsigtige skilt
+   eller i den udtonede zone over sidens (mørke, jf. #121) baggrund, så teksten
+   er læsbar uden at collagen skal mørklægges. */
 .cinema-public-backdrop {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 760px;
+  background-image: url("/cinema/baggrund2.png");
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
   z-index: 0;
   pointer-events: none;
-  background-image: url("/cinema/baggrund2.png");
-  background-repeat: repeat;
-  background-position: center top;
-  background-size: 460px auto;
-  opacity: 0.16;
+  mask-image: linear-gradient(to bottom, black 0%, black 12%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 12%, transparent 100%);
 }
 
 .cinema-public-hero {
@@ -203,10 +208,10 @@
     gap: 32px;
   }
 
-  /* Feature #119 — mindre fliser på smalle skærme, så collagens frames ikke
-     bliver uforholdsmæssigt store på en telefon. */
+  /* Feature #119 — lavere backdrop på smalle skærme, så udtoningen er færdig
+     før billedgalleriet begynder. */
   .cinema-public-backdrop {
-    background-size: 340px auto;
+    height: 560px;
   }
 }
 

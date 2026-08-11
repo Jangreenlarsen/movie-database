@@ -333,7 +333,9 @@ function ThemeSection({ theme, onSettingsChanged }) {
           <Chip
             key={option.value}
             label={t(option.labelKey)}
-            active={theme === option.value}
+            /* Feature #121 — usat = mørk (ny default), så "Mørkt" markeres aktivt
+               indtil brugeren evt. vælger "Lyst". */
+            active={(theme || "dark") === option.value}
             onClick={() => selectTheme(option.value)}
           />
         ))}

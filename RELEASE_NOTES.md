@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.97.0 (build 0132) — 2026-08-11
+
+- **Mørkt tema er nu standard.** Appen starter nu i mørkt tema (også den offentlige Voldby BIO-side og login-siden), i stedet for at følge enhedens indstilling. Du kan stadig selv vælge Lyst eller Mørkt under Indstillinger → Konto.
+- **Justeret baggrund på Voldby BIO-siden.** Film-collagen ligger nu igen kun i toppen bag skiltet og toner blødt ud ned mod indholdet (ikke gentaget ud over hele siden) — den falder flot i med det mørke tema.
+
 ## v0.96.1 (build 0131) — 2026-08-11
 
 - **Baggrundsmotivet dækker nu hele Voldby BIO-siden.** Film-frame-collagen er justeret efter feedback: den er ikke længere grynet (vises skarpt i naturlig størrelse i stedet for at blive zoomet op), og den er nu synlig hele vejen ned ad siden i stedet for kun i toppen — stadig dæmpet, så teksten er let at læse i både lyst og mørkt tema.

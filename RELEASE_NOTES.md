@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.94.0 (build 0127) — 2026-08-11
+
+- **Rigere program-kort på den offentlige Voldby BIO-side.** Hver kommende visning vises nu med samme detaljer som når man er logget ind: plot-resumé, genrer og direkte links til trailer og IMDb — i stedet for kun poster og titel. Så en besøgende der har fået biograf-linket delt, kan læse om filmene med det samme.
+
 ## v0.93.1 (build 0126) — 2026-08-11
 
 - **Rettet: "Opret bruger" virker nu i stående format på telefonen.** På den offentlige Voldby BIO-side kunne knapperne i login-/opret-panelet ikke trykkes, når iPhonen blev holdt i portræt (kun i landskab). Panelet blev delvist dækket af siden nedenunder — nu ligger det korrekt øverst uanset hvordan telefonen holdes.

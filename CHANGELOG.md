@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.94.0 build 0127] — 2026-08-11 — feature: rigere visnings-kort på den offentlige BIO-side (FEATURES.md #118)
+
+Jan: *"på public side gør icon fremvisnings siderne mere interessante eventuelt med samme info som hvis man er logget ind hvor imdb og trailer info er med også"*. Forelagt tre former (klik→detalje / rigere kort inline / brede kort som indlogget) valgte Jan de brede kort som den indloggede Voldby BIO-fane.
+
+Rent frontend — dataene var der allerede: `Screening`-modellen og det offentlige (ikke-autentificerede) `GET /api/screenings` returnerede allerede `overview`/`genres`/`trailer_url`/`imdb_url`, beriget ved læsning fra den refererede film/serie (feature #63). Den offentlige `PublicScreeningCard` viste dem bare ikke — kun dato, poster, titel og genrer.
+
+Kortet er omskrevet fra det kompakte `bio-poster-card` til det brede `cinema-card`-layout (poster + tekst side om side: tid, titel+år, genrer, plot, evt. note, trailer- og IMDb-links), genbrugt fra `Cinema.css` (nu importeret i `CinemaPublic.jsx`) frem for duplikeret styling — så den offentlige og indloggede visning aldrig kan drive fra hinanden. Den offentlige udgave har ingen admin-værktøjer, og tids-badgen viser dato+tid, da den offentlige liste er flad (ingen dag-gruppering — bevidst valg fra #64 v2). De nu ubrugte `.bio-poster-*`-regler er fjernet fra `CinemaPublic.css`. Den indloggede `ScreeningCard` er urørt.
+
+Visuelt verificeret i browseren (CLAUDE.md regel 18) i både lyst og mørkt tema, desktop og mobil — de brede kort viser plot + trailer/IMDb-links, og på mobil stakkes de lodret med posteren capped (målt `posterW=160px`, `cardDir=column`) via den genbrugte, uændrede `.cinema-card`-CSS.
+
+Berørte filer: `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `FEATURES.md`, `version.json`.
+
 ## [0.93.1 build 0126] — 2026-08-11 — fix: "Opret bruger" kunne ikke trykkes i portræt på den offentlige side (BUGS.md #57)
 
 Jan: på iPhone i portræt kunne man ikke trykke på "Opret bruger" på den offentlige Voldby BIO-side — kun i landskab.

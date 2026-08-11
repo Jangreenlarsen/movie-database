@@ -137,6 +137,8 @@
   "collection.owned": "✓ Ejer",
   "collection.adding": "Tilføjer...",
   "collection.add": "+ Tilføj",
+  "collection.addWish": "+ Ønskeliste",
+  "collection.addNeedsFullFlow": "Denne del skal tilføjes via den fulde tilføj-flow (søg/scan), hvor du kan vælge format og medietype.",
   "plex.badgeTmdb": "Ligger i Plex (matchet på TMDb-id)",
   "plex.badgeTitle": "Ligger i Plex (matchet på titel: {title})",
   "plex.statusError": "Plex-status kunne ikke hentes: {message}",

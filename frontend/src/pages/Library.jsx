@@ -1694,6 +1694,7 @@ function CollectionSection({ movie, onChanged }) {
   const [collection, setCollection] = useState(null);
   const [status, setStatus] = useState("idle");
   const [addingId, setAddingId] = useState(null);
+  const [addError, setAddError] = useState(null);
 
   function load() {
     setStatus("loading");
@@ -1715,14 +1716,26 @@ function CollectionSection({ movie, onChanged }) {
   }
 
   async function addPart(part) {
+    setAddError(null);
+    // "Følg forælderen" (Jans valg 2026-08-11, BUGS.md #58): ser man en
+    // ønskeliste-film, tilføjes søsterfilmen til ønskelisten; ser man en ejet
+    // film, skal søsteren også ejes. En ejet biblioteksfilm kræver format +
+    // medietype (feature #92 / MovieCreate.require_media_type_and_format_for_library),
+    // som ikke kan vælges her i samlingslisten — så i stedet for at sende et
+    // kald vi ved backend afviser med 422, henviser vi til det fulde tilføj-flow.
+    if (!movie.is_wishlist) {
+      setAddError(t("collection.addNeedsFullFlow"));
+      return;
+    }
     setAddingId(part.tmdb_id);
     try {
-      await api.createMovie({ tmdb_id: part.tmdb_id });
+      await api.createMovie({ tmdb_id: part.tmdb_id, is_wishlist: true });
       load();
       onChanged();
-    } catch {
-      // fejlen vises ikke separat her — brugeren kan se delen stadig mangler
-      // og prøve igen; hovedfilmens egen gem-flow har sin egen fejlvisning.
+    } catch (err) {
+      // Vis den specifikke fejl (CLAUDE.md regel 16) i stedet for at sluge den —
+      // knappen så ellers bare ud til ikke at gøre noget (BUGS.md #58).
+      setAddError(err.message);
     } finally {
       setAddingId(null);
     }
@@ -1745,6 +1758,7 @@ function CollectionSection({ movie, onChanged }) {
           {status === "error" && (
             <div className="banner banner-error">{t("collection.loadError")}</div>
           )}
+          {addError && <div className="banner banner-error">{addError}</div>}
           {status === "ready" &&
             collection.parts.map((part) => (
               <div key={part.tmdb_id} className="collection-part-row">
@@ -1762,7 +1776,13 @@ function CollectionSection({ movie, onChanged }) {
                     onClick={() => addPart(part)}
                     disabled={addingId === part.tmdb_id}
                   >
-                    {t(addingId === part.tmdb_id ? "collection.adding" : "collection.add")}
+                    {t(
+                      addingId === part.tmdb_id
+                        ? "collection.adding"
+                        : movie.is_wishlist
+                          ? "collection.addWish"
+                          : "collection.add"
+                    )}
                   </button>
                 )}
               </div>

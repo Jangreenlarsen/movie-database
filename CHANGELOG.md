@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.94.1 build 0128] — 2026-08-11 — fix: login-/opret-dialog som centreret modal på offentlig side (BUGS.md #57, opfølgning)
+
+Opfølgning på #57. Den første rettelse (v0.93.1 — `.cinema-public-hero` løftet til `z-index: 2`) hit-testede grønt i harness, men løste det **ikke** i Jans faktiske brug: *"det er stedigværk det samme"*. Panelet var stadig absolut placeret op i hero-hjørnet og afhang af hero'ens højde.
+
+Jans forslag: gør boksen til en centreret dialog midt i skærmen. Login-/opret-panelet er nu et **modal-overlay** — `.cinema-public-login-overlay` med `position: fixed; inset: 0`, flex-centreret indhold og `z-index: 100` (samme mønster som appens egen `.modal-backdrop` i Library.css), renderet sidst i `.cinema-public-page` frem for absolut inde i hero'en. Et `position: fixed`-element centreres mod viewporten uanset hero-højde og orientering og klippes ikke af containerens overflow, så hele klassen af overflow-/stacking-fejl forsvinder. Klik på det mørke backdrop (eller Annullér) lukker dialogen; klik inde i den lukker ikke (`stopPropagation`).
+
+Oprydning: hero'ens `z-index` rullet tilbage fra 2 til 1 (nu overflødigt), og den forældede absolut-placerings-CSS for `.cinema-public-login-panel` + dens mobil-override (`@media (max-width: 560px)`) fjernet. `.cinema-public-login-panel` er nu et alm. centreret kort (`width: 320px; max-width: 100%; max-height: 90vh; overflow-y: auto`).
+
+Verificeret med hit-test (`document.elementFromPoint`) mod den rigtige CSS: panelets centrum = viewportens centrum i både portræt (492×752) og landskab (820×328), og "Opret bruger" er `TAPPABLE` begge steder. Set i browseren (CLAUDE.md regel 18) — dialogen står centreret med dæmpet baggrund bag.
+
+Berørte filer: `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `BUGS.md`, `version.json`.
+
 ## [0.94.0 build 0127] — 2026-08-11 — feature: rigere visnings-kort på den offentlige BIO-side (FEATURES.md #118)
 
 Jan: *"på public side gør icon fremvisnings siderne mere interessante eventuelt med samme info som hvis man er logget ind hvor imdb og trailer info er med også"*. Forelagt tre former (klik→detalje / rigere kort inline / brede kort som indlogget) valgte Jan de brede kort som den indloggede Voldby BIO-fane.

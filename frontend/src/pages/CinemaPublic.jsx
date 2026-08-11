@@ -5,6 +5,9 @@ import { formatShortDate, formatTime } from "../utils/cinemaFormat";
 import LanguagePicker from "../components/LanguagePicker";
 import { useLocale, useT } from "../i18n";
 import "./CinemaPublic.css";
+// Feature #118 — genbruger den indloggede Voldby BIO-fanes brede kort-styling
+// (.cinema-card*) på den offentlige side i stedet for at duplikere den.
+import "./Cinema.css";
 import "./Login.css";
 
 // Feature #70 — public, no-login page at /bio. Read-only: no admin tools,
@@ -97,7 +100,7 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
           )}
 
           {screenings.length > 0 && (
-            <div className="bio-poster-grid">
+            <div className="cinema-cards">
               {screenings.map((screening) => (
                 <PublicScreeningCard key={screening.id} screening={screening} />
               ))}
@@ -257,29 +260,51 @@ function PublicLoginPanel({ language, onClose }) {
   );
 }
 
+// Feature #118 — samme brede kort-layout som den indloggede Voldby BIO-fanes
+// `ScreeningCard` (Cinema.jsx), så en besøgende ser plot + trailer + IMDb som
+// hvis de var logget ind. Genbruger `.cinema-card*` fra Cinema.css frem for
+// dupликeret styling; den offentlige udgave har blot ingen admin-værktøjer, og
+// tids-badgen viser dato+tid, da den offentlige liste er flad (ingen
+// dag-gruppering — bevidst valg fra #64 v2).
 function PublicScreeningCard({ screening }) {
   const t = useT();
   const locale = useLocale();
   return (
-    <div className="bio-poster-card">
-      <div className="bio-poster-card-datetime">
-        {formatShortDate(screening.scheduled_at, locale)} ·{" "}
-        {formatTime(screening.scheduled_at, locale)}
-      </div>
-      <div className="bio-poster-card-poster">
+    <div className="cinema-card">
+      <div className="cinema-card-poster">
         {screening.poster_url ? (
           <img src={screening.poster_url} alt={screening.title ?? ""} loading="lazy" />
         ) : (
           <span>{screening.media_kind === "movie" ? "🎬" : "📺"}</span>
         )}
       </div>
-      <div className="bio-poster-card-body">
-        <h3 className="bio-poster-card-title">
+      <div className="cinema-card-body">
+        <div className="cinema-card-time">
+          {formatShortDate(screening.scheduled_at, locale)} ·{" "}
+          {formatTime(screening.scheduled_at, locale)}
+        </div>
+        <h3 className="cinema-card-title">
           {screening.title ?? t("cinema.unknownTitle")}
           {screening.year ? ` (${screening.year})` : ""}
         </h3>
         {screening.genres?.length > 0 && (
-          <div className="bio-poster-card-genres">{screening.genres.join(", ")}</div>
+          <div className="cinema-card-genres">{screening.genres.join(", ")}</div>
+        )}
+        {screening.overview && <p className="cinema-card-overview">{screening.overview}</p>}
+        {screening.note && <p className="cinema-card-note">📝 {screening.note}</p>}
+        {(screening.trailer_url || screening.imdb_url) && (
+          <div className="cinema-card-links">
+            {screening.trailer_url && (
+              <a href={screening.trailer_url} target="_blank" rel="noreferrer">
+                {t("cinema.watchTrailer")}
+              </a>
+            )}
+            {screening.imdb_url && (
+              <a href={screening.imdb_url} target="_blank" rel="noreferrer">
+                IMDb
+              </a>
+            )}
+          </div>
         )}
       </div>
     </div>

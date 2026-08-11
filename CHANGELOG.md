@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.97.1 build 0133] — 2026-08-11 — fix: "+ Tilføj" på samlings-del fra ønskelisten virker nu (BUGS.md #58)
+
+`CollectionSection.addPart` i `Library.jsx` sendte ikke `is_wishlist` med til `createMovie`, så en tilføjelse fra ønskelisten blev afvist af backend-validatoren (`format`/`media_type` kræves for biblioteksposter) og fejlen blev slugt tavst — knappen så ud til ikke at gøre noget. Nu følger tilføjelsen forælderen: fra ønskelisten tilføjes søsterfilmen til ønskelisten (knap: "+ Ønskeliste"); fra en ejet film henvises til det fulde tilføj-flow, da format/medietype ikke kan vælges i samlingslisten. Fejl vises nu i et banner i stedet for at sluges (CLAUDE.md regel 16).
+
+Berørte filer: `frontend/src/pages/Library.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `BUGS.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `version.json`.
+
 ## [0.97.0 build 0132] — 2026-08-11 — feature: mørkt tema som default + baggrund tilbage til blødt udtonet top-motiv (FEATURES.md #121, #119)
 
 To ting fra Jans feedback (2026-08-11).

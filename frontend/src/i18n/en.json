@@ -137,6 +137,8 @@
   "collection.owned": "✓ Owned",
   "collection.adding": "Adding...",
   "collection.add": "+ Add",
+  "collection.addWish": "+ Shopping list",
+  "collection.addNeedsFullFlow": "This part must be added via the full add flow (search/scan), where you can choose format and media type.",
   "plex.badgeTmdb": "Available in Plex (matched on TMDb id)",
   "plex.badgeTitle": "Available in Plex (matched on title: {title})",
   "plex.statusError": "Could not load Plex status: {message}",

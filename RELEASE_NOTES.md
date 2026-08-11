@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.97.1 (build 0133) — 2026-08-11
+
+- **"+ Tilføj" på en samling virker nu fra indkøbslisten.** Ser du en film på indkøbslisten som er del af en samling (fx John Wick Collection), kan du nu tilføje de øvrige film i samlingen direkte fra listen — de lægges på indkøbslisten (knappen hedder "+ Ønskeliste"). Tidligere skete der ingenting når man trykkede. Tilføjer du fra en film du allerede ejer, henviser appen til den fulde tilføj-flow, hvor du kan vælge format og medietype. Går noget galt, vises fejlen nu tydeligt i stedet for at forsvinde.
+
 ## v0.97.0 (build 0132) — 2026-08-11
 
 - **Mørkt tema er nu standard.** Appen starter nu i mørkt tema (også den offentlige Voldby BIO-side og login-siden), i stedet for at følge enhedens indstilling. Du kan stadig selv vælge Lyst eller Mørkt under Indstillinger → Konto.

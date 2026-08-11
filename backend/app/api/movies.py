@@ -23,6 +23,7 @@ from app.models.movie import (
     MoviePreview,
     MovieUpdate,
     OrderStatus,
+    SUBTITLE_STANDARD_OPTIONS,
     SerialHolder,
     TmdbSyncResult,
 )
@@ -138,6 +139,9 @@ async def attribute_options() -> dict:
         "audio_types": [a.value for a in AudioType],
         "media_types": [m.value for m in MediaType],
         "order_statuses": [s.value for s in OrderStatus],
+        # Feature #123 — de faste undertekst-afkrydsnings-valg (Eng/DK);
+        # "Andet" er en fritekst-mulighed i UI'et, ikke en fast værdi her.
+        "subtitles": SUBTITLE_STANDARD_OPTIONS,
     }
 
 

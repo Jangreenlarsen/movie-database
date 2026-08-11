@@ -54,8 +54,8 @@ class TvShowCreate(BaseModel):
     cast: list[str] = Field(default_factory=list)
     location: str | None = None
     owner: str | None = None
-    # Feature #109 — se den identiske note i MovieCreate.
-    subtitles: str | None = None
+    # Feature #109/#123 — undertekster som liste, se noten i MovieCreate.
+    subtitles: list[str] = Field(default_factory=list)
     # Feature #114 — se den identiske note i MovieCreate.
     order_status: OrderStatus | None = None
     is_wishlist: bool = False
@@ -120,7 +120,8 @@ class TvShowUpdate(BaseModel):
     media_type: MediaType | None = None
     location: str | None = None
     owner: str | None = None
-    subtitles: str | None = None
+    # Feature #123 — None = ikke sendt; [] = ryddet (som audio_types).
+    subtitles: list[str] | None = None
     order_status: OrderStatus | None = None
     is_wishlist: bool | None = None
     serial_number: int | None = Field(default=None, gt=0)
@@ -155,7 +156,7 @@ class TvShow(BaseModel):
     imdb_url: str | None = None
     location: str | None = None
     owner: str | None = None
-    subtitles: str | None = None
+    subtitles: list[str] = Field(default_factory=list)
     order_status: str | None = None
     registered_by: str | None = None
     is_wishlist: bool = False

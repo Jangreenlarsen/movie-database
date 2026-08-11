@@ -221,21 +221,38 @@ async def test_update_tv_show_tags_and_location(client):
     assert response.json()["location"] == "Stuen"
 
 
-async def test_create_and_update_tv_show_subtitles_free_text(client):
-    """Feature #109 — se den identiske test i test_movies.py."""
+async def test_create_and_update_tv_show_subtitles_list(client):
+    """Feature #123 — se den identiske test i test_movies.py."""
     create_response = await client.post(
         "/api/tv-shows",
-        json={"name": "Undertekst-serie", "media_type": "Fysisk", "format": "DVD", "subtitles": "DA, EN"},
+        json={
+            "name": "Undertekst-serie",
+            "media_type": "Fysisk",
+            "format": "DVD",
+            "subtitles": ["DK", "Eng"],
+        },
     )
     assert create_response.status_code == 201
     show = create_response.json()
-    assert show["subtitles"] == "DA, EN"
+    assert show["subtitles"] == ["DK", "Eng"]
 
     update_response = await client.patch(
-        f"/api/tv-shows/{show['id']}", json={"subtitles": "Fastbrændt DA"}
+        f"/api/tv-shows/{show['id']}", json={"subtitles": ["Fastbrændt DA"]}
     )
     assert update_response.status_code == 200
-    assert update_response.json()["subtitles"] == "Fastbrændt DA"
+    assert update_response.json()["subtitles"] == ["Fastbrændt DA"]
+
+
+async def test_tv_show_subtitles_string_is_migrated_to_list(client, db):
+    """Feature #123 — gammel fri undertekst-streng konverteres til liste."""
+    from app.repositories import tv_show_repository
+
+    await db[tv_show_repository.COLLECTION].insert_one(
+        {"name": "Gammel serie", "media_type": "Fysisk", "format": "DVD", "subtitles": "Dansk og Engelsk"}
+    )
+    await tv_show_repository.ensure_indexes(db)
+    doc = await db[tv_show_repository.COLLECTION].find_one({"name": "Gammel serie"})
+    assert doc["subtitles"] == ["DK", "Eng"]
 
 
 async def test_delete_tv_show_logs_and_allows_manual_serial_reuse(client):
@@ -530,7 +547,9 @@ async def test_tmdb_preview_returns_429_on_tmdb_rate_limit(client, monkeypatch):
 async def test_attribute_options_reuses_movie_enums(client):
     response = await client.get("/api/tv-shows/attribute-options")
     assert response.status_code == 200
-    assert "BD" in response.json()["formats"]
+    data = response.json()
+    assert "BD" in data["formats"]
+    assert data["subtitles"] == ["Eng", "DK"]  # feature #123
 
 
 async def test_tv_shows_require_authentication(raw_client):

@@ -152,21 +152,45 @@ async def test_create_movie_with_format_and_audio_types(client):
     assert movie["audio_types"] == ["DD5.1", "DTS"]
 
 
-async def test_create_and_update_movie_subtitles_free_text(client):
-    """Feature #109 — fritekst-felt, ingen fast værdiliste (Jans valg)."""
+async def test_create_and_update_movie_subtitles_list(client):
+    """Feature #123 — undertekster er nu en liste: de faste valg Eng/DK plus
+    fritekst under "Andet" (fx "Fastbrændt DA")."""
     create_response = await client.post(
         "/api/movies",
-        json={"title": "Undertekst-film", "media_type": "Fysisk", "format": "DVD", "subtitles": "DA, EN"},
+        json={
+            "title": "Undertekst-film",
+            "media_type": "Fysisk",
+            "format": "DVD",
+            "subtitles": ["DK", "Eng"],
+        },
     )
     assert create_response.status_code == 201
     movie = create_response.json()
-    assert movie["subtitles"] == "DA, EN"
+    assert movie["subtitles"] == ["DK", "Eng"]
 
     update_response = await client.patch(
-        f"/api/movies/{movie['id']}", json={"subtitles": "Fastbrændt DA"}
+        f"/api/movies/{movie['id']}", json={"subtitles": ["DK", "Fastbrændt DA"]}
     )
     assert update_response.status_code == 200
-    assert update_response.json()["subtitles"] == "Fastbrændt DA"
+    assert update_response.json()["subtitles"] == ["DK", "Fastbrændt DA"]
+
+    # Tom liste rydder feltet (Jans "Andet" fravalgt + intet afkrydset).
+    cleared = await client.patch(f"/api/movies/{movie['id']}", json={"subtitles": []})
+    assert cleared.status_code == 200
+    assert cleared.json()["subtitles"] == []
+
+
+async def test_movie_subtitles_string_is_migrated_to_list(client, db):
+    """Feature #123 — en gammel post med en fri undertekst-streng konverteres
+    til liste-form af `_migrate_subtitles_to_list` (kørt via ensure_indexes)."""
+    from app.repositories import movie_repository
+
+    await db[movie_repository.COLLECTION].insert_one(
+        {"title": "Gammel", "media_type": "Fysisk", "format": "DVD", "subtitles": "DA, EN"}
+    )
+    await movie_repository.ensure_indexes(db)
+    doc = await db[movie_repository.COLLECTION].find_one({"title": "Gammel"})
+    assert doc["subtitles"] == ["DK", "Eng"]
 
 
 async def test_create_movie_rejects_invalid_format(client):
@@ -456,4 +480,7 @@ async def test_attribute_options_endpoint(client):
     data = response.json()
     assert "BD" in data["formats"]
     assert "Atmos" in data["audio_types"]
+    assert "DTS:X" in data["audio_types"]  # feature #122
+    assert "DTS-HD-MA-7.1" in data["audio_types"]  # feature #122
     assert data["media_types"] == ["Fysisk", "Digital"]
+    assert data["subtitles"] == ["Eng", "DK"]  # feature #123

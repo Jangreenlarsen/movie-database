@@ -7,6 +7,7 @@ import Pagination from "../components/Pagination";
 import { PlexCardBadge, PlexPlayLink } from "../components/PlexAvailability";
 import { usePlexAvailability } from "../components/usePlexAvailability";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
+import SubtitlesPicker from "../components/SubtitlesPicker";
 import ViewModeToggle from "../components/ViewModeToggle";
 import { useLocale, useT } from "../i18n";
 import { formatSerial, serialPrefix } from "../utils/serialNumber";
@@ -134,6 +135,7 @@ export default function TvShows({
     audio_types: [],
     media_types: [],
     order_statuses: [],
+    subtitles: [],
   });
   const [activeShow, setActiveShow] = useState(null);
   const [visibleFields, setVisibleFields] = useState(() => visibleFieldsFromSettings(user.settings));
@@ -933,8 +935,8 @@ export function TvShowDetailModal({
   const [mediaType, setMediaType] = useState(show.media_type ?? "");
   const [location, setLocation] = useState(show.location ?? "");
   const [owner, setOwner] = useState(show.owner ?? "");
-  // Feature #109 — se den identiske note i Library.jsx.
-  const [subtitles, setSubtitles] = useState(show.subtitles ?? "");
+  // Feature #123 — undertekster som liste (se SubtitlesPicker), som i Library.jsx.
+  const [subtitles, setSubtitles] = useState(show.subtitles ?? []);
   // Feature #114 — se den identiske note i Library.MovieDetailModal.
   const [orderStatus, setOrderStatus] = useState(show.order_status ?? "");
   const [personalRating, setPersonalRating] = useState(
@@ -963,7 +965,7 @@ export function TvShowDetailModal({
     setMediaType(show.media_type ?? "");
     setLocation(show.location ?? "");
     setOwner(show.owner ?? "");
-    setSubtitles(show.subtitles ?? "");
+    setSubtitles(show.subtitles ?? []);
     setOrderStatus(show.order_status ?? "");
     setPersonalRating(show.personal_rating != null ? String(show.personal_rating) : "");
     setPersonalNote(show.personal_note ?? "");
@@ -1003,7 +1005,7 @@ export function TvShowDetailModal({
         media_type: mediaType || null,
         location: location.trim() || null,
         owner: owner.trim() || null,
-        subtitles: subtitles.trim() || null,
+        subtitles,
         order_status: orderStatus || null,
         personal_rating: personalRating ? Number(personalRating) : null,
         personal_note: personalNote.trim() || null,
@@ -1254,7 +1256,7 @@ export function TvShowDetailModal({
               </div>
               <div>
                 <div className="modal-section-label">{t("field.subtitles")}</div>
-                <p>{show.subtitles || "—"}</p>
+                <p>{show.subtitles?.length ? show.subtitles.join(", ") : "—"}</p>
               </div>
               {/* Feature #116 — bestillingsstatus skjules helt for gæster. */}
               {show.is_wishlist && !isGuest && (
@@ -1404,10 +1406,10 @@ export function TvShowDetailModal({
 
               <div>
                 <div className="modal-section-label">{t("field.subtitles")}</div>
-                <input
+                <SubtitlesPicker
                   value={subtitles}
-                  onChange={(e) => setSubtitles(e.target.value)}
-                  placeholder={t("detail.subtitlesPlaceholder")}
+                  onChange={setSubtitles}
+                  options={attributeOptions.subtitles}
                 />
               </div>
 

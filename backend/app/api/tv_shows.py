@@ -9,7 +9,14 @@ from app.api.deps import (
 )
 from app.db import get_database
 from app.integrations import tmdb_client
-from app.models.movie import AudioType, MediaType, MovieFormat, OrderStatus, TmdbSyncResult
+from app.models.movie import (
+    SUBTITLE_STANDARD_OPTIONS,
+    AudioType,
+    MediaType,
+    MovieFormat,
+    OrderStatus,
+    TmdbSyncResult,
+)
 from app.models.scan import MovieCandidate
 from app.models.tv_show import (
     DeletedTvShow,
@@ -107,6 +114,8 @@ async def attribute_options() -> dict:
         "audio_types": [a.value for a in AudioType],
         "media_types": [m.value for m in MediaType],
         "order_statuses": [s.value for s in OrderStatus],
+        # Feature #123 — samme faste undertekst-valg som film (Eng/DK).
+        "subtitles": SUBTITLE_STANDARD_OPTIONS,
     }
 
 

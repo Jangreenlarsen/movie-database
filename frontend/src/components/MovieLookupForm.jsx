@@ -79,6 +79,8 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
     formats: [],
     audio_types: [],
     media_types: [],
+    order_statuses: [],
+    subtitles: [],
   });
   const [allTags, setAllTags] = useState([]);
   const [allOwners, setAllOwners] = useState([]);

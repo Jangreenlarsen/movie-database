@@ -7,6 +7,7 @@ import Pagination from "../components/Pagination";
 import { PlexCardBadge, PlexPlayLink } from "../components/PlexAvailability";
 import { usePlexAvailability } from "../components/usePlexAvailability";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
+import SubtitlesPicker from "../components/SubtitlesPicker";
 import ViewModeToggle from "../components/ViewModeToggle";
 import { useLocale, useT } from "../i18n";
 import { formatSerial, serialPrefix } from "../utils/serialNumber";
@@ -162,6 +163,7 @@ export default function Library({
     audio_types: [],
     media_types: [],
     order_statuses: [],
+    subtitles: [],
   });
   const [activeMovie, setActiveMovie] = useState(null);
   const [visibleFields, setVisibleFields] = useState(() => visibleFieldsFromSettings(user.settings));
@@ -1022,10 +1024,9 @@ export function MovieDetailModal({
   );
   const [location, setLocation] = useState(movie.location ?? "");
   const [owner, setOwner] = useState(movie.owner ?? "");
-  // Feature #109 — fritekst, ingen fast værdiliste (Jans valg), derfor
-  // almindeligt `useState` uden Combobox/autocomplete, i modsætning til
-  // location/owner ovenfor.
-  const [subtitles, setSubtitles] = useState(movie.subtitles ?? "");
+  // Feature #123 — undertekster som liste: faste valg Eng/DK + fritekst under
+  // "Andet" (se SubtitlesPicker). Tidligere ét frit tekstfelt (#109).
+  const [subtitles, setSubtitles] = useState(movie.subtitles ?? []);
   // Feature #114 — bestillingsstatus, kun relevant/synligt for ønskeliste-poster.
   // Tom streng = "Ikke bestilt" (gemmes som null); de tre bestilte kilder er enum-værdier.
   const [orderStatus, setOrderStatus] = useState(movie.order_status ?? "");
@@ -1066,7 +1067,7 @@ export function MovieDetailModal({
     setSerialNumberInput(movie.serial_number != null ? String(movie.serial_number) : "");
     setLocation(movie.location ?? "");
     setOwner(movie.owner ?? "");
-    setSubtitles(movie.subtitles ?? "");
+    setSubtitles(movie.subtitles ?? []);
     setOrderStatus(movie.order_status ?? "");
     setPersonalRating(movie.personal_rating != null ? String(movie.personal_rating) : "");
     setPersonalNote(movie.personal_note ?? "");
@@ -1099,7 +1100,7 @@ export function MovieDetailModal({
       mediaType !== (movie.media_type ?? "") ||
       location !== (movie.location ?? "") ||
       owner !== (movie.owner ?? "") ||
-      subtitles !== (movie.subtitles ?? "") ||
+      subtitles.join("|") !== (movie.subtitles ?? []).join("|") ||
       orderStatus !== (movie.order_status ?? "") ||
       personalRating !== (movie.personal_rating != null ? String(movie.personal_rating) : "") ||
       personalNote !== (movie.personal_note ?? "") ||
@@ -1146,7 +1147,7 @@ export function MovieDetailModal({
         media_type: mediaType || null,
         location: location.trim() || null,
         owner: owner.trim() || null,
-        subtitles: subtitles.trim() || null,
+        subtitles,
         order_status: orderStatus || null,
         personal_rating: personalRating ? Number(personalRating) : null,
         personal_note: personalNote.trim() || null,
@@ -1425,7 +1426,7 @@ export function MovieDetailModal({
               </div>
               <div>
                 <div className="modal-section-label">{t("field.subtitles")}</div>
-                <p>{movie.subtitles || "—"}</p>
+                <p>{movie.subtitles?.length ? movie.subtitles.join(", ") : "—"}</p>
               </div>
               {/* Feature #116 — bestillingsstatus skjules helt for gæster. */}
               {movie.is_wishlist && !isGuest && (
@@ -1588,10 +1589,10 @@ export function MovieDetailModal({
 
               <div>
                 <div className="modal-section-label">{t("field.subtitles")}</div>
-                <input
+                <SubtitlesPicker
                   value={subtitles}
-                  onChange={(e) => setSubtitles(e.target.value)}
-                  placeholder={t("detail.subtitlesPlaceholder")}
+                  onChange={setSubtitles}
+                  options={attributeOptions.subtitles}
                 />
               </div>
 

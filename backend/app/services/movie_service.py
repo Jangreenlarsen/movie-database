@@ -31,6 +31,7 @@ from app.models.movie import (
     NamedCount,
     SerialHolder,
     TmdbSyncResult,
+    coerce_subtitles,
 )
 from app.models.settings import SerialNumberConfig, SerialNumberConfigUpdate
 from app.repositories import (
@@ -67,7 +68,7 @@ def _to_model(document: dict) -> Movie:
         trailer_url=document.get("trailer_url"),
         location=document.get("location"),
         owner=document.get("owner"),
-        subtitles=document.get("subtitles"),
+        subtitles=coerce_subtitles(document.get("subtitles")),
         order_status=document.get("order_status"),
         registered_by=document.get("registered_by"),
         is_wishlist=document.get("is_wishlist", False),
@@ -189,7 +190,7 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registere
         "media_type": payload.media_type.value if payload.media_type else None,
         "location": payload.location,
         "owner": payload.owner or registered_by,
-        "subtitles": payload.subtitles,
+        "subtitles": coerce_subtitles(payload.subtitles),
         "order_status": payload.order_status.value if payload.order_status else None,
         "registered_by": registered_by,
         "is_wishlist": payload.is_wishlist,
@@ -523,6 +524,11 @@ async def update_movie(
         canonical_tags = await tag_service.resolve_tags(db, fields["tags"])
         fields["tags"] = canonical_tags
         fields["tags_normalized"] = [tag_service.normalize(tag) for tag in canonical_tags]
+
+    # Feature #123 — trim/drop-tomme, så en opdatering gemmer samme rene
+    # liste-form som oprettelsen (coerce er en no-op på en allerede-ren liste).
+    if "subtitles" in fields:
+        fields["subtitles"] = coerce_subtitles(fields["subtitles"])
 
     requested_serial = fields.pop("serial_number", None)
     requested_wishlist = fields.pop("is_wishlist", None)

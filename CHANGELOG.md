@@ -2,6 +2,25 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.99.0 build 0135] — 2026-08-11 — feature: undertekster som liste (Eng/DK + Andet-fritekst) med datamigration (FEATURES.md #123)
+
+Underteksterne gik fra ét frit tekstfelt (#109) til en liste: faste afkrydsnings-valg **Eng**/**DK** plus et **"Andet"**-fritekst-felt til alt andet (fx "Fastbrændt DA", "Norsk"). Jans valg: flere valg (afkrydsning), "Andet" åbner fritekst, og eksisterende data konverteres.
+
+- **Datamodel**: `subtitles` `str | None` → `list[str]` i Movie og TvShow (Create/Update/read). Ny delt `models/movie.py`-helper: `SUBTITLE_STANDARD_OPTIONS`, `subtitles_from_free_text` (migrerings-parsing), `coerce_subtitles` (læse-side normalisering).
+- **Migration** (skema-ændring): `_migrate_subtitles_to_list` i movie_repository + tv_show_repository, kaldt fra `ensure_indexes` — konverterer eksisterende streng-værdier til liste-form (idempotent, dokument-for-dokument). Kører automatisk ved backend-opstart, som de øvrige label-migrationer.
+- **API**: begge `attribute-options`-endpoints eksponerer nu `subtitles: ["Eng", "DK"]`.
+- **Frontend**: ny genbrugelig `SubtitlesPicker` (chips + "Andet"-fritekst), brugt i film- og TV-detaljemodalerne (dækker både tilføj og redigér).
+- **Tests**: backend create/update/ryd + migration (film+TV) + attribute-options; frontend `SubtitlesPicker.test.jsx` (6 nye).
+- **Verifikation**: begge testsuiter grønne (backend 576, frontend 39). Live-verificeret i browseren (regel 18): Eng+DK+Andet-chips aktive med "Norsk" i fritekst-feltet, konsistent med lyd-type-rækken.
+
+Berørte filer: `backend/app/models/movie.py`, `backend/app/models/tv_show.py`, `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`, `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/app/api/movies.py`, `backend/app/api/tv_shows.py`, `backend/tests/test_movies.py`, `backend/tests/test_tv_shows.py`, `frontend/src/components/SubtitlesPicker.jsx` (ny), `frontend/src/components/SubtitlesPicker.test.jsx` (ny), `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/components/MovieLookupForm.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `version.json`.
+
+## [0.98.0 build 0134] — 2026-08-11 — feature: nye lyd-typer DTS:X og DTS-HD-MA-7.1 (FEATURES.md #122)
+
+To nye værdier i `AudioType`-enummet (`backend/app/models/movie.py`): `DTS:X` og `DTS-HD-MA-7.1`, placeret ved de øvrige DTS-varianter. Enummet deles af film og TV-serier, og frontend henter lyd-typerne dynamisk fra `attribute-options`, så begge dukker automatisk op i afkrydsnings-listerne på tilføj/rediger uden frontend-ændring. Ingen datamigration. `test_attribute_options_endpoint` udvidet til at dække begge nye værdier.
+
+Berørte filer: `backend/app/models/movie.py`, `backend/tests/test_movies.py`, `FEATURES.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `version.json`.
+
 ## [0.97.1 build 0133] — 2026-08-11 — fix: "+ Tilføj" på samlings-del fra ønskelisten virker nu (BUGS.md #58)
 
 `CollectionSection.addPart` i `Library.jsx` sendte ikke `is_wishlist` med til `createMovie`, så en tilføjelse fra ønskelisten blev afvist af backend-validatoren (`format`/`media_type` kræves for biblioteksposter) og fejlen blev slugt tavst — knappen så ud til ikke at gøre noget. Nu følger tilføjelsen forælderen: fra ønskelisten tilføjes søsterfilmen til ønskelisten (knap: "+ Ønskeliste"); fra en ejet film henvises til det fulde tilføj-flow, da format/medietype ikke kan vælges i samlingslisten. Fejl vises nu i et banner i stedet for at sluges (CLAUDE.md regel 16).

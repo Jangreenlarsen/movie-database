@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.95.0 (build 0129) — 2026-08-11
+
+- **Dato og tid i hjørnet på de offentlige program-kort.** På Voldby BIO-siden vises visningstidspunktet nu som en badge i øverste højre hjørne af hvert film-/serie-kort, så titlen og resten af teksten får mere plads.
+
 ## v0.94.1 (build 0128) — 2026-08-11
 
 - **Login-/opret-boksen åbner nu som en dialog midt på skærmen.** På den offentlige Voldby BIO-side lå login-/opret-boksen før oppe i hjørnet, hvor "Opret bruger" ikke kunne trykkes når telefonen blev holdt stående. Den vises nu som en centreret boks med dæmpet baggrund — og knapperne virker uanset om telefonen holdes stående eller liggende. (Den tidligere rettelse i v0.93.1 løste det ikke i praksis.)

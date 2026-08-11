@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.95.0 build 0129] — 2026-08-11 — feature: dato/tid-badge i hjørnet på offentlige visnings-kort (FEATURES.md #120)
+
+Jan: *"for public film side kan du ikke flytte tidspunkt og dato badge op til højre hjørne på visnings kort for de film som stå til display"*. Følger #118's brede kort.
+
+Ny modifier-klasse `.cinema-card--public` på `PublicScreeningCard`, så ændringen kun rammer den offentlige side: kortet bliver `position: relative`, og dato/tid-badgen (`.cinema-card-time`) placeres absolut i øverste højre hjørne (`top: 10px; right: 10px`). `.cinema-card-body` får `padding-top: 22px`, så titlen — også en lang, ombrudt titel — starter under badgen uden at kollidere i desktop-layoutet. Den indloggede `.cinema-card` (Cinema.jsx) er bevidst urørt: den er dag-grupperet og har admin-værktøjer, der forventer badgen i tekst-flowet.
+
+Visuelt verificeret i browseren (CLAUDE.md regel 18) desktop + mobil — badgen står i hjørnet, og en lang titel ombryder pænt nedenunder uden overlap.
+
+Berørte filer: `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `FEATURES.md`, `version.json`.
+
 ## [0.94.1 build 0128] — 2026-08-11 — fix: login-/opret-dialog som centreret modal på offentlig side (BUGS.md #57, opfølgning)
 
 Opfølgning på #57. Den første rettelse (v0.93.1 — `.cinema-public-hero` løftet til `z-index: 2`) hit-testede grønt i harness, men løste det **ikke** i Jans faktiske brug: *"det er stedigværk det samme"*. Panelet var stadig absolut placeret op i hero-hjørnet og afhang af hero'ens højde.

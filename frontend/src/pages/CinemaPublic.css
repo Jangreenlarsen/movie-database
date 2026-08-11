@@ -36,7 +36,12 @@
 
 .cinema-public-hero {
   position: relative;
-  z-index: 1;
+  /* BUGS.md #57 — over .cinema-public-main (også z-index:1, men senere i
+     DOM). I portræt er skiltet lavt → hero'en kort → det absolut placerede
+     login-panel flyder ud under hero'ens boks, og med lige z-index malede
+     main ovenpå panelets nederste knapper og opsnappede trykkene. Hero over
+     main løfter hele hero'ens stacking-kontekst (inkl. panelet) op foran. */
+  z-index: 2;
   padding: 16px 20px 28px;
   text-align: center;
   /* Feature #110 — bevidst ikke var(--accent-contrast): den variabel er

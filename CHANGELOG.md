@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.93.1 build 0126] — 2026-08-11 — fix: "Opret bruger" kunne ikke trykkes i portræt på den offentlige side (BUGS.md #57)
+
+Jan: på iPhone i portræt kunne man ikke trykke på "Opret bruger" på den offentlige Voldby BIO-side — kun i landskab.
+
+Årsag: login-panelet er absolut placeret inde i `.cinema-public-hero` (`z-index: 1`), hvis højde følger skiltbilledets faste `aspect-ratio: 2.5/1`. I portræt er skærmen smal → skiltet lavt → hero'en kort, så det høje login-panel flyder ud *under* hero'ens boks. `.cinema-public-main` er næste søskende med samme `z-index: 1` men senere i DOM, og malede derfor oven på panelets nederste knapper i overlaps-området og opsnappede trykkene. I landskab er skiltet højt nok til at hele panelet bliver inde i hero'en, så knapperne virkede.
+
+Fix: `.cinema-public-hero` løftet til `z-index: 2` (over main), så hele hero'ens stacking-kontekst inkl. panelet males foran main og modtager trykkene. Ren stacking-rettelse — hero og main overlapper kun via panelet, så der er ingen anden visuel ændring.
+
+Verificeret med et hit-test (`document.elementFromPoint` midt på "Opret bruger"-knappen) mod den rigtige CSS: portræt gik fra `hit=[cinema-public-main] BLOCKED` → `hit=[#opret-link] TAPPABLE`, landskab forblev TAPPABLE (CLAUDE.md regel 18 — layout set/afprøvet, ikke kun bygget).
+
+Berørte filer: `frontend/src/pages/CinemaPublic.css`, `BUGS.md`, `version.json`.
+
 ## [0.93.0 build 0125] — 2026-08-11 — feature: omdøb "Ønsker" → "Indkøbsønsker" i UI'et (FEATURES.md #117)
 
 Jan: *"rename 'ønske' til 'indkøbs ønsker'"*. Ren tekst-ændring i de to i18n-kataloger (`da.json`/`en.json`) — ingen kode-, endpoint- eller datamodel-ændring (feltet hedder fortsat `is_wishlist` internt).

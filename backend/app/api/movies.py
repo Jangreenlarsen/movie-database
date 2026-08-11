@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.api.deps import get_current_user, require_admin, require_not_guest
+from app.api.deps import (
+    enforce_guest_wishlist_only,
+    get_current_user,
+    require_admin,
+    require_not_guest,
+)
 from app.db import get_database
 from app.integrations import tmdb_client
 from app.models.movie import (
@@ -77,9 +82,12 @@ async def list_movies(
 @router.post("", response_model=Movie, status_code=201)
 async def create_movie(
     payload: MovieCreate,
-    current_user: dict = Depends(require_not_guest),
+    current_user: dict = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
+    # Feature #116 — gæster må oprette ønsker (men ikke bibliotekspost eller
+    # sætte bestillingsstatus); alle andre roller er uændret.
+    enforce_guest_wishlist_only(current_user, payload)
     return await movie_service.create_movie(db, payload, current_user["username"])
 
 

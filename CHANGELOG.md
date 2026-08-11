@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.92.0 build 0124] — 2026-08-11 — feature: gæster kan oprette ønsker (FEATURES.md #116)
+
+Jan: *"lave det muligt for guest user at kunne oprette ønsker også men ikke noget med status på order"*. Feature #72 gjorde gæste-rollen fuldstændig læse-kun; denne feature åbner **kun** oprettelse af ønskeliste-poster for dem — de kan stadig ikke oprette bibliotekspost, redigere/flytte/slette eksisterende poster eller sætte bestillingsstatus.
+
+Backend: `POST /api/movies` og `POST /api/tv-shows` skifter fra `require_not_guest` til `get_current_user` + en ny fælles `enforce_guest_wishlist_only(current_user, payload)` i `deps.py`. For en gæst kræver den `is_wishlist=True` (ellers 403 "Gæster kan kun oprette ønsker") og **tvinger `order_status=None`** uanset hvad payloaden indeholder — så bestillingsstatus aldrig kan sættes af en gæst, håndhævet i backend og ikke kun i UI (CLAUDE.md regel 16's adgangskontrol-punkt). Alle øvrige skrive-endpoints (update/delete, sæson-/episode-toggles) beholder `require_not_guest` uændret.
+
+Frontend: Ønsker-fanen er fjernet fra `GUEST_RESTRICTED_TABS` og vises nu i nav'en for gæster (Print/Statistik forbliver spærret). "+ Tilføj ønske"-knappen og MovieLookupForm-panelet vises for gæster, men **kun** i ønske-fanen (`!isGuest || wishlist`), aldrig i selve biblioteket. Bestillingsstatus-feltet (rediger-dropdown, læse-linje og kort-badge) er skjult for gæster, så de aldrig møder order-status-begrebet. Film og TV ens.
+
+Ændringen er en betinget synligheds-/tilladelses-ændring (ikke en placerings-ændring), så den er verificeret via testsuiten frem for skærmbillede: nye `test_guest_role.py`-tests dækker at en gæst kan oprette film-/TV-ønske, ikke kan oprette bibliotekspost, og at order_status tvinges til None selv når den sendes med.
+
+Berørte filer: `backend/app/api/deps.py`, `backend/app/api/movies.py`, `backend/app/api/tv_shows.py`, `backend/tests/test_guest_role.py`, `frontend/src/App.jsx`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `ARCHITECTURE.md`, `FEATURES.md`, `version.json`.
+
 ## [0.91.0 build 0123] — 2026-08-11 — feature: feature-liste synlig i portalen (FEATURES.md #115)
 
 Jan: *"feature listen kan du lave et url til den på github under settings på portal sådan folk kan se hvad bliver lavet på film portal"*. Oprindeligt ønske var et GitHub-link, men repo'et er **privat** — et link ville ramme en login-væg for alle uden repo-adgang, så det ville ikke opfylde formålet. Forelagt tre muligheder (vis listen inde i appen / GitHub-link alligevel / gør repo'et offentligt) valgte Jan at vise listen inde i portalen.

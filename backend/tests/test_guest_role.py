@@ -39,6 +39,41 @@ async def test_guest_cannot_create_movie(client):
     await guest.aclose()
 
 
+async def test_guest_can_create_wishlist_movie(client):
+    """Feature #116 — gæster må oprette ønsker, selvom de ikke må oprette
+    bibliotekspost."""
+    guest = await _guest_client(client)
+    response = await guest.post(
+        "/api/movies", json={"title": "Wanted Movie", "is_wishlist": True}
+    )
+    assert response.status_code == 201
+    assert response.json()["is_wishlist"] is True
+    await guest.aclose()
+
+
+async def test_guest_can_create_wishlist_tv_show(client):
+    guest = await _guest_client(client)
+    response = await guest.post(
+        "/api/tv-shows", json={"name": "Wanted Show", "is_wishlist": True}
+    )
+    assert response.status_code == 201
+    assert response.json()["is_wishlist"] is True
+    await guest.aclose()
+
+
+async def test_guest_order_status_is_ignored_on_wishlist_create(client):
+    """Feature #116 — order_status tvinges til None for gæster, uanset hvad de
+    sender (håndhævet i backend, ikke kun i UI)."""
+    guest = await _guest_client(client)
+    response = await guest.post(
+        "/api/movies",
+        json={"title": "Sneaky Wish", "is_wishlist": True, "order_status": "Bestilt ved iMusic"},
+    )
+    assert response.status_code == 201
+    assert response.json()["order_status"] is None
+    await guest.aclose()
+
+
 async def test_guest_cannot_update_or_delete_movie(client):
     created = await client.post("/api/movies", json={"title": "Protected Movie", "media_type": "Fysisk", "format": "DVD"})
     movie_id = created.json()["id"]

@@ -73,3 +73,17 @@ async def require_not_guest(current_user: dict = Depends(get_current_user)) -> d
     if current_user.get("role") == "guest":
         raise NotAuthorizedError("Gæster har kun læseadgang")
     return current_user
+
+
+def enforce_guest_wishlist_only(current_user: dict, payload) -> None:
+    """Feature #116 — gæster må oprette ønsker, men intet i selve biblioteket,
+    og aldrig sætte bestillingsstatus. Håndhæves i backend (CLAUDE.md regel 16),
+    ikke kun som en UI-bekvemmelighed der er triviel at omgå. Bruges af
+    `POST /api/movies` og `POST /api/tv-shows`, som derfor ikke længere kan
+    bruge `require_not_guest`. Muterer payloaden: `order_status` nulstilles
+    ubetinget for gæster, uanset hvad de sender."""
+    if current_user.get("role") != "guest":
+        return
+    if not getattr(payload, "is_wishlist", False):
+        raise NotAuthorizedError("Gæster kan kun oprette ønsker")
+    payload.order_status = None

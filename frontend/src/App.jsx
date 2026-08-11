@@ -24,7 +24,8 @@ import "./App.css";
 const TAB_NAMES = ["library", "tv", "wishlist", "cinema", "print", "stats", "settings"];
 // Faner en guest ikke må lande på via et gammelt/delt hash-link — se
 // AppShell's identiske `!isGuest`-betingelser i navigationen.
-const GUEST_RESTRICTED_TABS = ["wishlist", "print", "stats"];
+// Feature #116 — Ønsker er ikke længere spærret: gæster må oprette ønsker.
+const GUEST_RESTRICTED_TABS = ["print", "stats"];
 
 function tabFromHash() {
   const hash = window.location.hash.slice(1);
@@ -196,10 +197,11 @@ function App() {
     );
   }
 
-  // Feature #72 — guest is read-only: Ønsker/Print/Statistik all involve
-  // either writing (ønske en film) or aren't part of "se film/TV-bibliotek",
-  // so they're hidden entirely rather than just disabled. (Computed once,
-  // near the top of App() — see the comment there.)
+  // Feature #72 — guest is read-only: Print/Statistik aren't part of "se
+  // film/TV-bibliotek", so they're hidden entirely rather than just disabled.
+  // Feature #116 — Ønsker er nu åben for gæster (de må oprette ønsker, men
+  // ikke sætte bestillingsstatus); selve add-/status-gatingen sker i Library/
+  // TvShows og håndhæves i backend (`enforce_guest_wishlist_only`).
 
   return (
     <I18nProvider language={user.settings?.language ?? SOURCE_LANGUAGE}>
@@ -254,14 +256,12 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
             >
               {t("app.nav.tv")}
             </button>
-            {!isGuest && (
-              <button
-                className={tab === "wishlist" ? "active" : ""}
-                onClick={() => setTab("wishlist")}
-              >
-                {t("app.nav.wishlist")}
-              </button>
-            )}
+            <button
+              className={tab === "wishlist" ? "active" : ""}
+              onClick={() => setTab("wishlist")}
+            >
+              {t("app.nav.wishlist")}
+            </button>
             <button
               className={tab === "cinema" ? "active" : ""}
               onClick={() => setTab("cinema")}
@@ -361,7 +361,7 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
             onLibraryChanged={refreshCounts}
           />
         )}
-        {!isGuest && tab === "wishlist" && (
+        {tab === "wishlist" && (
           <Wishlist user={user} onSettingsChanged={setUser} onLibraryChanged={refreshCounts} />
         )}
         {tab === "cinema" && <Cinema user={user} />}

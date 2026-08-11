@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.92.0 (build 0124) — 2026-08-11
+
+- **Nyt: gæster kan nu tilføje ønsker.** Gæste-brugere (ellers kun læseadgang) kan nu åbne Ønsker-fanen og tilføje film og TV-serier til ønskelisten, ligesom de kan anmode om visninger i Voldby BIO. De kan fortsat ikke ændre i selve biblioteket, og bestillingsstatus på et ønske er forbeholdt almindelige brugere og administratorer.
+
 ## v0.91.0 (build 0123) — 2026-08-11
 
 - **Nyt: "Nyheder"-fane under Indstillinger.** Alle brugere kan nu se en liste over hvad der bliver lavet på film- & TV-portalen — færdige, igangværende og planlagte funktioner, nyeste øverst, hver med en status-mærkat. Listen opdaterer sig selv efterhånden som nye funktioner tilføjes.

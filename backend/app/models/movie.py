@@ -1,9 +1,59 @@
+import re
 from datetime import datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field, model_validator
 
 from app.models.scan import BarcodeSource
+
+# Feature #123 — undertekster er nu en liste (afkryds Eng/DK + fritekst under
+# "Andet") frem for det tidligere frie enkelt-streng-felt (feature #109). De to
+# faste valg gemmes præcis som "Eng"/"DK"; alt andet gemmes verbatim som
+# fritekst-poster. `SUBTITLE_STANDARD_OPTIONS` er sandheden om hvilke der er de
+# faste afkrydsnings-valg (frontend læser dem via attribute-options).
+SUBTITLE_STANDARD_OPTIONS = ["Eng", "DK"]
+
+# Kendte skrivemåder → det faste valg. Bruges kun ved migrering af gammel
+# fritekst (feature #123); nye poster sender allerede de rene værdier fra UI'et.
+_SUBTITLE_TOKEN_MAP = {
+    "da": "DK",
+    "dk": "DK",
+    "dan": "DK",
+    "dansk": "DK",
+    "danish": "DK",
+    "en": "Eng",
+    "eng": "Eng",
+    "english": "Eng",
+    "engelsk": "Eng",
+}
+
+
+def subtitles_from_free_text(raw: str) -> list[str]:
+    """Del en gammel fri undertekst-streng ("DA, EN", "Dansk og Engelsk",
+    "Fastbrændt DA") op i liste-form. Rene sprog-tokens mappes til de faste
+    valg (Eng/DK); alt der ikke er et rent token bevares verbatim som en
+    "Andet"-post, så intet indhold går tabt (Jans valg 2026-08-11)."""
+    result: list[str] = []
+    for part in re.split(r"[,/;]| og | & |\+", raw):
+        token = part.strip()
+        if not token:
+            continue
+        value = _SUBTITLE_TOKEN_MAP.get(token.lower(), token)
+        if value not in result:
+            result.append(value)
+    return result
+
+
+def coerce_subtitles(value) -> list[str]:
+    """Læse-side normalisering: None → [], en liste bevares (trimmet), og en
+    gammel fri streng (hvis migreringen af en eller anden grund ikke har rørt
+    dokumentet endnu) konverteres på stedet, så modellen aldrig fejler på en
+    streng hvor den nu forventer en liste."""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(v).strip() for v in value if str(v).strip()]
+    return subtitles_from_free_text(str(value))
 
 
 class MovieFormat(str, Enum):
@@ -30,8 +80,8 @@ class MediaType(str, Enum):
 class OrderStatus(str, Enum):
     """Feature #114 — bestillingsstatus for en ønskeliste-post. Kun de
     *bestilte* tilstande er enum-værdier; "ikke bestilt" repræsenteres som
-    fravær (`None`), så feltet følger `subtitles`' valgfri-mønster i stedet
-    for at gemme en fjerde "tom" værdi. Genbruges af tv_show.py."""
+    fravær (`None`), så feltet følger `location`/`owner`'s valgfri-mønster i
+    stedet for at gemme en fjerde "tom" værdi. Genbruges af tv_show.py."""
 
     LASERDISKEN = "Bestilt ved Laserdisken"
     IMUSIC = "Bestilt ved iMusic"
@@ -83,10 +133,10 @@ class MovieCreate(BaseModel):
     trailer_url: str | None = None
     location: str | None = None
     owner: str | None = None
-    # Feature #109 — fritekst (Jans valg: et nyt felt, ikke et tag, ikke en
-    # fast enum), fx "DA, EN" eller "Fastbrændt DA". Ingen fast værdiliste,
-    # så ingen enum og intet autocomplete-opslag som location/owner har.
-    subtitles: str | None = None
+    # Feature #109/#123 — undertekster som liste: de faste valg "Eng"/"DK"
+    # (afkryds) plus vilkårlig fritekst under "Andet" (fx "Fastbrændt DA",
+    # "Norsk"). Ingen enum — "Andet"-posterne er fri tekst. Tom liste = ingen.
+    subtitles: list[str] = Field(default_factory=list)
     # Feature #114 — kun relevant for ønskeliste-poster; None = ikke bestilt.
     order_status: OrderStatus | None = None
     is_wishlist: bool = False
@@ -164,7 +214,9 @@ class MovieUpdate(BaseModel):
     trailer_url: str | None = None
     location: str | None = None
     owner: str | None = None
-    subtitles: str | None = None
+    # Feature #123 — None = feltet ikke sendt; [] = ryddet. Samme mønster som
+    # audio_types ovenfor.
+    subtitles: list[str] | None = None
     order_status: OrderStatus | None = None
     is_wishlist: bool | None = None
     serial_number: int | None = Field(default=None, gt=0)
@@ -197,7 +249,7 @@ class Movie(BaseModel):
     trailer_url: str | None = None
     location: str | None = None
     owner: str | None = None
-    subtitles: str | None = None
+    subtitles: list[str] = Field(default_factory=list)
     order_status: str | None = None
     registered_by: str | None = None
     is_wishlist: bool = False

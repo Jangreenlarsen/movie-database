@@ -16,7 +16,7 @@ from app.core.errors import (
 )
 from app.integrations import omdb_client, tmdb_client
 from app.models.movie import TmdbSyncResult
-from app.models.movie import MediaType
+from app.models.movie import MediaType, coerce_subtitles
 from app.models.tv_show import (
     DeletedTvShow,
     DuplicateTvShowMatch,
@@ -63,7 +63,7 @@ def _to_model(document: dict) -> TvShow:
         imdb_url=document.get("imdb_url"),
         location=document.get("location"),
         owner=document.get("owner"),
-        subtitles=document.get("subtitles"),
+        subtitles=coerce_subtitles(document.get("subtitles")),
         order_status=document.get("order_status"),
         registered_by=document.get("registered_by"),
         is_wishlist=document.get("is_wishlist", False),
@@ -227,7 +227,7 @@ async def create_tv_show(
         "media_type": payload.media_type.value if payload.media_type else None,
         "location": payload.location,
         "owner": payload.owner or registered_by,
-        "subtitles": payload.subtitles,
+        "subtitles": coerce_subtitles(payload.subtitles),
         "order_status": payload.order_status.value if payload.order_status else None,
         "registered_by": registered_by,
         "is_wishlist": payload.is_wishlist,
@@ -401,6 +401,10 @@ async def update_tv_show(
         canonical_tags = await tag_service.resolve_tags(db, fields["tags"])
         fields["tags"] = canonical_tags
         fields["tags_normalized"] = [tag_service.normalize(tag) for tag in canonical_tags]
+
+    # Feature #123 — samme normalisering som create/movie_service.
+    if "subtitles" in fields:
+        fields["subtitles"] = coerce_subtitles(fields["subtitles"])
 
     requested_serial = fields.pop("serial_number", None)
     requested_wishlist = fields.pop("is_wishlist", None)

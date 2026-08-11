@@ -5,7 +5,7 @@ from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
-from app.models.movie import MediaType
+from app.models.movie import MediaType, subtitles_from_free_text
 from app.repositories import digital_serial_repository
 from app.repositories.text_search import build_text_query, drop_legacy_text_index
 
@@ -84,9 +84,25 @@ async def _migrate_format_labels(db: AsyncIOMotorDatabase) -> None:
         await collection.update_many({"format": old_label}, {"$set": {"format": new_label}})
 
 
+async def _migrate_subtitles_to_list(db: AsyncIOMotorDatabase) -> None:
+    """Feature #123 — se den identiske funktion i movie_repository.py. TV-serier
+    fik også det frie undertekst-felt (#109), så deres streng-værdier skal
+    konverteres til liste-form på samme måde."""
+    collection = db[COLLECTION]
+    cursor = collection.find({"subtitles": {"$exists": True}}, {"subtitles": 1})
+    async for doc in cursor:
+        value = doc.get("subtitles")
+        if isinstance(value, str):
+            await collection.update_one(
+                {"_id": doc["_id"]},
+                {"$set": {"subtitles": subtitles_from_free_text(value)}},
+            )
+
+
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     collection = db[COLLECTION]
     await _migrate_format_labels(db)
+    await _migrate_subtitles_to_list(db)
     # BUGS.md #48 — se movie_repository: søgningen bruger ikke længere
     # `$text`, så det gamle index ryddes op i stedet for at ligge og koste
     # skrivetid.

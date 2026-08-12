@@ -531,7 +531,7 @@
   "users.reactivate": "Reactivate",
   "users.confirmDelete": "Delete the user \"{username}\" permanently? This cannot be undone.",
   "plexImport.heading": "Import from Plex",
-  "plexImport.description": "Creates everything your Plex server has that the portal does not already have. Metadata comes from TMDb, not from Plex — so imported movies and shows look like everything else in the library. Media type is set to Digital, and the format is derived from the resolution in Plex (4K → D-4K, 1080 → D-1080, 720 → D-720, the rest → D-SD). Anything you already have is skipped.",
+  "plexImport.description": "Creates everything your Plex server has that the portal does not already have. Metadata comes from TMDb, not from Plex — so imported movies and shows look like everything else in the library. Media type is set to Digital, and the format is derived from the resolution in Plex (4K → D-4K, 1080 → D-1080, 720 → D-720, the rest → D-480). Anything you already have is skipped.",
   "plexImport.includeMovies": "Movies",
   "plexImport.includeShows": "TV shows",
   "plexImport.tagLabel": "Tag on imported items",

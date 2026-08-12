@@ -4,7 +4,7 @@ from app.main import app
 
 
 async def _create_movie(client, title="Screening Movie"):
-    created = await client.post("/api/movies", json={"title": title, "media_type": "Fysisk", "format": "DVD"})
+    created = await client.post("/api/movies", json={"title": title, "media_type": "Fysisk", "format": "F-DVD"})
     return created.json()["id"]
 
 

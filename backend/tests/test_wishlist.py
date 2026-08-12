@@ -9,7 +9,7 @@ async def test_wishlist_movie_has_no_serial_number(client):
 
 
 async def test_library_and_wishlist_listings_are_separate(client):
-    await client.post("/api/movies", json={"title": "Owned Movie", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Owned Movie", "media_type": "Fysisk", "format": "F-DVD"})
     await client.post("/api/movies", json={"title": "Wanted Movie", "is_wishlist": True})
 
     library = await client.get("/api/movies")
@@ -128,7 +128,7 @@ async def test_order_status_is_exposed_in_attribute_options(client):
 
 
 async def test_moving_a_library_movie_to_the_wishlist_clears_its_serial_number(client):
-    create = await client.post("/api/movies", json={"title": "Regretted Purchase", "media_type": "Fysisk", "format": "DVD"})
+    create = await client.post("/api/movies", json={"title": "Regretted Purchase", "media_type": "Fysisk", "format": "F-DVD"})
     movie_id = create.json()["id"]
     assert create.json()["serial_number"] is not None
 

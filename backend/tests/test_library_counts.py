@@ -1,6 +1,6 @@
 """Samlet optaelling til app-hovedet (feature #94)."""
 
-PHYSICAL = {"media_type": "Fysisk", "format": "DVD"}
+PHYSICAL = {"media_type": "Fysisk", "format": "F-DVD"}
 DIGITAL = {"media_type": "Digital", "format": "D-1080"}
 
 

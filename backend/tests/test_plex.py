@@ -195,7 +195,7 @@ async def test_fetch_library_reports_what_is_missing(monkeypatch):
 async def test_availability_endpoint_degrades_when_plex_unconfigured(client, monkeypatch):
     monkeypatch.setattr(settings, "plex_server_url", "")
     monkeypatch.setattr(settings, "plex_token", "")
-    await client.post("/api/movies", json={"title": "No Plex Here", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "No Plex Here", "media_type": "Fysisk", "format": "F-DVD"})
 
     response = await client.get("/api/plex/availability?kind=movie")
     assert response.status_code == 200
@@ -230,7 +230,7 @@ async def test_availability_badge_never_shows_on_a_physical_copy(client, monkeyp
     hylden, ikke i Plex, uanset om samme titel også findes derinde."""
     _configure(monkeypatch)
     created = await client.post(
-        "/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Fysisk", "format": "DVD"}
+        "/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Fysisk", "format": "F-DVD"}
     )
     movie_id = created.json()["id"]
     _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
@@ -242,7 +242,7 @@ async def test_availability_badge_never_shows_on_a_physical_copy(client, monkeyp
 
 async def test_availability_endpoint_omits_unmatched_movies(client, monkeypatch):
     _configure(monkeypatch)
-    await client.post("/api/movies", json={"title": "Findes Ikke I Plex", "year": 2001, "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Findes Ikke I Plex", "year": 2001, "media_type": "Fysisk", "format": "F-DVD"})
     _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
 
     body = (await client.get("/api/plex/availability?kind=movie")).json()
@@ -401,7 +401,7 @@ async def test_import_does_not_skip_when_only_a_physical_copy_exists(client, mon
     "har den allerede", så en fysisk kopi stille og roligt forhindrede den
     digitale i nogensinde at nå ind i portalen."""
     _configure(monkeypatch)
-    await client.post("/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Fysisk", "format": "F-DVD"})
     created = []
     _patch_create(monkeypatch, created)
     _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None, resolution="1080")]))
@@ -613,7 +613,7 @@ async def test_import_preview_shows_movie_format_without_creating(client, monkey
     )
 
     body = (await client.post("/api/plex/import", json={"dry_run": True})).json()
-    assert body["imported"][0]["format"] == "D-SD"
+    assert body["imported"][0]["format"] == "D-480"
 
 
 async def test_import_falls_back_to_hd_when_resolution_is_unknown(client, monkeypatch):
@@ -879,7 +879,7 @@ async def test_availability_reports_error_instead_of_empty_when_fetch_failed(cli
     _patch_tmdb_details(monkeypatch)
     await client.post(
         "/api/movies",
-        json={"title": "The Matrix", "year": 1999, "media_type": "Fysisk", "format": "DVD"},
+        json={"title": "The Matrix", "year": 1999, "media_type": "Fysisk", "format": "F-DVD"},
     )
     _patch_library(monkeypatch, _fake_library([], ok=False, error="Plex-biblioteket kunne ikke hentes fuldstændigt"))
 

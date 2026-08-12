@@ -11,7 +11,7 @@ from app.repositories.text_search import build_text_query
 
 async def _movie(client, **fields):
     # Feature #92 — biblioteks-poster kræver medietype+format.
-    payload = {"title": "Untitled", "media_type": "Fysisk", "format": "DVD", **fields}
+    payload = {"title": "Untitled", "media_type": "Fysisk", "format": "F-DVD", **fields}
     created = await client.post("/api/movies", json=payload)
     assert created.status_code == 201, created.text
     return created.json()["id"]
@@ -100,8 +100,8 @@ async def test_search_combines_with_tag_filter(client):
 
 
 async def test_search_matches_tv_show_cast(client):
-    await client.post("/api/tv-shows", json={"name": "The Americans", "cast": ["Keri Russell"], "media_type": "Fysisk", "format": "DVD"})
-    await client.post("/api/tv-shows", json={"name": "Fleabag", "cast": ["Phoebe Waller-Bridge"], "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/tv-shows", json={"name": "The Americans", "cast": ["Keri Russell"], "media_type": "Fysisk", "format": "F-DVD"})
+    await client.post("/api/tv-shows", json={"name": "Fleabag", "cast": ["Phoebe Waller-Bridge"], "media_type": "Fysisk", "format": "F-DVD"})
 
     by_cast = await client.get("/api/tv-shows", params={"q": "Keri"})
     assert {s["name"] for s in by_cast.json()["items"]} == {"The Americans"}

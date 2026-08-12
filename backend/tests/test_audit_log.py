@@ -5,7 +5,7 @@ from app.services import audit_log_service, deploy_service
 
 
 async def _create_movie(client, title="Audit Movie"):
-    created = await client.post("/api/movies", json={"title": title, "media_type": "Fysisk", "format": "DVD"})
+    created = await client.post("/api/movies", json={"title": title, "media_type": "Fysisk", "format": "F-DVD"})
     return created.json()["id"]
 
 
@@ -84,7 +84,7 @@ async def test_deploy_trigger_is_logged(client, monkeypatch):
 
 
 async def test_library_export_and_import_are_logged(client):
-    await client.post("/api/movies", json={"title": "Export Me", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Export Me", "media_type": "Fysisk", "format": "F-DVD"})
     export_data = (await client.get("/api/library/export")).json()
     await client.post("/api/library/import", json=export_data)
 
@@ -95,7 +95,7 @@ async def test_library_export_and_import_are_logged(client):
 
 
 async def test_system_backup_and_restore_are_logged(client):
-    await client.post("/api/movies", json={"title": "Backup Me", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Backup Me", "media_type": "Fysisk", "format": "F-DVD"})
     backup = (await client.get("/api/system/backup")).json()
     await client.post("/api/system/restore", json=backup)
 

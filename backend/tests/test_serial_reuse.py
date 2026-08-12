@@ -4,7 +4,7 @@ Et "frigjort" nummer = et hul i det brugte interval, opstået når en post
 slettes eller flyttes til ønskelisten. Genbrug er slået fra som standard.
 """
 
-PHYSICAL = {"media_type": "Fysisk", "format": "DVD"}
+PHYSICAL = {"media_type": "Fysisk", "format": "F-DVD"}
 DIGITAL = {"media_type": "Digital", "format": "D-1080"}
 
 

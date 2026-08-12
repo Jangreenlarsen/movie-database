@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.108.0 (build 0145) — 2026-08-12
+
+- **Ryddede format-navne.** De fysiske formater har nu et **F-** foran: **F-DVD**, **F-BD**, **F-UHD** (så de matcher de digitale D-navne). **D-SD** hedder nu **D-480**. **VHS** er fjernet som format. Dine eksisterende film og serier får automatisk de nye navne, og gamle VHS-poster bliver til F-DVD.
+
 ## v0.107.0 (build 0144) — 2026-08-12
 
 - **Genbrug af frigjorte serienumre.** Under Indstillinger → Bibliotek (samme sted som serienummer-opsætningen) er der nu en til/fra-knap "Genbrug frigjorte numre". Er den slået til, får en ny film/serie automatisk det laveste ledige nummer i sin serie — fx nummeret fra en film du har slettet — i stedet for at der bliver et hul. Sektionen viser også hvilke numre der er ledige lige nu (film, TV-serier og digitale hver for sig). Slået fra opfører numrene sig som hidtil (tæller kun opad).

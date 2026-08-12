@@ -58,21 +58,22 @@ def coerce_subtitles(value) -> list[str]:
 
 class MovieFormat(str, Enum):
     """Short labels (v0.22.0), digital split into quality tiers. The digital
-    tiers were shortened in v0.84.0 (Digital-HD -> D-HD etc.), and renamed
-    again in v0.105.0 to resolution-based labels (D-HD -> D-1080, D-UHD ->
-    D-4K, plus a new D-720) — Jans ønske 2026-08-12. See
+    tiers were shortened in v0.84.0 (Digital-HD -> D-HD etc.), and renamed in
+    v0.105.0 to resolution-based labels (D-HD -> D-1080, D-UHD -> D-4K, new
+    D-720). v0.108.0 (Jans ønske 2026-08-12): de fysiske formater fik et "F-"-
+    præfiks (DVD -> F-DVD, BD -> F-BD, UHD -> F-UHD), D-SD blev til D-480, og
+    VHS blev fjernet (eksisterende VHS-poster migreres til F-DVD). See
     `movie_repository._migrate_format_labels` and
     `tv_show_repository._migrate_format_labels` for the one-time rewrite of
     existing documents' stored values through the whole label history."""
 
-    VHS = "VHS"
-    DVD = "DVD"
-    BLU_RAY = "BD"
-    UHD_4K = "UHD"
+    DVD = "F-DVD"
+    BLU_RAY = "F-BD"
+    UHD_4K = "F-UHD"
     DIGITAL_UHD = "D-4K"
     DIGITAL_HD = "D-1080"
     DIGITAL_720 = "D-720"
-    DIGITAL_STD = "D-SD"
+    DIGITAL_STD = "D-480"
 
 
 class MediaType(str, Enum):

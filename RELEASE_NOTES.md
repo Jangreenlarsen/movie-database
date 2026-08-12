@@ -1,5 +1,17 @@
 # Release Notes
 
+## v0.105.0 (build 0142) — 2026-08-12
+
+- **Nye og tydeligere format- og lyd-navne.** Digitale formater hedder nu efter opløsning: **D-1080** (før D-HD), **D-4K** (før D-UHD), og et nyt **D-720**. Lyd har fået **DTS5.1**, og DTS-HD-varianterne hedder nu **DTS-HD5.1** (før DTS-HD-M) og **DTS-HD7.1** (før DTS-HD-MA-7.1). Dine eksisterende film og serier får automatisk de nye navne. Plex-import lægger nu 720p-indhold i D-720.
+
+## v0.104.0 (build 0141) — 2026-08-12
+
+- **Advarsel før du tilføjer en kopi mere.** Er du ved at oprette en film/serie der allerede findes (på indkøbsønsker eller i biblioteket), spørger appen nu "Denne findes allerede ... Vil du tilføje en kopi mere?" med OK/Annuller, før den oprettes. Tryk Annuller, og der oprettes ingen dublet.
+
+## v0.103.0 (build 0140) — 2026-08-12
+
+- **Sortér efter bestillingsstatus.** Du kan nu vælge "Bestillingsstatus" i sorterings-menuen — særlig nyttig på indkøbsønsker, hvor du kan gruppere det du har bestilt (og hvor) fra det du endnu ikke har bestilt.
+
 ## v0.102.1 (build 0139) — 2026-08-12
 
 - **Tydeligere tilføj-knapper.** De to store knapper hedder nu "Tilføre film med scan cover" og "Tilføre film på title", så det er mere klart hvad de gør.

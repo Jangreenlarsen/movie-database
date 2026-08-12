@@ -58,17 +58,20 @@ def coerce_subtitles(value) -> list[str]:
 
 class MovieFormat(str, Enum):
     """Short labels (v0.22.0), digital split into quality tiers. The digital
-    tiers themselves were shortened again in v0.84.0 (Digital-HD -> D-HD
-    etc.) — see `movie_repository._migrate_format_labels` and
-    `tv_show_repository._migrate_format_labels` for the one-time rename of
-    existing documents' stored values from the old, longer labels."""
+    tiers were shortened in v0.84.0 (Digital-HD -> D-HD etc.), and renamed
+    again in v0.105.0 to resolution-based labels (D-HD -> D-1080, D-UHD ->
+    D-4K, plus a new D-720) — Jans ønske 2026-08-12. See
+    `movie_repository._migrate_format_labels` and
+    `tv_show_repository._migrate_format_labels` for the one-time rewrite of
+    existing documents' stored values through the whole label history."""
 
     VHS = "VHS"
     DVD = "DVD"
     BLU_RAY = "BD"
     UHD_4K = "UHD"
-    DIGITAL_UHD = "D-UHD"
-    DIGITAL_HD = "D-HD"
+    DIGITAL_UHD = "D-4K"
+    DIGITAL_HD = "D-1080"
+    DIGITAL_720 = "D-720"
     DIGITAL_STD = "D-SD"
 
 
@@ -89,9 +92,12 @@ class OrderStatus(str, Enum):
 
 
 class AudioType(str, Enum):
-    """Short labels (v0.22.0) — less horizontal space on cards/chips. See
-    `movie_repository._migrate_audio_type_labels` for the one-time rename of
-    existing documents' stored values from the old, longer labels."""
+    """Short labels (v0.22.0) — less horizontal space on cards/chips. The
+    DTS-HD-varianterne blev omdøbt i v0.105.0 (DTS-HD-M -> DTS-HD5.1,
+    DTS-HD-MA-7.1 -> DTS-HD7.1) og en ny DTS5.1 tilføjet — Jans ønske
+    2026-08-12. See `movie_repository._migrate_audio_type_labels` (og TV-
+    seriernes egen kopi) for the one-time rename of existing documents'
+    stored values through the whole label history."""
 
     STEREO = "Stereo"
     MONO = "Mono"
@@ -99,8 +105,9 @@ class AudioType(str, Enum):
     DOLBY_DIGITAL_5_1 = "DD5.1"
     DOLBY_DIGITAL_7_1 = "DD7.1"
     DTS = "DTS"
-    DTS_HD_MASTER_AUDIO = "DTS-HD-M"
-    DTS_HD_MA_7_1 = "DTS-HD-MA-7.1"
+    DTS_5_1 = "DTS5.1"
+    DTS_HD_MASTER_AUDIO = "DTS-HD5.1"
+    DTS_HD_MA_7_1 = "DTS-HD7.1"
     DTS_X = "DTS:X"
     DOLBY_ATMOS = "Atmos"
     DOLBY_TRUEHD = "D-true-HD"

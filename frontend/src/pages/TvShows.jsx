@@ -32,6 +32,8 @@ const SORT_OPTIONS = [
   { value: "location", labelKey: "field.location" },
   { value: "owner", labelKey: "field.owner" },
   { value: "registered_by", labelKey: "field.registeredBy" },
+  // Feature #127 — bestillingsstatus (kun sat på ønskeliste-poster).
+  { value: "order_status", labelKey: "field.orderStatus" },
 ];
 const MAX_SORT_LEVELS = 3;
 
@@ -1058,6 +1060,17 @@ export function TvShowDetailModal({
         // "Kladde"-tilstand (feature #79) — se MovieDetailModal.save()'s
         // tilsvarende gren. Sæson-valget skete allerede i et tidligere trin
         // (MovieLookupForm.jsx), medsendes her som owned_seasons.
+        //
+        // Feature #128 — samme blokerende dublet-bekræftelse som for film:
+        // findes serien allerede, kræv OK/Annuller før en kopi mere oprettes.
+        if (duplicates?.length > 0) {
+          const where = duplicates
+            .map((d) =>
+              d.is_wishlist ? t("scan.duplicateOnWishlist") : t("scan.duplicateInLibrary")
+            )
+            .join(t("scan.duplicateJoin"));
+          if (!window.confirm(t("scan.duplicateConfirm", { where }))) return;
+        }
         const ownedSeasonNumbers = seasons.filter((s) => s.owned).map((s) => s.season_number);
         await api.createTvShow({
           ...payload,

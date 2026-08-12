@@ -9,7 +9,7 @@ from app.repositories import movie_repository, tv_show_repository
 from app.repositories.text_search import build_text_query
 
 PHYSICAL = {"media_type": "Fysisk", "format": "DVD"}
-DIGITAL = {"media_type": "Digital", "format": "D-HD"}
+DIGITAL = {"media_type": "Digital", "format": "D-1080"}
 
 
 async def _titles(client, **params):
@@ -177,3 +177,29 @@ async def test_sorting_by_audio_type_works_end_to_end(client):
     )
 
     assert await _titles(client, sort="audio_types:asc") == ["Med Atmos", "Med DTS"]
+
+
+async def test_sorting_by_order_status_works_end_to_end(client):
+    """Feature #127 — bestillingsstatus er sorterbar (kun sat på ønskeliste-
+    poster, feature #114). Var feltet ikke whitelistet, ville `parse_sort_param`
+    droppe det stiltiende og faldet tilbage til standard-sorteringen — så en
+    forkert rækkefølge her fanger netop det."""
+    await client.post(
+        "/api/movies",
+        json={"title": "iMusic-film", "is_wishlist": True, "order_status": "Bestilt ved iMusic"},
+    )
+    await client.post(
+        "/api/movies",
+        json={"title": "Div-film", "is_wishlist": True, "order_status": "Bestilt ved div."},
+    )
+
+    # "Bestilt ved div." < "Bestilt ved iMusic" (d < i) — samme rækkefølge i
+    # både mongomock og MongoDB (ren streng-sammenligning).
+    assert await _titles(client, wishlist="true", sort="order_status:asc") == [
+        "Div-film",
+        "iMusic-film",
+    ]
+    assert await _titles(client, wishlist="true", sort="order_status:desc") == [
+        "iMusic-film",
+        "Div-film",
+    ]

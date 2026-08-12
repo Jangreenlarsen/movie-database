@@ -319,9 +319,13 @@ def format_for_resolution(resolution: str | None) -> MovieFormat | None:
         return None
     height = int(digits.group(1))
     if height >= 2160:
-        return MovieFormat.DIGITAL_UHD
-    # 720 og 1080 er begge HD; alt derunder (576/480) er SD.
-    return MovieFormat.DIGITAL_HD if height >= 720 else MovieFormat.DIGITAL_STD
+        return MovieFormat.DIGITAL_UHD  # D-4K
+    if height >= 1080:
+        return MovieFormat.DIGITAL_HD  # D-1080
+    # v0.105.0 — 720 fik sit eget trin (D-720); alt derunder (576/480) er SD.
+    if height >= 720:
+        return MovieFormat.DIGITAL_720
+    return MovieFormat.DIGITAL_STD
 
 
 async def _create_imported(

@@ -1060,6 +1060,17 @@ export function TvShowDetailModal({
         // "Kladde"-tilstand (feature #79) — se MovieDetailModal.save()'s
         // tilsvarende gren. Sæson-valget skete allerede i et tidligere trin
         // (MovieLookupForm.jsx), medsendes her som owned_seasons.
+        //
+        // Feature #128 — samme blokerende dublet-bekræftelse som for film:
+        // findes serien allerede, kræv OK/Annuller før en kopi mere oprettes.
+        if (duplicates?.length > 0) {
+          const where = duplicates
+            .map((d) =>
+              d.is_wishlist ? t("scan.duplicateOnWishlist") : t("scan.duplicateInLibrary")
+            )
+            .join(t("scan.duplicateJoin"));
+          if (!window.confirm(t("scan.duplicateConfirm", { where }))) return;
+        }
         const ownedSeasonNumbers = seasons.filter((s) => s.owned).map((s) => s.season_number);
         await api.createTvShow({
           ...payload,

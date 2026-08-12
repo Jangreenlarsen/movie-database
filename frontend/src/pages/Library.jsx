@@ -1222,6 +1222,19 @@ export function MovieDetailModal({
         // "Kladde"-tilstand (feature #79) — intet er oprettet endnu, dette
         // ER selve oprettelsen. movie er her et forhåndsvist TMDb-objekt
         // (se MovieLookupForm.jsx), ikke en gemt film.
+        //
+        // Feature #128 — findes titlen allerede (på ønskelisten eller i
+        // biblioteket), kræv en aktiv OK/Annuller-bekræftelse før en kopi mere
+        // oprettes (Jans ønske 2026-08-12). Banneret ovenfor oplyser passivt;
+        // dette er den blokerende dialog man skal svare på først.
+        if (duplicates?.length > 0) {
+          const where = duplicates
+            .map((d) =>
+              d.is_wishlist ? t("scan.duplicateOnWishlist") : t("scan.duplicateInLibrary")
+            )
+            .join(t("scan.duplicateJoin"));
+          if (!window.confirm(t("scan.duplicateConfirm", { where }))) return;
+        }
         await api.createMovie({
           ...payload,
           tmdb_id: movie.tmdb_id,

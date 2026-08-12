@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.104.0 (build 0141) — 2026-08-12
+
+- **Advarsel før du tilføjer en kopi mere.** Er du ved at oprette en film/serie der allerede findes (på indkøbsønsker eller i biblioteket), spørger appen nu "Denne findes allerede ... Vil du tilføje en kopi mere?" med OK/Annuller, før den oprettes. Tryk Annuller, og der oprettes ingen dublet.
+
 ## v0.103.0 (build 0140) — 2026-08-12
 
 - **Sortér efter bestillingsstatus.** Du kan nu vælge "Bestillingsstatus" i sorterings-menuen — særlig nyttig på indkøbsønsker, hvor du kan gruppere det du har bestilt (og hvor) fra det du endnu ikke har bestilt.

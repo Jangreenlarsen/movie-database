@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.104.0 build 0141] — 2026-08-12 — feature: blokerende dublet-bekræftelse før en kopi mere tilføjes (FEATURES.md #128)
+
+Supplerer #38's passive dublet-banner med en aktiv OK/Annuller-dialog: når du opretter en titel der allerede findes (på ønskelisten eller i biblioteket), popper `window.confirm("Denne findes allerede {where}. Vil du tilføje en kopi mere?")` før oprettelsen. Annuller afbryder (ingen kopi); OK opretter kopien. Tilføjet i `MovieDetailModal.save()` og `TvShowDetailModal.save()` (kun kladde-oprettelse), så det dækker både film og TV. Dublet-tjekket er `tmdb_id`-baseret (som #38). Ny i18n-nøgle `scan.duplicateConfirm`. Live-verificeret ende-til-ende (Playwright mod ægte TMDb): Annuller holder antallet på 1, OK gør det til 2.
+
+Berørte filer: `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `version.json`.
+
 ## [0.103.0 build 0140] — 2026-08-12 — feature: sortering på bestillingsstatus (FEATURES.md #127)
 
 `order_status` (ønskeliste-feltet fra #114) er nu et sorterbart felt. Backend: tilføjet til `SORT_FIELDS` + index i både `movie_repository` og `tv_show_repository`. Frontend: nyt "Bestillingsstatus"-punkt i sorterings-dropdownen på både Film-/ønske- og TV-siderne (genbruger `field.orderStatus`). Ikke-bestilt (None) sorteres først stigende. Test: `test_sorting_by_order_status_works_end_to_end` (asc+desc).

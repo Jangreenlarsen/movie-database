@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.102.1 build 0139] — 2026-08-12 — juster: længere knap-tekster på tilføj-knapperne (Jans ønske)
+
+Tydeligere tekst på de to store tilføj-knapper (feature #126): "Scan cover" → "Tilføre film med scan cover", "Søg titel" → "Tilføre film på title". Kun i18n-værdier (`lib.addScan`/`lib.addSearchTitle`) i begge kataloger. Knapperne deles af Film-, TV- og ønskeliste-siderne, så teksten er ens alle tre steder. Live-verificeret i mobil-viewport (regel 18): den længere tekst ombryder pænt inde i knapperne (begge lige høje, ingen vandret overflow).
+
+Berørte filer: `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `version.json`.
+
 ## [0.102.0 build 0138] — 2026-08-12 — feature: to store scan/søg-titel-knapper også på Film- og TV-siderne (FEATURES.md #126)
 
 Breder #124's to-knap-mønster ud fra ønskelisten til Film-biblioteket og TV-serie-siden: øverst "📷 Scan cover" og "🔍 Søg titel", der hver åbner kun den relevante del af `MovieLookupForm`, så den manuelle titel-søgning ikke forveksles med bibliotekets generelle søgning.

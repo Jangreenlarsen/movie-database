@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.102.1 (build 0139) — 2026-08-12
+
+- **Tydeligere tilføj-knapper.** De to store knapper hedder nu "Tilføre film med scan cover" og "Tilføre film på title", så det er mere klart hvad de gør.
+
 ## v0.102.0 (build 0138) — 2026-08-12
 
 - **Nem tilføjelse på Film- og TV-siderne.** De to store knapper "📷 Scan cover" og "🔍 Søg titel" — som du kender fra indkøbsønsker — findes nu også på Film- og TV-serie-siderne. Hver knap åbner kun det den handler om (scanneren eller titel-søgningen), så det ikke forveksles med den almindelige søgning. På Film/TV bliver den almindelige søgning stående i fuld størrelse, så du stadig let kan filtrere biblioteket.

@@ -71,11 +71,26 @@ TEXT_SEARCH_FIELDS = ["name", "overview", "cast", "creators", "genres"]
 # kun de digitale niveauer: TV-serier fandtes ikke endnu ved den første
 # format-omdøbning (v0.22.0), så Blu-ray/4K Ultra HD er der intet at
 # migrere. Plex-importen (feature #91) skriver derimod digitale
-# kvalitetsniveauer på TV-serier lige så vel som på film.
+# kvalitetsniveauer på TV-serier lige så vel som på film. v0.105.0 omdøbte
+# D-HD -> D-1080 og D-UHD -> D-4K (Jans ønske 2026-08-12) — kaskade som i
+# movie_repository (sekventielle update_many i dict-orden).
 _FORMAT_LABEL_MIGRATIONS = {
     "Digital-UHD": "D-UHD",
     "Digital-HD": "D-HD",
     "Digital-STD": "D-SD",
+    "D-UHD": "D-4K",
+    "D-HD": "D-1080",
+}
+
+# v0.105.0 — TV-serier fik aldrig v0.22.0's audio-relabel (fandtes ikke endnu),
+# men de kan sagtens have de korte DTS-HD-labels fra manuel indtastning eller
+# feature #122. Derfor får de nu deres egen audio-migration for netop de nye
+# omdøbninger (DTS-HD-M -> DTS-HD5.1, DTS-HD-MA-7.1 -> DTS-HD7.1). Ét dict-
+# opslag pr. label (som movie_repository), så mellemliggende labels mapper
+# direkte til slutværdien.
+_AUDIO_TYPE_LABEL_MIGRATIONS = {
+    "DTS-HD-M": "DTS-HD5.1",
+    "DTS-HD-MA-7.1": "DTS-HD7.1",
 }
 
 
@@ -84,6 +99,21 @@ async def _migrate_format_labels(db: AsyncIOMotorDatabase) -> None:
     collection = db[COLLECTION]
     for old_label, new_label in _FORMAT_LABEL_MIGRATIONS.items():
         await collection.update_many({"format": old_label}, {"$set": {"format": new_label}})
+
+
+async def _migrate_audio_type_labels(db: AsyncIOMotorDatabase) -> None:
+    """Se den identiske funktion i movie_repository.py — omdøber de gamle
+    DTS-HD-labels på TV-seriernes `audio_types`-array til v0.105.0-navnene."""
+    collection = db[COLLECTION]
+    cursor = collection.find(
+        {"audio_types": {"$in": list(_AUDIO_TYPE_LABEL_MIGRATIONS)}}, {"audio_types": 1}
+    )
+    async for doc in cursor:
+        relabeled = [
+            _AUDIO_TYPE_LABEL_MIGRATIONS.get(label, label) for label in doc.get("audio_types", [])
+        ]
+        if relabeled != doc.get("audio_types", []):
+            await collection.update_one({"_id": doc["_id"]}, {"$set": {"audio_types": relabeled}})
 
 
 async def _migrate_subtitles_to_list(db: AsyncIOMotorDatabase) -> None:
@@ -104,6 +134,7 @@ async def _migrate_subtitles_to_list(db: AsyncIOMotorDatabase) -> None:
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     collection = db[COLLECTION]
     await _migrate_format_labels(db)
+    await _migrate_audio_type_labels(db)
     await _migrate_subtitles_to_list(db)
     # BUGS.md #48 — se movie_repository: søgningen bruger ikke længere
     # `$text`, så det gamle index ryddes op i stedet for at ligge og koste

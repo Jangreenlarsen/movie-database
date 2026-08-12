@@ -33,10 +33,10 @@ async def test_migrates_old_format_labels_to_new_short_ones(db):
 
     blu_ray = await db[movie_repository.COLLECTION].find_one({"title": "Old Format Movie"})
     assert blu_ray["format"] == "BD"
-    # A bare pre-v0.22.0 "Digital" cascades through both migration passes in
-    # the same call: "Digital" -> "Digital-HD" -> "D-HD" (v0.84.0).
+    # A bare pre-v0.22.0 "Digital" cascades through the whole label history in
+    # the same call: "Digital" -> "Digital-HD" -> "D-HD" -> "D-1080" (v0.105.0).
     digital = await db[movie_repository.COLLECTION].find_one({"title": "Old Digital Movie"})
-    assert digital["format"] == "D-HD"
+    assert digital["format"] == "D-1080"
 
 
 async def test_migrates_old_audio_type_labels_to_new_short_ones(db):
@@ -45,7 +45,16 @@ async def test_migrates_old_audio_type_labels_to_new_short_ones(db):
     await db[movie_repository.COLLECTION].insert_one(
         {
             "title": "Old Audio Movie",
-            "audio_types": ["Dolby Digital 5.1", "DTS-HD Master Audio", "DTS"],
+            # Dækker både det pre-v0.22.0 lange label og de v0.22.0-korte
+            # DTS-HD-labels der blev omdøbt i v0.105.0 — alle skal ende på
+            # slutværdien i ét dict-opslag.
+            "audio_types": [
+                "Dolby Digital 5.1",
+                "DTS-HD Master Audio",
+                "DTS-HD-M",
+                "DTS-HD-MA-7.1",
+                "DTS",
+            ],
             "serial_number": 3,
             "created_at": now,
             "updated_at": now,
@@ -55,7 +64,7 @@ async def test_migrates_old_audio_type_labels_to_new_short_ones(db):
     await movie_repository._migrate_audio_type_labels(db)
 
     movie = await db[movie_repository.COLLECTION].find_one({"title": "Old Audio Movie"})
-    assert movie["audio_types"] == ["DD5.1", "DTS-HD-M", "DTS"]
+    assert movie["audio_types"] == ["DD5.1", "DTS-HD5.1", "DTS-HD5.1", "DTS-HD7.1", "DTS"]
 
 
 async def test_ensure_indexes_runs_both_label_migrations(db):
@@ -106,8 +115,8 @@ async def test_migrates_digital_quality_tier_labels_to_new_short_ones(db):
     await movie_repository._migrate_format_labels(db)
 
     for title, new_format in [
-        ("Old Digital UHD Movie", "D-UHD"),
-        ("Old Digital HD Movie", "D-HD"),
+        ("Old Digital UHD Movie", "D-4K"),
+        ("Old Digital HD Movie", "D-1080"),
         ("Old Digital STD Movie", "D-SD"),
     ]:
         movie = await db[movie_repository.COLLECTION].find_one({"title": title})
@@ -133,4 +142,26 @@ async def test_tv_shows_migrate_digital_quality_tier_labels_on_startup(db):
     await tv_show_repository.ensure_indexes(db)
 
     show = await db[tv_show_repository.COLLECTION].find_one({"name": "Old Digital Show"})
-    assert show["format"] == "D-UHD"
+    assert show["format"] == "D-4K"
+
+
+async def test_tv_shows_migrate_dts_hd_audio_labels_on_startup(db):
+    """Feature v0.105.0 — TV-serier fik deres egen audio-migration for de nye
+    DTS-HD-omdøbninger (de fandtes ikke ved v0.22.0's audio-relabel, men kan
+    have de korte labels fra manuel indtastning eller feature #122)."""
+    now = datetime.now(timezone.utc)
+    await db[tv_show_repository.COLLECTION].insert_one(
+        {
+            "name": "Old Audio Show",
+            "format": "D-1080",
+            "audio_types": ["DTS-HD-M", "DTS-HD-MA-7.1", "Atmos"],
+            "seasons": [],
+            "created_at": now,
+            "updated_at": now,
+        }
+    )
+
+    await tv_show_repository.ensure_indexes(db)
+
+    show = await db[tv_show_repository.COLLECTION].find_one({"name": "Old Audio Show"})
+    assert show["audio_types"] == ["DTS-HD5.1", "DTS-HD7.1", "Atmos"]

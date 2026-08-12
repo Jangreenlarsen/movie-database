@@ -2,6 +2,17 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.105.0 build 0142] — 2026-08-12 — feature: omdøbte/nye format- og lyd-type-labels (FEATURES.md #129)
+
+Opløsnings-baserede labels. Format: "D-HD"→"D-1080", "D-UHD"→"D-4K", ny "D-720". Lyd: ny "DTS5.1", "DTS-HD-M"→"DTS-HD5.1", "DTS-HD-MA-7.1"→"DTS-HD7.1". Enum-medlemsnavne uændrede (kode der refererer dem er urørt).
+
+- **Migration** af eksisterende data ved opstart: format-renames i `_FORMAT_LABEL_MIGRATIONS` (begge repos, kaskade via sekventielle `update_many`); audio-renames i movie-repoets `_AUDIO_TYPE_LABEL_MIGRATIONS` (mellemliggende labels mapper direkte til slutværdien); TV-serier fik deres **egen nye** `_migrate_audio_type_labels` (jf. regel 16).
+- **Plex**-import router nu 720p → D-720 (ikke sammen med 1080 som HD); i18n-beskrivelse + fallback-tekst opdateret.
+- Frontend læser format/lyd dynamisk fra `attribute-options` — nye/omdøbte labels dukker automatisk op.
+- Tests: migrations-tests udvidet (film-format-kaskade, film+TV-audio, TV-format→D-4K), `format_for_resolution("720")→D-720`, alle Plex-format-assertions + `attribute-options` opdateret. Backend + frontend suiter grønne.
+
+Berørte filer: `backend/app/models/movie.py`, `backend/app/models/plex.py`, `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/app/services/plex_service.py`, `backend/tests/test_label_migrations.py`, `backend/tests/test_plex.py`, `backend/tests/test_movies.py`, `backend/tests/test_library_counts.py`, `backend/tests/test_serial_number_rules.py`, `backend/tests/test_serial_sort_and_search.py`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `version.json`.
+
 ## [0.104.0 build 0141] — 2026-08-12 — feature: blokerende dublet-bekræftelse før en kopi mere tilføjes (FEATURES.md #128)
 
 Supplerer #38's passive dublet-banner med en aktiv OK/Annuller-dialog: når du opretter en titel der allerede findes (på ønskelisten eller i biblioteket), popper `window.confirm("Denne findes allerede {where}. Vil du tilføje en kopi mere?")` før oprettelsen. Annuller afbryder (ingen kopi); OK opretter kopien. Tilføjet i `MovieDetailModal.save()` og `TvShowDetailModal.save()` (kun kladde-oprettelse), så det dækker både film og TV. Dublet-tjekket er `tmdb_id`-baseret (som #38). Ny i18n-nøgle `scan.duplicateConfirm`. Live-verificeret ende-til-ende (Playwright mod ægte TMDb): Annuller holder antallet på 1, OK gør det til 2.

@@ -284,7 +284,7 @@ async def test_media_type_roundtrip_and_filter(client):
     assert physical.json()["media_type"] == "Fysisk"
     await client.post(
         "/api/movies",
-        json={"title": "Digital Copy", "media_type": "Digital", "format": "D-HD"},
+        json={"title": "Digital Copy", "media_type": "Digital", "format": "D-1080"},
     )
 
     by_media_type = await client.get("/api/movies", params={"media_types": "Digital"})
@@ -481,6 +481,17 @@ async def test_attribute_options_endpoint(client):
     assert "BD" in data["formats"]
     assert "Atmos" in data["audio_types"]
     assert "DTS:X" in data["audio_types"]  # feature #122
-    assert "DTS-HD-MA-7.1" in data["audio_types"]  # feature #122
+    # v0.105.0 — omdøbte DTS-HD-varianter + ny DTS5.1.
+    assert "DTS5.1" in data["audio_types"]
+    assert "DTS-HD5.1" in data["audio_types"]
+    assert "DTS-HD7.1" in data["audio_types"]
+    # De gamle labels findes ikke længere.
+    assert "DTS-HD-M" not in data["audio_types"]
+    assert "DTS-HD-MA-7.1" not in data["audio_types"]
+    # v0.105.0 — nye/omdøbte format-labels.
+    assert "D-4K" in data["formats"]
+    assert "D-1080" in data["formats"]
+    assert "D-720" in data["formats"]
+    assert "D-HD" not in data["formats"]
     assert data["media_types"] == ["Fysisk", "Digital"]
     assert data["subtitles"] == ["Eng", "DK"]  # feature #123

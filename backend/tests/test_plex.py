@@ -210,7 +210,7 @@ async def test_availability_endpoint_maps_library_ids(client, monkeypatch):
     _configure(monkeypatch)
     # Digital, ikke Fysisk — se test_availability_badge_never_shows_on_a_physical_copy
     # for hvorfor det ikke er ligegyldigt hvilken det er her.
-    created = await client.post("/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Digital", "format": "D-HD"})
+    created = await client.post("/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Digital", "format": "D-1080"})
     movie_id = created.json()["id"]
     _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
 
@@ -285,8 +285,8 @@ async def test_diagnostics_reports_match_breakdown(client, monkeypatch):
     _configure(monkeypatch)
     # Digital, ikke Fysisk — fysiske poster tælles bevidst ikke med i denne
     # audit (2026-08-10), samme udelukkelse som badget og import-dublet-tjekket.
-    await client.post("/api/movies", json={"tmdb_id": None, "title": "The Matrix", "year": 1999, "media_type": "Digital", "format": "D-HD"})
-    await client.post("/api/movies", json={"title": "Ikke I Plex", "year": 2020, "media_type": "Digital", "format": "D-HD"})
+    await client.post("/api/movies", json={"tmdb_id": None, "title": "The Matrix", "year": 1999, "media_type": "Digital", "format": "D-1080"})
+    await client.post("/api/movies", json={"title": "Ikke I Plex", "year": 2020, "media_type": "Digital", "format": "D-1080"})
     _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
 
     response = await client.get("/api/plex/diagnostics")
@@ -382,7 +382,7 @@ async def test_import_skips_what_we_already_have_digitally(client, monkeypatch):
     allerede har på titel+år må ikke importeres igen bare fordi Plex har et
     tmdb-id, ellers ville hver importkørsel oprette endnu en dublet."""
     _configure(monkeypatch)
-    await client.post("/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Digital", "format": "D-HD"})
+    await client.post("/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Digital", "format": "D-1080"})
     created = []
     _patch_create(monkeypatch, created)
     _patch_library(monkeypatch, _fake_library([PlexItem("movie", "1", "The Matrix", 1999, 603, None, resolution="1080")]))
@@ -546,7 +546,8 @@ def test_format_for_resolution_maps_plex_values():
     assert plex_service.format_for_resolution("4k") == MovieFormat.DIGITAL_UHD
     assert plex_service.format_for_resolution("2160") == MovieFormat.DIGITAL_UHD
     assert plex_service.format_for_resolution("1080") == MovieFormat.DIGITAL_HD
-    assert plex_service.format_for_resolution("720") == MovieFormat.DIGITAL_HD
+    # v0.105.0 — 720 fik sit eget trin (D-720).
+    assert plex_service.format_for_resolution("720") == MovieFormat.DIGITAL_720
     assert plex_service.format_for_resolution("576") == MovieFormat.DIGITAL_STD
     assert plex_service.format_for_resolution("480") == MovieFormat.DIGITAL_STD
     assert plex_service.format_for_resolution("sd") == MovieFormat.DIGITAL_STD
@@ -599,7 +600,7 @@ async def test_import_sets_digital_media_type_and_format_from_resolution(client,
 
     body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
     assert captured == [(MediaType.DIGITAL, MovieFormat.DIGITAL_UHD)]
-    assert body["imported"][0]["format"] == "D-UHD"
+    assert body["imported"][0]["format"] == "D-4K"
 
 
 async def test_import_preview_shows_movie_format_without_creating(client, monkeypatch):
@@ -631,7 +632,7 @@ async def test_import_falls_back_to_hd_when_resolution_is_unknown(client, monkey
     body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
     assert created == [("movie", 12, ["Plex-import"])]
     assert body["unmatched"] == []
-    assert body["imported"][0]["format"] == "D-HD"
+    assert body["imported"][0]["format"] == "D-1080"
     assert body["imported"][0]["format_is_fallback"] is True
 
 
@@ -664,7 +665,7 @@ async def test_known_resolution_is_not_marked_as_fallback(client, monkeypatch):
     )
 
     body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
-    assert body["imported"][0]["format"] == "D-UHD"
+    assert body["imported"][0]["format"] == "D-4K"
     assert body["imported"][0]["format_is_fallback"] is False
 
 
@@ -685,7 +686,7 @@ async def test_import_show_takes_format_and_seasons_from_episodes(client, monkey
 
     body = (await client.post("/api/plex/import", json={"dry_run": False})).json()
     assert captured == [(MediaType.DIGITAL, MovieFormat.DIGITAL_HD, [1, 2])]
-    assert body["imported"][0]["format"] == "D-HD"
+    assert body["imported"][0]["format"] == "D-1080"
 
 
 
@@ -953,7 +954,7 @@ async def test_show_without_episode_resolution_still_reaches_tv_shows(client, mo
 
     assert body["unmatched"] == []
     assert [show["name"] for show in listed["items"]] == ["Fargo"]
-    assert listed["items"][0]["format"] == "D-HD"
+    assert listed["items"][0]["format"] == "D-1080"
 
 
 async def test_dry_run_preview_includes_tv_shows(client, monkeypatch):

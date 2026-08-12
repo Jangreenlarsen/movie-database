@@ -70,13 +70,20 @@ MAX_SORT_LEVELS = 3
 # det gjorde det gamle `$text`-index ikke (BUGS.md #48).
 TEXT_SEARCH_FIELDS = ["title", "overview", "cast", "director", "genres"]
 
-# Pre-v0.22.0 AudioType labels -> the new, shorter ones — see
-# `_migrate_audio_type_labels` and `models/movie.py::AudioType`.
+# AudioType label-historik -> de nuværende værdier — se
+# `_migrate_audio_type_labels` og `models/movie.py::AudioType`.
+#
+# OBS: audio-migrationen laver ét dict-opslag pr. label (ikke en sekventiel
+# kaskade som format-migrationen), så hvert *mellemliggende* label skal pege
+# DIREKTE på slutværdien. Derfor mapper både "DTS-HD Master Audio" (pre-v0.22.0)
+# og "DTS-HD-M" (v0.22.0-v0.104.x) til den nye "DTS-HD5.1" (v0.105.0).
 _AUDIO_TYPE_LABEL_MIGRATIONS = {
     "Dolby Digital": "DD",
     "Dolby Digital 5.1": "DD5.1",
     "Dolby Digital 7.1": "DD7.1",
-    "DTS-HD Master Audio": "DTS-HD-M",
+    "DTS-HD Master Audio": "DTS-HD5.1",
+    "DTS-HD-M": "DTS-HD5.1",
+    "DTS-HD-MA-7.1": "DTS-HD7.1",
     "Dolby Atmos": "Atmos",
     "Dolby TrueHD": "D-true-HD",
 }
@@ -108,9 +115,11 @@ async def _migrate_audio_type_labels(db: AsyncIOMotorDatabase) -> None:
 # BUGS.md/CHANGELOG.md and correct any that should be UHD/STD instead.
 #
 # v0.84.0 — the digital tiers themselves got the same short-label treatment
-# ("Digital-HD" -> "D-HD" etc.). These entries run in dict-insertion order
-# (Python 3.7+), so a still-unmigrated bare "Digital" cascades through both
-# passes below in the same call: "Digital" -> "Digital-HD" -> "D-HD".
+# ("Digital-HD" -> "D-HD" etc.), and v0.105.0 renamed those to resolution-based
+# labels ("D-HD" -> "D-1080", "D-UHD" -> "D-4K") — Jans ønske 2026-08-12.
+# These entries run in dict-insertion order (Python 3.7+), and the format
+# migration applies them as sequential `update_many`s, so the whole history
+# cascades in one call: "Digital" -> "Digital-HD" -> "D-HD" -> "D-1080".
 _FORMAT_LABEL_MIGRATIONS = {
     "Blu-ray": "BD",
     "4K Ultra HD": "UHD",
@@ -118,6 +127,8 @@ _FORMAT_LABEL_MIGRATIONS = {
     "Digital-UHD": "D-UHD",
     "Digital-HD": "D-HD",
     "Digital-STD": "D-SD",
+    "D-UHD": "D-4K",
+    "D-HD": "D-1080",
 }
 
 

@@ -117,6 +117,22 @@ async def preview_from_tmdb(tmdb_id: int) -> MoviePreview:
     )
 
 
+# BUGS.md #62 — genbrug af frigjorte serienumre (feature #131) er ikke atomisk
+# som tælleren, så to samtidige oprettelser kan gribe samme frigjorte nummer.
+SERIAL_ASSIGN_RETRY_LIMIT = 3
+
+
+def _is_serial_collision(exc: DuplicateKeyError) -> bool:
+    """BUGS.md #62 — skelner en serienr-index-kollision fra en stregkode-
+    kollision. `keyPattern` er den robuste kilde (ægte pymongo); en streng-
+    fallback dækker mongomock/afvigende driver-versioner."""
+    details = getattr(exc, "details", None) or {}
+    key_pattern = details.get("keyPattern") or {}
+    if "serial_number" in key_pattern:
+        return True
+    return "serial_number" in str(exc)
+
+
 async def _assign_serial_number(db, is_wishlist: bool, media_type) -> int | None:
     """Tildeler et serienummer fra den rigtige serie, eller None.
 
@@ -206,10 +222,6 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registere
     # null"-mønster som `barcode`, se BUGS.md #1/#10), så det sparse unikke
     # index på `serial_number` aldrig ser en kollision mellem to poster uden
     # nummer.
-    serial_number = await _assign_serial_number(db, payload.is_wishlist, payload.media_type)
-    if serial_number is not None:
-        document["serial_number"] = serial_number
-
     trimmed_barcode = payload.barcode.strip() if payload.barcode else ""
     if trimmed_barcode:
         document["barcode"] = trimmed_barcode
@@ -218,11 +230,24 @@ async def create_movie(db: AsyncIOMotorDatabase, payload: MovieCreate, registere
     if payload.barcode_source:
         document["barcode_source"] = payload.barcode_source
 
-    try:
-        created = await movie_repository.insert(db, document)
-    except DuplicateKeyError as exc:
-        raise DuplicateBarcodeError(trimmed_barcode) from exc
-    return _to_model(created)
+    # BUGS.md #62 — tildel serienummer og indsæt i én løkke: rammer en serienr-
+    # kollision (samtidig oprettelse der greb samme frigjorte nummer), tildeles
+    # et frisk nummer og forsøges igen; kun en ægte stregkode-kollision mapper
+    # til DuplicateBarcodeError.
+    for _attempt in range(SERIAL_ASSIGN_RETRY_LIMIT):
+        serial_number = await _assign_serial_number(db, payload.is_wishlist, payload.media_type)
+        if serial_number is not None:
+            document["serial_number"] = serial_number
+        try:
+            created = await movie_repository.insert(db, document)
+            return _to_model(created)
+        except DuplicateKeyError as exc:
+            if _is_serial_collision(exc):
+                continue
+            raise DuplicateBarcodeError(trimmed_barcode) from exc
+    raise SerialNumberConflictError(
+        "Kunne ikke finde et ledigt serienummer efter flere forsøg"
+    )
 
 
 def parse_sort_param(sort: str | None) -> list[tuple[str, int]]:
@@ -518,7 +543,12 @@ def _assert_can_edit_serial_number(current_user: dict, movie_doc: dict) -> None:
 async def update_movie(
     db: AsyncIOMotorDatabase, movie_id: str, payload: MovieUpdate, current_user: dict
 ) -> Movie:
-    fields = payload.model_dump(exclude_unset=True, mode="json")
+    # BUGS.md #59 — bevidst IKKE mode="json": det ville serialisere `watched_at`
+    # (et datetime) til en ISO-streng før den rå `$set`, så feltet gemmes som
+    # streng frem for Date (samme korruption som BUGS.md #33's scheduled_at).
+    # Enum-felterne (format/audio_types/media_type) er `str`-enums og gemmes
+    # korrekt som strenge uden mode="json".
+    fields = payload.model_dump(exclude_unset=True)
 
     if "tags" in fields:
         canonical_tags = await tag_service.resolve_tags(db, fields["tags"])

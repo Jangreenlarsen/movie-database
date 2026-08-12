@@ -378,9 +378,13 @@ async def test_guest_cannot_read_stats_or_deleted_movies(client, db):
 
     assert (await client.get("/api/movies/stats")).status_code == 403
     assert (await client.get("/api/movies/deleted")).status_code == 403
+    # BUGS.md #60 — TV-slette-listen skal blokeres for gæster på samme måde som
+    # film-slette-listen (var tidligere åben — "regel kun på én gren").
+    assert (await client.get("/api/tv-shows/deleted")).status_code == 403
     # ...but the library itself stays readable, which is the whole point of
     # the guest role.
     assert (await client.get("/api/movies")).status_code == 200
+    assert (await client.get("/api/tv-shows")).status_code == 200
 
 
 async def test_standard_user_can_still_read_stats_and_deleted_movies(client):
@@ -393,3 +397,4 @@ async def test_standard_user_can_still_read_stats_and_deleted_movies(client):
 
     assert (await client.get("/api/movies/stats")).status_code == 200
     assert (await client.get("/api/movies/deleted")).status_code == 200
+    assert (await client.get("/api/tv-shows/deleted")).status_code == 200  # BUGS.md #60

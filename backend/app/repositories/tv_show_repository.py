@@ -135,11 +135,27 @@ async def _migrate_subtitles_to_list(db: AsyncIOMotorDatabase) -> None:
             )
 
 
+async def _migrate_watched_at_to_date(db: AsyncIOMotorDatabase) -> None:
+    """BUGS.md #59 — se den identiske funktion i movie_repository.py."""
+    collection = db[COLLECTION]
+    cursor = collection.find({"watched_at": {"$exists": True, "$ne": None}}, {"watched_at": 1})
+    async for doc in cursor:
+        value = doc.get("watched_at")
+        if not isinstance(value, str):
+            continue
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:  # pragma: no cover
+            continue
+        await collection.update_one({"_id": doc["_id"]}, {"$set": {"watched_at": parsed}})
+
+
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     collection = db[COLLECTION]
     await _migrate_format_labels(db)
     await _migrate_audio_type_labels(db)
     await _migrate_subtitles_to_list(db)
+    await _migrate_watched_at_to_date(db)
     # BUGS.md #48 — se movie_repository: søgningen bruger ikke længere
     # `$text`, så det gamle index ryddes op i stedet for at ligge og koste
     # skrivetid.

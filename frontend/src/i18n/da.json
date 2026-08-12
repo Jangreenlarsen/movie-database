@@ -98,6 +98,7 @@
   "lib.personFilterCast": "Viser film med skuespiller",
   "lib.clear": "Ryd ✕",
   "lib.settingsNotSaved": "Dine visningsindstillinger blev ikke gemt: {message}",
+  "lib.refreshFailed": "Ændringen blev gemt, men listen kunne ikke opdateres: {message}",
   "lib.savedTvShowNotice": "Det du gemte er en TV-serie — den ligger derfor under {target}, ikke her i {here}.",
   "lib.tvWishes": "TV-indkøbsønsker",
   "lib.movieWishes": "film-indkøbsønskerne",

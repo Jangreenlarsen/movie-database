@@ -98,6 +98,7 @@
   "lib.personFilterCast": "Showing movies starring",
   "lib.clear": "Clear ✕",
   "lib.settingsNotSaved": "Your view settings were not saved: {message}",
+  "lib.refreshFailed": "The change was saved, but the list could not be refreshed: {message}",
   "lib.savedTvShowNotice": "What you saved is a TV show — it is therefore under {target}, not here in {here}.",
   "lib.tvWishes": "TV shopping list",
   "lib.movieWishes": "the movie shopping list",

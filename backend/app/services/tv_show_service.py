@@ -146,6 +146,19 @@ async def preview_from_tmdb(tmdb_id: int) -> TvShowPreview:
     )
 
 
+# BUGS.md #62 — se den identiske note i movie_service.
+SERIAL_ASSIGN_RETRY_LIMIT = 3
+
+
+def _is_serial_collision(exc: DuplicateKeyError) -> bool:
+    """BUGS.md #62 — se den identiske funktion i movie_service."""
+    details = getattr(exc, "details", None) or {}
+    key_pattern = details.get("keyPattern") or {}
+    if "serial_number" in key_pattern:
+        return True
+    return "serial_number" in str(exc)
+
+
 async def _assign_serial_number(db, is_wishlist: bool, media_type) -> int | None:
     """Tildeler et serienummer fra den rigtige serie, eller None.
 
@@ -237,21 +250,27 @@ async def create_tv_show(
     # Feature #92 — kun fysiske udgaver nummereres, se den identiske regel og
     # begrundelse i movie_service. TV-serier har sin egen nummer-serie
     # (`tv_show_serial`-tælleren), adskilt fra filmenes.
-    serial_number = await _assign_serial_number(db, payload.is_wishlist, payload.media_type)
-    if serial_number is not None:
-        document["serial_number"] = serial_number
-
     trimmed_barcode = payload.barcode.strip() if payload.barcode else ""
     if trimmed_barcode:
         document["barcode"] = trimmed_barcode
     if payload.barcode_source:
         document["barcode_source"] = payload.barcode_source
 
-    try:
-        created = await tv_show_repository.insert(db, document)
-    except DuplicateKeyError as exc:
-        raise DuplicateBarcodeError(trimmed_barcode) from exc
-    return _to_model(created)
+    # BUGS.md #62 — se den identiske løkke i movie_service.create_movie.
+    for _attempt in range(SERIAL_ASSIGN_RETRY_LIMIT):
+        serial_number = await _assign_serial_number(db, payload.is_wishlist, payload.media_type)
+        if serial_number is not None:
+            document["serial_number"] = serial_number
+        try:
+            created = await tv_show_repository.insert(db, document)
+            return _to_model(created)
+        except DuplicateKeyError as exc:
+            if _is_serial_collision(exc):
+                continue
+            raise DuplicateBarcodeError(trimmed_barcode) from exc
+    raise SerialNumberConflictError(
+        "Kunne ikke finde et ledigt serienummer efter flere forsøg"
+    )
 
 
 def parse_sort_param(sort: str | None) -> list[tuple[str, int]]:
@@ -395,7 +414,9 @@ def _assert_can_edit_serial_number(current_user: dict, tv_show_doc: dict) -> Non
 async def update_tv_show(
     db: AsyncIOMotorDatabase, tv_show_id: str, payload: TvShowUpdate, current_user: dict
 ) -> TvShow:
-    fields = payload.model_dump(exclude_unset=True, mode="json")
+    # BUGS.md #59 — bevidst IKKE mode="json" (se den identiske note i
+    # movie_service.update_movie): bevarer `watched_at` som ægte datetime.
+    fields = payload.model_dump(exclude_unset=True)
 
     if "tags" in fields:
         canonical_tags = await tag_service.resolve_tags(db, fields["tags"])

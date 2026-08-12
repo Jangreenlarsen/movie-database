@@ -144,7 +144,9 @@ export default function TvShows({
   const [showFieldPanel, setShowFieldPanel] = useState(false);
   const [showSortPanel, setShowSortPanel] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
-  const [showAddPanel, setShowAddPanel] = useState(false);
+  // Feature #126 — tilføj-flowets to store knapper: "scan" | "manual" | null
+  // (spejler Library.jsx). Erstatter det tidligere `showAddPanel`.
+  const [addMode, setAddMode] = useState(null);
   const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
   const [settingsError, setSettingsError] = useState(null);
   const [savedMovie, setSavedMovie] = useState(false);
@@ -392,6 +394,68 @@ export default function TvShows({
     persistVisibleFields(DEFAULT_VISIBLE_FIELDS);
   }
 
+  // Feature #126 — delte toolbar-dele, så TV-siden og TV-ønskelisten kan dele
+  // dem uden duplikering (spejler mønstret i Library.jsx).
+  const searchInputWrap = (placeholder) => (
+    <div className="search-input-wrap">
+      <input
+        type="search"
+        placeholder={placeholder}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      {/* Feature #102 — se den identiske note i Library.jsx. */}
+      {query && (
+        <button
+          type="button"
+          className="search-clear"
+          onClick={() => setQuery("")}
+          title={t("lib.clearSearch")}
+          aria-label={t("lib.clearSearch")}
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+
+  const sortFilterFieldButtons = (
+    <>
+      <button
+        type="button"
+        className={`btn${sortIsDefault ? "" : " btn-modified"}`}
+        title={t(sortIsDefault ? "lib.sortDefaultTitle" : "lib.sortModifiedTitle")}
+        onClick={() => setShowSortPanel((v) => !v)}
+      >
+        {t("lib.sort")} {sortIsDefault ? "" : "● "}▾
+      </button>
+
+      <button
+        type="button"
+        className={`btn${hasActiveFilters ? " btn-modified" : ""}`}
+        title={
+          hasActiveFilters
+            ? t("lib.filterActiveTitle", { count: activeFilterCount })
+            : t("lib.filterNoneTitle")
+        }
+        onClick={() => setShowFilterPanel((v) => !v)}
+      >
+        {t("lib.filter")} {hasActiveFilters ? `(${activeFilterCount}) ` : ""}▾
+      </button>
+
+      <button
+        type="button"
+        className={`btn${changedFieldCount > 0 ? " btn-modified" : ""}`}
+        title={t(changedFieldCount > 0 ? "lib.fieldsModifiedTitle" : "lib.fieldsDefaultTitle")}
+        onClick={() => setShowFieldPanel((v) => !v)}
+      >
+        {t("lib.fields")} {changedFieldCount > 0 ? "● " : ""}▾
+      </button>
+
+      <ViewModeToggle viewMode={viewMode} onChange={changeViewMode} />
+    </>
+  );
+
   return (
     <section>
       <div className="page-header">
@@ -402,82 +466,43 @@ export default function TvShows({
       </div>
 
       <div className="library-toolbar">
-        <div className="search-row">
-          <div className="search-input-wrap">
-            <input
-              type="search"
-              placeholder={t("tv.searchPlaceholder")}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            {/* Feature #102 — se den identiske note i Library.jsx. */}
-            {query && (
-              <button
-                type="button"
-                className="search-clear"
-                onClick={() => setQuery("")}
-                title={t("lib.clearSearch")}
-                aria-label={t("lib.clearSearch")}
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          {/* Feature #116 — gæster må oprette ønsker (kun i ønske-fanen). */}
-          {(!isGuest || wishlist) && (
-            <button type="button" className="btn btn-primary" onClick={() => setShowAddPanel((v) => !v)}>
-              {showAddPanel
-                ? t("common.close")
-                : t(wishlist ? "lib.addWish" : "tv.addShow")}{" "}
-              ▾
+        {/* Feature #126 — samme to store handlingsknapper som Film-siden og
+            ønskelisten (Jans ønske 2026-08-12). Gæster ser dem kun på
+            ønskelisten (feature #116). */}
+        {(!isGuest || wishlist) && (
+          <div className="add-actions">
+            <button
+              type="button"
+              className={`btn btn-primary add-action${addMode === "scan" ? " active" : ""}`}
+              onClick={() => setAddMode((m) => (m === "scan" ? null : "scan"))}
+            >
+              📷 {t("lib.addScan")}
             </button>
-          )}
+            <button
+              type="button"
+              className={`btn btn-primary add-action${addMode === "manual" ? " active" : ""}`}
+              onClick={() => setAddMode((m) => (m === "manual" ? null : "manual"))}
+            >
+              🔍 {t("lib.addSearchTitle")}
+            </button>
+          </div>
+        )}
 
-          <button
-            type="button"
-            className={`btn${sortIsDefault ? "" : " btn-modified"}`}
-            title={t(sortIsDefault ? "lib.sortDefaultTitle" : "lib.sortModifiedTitle")}
-            onClick={() => setShowSortPanel((v) => !v)}
-          >
-            {t("lib.sort")} {sortIsDefault ? "" : "● "}▾
-          </button>
-
-          <button
-            type="button"
-            className={`btn${hasActiveFilters ? " btn-modified" : ""}`}
-            title={
-              hasActiveFilters
-                ? t("lib.filterActiveTitle", { count: activeFilterCount })
-                : t("lib.filterNoneTitle")
-            }
-            onClick={() => setShowFilterPanel((v) => !v)}
-          >
-            {t("lib.filter")} {hasActiveFilters ? `(${activeFilterCount}) ` : ""}▾
-          </button>
-
-          <button
-            type="button"
-            className={`btn${changedFieldCount > 0 ? " btn-modified" : ""}`}
-            title={t(
-              changedFieldCount > 0 ? "lib.fieldsModifiedTitle" : "lib.fieldsDefaultTitle"
-            )}
-            onClick={() => setShowFieldPanel((v) => !v)}
-          >
-            {t("lib.fields")} {changedFieldCount > 0 ? "● " : ""}▾
-          </button>
-
-          <ViewModeToggle viewMode={viewMode} onChange={changeViewMode} />
+        <div className={`search-row${wishlist ? " search-row-secondary" : ""}`}>
+          {searchInputWrap(t(wishlist ? "lib.wishlistFilterPlaceholder" : "tv.searchPlaceholder"))}
+          {sortFilterFieldButtons}
         </div>
 
-        {showAddPanel && (
+        {addMode && (
           <div style={{ marginTop: 8 }}>
             <MovieLookupForm
               user={user}
               wishlist={wishlist}
+              mode={addMode}
+              key={addMode}
               onSaved={(kind) => {
                 refresh();
-                setShowAddPanel(false);
+                setAddMode(null);
                 // Se Library.jsx' identiske gren — søgningen rammer begge
                 // TMDb-databaser, så en valgt film havner i movies og er
                 // usynlig her (BUGS.md #47).

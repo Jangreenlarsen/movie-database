@@ -236,6 +236,8 @@ export const api = {
       body: JSON.stringify({ status: "declined" }),
     }),
   listScreenings: (upcoming) => request(`/screenings${upcoming ? "?upcoming=true" : ""}`),
+  // Feature #130 — afholdte fremvisninger (nyeste først) til biograf-historikken.
+  listScreeningHistory: () => request("/screenings?past=true"),
   createScreening: (payload) =>
     request("/screenings", { method: "POST", body: JSON.stringify(payload) }),
   updateScreening: (id, payload) =>

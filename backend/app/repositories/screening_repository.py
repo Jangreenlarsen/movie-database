@@ -21,9 +21,20 @@ async def find_by_id(db: AsyncIOMotorDatabase, screening_id: str) -> dict | None
     return await db[COLLECTION].find_one({"_id": ObjectId(screening_id)})
 
 
-async def find_all(db: AsyncIOMotorDatabase, upcoming_only: bool = False) -> list[dict]:
-    filter_ = {"scheduled_at": {"$gte": datetime.now(timezone.utc)}} if upcoming_only else {}
-    cursor = db[COLLECTION].find(filter_).sort("scheduled_at", 1)
+async def find_all(
+    db: AsyncIOMotorDatabase, upcoming_only: bool = False, past_only: bool = False
+) -> list[dict]:
+    """`upcoming_only` → fremtidige, ældste først (Voldby BIO-programmet).
+    `past_only` (feature #130) → allerede afholdte, **nyeste først**, så
+    historik-listen viser det seneste øverst og 500-cap'en beholder de nyeste
+    frem for de ældste. `upcoming_only` vinder hvis begge er sat."""
+    now = datetime.now(timezone.utc)
+    if upcoming_only:
+        cursor = db[COLLECTION].find({"scheduled_at": {"$gte": now}}).sort("scheduled_at", 1)
+    elif past_only:
+        cursor = db[COLLECTION].find({"scheduled_at": {"$lt": now}}).sort("scheduled_at", -1)
+    else:
+        cursor = db[COLLECTION].find({}).sort("scheduled_at", 1)
     return await cursor.to_list(length=500)
 
 

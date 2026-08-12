@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.106.0 build 0143] — 2026-08-12 — feature: biograf-historik under Indstillinger (FEATURES.md #130)
+
+Ny "Biograf"-fane i Indstillinger med en historik over afholdte Voldby BIO-fremvisninger (nyeste øverst: titel + evt. note + dato/tid). Backend: `GET /api/screenings?past=true` — filtrerer `scheduled_at < now` og sorterer faldende (så 500-cap'en beholder de nyeste). Ren læse-udvidelse; planlægning sker fortsat på Voldby BIO-fanen. Fanen er synlig for alle ikke-gæster. Test: `test_list_screenings_past_filter_returns_history_newest_first`. Live-verificeret (regel 18).
+
+Berørte filer: `backend/app/api/screenings.py`, `backend/app/services/screening_service.py`, `backend/app/repositories/screening_repository.py`, `backend/tests/test_screenings.py`, `frontend/src/api/client.js`, `frontend/src/pages/Settings.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`, `FEATURES.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `version.json`.
+
 ## [0.105.0 build 0142] — 2026-08-12 — feature: omdøbte/nye format- og lyd-type-labels (FEATURES.md #129)
 
 Opløsnings-baserede labels. Format: "D-HD"→"D-1080", "D-UHD"→"D-4K", ny "D-720". Lyd: ny "DTS5.1", "DTS-HD-M"→"DTS-HD5.1", "DTS-HD-MA-7.1"→"DTS-HD7.1". Enum-medlemsnavne uændrede (kode der refererer dem er urørt).

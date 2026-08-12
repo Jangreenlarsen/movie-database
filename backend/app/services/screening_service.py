@@ -203,8 +203,10 @@ async def create_screening(
     return await _to_screening_model(db, created)
 
 
-async def list_screenings(db: AsyncIOMotorDatabase, upcoming_only: bool = False) -> list[Screening]:
-    documents = await screening_repository.find_all(db, upcoming_only)
+async def list_screenings(
+    db: AsyncIOMotorDatabase, upcoming_only: bool = False, past_only: bool = False
+) -> list[Screening]:
+    documents = await screening_repository.find_all(db, upcoming_only, past_only)
     return [await _to_screening_model(db, doc) for doc in documents]
 
 

@@ -18,6 +18,7 @@ function settingsTabs(isAdmin, isGuest) {
     { id: "konto", labelKey: "settings.tab.account", visible: true },
     { id: "nyt", labelKey: "settings.tab.whatsNew", visible: true },
     { id: "bibliotek", labelKey: "settings.tab.library", visible: !isGuest },
+    { id: "biograf", labelKey: "settings.tab.cinema", visible: !isGuest },
     { id: "backup", labelKey: "settings.tab.backup", visible: isAdmin },
     { id: "noegler", labelKey: "settings.tab.keys", visible: isAdmin },
     { id: "drift", labelKey: "settings.tab.ops", visible: isAdmin },
@@ -94,6 +95,8 @@ export default function Settings({ user, onSettingsChanged }) {
           )}
         </>
       )}
+
+      {activeTab === "biograf" && !isGuest && <CinemaHistorySection />}
 
       {activeTab === "backup" && isAdmin && (
         <>
@@ -1072,6 +1075,62 @@ function DeletedMoviesSection() {
                 {t("deleted.by", {
                   who: entry.deleted_by ?? t("deleted.unknownUser"),
                   date: new Date(entry.deleted_at).toLocaleDateString(locale),
+                })}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// Feature #130 — historik over afholdte biograf-fremvisninger (Jans ønske
+// 2026-08-12), nyeste øverst. Kun læsning; selve planlægningen sker fortsat på
+// Voldby BIO-fanen. Data kommer fra `GET /api/screenings?past=true`.
+function CinemaHistorySection() {
+  const t = useT();
+  const locale = useLocale();
+  const [entries, setEntries] = useState([]);
+  const [status, setStatus] = useState("loading");
+
+  useEffect(() => {
+    api
+      .listScreeningHistory()
+      .then((data) => {
+        setEntries(data);
+        setStatus("ready");
+      })
+      .catch(() => setStatus("error"));
+  }, []);
+
+  return (
+    <div className="card settings-section">
+      <h2>{t("cinemaHistory.heading")}</h2>
+      <p className="muted">{t("cinemaHistory.description")}</p>
+
+      {status === "loading" && <p className="muted">{t("common.loading")}</p>}
+      {status === "error" && (
+        <div className="banner banner-error">{t("cinemaHistory.loadError")}</div>
+      )}
+
+      {status === "ready" && entries.length === 0 && (
+        <p className="muted">{t("cinemaHistory.none")}</p>
+      )}
+
+      {status === "ready" && entries.length > 0 && (
+        <ul className="user-list">
+          {entries.map((s) => (
+            <li key={s.id} className="user-row">
+              <span className="user-row-name">
+                {s.title ?? t("cinemaHistory.unknownTitle")}
+                {s.year ? ` (${s.year})` : ""}
+                {s.note ? ` — ${s.note}` : ""}
+              </span>
+              <span className="muted">
+                {new Date(s.scheduled_at).toLocaleString(locale, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
                 })}
               </span>
             </li>

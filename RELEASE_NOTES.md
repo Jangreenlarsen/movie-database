@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.106.0 (build 0143) — 2026-08-12
+
+- **Biograf-historik under Indstillinger.** En ny "Biograf"-fane i Indstillinger viser de fremvisninger der allerede er afholdt i Voldby BIO — nyeste øverst, med titel, evt. note og dato/tid. Kommende visninger står fortsat på Voldby BIO-siden.
+
 ## v0.105.0 (build 0142) — 2026-08-12
 
 - **Nye og tydeligere format- og lyd-navne.** Digitale formater hedder nu efter opløsning: **D-1080** (før D-HD), **D-4K** (før D-UHD), og et nyt **D-720**. Lyd har fået **DTS5.1**, og DTS-HD-varianterne hedder nu **DTS-HD5.1** (før DTS-HD-M) og **DTS-HD7.1** (før DTS-HD-MA-7.1). Dine eksisterende film og serier får automatisk de nye navne. Plex-import lægger nu 720p-indhold i D-720.

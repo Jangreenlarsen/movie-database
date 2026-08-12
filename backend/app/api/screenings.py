@@ -18,9 +18,10 @@ router = APIRouter(prefix="/api/screenings", tags=["screenings"])
 @router.get("", response_model=list[Screening])
 async def list_screenings(
     upcoming: bool = Query(default=False, description="True limits to screenings not yet in the past"),
+    past: bool = Query(default=False, description="True limits to past screenings, newest first (feature #130 history)"),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
-    return await screening_service.list_screenings(db, upcoming)
+    return await screening_service.list_screenings(db, upcoming, past)
 
 
 @router.post("", response_model=Screening, status_code=201, dependencies=[Depends(require_admin)])

@@ -96,6 +96,31 @@ async def test_list_screenings_upcoming_filter_excludes_past(client):
     assert upcoming.json() == []
 
 
+async def test_list_screenings_past_filter_returns_history_newest_first(client):
+    """Feature #130 — historik-visningen under Settings: kun afholdte
+    fremvisninger, nyeste øverst."""
+    old_id = await _create_movie(client, "Ældst")
+    newer_id = await _create_movie(client, "Nyere")
+    future_id = await _create_movie(client, "Fremtid")
+    await client.post(
+        "/api/screenings",
+        json={"media_kind": "movie", "movie_id": old_id, "scheduled_at": "2020-01-01T20:00:00"},
+    )
+    await client.post(
+        "/api/screenings",
+        json={"media_kind": "movie", "movie_id": newer_id, "scheduled_at": "2021-06-15T20:00:00"},
+    )
+    await client.post(
+        "/api/screenings",
+        json={"media_kind": "movie", "movie_id": future_id, "scheduled_at": "2099-01-01T20:00:00"},
+    )
+
+    past = await client.get("/api/screenings", params={"past": "true"})
+    titles = [s["title"] for s in past.json()]
+    # Kun de to afholdte, nyeste først — den fremtidige er ikke med.
+    assert titles == ["Nyere", "Ældst"]
+
+
 async def test_update_screening_requires_admin(client):
     movie_id = await _create_movie(client)
     created = await client.post(

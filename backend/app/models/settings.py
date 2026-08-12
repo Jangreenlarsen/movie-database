@@ -5,16 +5,31 @@ from pydantic import BaseModel, Field
 from app.models.scan import BarcodeSource
 
 
+class FreeSerialNumbers(BaseModel):
+    """Feature #131 — de frigjorte (genbrugbare) numre pr. serie, laveste
+    først. Fysiske film (M#), fysiske TV-serier (T#) og den delte digitale
+    serie (D#)."""
+
+    physical_movies: list[int] = Field(default_factory=list)
+    physical_tv: list[int] = Field(default_factory=list)
+    digital: list[int] = Field(default_factory=list)
+
+
 class SerialNumberConfig(BaseModel):
     start_number: int = Field(default=1, ge=1)
     increment: int = Field(default=1, ge=1)
     padding_width: int = Field(default=0, ge=0, le=10)
+    # Feature #131 — én fælles til/fra for genbrug af frigjorte numre (alle tre
+    # serier). Read-only oversigt over de faktisk ledige numre følger med.
+    reuse_freed: bool = False
+    free_numbers: FreeSerialNumbers = Field(default_factory=FreeSerialNumbers)
 
 
 class SerialNumberConfigUpdate(BaseModel):
     start_number: int | None = Field(default=None, ge=1)
     increment: int | None = Field(default=None, ge=1)
     padding_width: int | None = Field(default=None, ge=0, le=10)
+    reuse_freed: bool | None = None
 
 
 # Skriv-kun: "source" fortæller hvorfra den *aktive* nøgle kommer, men den

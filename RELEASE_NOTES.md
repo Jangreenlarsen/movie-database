@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.107.0 (build 0144) — 2026-08-12
+
+- **Genbrug af frigjorte serienumre.** Under Indstillinger → Bibliotek (samme sted som serienummer-opsætningen) er der nu en til/fra-knap "Genbrug frigjorte numre". Er den slået til, får en ny film/serie automatisk det laveste ledige nummer i sin serie — fx nummeret fra en film du har slettet — i stedet for at der bliver et hul. Sektionen viser også hvilke numre der er ledige lige nu (film, TV-serier og digitale hver for sig). Slået fra opfører numrene sig som hidtil (tæller kun opad).
+
 ## v0.106.0 (build 0143) — 2026-08-12
 
 - **Biograf-historik under Indstillinger.** En ny "Biograf"-fane i Indstillinger viser de fremvisninger der allerede er afholdt i Voldby BIO — nyeste øverst, med titel, evt. note og dato/tid. Kommende visninger står fortsat på Voldby BIO-siden.

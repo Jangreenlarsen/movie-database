@@ -179,7 +179,22 @@ async def _ensure_serial_config(db: AsyncIOMotorDatabase) -> dict:
     return doc
 
 
-async def next_serial_number(db: AsyncIOMotorDatabase) -> int:
+async def free_serial_numbers(db: AsyncIOMotorDatabase) -> list[int]:
+    """Feature #131 — de frigjorte T#-numre (huller i det brugte interval),
+    laveste først. Se den identiske funktion i movie_repository."""
+    taken: set[int] = set()
+    cursor = db[COLLECTION].find(
+        {"serial_number": {"$exists": True}, "media_type": {"$ne": DIGITAL_MEDIA_TYPE}},
+        {"serial_number": 1},
+    )
+    async for doc in cursor:
+        number = doc.get("serial_number")
+        if isinstance(number, int):
+            taken.add(number)
+    return digital_serial_repository.gaps(taken)
+
+
+async def _next_from_counter(db: AsyncIOMotorDatabase) -> int:
     """Same race-safe skip-collisions approach as movie_repository's
     version — see there for the full rationale."""
     for _ in range(MAX_SERIAL_ASSIGN_ATTEMPTS):
@@ -206,6 +221,16 @@ async def next_serial_number(db: AsyncIOMotorDatabase) -> int:
             return candidate
 
     raise RuntimeError("Could not find a free serial number after many attempts")
+
+
+async def next_serial_number(db: AsyncIOMotorDatabase) -> int:
+    """Feature #131 — genbruger det laveste frigjorte T#-nummer hvis genbrug er
+    slået til og der findes et hul; ellers fra tælleren som hidtil."""
+    if await digital_serial_repository.is_reuse_enabled(db):
+        free = await free_serial_numbers(db)
+        if free:
+            return free[0]
+    return await _next_from_counter(db)
 
 
 

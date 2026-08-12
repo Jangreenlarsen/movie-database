@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.107.0 build 0144] — 2026-08-12 — feature: genbrug af frigjorte serienumre (FEATURES.md #131)
+
+Ny til/fra "Genbrug frigjorte numre" i serienummer-sektionen (Indstillinger → Bibliotek), fælles for alle tre serier (M#/T#/D#). Slået til får en ny post det laveste frigjorte nummer i sin serie før tælleren går videre; slået fra = hidtidig adfærd (tæller kun opad). Et "frigjort" nummer = et hul i det brugte interval, opstået ved sletning eller ønskeliste-flyt (selv-korrigerende — ingen separat bogføring). Sektionen viser desuden de ledige numre pr. serie.
+
+- Backend: hvert `next_serial_number` (movie/tv/digital) genbruger laveste hul når `reuse_freed` er til, ellers `_next_from_counter` (uændret race-sikker tæller; digital backfill bruger tælleren direkte). Flaget bor i `digital_serial_repository` (ingen cirkulær import). `GET/PATCH /api/settings/serial-number` fik `reuse_freed` + read-only `free_numbers`.
+- **Afgrænsning**: kun huller mellem laveste og højeste brugte nummer genbruges (så et flyttet start-tal ikke udpeger lave numre). Race: laveste-hul er ikke atomisk som tælleren — acceptabelt for et enkelt-admin hjemme-bibliotek (unikt index er backstop).
+- Tests: `test_serial_reuse.py` (6). Backend 592, frontend 47. Live-verificeret (regel 18): slettet M#2 genbrugt af næste post.
+
+Berørte filer: `backend/app/models/settings.py`, `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/app/repositories/digital_serial_repository.py`, `backend/app/services/movie_service.py`, `backend/tests/test_serial_reuse.py`, `backend/tests/test_settings.py`, `frontend/src/pages/Settings.jsx`, `frontend/src/pages/Settings.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `version.json`.
+
 ## [0.106.0 build 0143] — 2026-08-12 — feature: biograf-historik under Indstillinger (FEATURES.md #130)
 
 Ny "Biograf"-fane i Indstillinger med en historik over afholdte Voldby BIO-fremvisninger (nyeste øverst: titel + evt. note + dato/tid). Backend: `GET /api/screenings?past=true` — filtrerer `scheduled_at < now` og sorterer faldende (så 500-cap'en beholder de nyeste). Ren læse-udvidelse; planlægning sker fortsat på Voldby BIO-fanen. Fanen er synlig for alle ikke-gæster. Test: `test_list_screenings_past_filter_returns_history_newest_first`. Live-verificeret (regel 18).

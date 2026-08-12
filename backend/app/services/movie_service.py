@@ -33,7 +33,7 @@ from app.models.movie import (
     TmdbSyncResult,
     coerce_subtitles,
 )
-from app.models.settings import SerialNumberConfig, SerialNumberConfigUpdate
+from app.models.settings import FreeSerialNumbers, SerialNumberConfig, SerialNumberConfigUpdate
 from app.repositories import (
     digital_serial_repository,
     movie_repository,
@@ -713,9 +713,19 @@ async def sync_all_from_tmdb(db: AsyncIOMotorDatabase) -> TmdbSyncResult:
     )
 
 
+async def _free_serial_numbers(db: AsyncIOMotorDatabase) -> FreeSerialNumbers:
+    """Feature #131 — de ledige (frigjorte) numre pr. serie. Samles i service-
+    laget, da de tre serier bor i hver sit repository."""
+    return FreeSerialNumbers(
+        physical_movies=await movie_repository.free_serial_numbers(db),
+        physical_tv=await tv_show_repository.free_serial_numbers(db),
+        digital=await digital_serial_repository.free_serial_numbers(db),
+    )
+
+
 async def get_serial_number_config(db: AsyncIOMotorDatabase) -> SerialNumberConfig:
     config = await movie_repository.get_serial_config(db)
-    return SerialNumberConfig(**config)
+    return SerialNumberConfig(**config, free_numbers=await _free_serial_numbers(db))
 
 
 async def update_serial_number_config(
@@ -723,4 +733,4 @@ async def update_serial_number_config(
 ) -> SerialNumberConfig:
     updates = payload.model_dump(exclude_unset=True)
     config = await movie_repository.update_serial_config(db, updates)
-    return SerialNumberConfig(**config)
+    return SerialNumberConfig(**config, free_numbers=await _free_serial_numbers(db))

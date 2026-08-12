@@ -1,7 +1,15 @@
 async def test_default_serial_config(client):
     response = await client.get("/api/settings/serial-number")
     assert response.status_code == 200
-    assert response.json() == {"start_number": 1, "increment": 1, "padding_width": 0}
+    # Feature #131 — genbrug er slået fra som standard, og der er ingen frigjorte
+    # numre i et tomt bibliotek.
+    assert response.json() == {
+        "start_number": 1,
+        "increment": 1,
+        "padding_width": 0,
+        "reuse_freed": False,
+        "free_numbers": {"physical_movies": [], "physical_tv": [], "digital": []},
+    }
 
 
 async def test_default_config_produces_sequential_numbers(client):

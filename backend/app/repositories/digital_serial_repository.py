@@ -18,6 +18,11 @@ from pymongo import ReturnDocument
 
 COUNTERS_COLLECTION = "counters"
 SERIAL_COUNTER_ID = "digital_serial"
+# Feature #131 — én fælles til/fra for genbrug af frigjorte serienumre, gældende
+# for alle tre serier (M/T/D). Bor her, fordi både movie_ og tv_show_repository
+# allerede importerer dette modul (og det importerer ingen af dem), så flaget
+# kan læses ét sted uden en cirkulær import.
+REUSE_FLAG_ID = "serial_reuse"
 DEFAULT_SERIAL_CONFIG = {"next_value": 1, "increment": 1}
 MAX_SERIAL_ASSIGN_ATTEMPTS = 10_000
 
@@ -53,7 +58,51 @@ async def _is_taken(db: AsyncIOMotorDatabase, candidate: int) -> bool:
     return False
 
 
-async def next_serial_number(db: AsyncIOMotorDatabase) -> int:
+# --- Feature #131: genbrug af frigjorte numre -------------------------------
+
+
+async def is_reuse_enabled(db: AsyncIOMotorDatabase) -> bool:
+    doc = await db[COUNTERS_COLLECTION].find_one({"_id": REUSE_FLAG_ID})
+    return bool(doc and doc.get("enabled", False))
+
+
+async def set_reuse_enabled(db: AsyncIOMotorDatabase, enabled: bool) -> None:
+    await db[COUNTERS_COLLECTION].update_one(
+        {"_id": REUSE_FLAG_ID}, {"$set": {"enabled": bool(enabled)}}, upsert=True
+    )
+
+
+def gaps(taken: set[int]) -> list[int]:
+    """De frigjorte numre = huller i det faktisk brugte interval
+    [min..max]. Selv-korrigerende: udregnes ud fra hvad der reelt er tildelt
+    lige nu, så en sletning eller et ønskeliste-flyt (der rydder nummeret)
+    automatisk dukker op som et hul uden nogen separat "frigivelses"-bogføring.
+    Tal under det laveste brugte tælles bevidst ikke med, så en flyttet
+    start-værdi (fx start på 100) ikke pludselig udpeger 1-99 som ledige."""
+    if not taken:
+        return []
+    return [n for n in range(min(taken), max(taken) + 1) if n not in taken]
+
+
+async def _taken_digital_numbers(db: AsyncIOMotorDatabase) -> set[int]:
+    taken: set[int] = set()
+    for collection in (MOVIE_COLLECTION, TV_SHOW_COLLECTION):
+        cursor = db[collection].find(
+            {"media_type": DIGITAL, "serial_number": {"$exists": True}}, {"serial_number": 1}
+        )
+        async for doc in cursor:
+            number = doc.get("serial_number")
+            if isinstance(number, int):
+                taken.add(number)
+    return taken
+
+
+async def free_serial_numbers(db: AsyncIOMotorDatabase) -> list[int]:
+    """De ledige (frigjorte) D#-numre, laveste først."""
+    return gaps(await _taken_digital_numbers(db))
+
+
+async def _next_from_counter(db: AsyncIOMotorDatabase) -> int:
     """Samme race-sikre "spring optagne over"-tilgang som de to fysiske
     serier (se movie_repository.next_serial_number), udvidet til at tjekke
     begge collections."""
@@ -72,6 +121,17 @@ async def next_serial_number(db: AsyncIOMotorDatabase) -> int:
             return candidate
 
     raise RuntimeError("Kunne ikke finde et ledigt digitalt serienummer")
+
+
+async def next_serial_number(db: AsyncIOMotorDatabase) -> int:
+    """Feature #131 — er genbrug slået til og findes der et frigjort D#-nummer,
+    genbruges det laveste før tælleren rykker videre. Ellers (eller uden huller)
+    som hidtil fra tælleren."""
+    if await is_reuse_enabled(db):
+        free = await free_serial_numbers(db)
+        if free:
+            return free[0]
+    return await _next_from_counter(db)
 
 
 async def find_series_holder(
@@ -152,7 +212,7 @@ async def backfill(db: AsyncIOMotorDatabase, collection_name: str) -> int:
         {"media_type": DIGITAL, "serial_number": {"$exists": False}}, {"_id": 1}
     ).sort("created_at", 1)
     async for doc in cursor:
-        collection_update = {"$set": {"serial_number": await next_serial_number(db)}}
+        collection_update = {"$set": {"serial_number": await _next_from_counter(db)}}
         await collection.update_one({"_id": doc["_id"]}, collection_update)
         assigned += 1
 
@@ -172,7 +232,7 @@ async def backfill(db: AsyncIOMotorDatabase, collection_name: str) -> int:
         if clash is None:
             continue
         await collection.update_one(
-            {"_id": doc["_id"]}, {"$set": {"serial_number": await next_serial_number(db)}}
+            {"_id": doc["_id"]}, {"$set": {"serial_number": await _next_from_counter(db)}}
         )
         assigned += 1
 

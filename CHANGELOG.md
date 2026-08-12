@@ -2,6 +2,17 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.102.0 build 0138] — 2026-08-12 — feature: to store scan/søg-titel-knapper også på Film- og TV-siderne (FEATURES.md #126)
+
+Breder #124's to-knap-mønster ud fra ønskelisten til Film-biblioteket og TV-serie-siden: øverst "📷 Scan cover" og "🔍 Søg titel", der hver åbner kun den relevante del af `MovieLookupForm`, så den manuelle titel-søgning ikke forveksles med bibliotekets generelle søgning.
+
+- På Film/TV **beholdes den generelle søgning fremtrædende** (fuld række, Jans valg), i modsætning til ønskelisten hvor den er demoted.
+- Det gamle `showAddPanel`-toggle er fjernet fra `Library.jsx` og `TvShows.jsx`; begge bruger nu `addMode` i alle fire mode-kombinationer (Film, TV, film-ønske, TV-ønske). Delte toolbar-dele (søgefelt + sortér/filter/felter) udtrukket også i `TvShows.jsx`.
+- i18n omdøbt: `lib.wishScan`/`lib.wishSearchTitle` → generiske `lib.addScan`/`lib.addSearchTitle`. CSS: `.wishlist-add-actions`/`.wishlist-action` → `.add-actions`/`.add-action`.
+- Ren frontend. Tests: frontend-suite grøn (47). Live-verificeret (regel 18): begge sider viser de to knapper med prominent søgning; hver knap åbner kun sit eget panel.
+
+Berørte filer: `frontend/src/pages/Library.jsx`, `frontend/src/pages/Library.css`, `frontend/src/pages/TvShows.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `version.json`.
+
 ## [0.101.0 build 0137] — 2026-08-12 — feature: besøgs-statistik på Statistik-siden (FEATURES.md #125)
 
 Ny "Besøg"-sektion på Statistik-siden: hvem der besøger, hvad de besøger, antal om dagen og total m.m. Jans scope: alle besøg (offentlig /bio + indloggede), sider + åbnede titler, og med brugernavn (anonyme = "gæst").

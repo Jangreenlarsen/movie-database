@@ -15,15 +15,16 @@
   flex-shrink: 0;
 }
 
-/* Feature #124 — ønskelistens to store handlingsknapper (Scan / Søg titel).
-   Deler bredden ligeligt og er tydeligt større end den demoted filter-række
-   nedenunder, så tilføj-flowet er det man ser først på mobil. */
-.wishlist-add-actions {
+/* Feature #124/#126 — tilføj-flowets to store handlingsknapper (Scan / Søg
+   titel). Deler bredden ligeligt og er tydeligt større end værktøjslinjen
+   nedenunder, så tilføj-flowet er det man ser først på mobil. Bruges på både
+   bibliotek, TV-siden og ønskelisten. */
+.add-actions {
   display: flex;
   gap: 10px;
 }
 
-.wishlist-action {
+.add-action {
   flex: 1;
   justify-content: center;
   padding: 16px 14px;
@@ -31,7 +32,7 @@
 }
 
 /* Aktiv knap = dens panel er foldet ud nedenfor. */
-.wishlist-action.active {
+.add-action.active {
   box-shadow: inset 0 0 0 2px var(--accent-contrast);
 }
 

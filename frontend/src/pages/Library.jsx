@@ -174,11 +174,10 @@ export default function Library({
   const [showFieldPanel, setShowFieldPanel] = useState(false);
   const [showSortPanel, setShowSortPanel] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
-  const [showAddPanel, setShowAddPanel] = useState(false);
-  // Feature #124 — ønskelistens to store handlingsknapper: "scan" | "manual" |
-  // null. Erstatter `showAddPanel` i wishlist-varianten, så scan og titel-søg
-  // åbnes hver for sig (mindre forveksling). Biblioteket bruger fortsat
-  // showAddPanel (ét samlet panel, mode="both").
+  // Feature #124/#126 — tilføj-flowets to store handlingsknapper: "scan" |
+  // "manual" | null. Bruges nu på både bibliotek og ønskeliste (#126 bredte
+  // det ud fra kun ønskelisten), så scan og titel-søgning åbnes hver for sig
+  // og ikke forveksles med den generelle søgning.
   const [addMode, setAddMode] = useState(null);
   const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
   const [settingsError, setSettingsError] = useState(null);
@@ -520,68 +519,49 @@ export default function Library({
       </div>
 
       <div className="library-toolbar">
-        {wishlist ? (
-          <>
-            {/* Feature #124 — ønskelistens mobilvenlige variant: to store
-                handlingsknapper øverst (tilføj-flowet er det man bruger mest
-                her), og den generelle søgning demoted til en lille sekundær
-                række med sit eget "Filtrér"-ordlyd, så den ikke forveksles
-                med scan-panelets titel-søgning. */}
-            <div className="wishlist-add-actions">
-              <button
-                type="button"
-                className={`btn btn-primary wishlist-action${addMode === "scan" ? " active" : ""}`}
-                onClick={() => setAddMode((m) => (m === "scan" ? null : "scan"))}
-              >
-                📷 {t("lib.wishScan")}
-              </button>
-              <button
-                type="button"
-                className={`btn btn-primary wishlist-action${addMode === "manual" ? " active" : ""}`}
-                onClick={() => setAddMode((m) => (m === "manual" ? null : "manual"))}
-              >
-                🔍 {t("lib.wishSearchTitle")}
-              </button>
-            </div>
-
-            <div className="search-row search-row-secondary">
-              {searchInputWrap(t("lib.wishlistFilterPlaceholder"))}
-              {sortFilterFieldButtons}
-            </div>
-          </>
-        ) : (
-          <div className="search-row">
-            {searchInputWrap(t("lib.searchPlaceholder"))}
-
-            {/* Feature #116 — gæster må oprette ønsker, så add-knappen vises for
-                dem i ønske-fanen, men aldrig i selve biblioteket. */}
-            {!isGuest && (
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => setShowAddPanel((v) => !v)}
-              >
-                {showAddPanel ? t("common.close") : t("lib.addMovie")} ▾
-              </button>
-            )}
-
-            {sortFilterFieldButtons}
+        {/* Feature #124/#126 — to store handlingsknapper (Scan cover / Søg
+            titel) der hver åbner kun den relevante del, så den manuelle
+            titel-søgning ikke forveksles med bibliotekets generelle søgning.
+            #124 gav ønskelisten dette; #126 bredte det ud til Film- og
+            TV-siderne (Jans ønske 2026-08-12). Gæster ser dem kun på
+            ønskelisten (de må oprette ønsker, men intet i selve biblioteket,
+            jf. feature #116). */}
+        {(!isGuest || wishlist) && (
+          <div className="add-actions">
+            <button
+              type="button"
+              className={`btn btn-primary add-action${addMode === "scan" ? " active" : ""}`}
+              onClick={() => setAddMode((m) => (m === "scan" ? null : "scan"))}
+            >
+              📷 {t("lib.addScan")}
+            </button>
+            <button
+              type="button"
+              className={`btn btn-primary add-action${addMode === "manual" ? " active" : ""}`}
+              onClick={() => setAddMode((m) => (m === "manual" ? null : "manual"))}
+            >
+              🔍 {t("lib.addSearchTitle")}
+            </button>
           </div>
         )}
 
-        {/* Feature #124 — ønskelisten åbner scan/titel-søg hver for sig via de
-            to store knapper (`addMode`); biblioteket bruger fortsat ét samlet
-            panel (`showAddPanel`, mode="both"). */}
-        {((wishlist && addMode) || (!wishlist && showAddPanel)) && (
+        {/* Ønskelisten demoter den generelle søgning (man filtrerer sjældent
+            sine ønsker); Film-siden beholder den fremtrædende (Jans valg
+            2026-08-12), da den bruges meget til at filtrere biblioteket. */}
+        <div className={`search-row${wishlist ? " search-row-secondary" : ""}`}>
+          {searchInputWrap(t(wishlist ? "lib.wishlistFilterPlaceholder" : "lib.searchPlaceholder"))}
+          {sortFilterFieldButtons}
+        </div>
+
+        {addMode && (
           <div style={{ marginTop: 8 }}>
             <MovieLookupForm
               user={user}
               wishlist={wishlist}
-              mode={wishlist ? addMode : "both"}
-              key={wishlist ? addMode : "both"}
+              mode={addMode}
+              key={addMode}
               onSaved={(kind) => {
                 refresh();
-                setShowAddPanel(false);
                 setAddMode(null);
                 // Scan/søgning her rammer også TMDb's TV-database, og en
                 // valgt TV-serie havner i tv_shows — en collection denne

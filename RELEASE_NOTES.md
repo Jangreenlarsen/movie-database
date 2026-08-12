@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.102.0 (build 0138) — 2026-08-12
+
+- **Nem tilføjelse på Film- og TV-siderne.** De to store knapper "📷 Scan cover" og "🔍 Søg titel" — som du kender fra indkøbsønsker — findes nu også på Film- og TV-serie-siderne. Hver knap åbner kun det den handler om (scanneren eller titel-søgningen), så det ikke forveksles med den almindelige søgning. På Film/TV bliver den almindelige søgning stående i fuld størrelse, så du stadig let kan filtrere biblioteket.
+
 ## v0.101.0 (build 0137) — 2026-08-12
 
 - **Ny besøgs-statistik.** Statistik-siden har nu en "Besøg"-sektion, hvor du kan se hvor mange besøg der har været i alt og i dag, hvor mange unikke brugere og gæster, samt hvad der besøges: en oversigt pr. dag (sidste 14 dage), de mest besøgte sider (inkl. den offentlige Voldby BIO-side), de mest åbnede film/serier, og de mest aktive brugere. Indloggede besøg vises med brugernavn; besøg på den offentlige side uden login tælles som "gæst".

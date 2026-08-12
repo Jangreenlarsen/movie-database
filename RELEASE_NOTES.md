@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.100.0 (build 0136) — 2026-08-12
+
+- **Indkøbsønsker er nu lettere at bruge på mobilen.** Øverst på siden er der to store knapper — **📷 Scan cover** og **🔍 Søg titel** — så det er tydeligt hvordan du tilføjer et nyt ønske. Den almindelige søgning i dine eksisterende ønsker er flyttet ned i en lille "Filtrér dine ønsker"-linje, så den ikke længere forveksles med titel-søgningen. Trykker du "Scan cover" ser du kun scanneren; trykker du "Søg titel" ser du kun titel-søgningen (og du kan skifte mellem dem hvis et scan ikke giver noget).
+
 ## v0.99.0 (build 0135) — 2026-08-11
 
 - **Undertekster er nu til at vælge.** I stedet for at skrive underteksterne som fri tekst afkrydser du nu **Eng** og/eller **DK** — og vil du angive noget andet (fx "Norsk" eller "Fastbrændt DA"), vælger du **Andet** og skriver det i feltet der dukker op. Gælder både film og TV-serier. Dine eksisterende undertekster bliver automatisk konverteret til det nye format.

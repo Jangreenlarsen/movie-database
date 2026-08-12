@@ -56,8 +56,16 @@ function emptyDraftFields(user, wishlist) {
  * når der reelt er noget at vælge — er der intet at gruppere ind i, går
  * flowet lige så direkte til redigering som for film.
  */
-export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
+export default function MovieLookupForm({ user, wishlist = false, onSaved, mode = "both" }) {
   const t = useT();
+  // Feature #124 — `mode` styrer hvilke tilføj-veje der vises. `both` (default)
+  // = scan- OG titel-søgnings-kort side om side, som biblioteket altid har haft.
+  // `scan`/`manual` = kun det ene kort (ønskelistens to store knapper), så den
+  // manuelle titel-søgning ikke forveksles med bibliotekets generelle søgning.
+  // Lokal state så scan→titel-fallbacken kan skifte kort uden at forælderen
+  // skal remonte panelet; synkroniseres hvis forælderen sender en ny `mode`.
+  const [activeMode, setActiveMode] = useState(mode);
+  useEffect(() => setActiveMode(mode), [mode]);
   const [barcode, setBarcode] = useState(null);
   const [barcodeSource, setBarcodeSource] = useState(null);
   const [candidates, setCandidates] = useState([]);
@@ -322,6 +330,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
 
   return (
     <section className="scan-layout">
+      {activeMode !== "manual" && (
       <div className="card scan-card">
         <h2>{t("scan.heading")}</h2>
         <p className="muted">{t("scan.description")}</p>
@@ -356,10 +365,36 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
             {t("scan.guessNoTmdbMatch", { guess: guessedTitle })}
           </div>
         )}
+        {/* Feature #124 — når scan-kortet vises alene (ønskelistens "Scan
+            cover"-knap) og et scan ikke gav et match, er titel-søgningen ikke
+            synlig ved siden af; tilbyd derfor et skift dertil. Gættet er
+            allerede forudfyldt i manualQuery, så titel-feltet står klar. */}
+        {activeMode === "scan" && scanStatus === "ready" && candidates.length === 0 && (
+          <button
+            type="button"
+            className="btn"
+            style={{ marginTop: 10 }}
+            onClick={() => setActiveMode("manual")}
+          >
+            {t("scan.tryTitleInstead")}
+          </button>
+        )}
       </div>
+      )}
 
+      {activeMode !== "scan" && (
       <div className="card scan-card">
         <h2>{t("scan.manualHeading")}</h2>
+        {activeMode === "manual" && (
+          <button
+            type="button"
+            className="btn"
+            style={{ marginBottom: 10 }}
+            onClick={() => setActiveMode("scan")}
+          >
+            {t("scan.tryScanInstead")}
+          </button>
+        )}
         {guessedTitle && (
           <p className="muted" style={{ marginTop: 0 }}>
             {t("scan.prefilledHint")}
@@ -391,6 +426,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved }) {
           </div>
         )}
       </div>
+      )}
 
       {candidates.length > 0 && (
         <div>

@@ -3,7 +3,7 @@ async def test_movies_list_is_unpaginated_by_default(client):
     return every match (Print-siden/Voldby BIO's søgning rely on this),
     not silently truncate to a default page size."""
     for i in range(5):
-        await client.post("/api/movies", json={"title": f"Movie {i}", "media_type": "Fysisk", "format": "DVD"})
+        await client.post("/api/movies", json={"title": f"Movie {i}", "media_type": "Fysisk", "format": "F-DVD"})
 
     response = await client.get("/api/movies")
     data = response.json()
@@ -12,11 +12,11 @@ async def test_movies_list_is_unpaginated_by_default(client):
 
 
 async def test_movies_pagination_returns_correct_page_and_total(client):
-    await client.post("/api/movies", json={"title": "Apple", "media_type": "Fysisk", "format": "DVD"})
-    await client.post("/api/movies", json={"title": "Banana", "media_type": "Fysisk", "format": "DVD"})
-    await client.post("/api/movies", json={"title": "Cherry", "media_type": "Fysisk", "format": "DVD"})
-    await client.post("/api/movies", json={"title": "Date", "media_type": "Fysisk", "format": "DVD"})
-    await client.post("/api/movies", json={"title": "Elderberry", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Apple", "media_type": "Fysisk", "format": "F-DVD"})
+    await client.post("/api/movies", json={"title": "Banana", "media_type": "Fysisk", "format": "F-DVD"})
+    await client.post("/api/movies", json={"title": "Cherry", "media_type": "Fysisk", "format": "F-DVD"})
+    await client.post("/api/movies", json={"title": "Date", "media_type": "Fysisk", "format": "F-DVD"})
+    await client.post("/api/movies", json={"title": "Elderberry", "media_type": "Fysisk", "format": "F-DVD"})
 
     first_page = await client.get(
         "/api/movies", params={"sort": "title:asc", "page": 1, "page_size": 2}
@@ -41,7 +41,7 @@ async def test_movies_pagination_returns_correct_page_and_total(client):
 
 
 async def test_movies_pagination_beyond_last_page_returns_empty_items(client):
-    await client.post("/api/movies", json={"title": "Only Movie", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Only Movie", "media_type": "Fysisk", "format": "F-DVD"})
 
     response = await client.get("/api/movies", params={"page": 5, "page_size": 10})
     data = response.json()
@@ -50,8 +50,8 @@ async def test_movies_pagination_beyond_last_page_returns_empty_items(client):
 
 
 async def test_movies_pagination_respects_filters_in_total_count(client):
-    await client.post("/api/movies", json={"title": "Tagged", "tags": ["Christmas"], "media_type": "Fysisk", "format": "DVD"})
-    await client.post("/api/movies", json={"title": "Untagged", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Tagged", "tags": ["Christmas"], "media_type": "Fysisk", "format": "F-DVD"})
+    await client.post("/api/movies", json={"title": "Untagged", "media_type": "Fysisk", "format": "F-DVD"})
 
     response = await client.get(
         "/api/movies", params={"tags": "christmas", "page": 1, "page_size": 10}
@@ -62,9 +62,9 @@ async def test_movies_pagination_respects_filters_in_total_count(client):
 
 
 async def test_tv_shows_pagination_returns_correct_page_and_total(client):
-    await client.post("/api/tv-shows", json={"name": "Alpha", "media_type": "Fysisk", "format": "DVD"})
-    await client.post("/api/tv-shows", json={"name": "Beta", "media_type": "Fysisk", "format": "DVD"})
-    await client.post("/api/tv-shows", json={"name": "Gamma", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/tv-shows", json={"name": "Alpha", "media_type": "Fysisk", "format": "F-DVD"})
+    await client.post("/api/tv-shows", json={"name": "Beta", "media_type": "Fysisk", "format": "F-DVD"})
+    await client.post("/api/tv-shows", json={"name": "Gamma", "media_type": "Fysisk", "format": "F-DVD"})
 
     first_page = await client.get(
         "/api/tv-shows", params={"sort": "name:asc", "page": 1, "page_size": 2}
@@ -83,7 +83,7 @@ async def test_tv_shows_pagination_returns_correct_page_and_total(client):
 
 async def test_tv_shows_list_is_unpaginated_by_default(client):
     for i in range(3):
-        await client.post("/api/tv-shows", json={"name": f"Show {i}", "media_type": "Fysisk", "format": "DVD"})
+        await client.post("/api/tv-shows", json={"name": f"Show {i}", "media_type": "Fysisk", "format": "F-DVD"})
 
     response = await client.get("/api/tv-shows")
     data = response.json()
@@ -95,7 +95,7 @@ async def test_page_without_page_size_is_ignored(client):
     """Both `page` and `page_size` must be present to actually paginate —
     a lone `page` with no `page_size` falls back to the unbounded default
     rather than dividing by an undefined page size."""
-    await client.post("/api/movies", json={"title": "Solo", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Solo", "media_type": "Fysisk", "format": "F-DVD"})
 
     response = await client.get("/api/movies", params={"page": 1})
     data = response.json()

@@ -18,8 +18,8 @@ async def _guest_client(admin_client, username="guestuser"):
 
 
 async def test_guest_can_list_movies_and_tv_shows(client):
-    await client.post("/api/movies", json={"title": "Visible Movie", "media_type": "Fysisk", "format": "DVD"})
-    await client.post("/api/tv-shows", json={"name": "Visible Show", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Visible Movie", "media_type": "Fysisk", "format": "F-DVD"})
+    await client.post("/api/tv-shows", json={"name": "Visible Show", "media_type": "Fysisk", "format": "F-DVD"})
     guest = await _guest_client(client)
 
     movies = await guest.get("/api/movies")
@@ -34,7 +34,7 @@ async def test_guest_can_list_movies_and_tv_shows(client):
 
 async def test_guest_cannot_create_movie(client):
     guest = await _guest_client(client)
-    response = await guest.post("/api/movies", json={"title": "Should Fail", "media_type": "Fysisk", "format": "DVD"})
+    response = await guest.post("/api/movies", json={"title": "Should Fail", "media_type": "Fysisk", "format": "F-DVD"})
     assert response.status_code == 403
     await guest.aclose()
 
@@ -75,7 +75,7 @@ async def test_guest_order_status_is_ignored_on_wishlist_create(client):
 
 
 async def test_guest_cannot_update_or_delete_movie(client):
-    created = await client.post("/api/movies", json={"title": "Protected Movie", "media_type": "Fysisk", "format": "DVD"})
+    created = await client.post("/api/movies", json={"title": "Protected Movie", "media_type": "Fysisk", "format": "F-DVD"})
     movie_id = created.json()["id"]
     guest = await _guest_client(client)
 
@@ -88,11 +88,11 @@ async def test_guest_cannot_update_or_delete_movie(client):
 
 
 async def test_guest_cannot_create_update_or_delete_tv_show(client):
-    created = await client.post("/api/tv-shows", json={"name": "Protected Show", "media_type": "Fysisk", "format": "DVD"})
+    created = await client.post("/api/tv-shows", json={"name": "Protected Show", "media_type": "Fysisk", "format": "F-DVD"})
     show_id = created.json()["id"]
     guest = await _guest_client(client)
 
-    create = await guest.post("/api/tv-shows", json={"name": "Should Fail", "media_type": "Fysisk", "format": "DVD"})
+    create = await guest.post("/api/tv-shows", json={"name": "Should Fail", "media_type": "Fysisk", "format": "F-DVD"})
     assert create.status_code == 403
 
     update = await guest.patch(f"/api/tv-shows/{show_id}", json={"personal_rating": 10})
@@ -134,7 +134,7 @@ async def test_guest_cannot_toggle_season_owned_or_episode_watched(client, monke
     monkeypatch.setattr(tmdb_client, "get_tv_show_details", fake_get_tv_show_details)
     monkeypatch.setattr(tmdb_client, "get_season_details", fake_get_season_details)
 
-    created = await client.post("/api/tv-shows", json={"tmdb_id": 1, "media_type": "Fysisk", "format": "DVD"})
+    created = await client.post("/api/tv-shows", json={"tmdb_id": 1, "media_type": "Fysisk", "format": "F-DVD"})
     show_id = created.json()["id"]
     guest = await _guest_client(client)
 
@@ -155,7 +155,7 @@ async def test_guest_can_request_screening(client):
     choice 2026-08-03): guests may request a screening for a title they
     find in the library — the one write action allowed for the read-only
     role, since it's how they'd take part in Voldby BIO at all."""
-    created = await client.post("/api/movies", json={"title": "Requestable Movie", "media_type": "Fysisk", "format": "DVD"})
+    created = await client.post("/api/movies", json={"title": "Requestable Movie", "media_type": "Fysisk", "format": "F-DVD"})
     movie_id = created.json()["id"]
     guest = await _guest_client(client)
 

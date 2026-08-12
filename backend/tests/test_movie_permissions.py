@@ -4,7 +4,7 @@ from app.main import app
 
 
 async def test_new_movie_records_registrant_and_defaults_owner(client):
-    response = await client.post("/api/movies", json={"title": "Registered Movie", "media_type": "Fysisk", "format": "DVD"})
+    response = await client.post("/api/movies", json={"title": "Registered Movie", "media_type": "Fysisk", "format": "F-DVD"})
     movie = response.json()
     assert movie["registered_by"] == "testuser"
     assert movie["owner"] == "testuser"
@@ -13,7 +13,7 @@ async def test_new_movie_records_registrant_and_defaults_owner(client):
 async def test_owner_and_location_can_be_set_explicitly(client):
     response = await client.post(
         "/api/movies",
-        json={"title": "Shelf Movie", "location": "Stuen", "owner": "anna", "media_type": "Fysisk", "format": "DVD"},
+        json={"title": "Shelf Movie", "location": "Stuen", "owner": "anna", "media_type": "Fysisk", "format": "F-DVD"},
     )
     movie = response.json()
     assert movie["location"] == "Stuen"
@@ -34,7 +34,7 @@ async def test_standard_user_can_edit_serial_number_of_own_registered_movie(clie
         await client.patch(
             f"/api/users/{register.json()['id']}/status", json={"status": "active"}
         )
-        create = await standard_client.post("/api/movies", json={"title": "Own Movie", "media_type": "Fysisk", "format": "DVD"})
+        create = await standard_client.post("/api/movies", json={"title": "Own Movie", "media_type": "Fysisk", "format": "F-DVD"})
         movie_id = create.json()["id"]
 
         response = await standard_client.patch(
@@ -45,7 +45,7 @@ async def test_standard_user_can_edit_serial_number_of_own_registered_movie(clie
 
 
 async def test_standard_user_cannot_edit_serial_number_of_others_movie(client):
-    create = await client.post("/api/movies", json={"title": "Admin's Movie", "media_type": "Fysisk", "format": "DVD"})
+    create = await client.post("/api/movies", json={"title": "Admin's Movie", "media_type": "Fysisk", "format": "F-DVD"})
     movie_id = create.json()["id"]
 
     transport = ASGITransport(app=app)
@@ -70,7 +70,7 @@ async def test_admin_can_edit_serial_number_of_any_movie(client):
             f"/api/users/{register.json()['id']}/status", json={"status": "active"}
         )
         create = await standard_client.post(
-            "/api/movies", json={"title": "Someone Else's Movie", "media_type": "Fysisk", "format": "DVD"}
+            "/api/movies", json={"title": "Someone Else's Movie", "media_type": "Fysisk", "format": "F-DVD"}
         )
         movie_id = create.json()["id"]
 

@@ -129,6 +129,15 @@ _FORMAT_LABEL_MIGRATIONS = {
     "Digital-STD": "D-SD",
     "D-UHD": "D-4K",
     "D-HD": "D-1080",
+    # v0.108.0 — fysiske formater fik "F-"-præfiks, D-SD -> D-480, og VHS
+    # fjernet (migreres til F-DVD, Jans valg 2026-08-12). Kaskaden ovenfra
+    # fortsætter: Blu-ray -> BD -> F-BD, 4K Ultra HD -> UHD -> F-UHD,
+    # Digital-STD -> D-SD -> D-480.
+    "D-SD": "D-480",
+    "DVD": "F-DVD",
+    "BD": "F-BD",
+    "UHD": "F-UHD",
+    "VHS": "F-DVD",
 }
 
 

@@ -395,7 +395,7 @@ async def test_create_movie_from_tmdb_id_fetches_metadata(client, monkeypatch):
     monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
 
     response = await client.post(
-        "/api/movies", json={"tmdb_id": 603, "barcode": "012569059406", "tags": ["Favorite"], "media_type": "Fysisk", "format": "DVD"}
+        "/api/movies", json={"tmdb_id": 603, "barcode": "012569059406", "tags": ["Favorite"], "media_type": "Fysisk", "format": "F-DVD"}
     )
     assert response.status_code == 201
     movie = response.json()
@@ -409,7 +409,7 @@ async def test_create_movie_from_tmdb_id_fetches_metadata(client, monkeypatch):
 
 
 async def test_create_movie_requires_tmdb_id_or_title(client):
-    response = await client.post("/api/movies", json={"tags": ["x"], "media_type": "Fysisk", "format": "DVD"})
+    response = await client.post("/api/movies", json={"tags": ["x"], "media_type": "Fysisk", "format": "F-DVD"})
     assert response.status_code == 422
 
 

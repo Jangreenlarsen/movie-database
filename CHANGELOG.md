@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.108.0 build 0145] — 2026-08-12 — feature: format-oprydning (F-præfiks, D-480, VHS fjernet) (FEATURES.md #132)
+
+Fysiske formater fik "F-"-præfiks: DVD→F-DVD, BD→F-BD, UHD→F-UHD. D-SD→D-480 (opløsnings-baseret). VHS fjernet som format. Enum-medlemsnavne uændrede.
+
+- **Migration** ved opstart: de fem omdøbninger i `_FORMAT_LABEL_MIGRATIONS` (begge repos, kaskade). VHS-poster migreres til F-DVD (Jans valg). TV-migrationen fik også de fysiske renames.
+- Plex-fallback/i18n-beskrivelse opdateret (D-SD→D-480). Frontend læser formaterne dynamisk.
+- Tests: ny `test_v0_108_format_renames_and_vhs_removal`, `attribute-options` udvidet (+ `not in` på de gamle), ~270 test-format-værdier opdateret. Backend + frontend suiter grønne.
+
+Berørte filer: `backend/app/models/movie.py`, `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, mange `backend/tests/*.py`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `version.json`.
+
 ## [0.107.0 build 0144] — 2026-08-12 — feature: genbrug af frigjorte serienumre (FEATURES.md #131)
 
 Ny til/fra "Genbrug frigjorte numre" i serienummer-sektionen (Indstillinger → Bibliotek), fælles for alle tre serier (M#/T#/D#). Slået til får en ny post det laveste frigjorte nummer i sin serie før tælleren går videre; slået fra = hidtidig adfærd (tæller kun opad). Et "frigjort" nummer = et hul i det brugte interval, opstået ved sletning eller ønskeliste-flyt (selv-korrigerende — ingen separat bogføring). Sektionen viser desuden de ledige numre pr. serie.

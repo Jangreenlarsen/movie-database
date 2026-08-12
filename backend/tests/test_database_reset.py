@@ -19,7 +19,7 @@ async def test_reset_requires_admin(client):
 
 
 async def test_reset_rejects_wrong_password(client):
-    await client.post("/api/movies", json={"title": "Should Survive", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Should Survive", "media_type": "Fysisk", "format": "F-DVD"})
 
     response = await client.post(
         "/api/system/reset", json={"current_password": "wrong-password"}
@@ -31,11 +31,11 @@ async def test_reset_rejects_wrong_password(client):
 
 
 async def test_reset_clears_library_and_related_data(client):
-    await client.post("/api/movies", json={"title": "Doomed Movie", "tags": ["x"], "media_type": "Fysisk", "format": "DVD"})
-    await client.post("/api/tv-shows", json={"name": "Doomed Show", "media_type": "Fysisk", "format": "DVD"})
-    created = await client.post("/api/movies", json={"title": "Deleted Doomed Movie", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "Doomed Movie", "tags": ["x"], "media_type": "Fysisk", "format": "F-DVD"})
+    await client.post("/api/tv-shows", json={"name": "Doomed Show", "media_type": "Fysisk", "format": "F-DVD"})
+    created = await client.post("/api/movies", json={"title": "Deleted Doomed Movie", "media_type": "Fysisk", "format": "F-DVD"})
     await client.delete(f"/api/movies/{created.json()['id']}")
-    movie_for_screening = await client.post("/api/movies", json={"title": "Screening Movie", "media_type": "Fysisk", "format": "DVD"})
+    movie_for_screening = await client.post("/api/movies", json={"title": "Screening Movie", "media_type": "Fysisk", "format": "F-DVD"})
     movie_id = movie_for_screening.json()["id"]
     await client.post(
         "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id}
@@ -86,17 +86,17 @@ async def test_reset_does_not_touch_users_or_system_settings(client, monkeypatch
 
 
 async def test_serial_numbers_restart_after_reset(client):
-    first = await client.post("/api/movies", json={"title": "Before Reset", "media_type": "Fysisk", "format": "DVD"})
+    first = await client.post("/api/movies", json={"title": "Before Reset", "media_type": "Fysisk", "format": "F-DVD"})
     assert first.json()["serial_number"] == 1
 
     await client.post("/api/system/reset", json={"current_password": "testpassword123"})
 
-    after = await client.post("/api/movies", json={"title": "After Reset", "media_type": "Fysisk", "format": "DVD"})
+    after = await client.post("/api/movies", json={"title": "After Reset", "media_type": "Fysisk", "format": "F-DVD"})
     assert after.json()["serial_number"] == 1
 
 
 async def test_reset_is_audit_logged(client):
-    await client.post("/api/movies", json={"title": "One Movie", "media_type": "Fysisk", "format": "DVD"})
+    await client.post("/api/movies", json={"title": "One Movie", "media_type": "Fysisk", "format": "F-DVD"})
     await client.post("/api/system/reset", json={"current_password": "testpassword123"})
 
     log = await client.get("/api/audit-log")

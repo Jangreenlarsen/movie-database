@@ -8,7 +8,7 @@ søgefeltet kan slå et serienummer op med eller uden serie-bogstav.
 from app.repositories import movie_repository, tv_show_repository
 from app.repositories.text_search import build_text_query
 
-PHYSICAL = {"media_type": "Fysisk", "format": "DVD"}
+PHYSICAL = {"media_type": "Fysisk", "format": "F-DVD"}
 DIGITAL = {"media_type": "Digital", "format": "D-1080"}
 
 

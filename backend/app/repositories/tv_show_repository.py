@@ -67,19 +67,23 @@ MAX_SORT_LEVELS = 3
 # hvor film har `director` (BUGS.md #48).
 TEXT_SEARCH_FIELDS = ["name", "overview", "cast", "creators", "genres"]
 
-# v0.84.0 — samme relabel som movie_repository._FORMAT_LABEL_MIGRATIONS, men
-# kun de digitale niveauer: TV-serier fandtes ikke endnu ved den første
-# format-omdøbning (v0.22.0), så Blu-ray/4K Ultra HD er der intet at
-# migrere. Plex-importen (feature #91) skriver derimod digitale
-# kvalitetsniveauer på TV-serier lige så vel som på film. v0.105.0 omdøbte
-# D-HD -> D-1080 og D-UHD -> D-4K (Jans ønske 2026-08-12) — kaskade som i
-# movie_repository (sekventielle update_many i dict-orden).
+# v0.84.0 — samme relabel som movie_repository._FORMAT_LABEL_MIGRATIONS. TV-serier
+# fandtes ikke ved den *første* format-omdøbning (v0.22.0), men de kan sagtens
+# have de korte format-værdier fra manuel indtastning (fysiske box-set som BD/DVD)
+# og Plex-importens digitale niveauer (#91). v0.105.0: D-HD -> D-1080, D-UHD ->
+# D-4K. v0.108.0: fysiske formater fik "F-"-præfiks, D-SD -> D-480, VHS fjernet
+# (-> F-DVD). Kaskade som i movie_repository (sekventielle update_many i orden).
 _FORMAT_LABEL_MIGRATIONS = {
     "Digital-UHD": "D-UHD",
     "Digital-HD": "D-HD",
     "Digital-STD": "D-SD",
     "D-UHD": "D-4K",
     "D-HD": "D-1080",
+    "D-SD": "D-480",
+    "DVD": "F-DVD",
+    "BD": "F-BD",
+    "UHD": "F-UHD",
+    "VHS": "F-DVD",
 }
 
 # v0.105.0 — TV-serier fik aldrig v0.22.0's audio-relabel (fandtes ikke endnu),

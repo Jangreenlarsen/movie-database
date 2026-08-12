@@ -302,7 +302,7 @@ async def test_preset_can_capture_full_filter_state(client):
         "levels": [{"field": "title", "direction": "asc"}],
         "query": "matrix",
         "tags": ["favorit"],
-        "formats": ["BD"],
+        "formats": ["F-BD"],
         "audio_types": ["Atmos"],
         "media_types": ["Fysisk"],
         "watched": False,

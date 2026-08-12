@@ -32,7 +32,7 @@ async def test_migrates_old_format_labels_to_new_short_ones(db):
     await movie_repository._migrate_format_labels(db)
 
     blu_ray = await db[movie_repository.COLLECTION].find_one({"title": "Old Format Movie"})
-    assert blu_ray["format"] == "BD"
+    assert blu_ray["format"] == "F-BD"
     # A bare pre-v0.22.0 "Digital" cascades through the whole label history in
     # the same call: "Digital" -> "Digital-HD" -> "D-HD" -> "D-1080" (v0.105.0).
     digital = await db[movie_repository.COLLECTION].find_one({"title": "Old Digital Movie"})
@@ -85,7 +85,7 @@ async def test_ensure_indexes_runs_both_label_migrations(db):
     await movie_repository.ensure_indexes(db)
 
     movie = await db[movie_repository.COLLECTION].find_one({"title": "Startup Migrated Movie"})
-    assert movie["format"] == "UHD"
+    assert movie["format"] == "F-UHD"
     assert movie["audio_types"] == ["Atmos"]
 
 
@@ -117,10 +117,35 @@ async def test_migrates_digital_quality_tier_labels_to_new_short_ones(db):
     for title, new_format in [
         ("Old Digital UHD Movie", "D-4K"),
         ("Old Digital HD Movie", "D-1080"),
-        ("Old Digital STD Movie", "D-SD"),
+        ("Old Digital STD Movie", "D-480"),
     ]:
         movie = await db[movie_repository.COLLECTION].find_one({"title": title})
         assert movie["format"] == new_format
+
+
+async def test_v0_108_format_renames_and_vhs_removal(db):
+    """v0.108.0 — fysiske formater fik "F-"-præfiks, D-SD -> D-480, og VHS blev
+    fjernet (migreres til F-DVD, Jans valg 2026-08-12)."""
+    now = datetime.now(timezone.utc)
+    for i, (title, old_format) in enumerate(
+        [("VHS Movie", "VHS"), ("DVD Movie", "DVD"), ("BD Movie", "BD"), ("UHD Movie", "UHD"), ("SD Movie", "D-SD")],
+        start=20,
+    ):
+        await db[movie_repository.COLLECTION].insert_one(
+            {"title": title, "format": old_format, "audio_types": [], "serial_number": i, "created_at": now, "updated_at": now}
+        )
+
+    await movie_repository._migrate_format_labels(db)
+
+    for title, expected in [
+        ("VHS Movie", "F-DVD"),
+        ("DVD Movie", "F-DVD"),
+        ("BD Movie", "F-BD"),
+        ("UHD Movie", "F-UHD"),
+        ("SD Movie", "D-480"),
+    ]:
+        movie = await db[movie_repository.COLLECTION].find_one({"title": title})
+        assert movie["format"] == expected, title
 
 
 async def test_tv_shows_migrate_digital_quality_tier_labels_on_startup(db):

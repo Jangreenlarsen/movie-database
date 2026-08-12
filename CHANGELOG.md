@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.103.0 build 0140] — 2026-08-12 — feature: sortering på bestillingsstatus (FEATURES.md #127)
+
+`order_status` (ønskeliste-feltet fra #114) er nu et sorterbart felt. Backend: tilføjet til `SORT_FIELDS` + index i både `movie_repository` og `tv_show_repository`. Frontend: nyt "Bestillingsstatus"-punkt i sorterings-dropdownen på både Film-/ønske- og TV-siderne (genbruger `field.orderStatus`). Ikke-bestilt (None) sorteres først stigende. Test: `test_sorting_by_order_status_works_end_to_end` (asc+desc).
+
+Berørte filer: `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/tests/test_serial_sort_and_search.py`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `FEATURES.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `version.json`.
+
 ## [0.102.1 build 0139] — 2026-08-12 — juster: længere knap-tekster på tilføj-knapperne (Jans ønske)
 
 Tydeligere tekst på de to store tilføj-knapper (feature #126): "Scan cover" → "Tilføre film med scan cover", "Søg titel" → "Tilføre film på title". Kun i18n-værdier (`lib.addScan`/`lib.addSearchTitle`) i begge kataloger. Knapperne deles af Film-, TV- og ønskeliste-siderne, så teksten er ens alle tre steder. Live-verificeret i mobil-viewport (regel 18): den længere tekst ombryder pænt inde i knapperne (begge lige høje, ingen vandret overflow).

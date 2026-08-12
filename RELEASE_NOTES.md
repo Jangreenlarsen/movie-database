@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.103.0 (build 0140) — 2026-08-12
+
+- **Sortér efter bestillingsstatus.** Du kan nu vælge "Bestillingsstatus" i sorterings-menuen — særlig nyttig på indkøbsønsker, hvor du kan gruppere det du har bestilt (og hvor) fra det du endnu ikke har bestilt.
+
 ## v0.102.1 (build 0139) — 2026-08-12
 
 - **Tydeligere tilføj-knapper.** De to store knapper hedder nu "Tilføre film med scan cover" og "Tilføre film på title", så det er mere klart hvad de gør.

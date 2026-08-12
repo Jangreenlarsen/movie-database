@@ -57,6 +57,10 @@ SORT_FIELDS = {
     "owner": [("owner", "user")],
     "registered_by": [("registered_by", "user")],
     "watched_at": [("watched_at", "user")],
+    # Feature #127 — bestillingsstatus (kun sat på ønskeliste-poster, feature
+    # #114; None = ikke bestilt, sorteres først stigende). Meningsfuldt på
+    # ønskelisten; på det ejede bibliotek er feltet altid None (no-op).
+    "order_status": [("order_status", "user")],
 }
 DEFAULT_SORT_FIELD = "created_at"
 MAX_SORT_LEVELS = 3
@@ -200,6 +204,7 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     await collection.create_index("location")
     await collection.create_index("owner")
     await collection.create_index("registered_by")
+    await collection.create_index("order_status")  # feature #127 — sorterbart felt
     await db[DELETED_COLLECTION].create_index("deleted_at")
 
 

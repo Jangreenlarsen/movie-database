@@ -34,6 +34,8 @@ const SORT_OPTIONS = [
   { value: "location", labelKey: "field.location" },
   { value: "owner", labelKey: "field.owner" },
   { value: "registered_by", labelKey: "field.registeredBy" },
+  // Feature #127 — bestillingsstatus (kun sat på ønskeliste-poster).
+  { value: "order_status", labelKey: "field.orderStatus" },
 ];
 const MAX_SORT_LEVELS = 3;
 

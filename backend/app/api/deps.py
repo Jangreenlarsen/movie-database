@@ -59,6 +59,23 @@ async def get_current_user(
     return user
 
 
+async def get_optional_user(
+    access_token: str | None = Cookie(default=None, alias=COOKIE_NAME),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+) -> dict | None:
+    """Feature #125 — for det offentlige besøgs-endpoint: den delbare /bio-side
+    har ingen login, men et *indlogget* besøg skal stadig kunne kobles til
+    brugernavnet. Returnerer brugeren hvis der er en gyldig cookie, ellers None
+    — kaster aldrig 401 (i modsætning til `get_current_user`), så et anonymt
+    besøg går lige så stille igennem som et indlogget."""
+    if not access_token:
+        return None
+    payload = decode_access_token(access_token)
+    if not payload:
+        return None
+    return await user_repository.find_by_id(db, payload["sub"])
+
+
 async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
     if current_user.get("role") != "admin":
         raise NotAuthorizedError()

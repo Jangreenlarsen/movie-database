@@ -1063,6 +1063,23 @@ export function MovieDetailModal({
 }) {
   const t = useT();
   const locale = useLocale();
+  // Feature #125 — registrér et titel-besøg når en gemt film åbnes. Kun for
+  // rigtige poster (`movie.id`), ikke for MovieLookupForms kladde-tilstand.
+  // Fire-and-forget, [movie.id] så et nyt åbnet kort tæller igen.
+  useEffect(() => {
+    if (movie.id) {
+      api
+        .recordVisit({
+          page: "title",
+          kind: "title",
+          resource_kind: "movie",
+          resource_id: movie.id,
+          title: movie.title,
+        })
+        .catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [movie.id]);
   const [tagsInput, setTagsInput] = useState(movie.tags.join(", "));
   const [format, setFormat] = useState(movie.format ?? "");
   const [audioTypes, setAudioTypes] = useState(movie.audio_types);

@@ -13,6 +13,7 @@ from app.repositories import (
     tag_repository,
     tv_show_repository,
     user_repository,
+    visit_repository,
 )
 
 
@@ -51,6 +52,7 @@ async def db():
     await user_repository.ensure_indexes(test_db)
     await screening_request_repository.ensure_indexes(test_db)
     await screening_repository.ensure_indexes(test_db)
+    await visit_repository.ensure_indexes(test_db)
     return test_db
 
 

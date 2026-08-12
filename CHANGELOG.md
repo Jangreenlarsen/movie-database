@@ -2,6 +2,20 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.101.0 build 0137] — 2026-08-12 — feature: besøgs-statistik på Statistik-siden (FEATURES.md #125)
+
+Ny "Besøg"-sektion på Statistik-siden: hvem der besøger, hvad de besøger, antal om dagen og total m.m. Jans scope: alle besøg (offentlig /bio + indloggede), sider + åbnede titler, og med brugernavn (anonyme = "gæst").
+
+- **Nyt lag** (ARCHITECTURE.md-endpoints tilføjet): `visits`-collection, `models/analytics.py` (`VisitCreate`/`VisitStats`), `visit_repository`, `analytics_service` (aggregering i Python — mongomock-sikkert, ingen `$dateToString`), `api/analytics.py`.
+- **`POST /api/analytics/visit`** er offentligt (så /bio kan poste uden login) via ny `deps.get_optional_user` (bruger hvis gyldig cookie, ellers None — aldrig 401). Brugernavnet sættes server-side, aldrig fra payloaden. **`GET /api/analytics/summary`** kræver ikke-gæst (som `/api/movies/stats`).
+- **Frontend-tracking** (alt fire-and-forget): fane-skift i `App.jsx`, `CinemaPublic`-mount (offentlig /bio = gæst), og åbning af en gemt film-/TV-detalje-modal (titel-besøg).
+- **Statistik-siden**: summary-fliser (total, i dag, unikke brugere, gæste-besøg) + `BarList` (genbrugt) for pr. dag (sidste 14, kontinuerlig serie), mest besøgte sider (oversat til nav-etiketter, /bio adskilt), mest åbnede titler, mest aktive brugere ("gæst" for anonyme).
+- Besøg indgår bevidst ikke i backup/reset (ren analytik).
+- **Tests**: `test_analytics.py` (7 — record side/titel, indlogget/gæst, per-dag-serie, gating), `Statistics.test.jsx` (4 — dato-format + side-etikette-fallback). Backend 583, frontend 47.
+- **Verifikation**: begge suiter + lint/build grønne. Live-verificeret i browseren (regel 18): Besøg-sektionen viser fliser, pr.-dag-serie, sider, titler og brugere (inkl. "Gæst").
+
+Berørte filer: `backend/app/models/analytics.py` (ny), `backend/app/repositories/visit_repository.py` (ny), `backend/app/services/analytics_service.py` (ny), `backend/app/api/analytics.py` (ny), `backend/app/api/deps.py`, `backend/app/main.py`, `backend/tests/conftest.py`, `backend/tests/test_analytics.py` (ny), `frontend/src/api/client.js`, `frontend/src/App.jsx`, `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/pages/Statistics.jsx`, `frontend/src/pages/Statistics.css`, `frontend/src/pages/Statistics.test.jsx` (ny), `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`, `FEATURES.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `version.json`.
+
 ## [0.100.0 build 0136] — 2026-08-12 — feature: mobilvenlig indkøbsønsker-side med to store handlingsknapper (FEATURES.md #124)
 
 Indkøbsønsker-fanen havde tre lignende tekstfelter — bibliotekets generelle filtersøgning (altid synlig) og, gemt bag "+ Tilføj", scan-panelets stregkode-felt + titel-søgning — så den generelle søgning blev forvekslet med "søg manuelt". På ønskelisten tilføjer man mest, så tilføj-flowet er nu det fremtrædende (Jans valg: to store handlingsknapper).

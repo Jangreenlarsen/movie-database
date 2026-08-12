@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import (
+    analytics,
     attributes,
     audit_log,
     auth,
@@ -65,6 +66,7 @@ from app.repositories import (
     tag_repository,
     tv_show_repository,
     user_repository,
+    visit_repository,
 )
 from app.services import system_settings_service
 
@@ -92,6 +94,7 @@ async def lifespan(app: FastAPI):
     await screening_repository.ensure_indexes(db)
     await audit_log_repository.ensure_indexes(db)
     await message_repository.ensure_indexes(db)
+    await visit_repository.ensure_indexes(db)
     logger.info("MongoDB client initialized (%s)", settings.mongo_db_name)
     yield
     await close_client()
@@ -268,6 +271,7 @@ async def no_cert_staged_handler(request: Request, exc: NoCertStagedError) -> JS
 
 
 app.include_router(health.router)
+app.include_router(analytics.router)
 app.include_router(audit_log.router)
 app.include_router(auth.router)
 app.include_router(users.router)

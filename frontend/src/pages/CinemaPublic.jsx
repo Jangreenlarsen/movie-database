@@ -42,6 +42,12 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
       .catch(() => setStatus("error"));
   }, []);
 
+  // Feature #125 — registrér det offentlige /bio-besøg (tælles som "gæst" hvis
+  // ikke logget ind). Fire-and-forget, så en fejl aldrig påvirker siden.
+  useEffect(() => {
+    api.recordVisit({ page: "bio" }).catch(() => {});
+  }, []);
+
   return (
     <div className="cinema-public-page">
       {/* Feature #119 — `baggrund2.png` som stemningsfuldt top-motiv bag

@@ -231,6 +231,13 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
     api.getLibraryCounts().then(setCounts).catch(() => setCounts(null));
   }, [libraryVersion]);
 
+  // Feature #125 — registrér et side-besøg ved hvert fane-skift (og ved
+  // første indlæsning). Fire-and-forget: en fejlet registrering må aldrig
+  // forstyrre navigationen.
+  useEffect(() => {
+    api.recordVisit({ page: tab }).catch(() => {});
+  }, [tab]);
+
   const refreshCounts = () => setLibraryVersion((v) => v + 1);
 
   return (

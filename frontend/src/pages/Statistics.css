@@ -28,6 +28,14 @@
   gap: 16px;
 }
 
+/* Feature #125 — skiller besøgs-sektionen fra biblioteks-statistikken ovenfor. */
+.stat-visits-heading {
+  margin: 32px 0 16px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  font-size: 1.3rem;
+}
+
 .stat-section h2 {
   margin: 0 0 12px;
   font-size: 1.05rem;

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.101.0 (build 0137) — 2026-08-12
+
+- **Ny besøgs-statistik.** Statistik-siden har nu en "Besøg"-sektion, hvor du kan se hvor mange besøg der har været i alt og i dag, hvor mange unikke brugere og gæster, samt hvad der besøges: en oversigt pr. dag (sidste 14 dage), de mest besøgte sider (inkl. den offentlige Voldby BIO-side), de mest åbnede film/serier, og de mest aktive brugere. Indloggede besøg vises med brugernavn; besøg på den offentlige side uden login tælles som "gæst".
+
 ## v0.100.0 (build 0136) — 2026-08-12
 
 - **Indkøbsønsker er nu lettere at bruge på mobilen.** Øverst på siden er der to store knapper — **📷 Scan cover** og **🔍 Søg titel** — så det er tydeligt hvordan du tilføjer et nyt ønske. Den almindelige søgning i dine eksisterende ønsker er flyttet ned i en lille "Filtrér dine ønsker"-linje, så den ikke længere forveksles med titel-søgningen. Trykker du "Scan cover" ser du kun scanneren; trykker du "Søg titel" ser du kun titel-søgningen (og du kan skifte mellem dem hvis et scan ikke giver noget).

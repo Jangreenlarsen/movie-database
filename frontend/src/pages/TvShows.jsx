@@ -929,6 +929,21 @@ export function TvShowDetailModal({
 }) {
   const t = useT();
   const locale = useLocale();
+  // Feature #125 — titel-besøg når en gemt serie åbnes (ikke kladde-tilstand).
+  useEffect(() => {
+    if (show.id) {
+      api
+        .recordVisit({
+          page: "title",
+          kind: "title",
+          resource_kind: "tv",
+          resource_id: show.id,
+          title: show.name,
+        })
+        .catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [show.id]);
   const [tagsInput, setTagsInput] = useState(show.tags.join(", "));
   const [format, setFormat] = useState(show.format ?? "");
   const [audioTypes, setAudioTypes] = useState(show.audio_types);

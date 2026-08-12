@@ -143,6 +143,12 @@ export const api = {
     request(`/movies/check-duplicate?${new URLSearchParams({ tmdb_id: tmdbId })}`),
   getCollection: (collectionId) => request(`/movies/collections/${collectionId}`),
   getStats: () => request("/movies/stats"),
+  // Feature #125 — besøgs-statistik. `recordVisit` er fire-and-forget: kaldes
+  // med `.catch(() => {})` på kaldstederne, så en fejlet registrering aldrig
+  // forstyrrer navigationen. Endpointet er offentligt (også /bio uden login).
+  recordVisit: (payload) =>
+    request("/analytics/visit", { method: "POST", body: JSON.stringify(payload) }),
+  getVisitStats: () => request("/analytics/summary"),
   // Feature #88 — ét kald dækker hele fanens bibliotek. Erstattede den
   // gamle "Tjek Plex"-knap, der lavede ét kald pr. film, manuelt udløst.
   getPlexAvailability: (kind) => request(`/plex/availability?kind=${kind}`),

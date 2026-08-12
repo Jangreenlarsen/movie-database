@@ -175,6 +175,11 @@ export default function Library({
   const [showSortPanel, setShowSortPanel] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [showAddPanel, setShowAddPanel] = useState(false);
+  // Feature #124 — ønskelistens to store handlingsknapper: "scan" | "manual" |
+  // null. Erstatter `showAddPanel` i wishlist-varianten, så scan og titel-søg
+  // åbnes hver for sig (mindre forveksling). Biblioteket bruger fortsat
+  // showAddPanel (ét samlet panel, mode="both").
+  const [addMode, setAddMode] = useState(null);
   const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
   const [settingsError, setSettingsError] = useState(null);
   const [savedTvShow, setSavedTvShow] = useState(false);
@@ -440,6 +445,71 @@ export default function Library({
     persistVisibleFields(DEFAULT_VISIBLE_FIELDS);
   }
 
+  // Feature #124 — delte toolbar-dele, så bibliotekets og ønskelistens to
+  // forskellige toolbar-layouts kan genbruge dem uden duplikering.
+  const searchInputWrap = (placeholder) => (
+    <div className="search-input-wrap">
+      <SearchIcon />
+      <input
+        type="search"
+        placeholder={placeholder}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      {/* Feature #102 — egen ryd-knap frem for at stole på browserens
+          indbyggede: `type="search"` viser kun et kryds i WebKit og Chrome,
+          ikke i Firefox, så den var usynlig for halvdelen af brugerne. */}
+      {query && (
+        <button
+          type="button"
+          className="search-clear"
+          onClick={() => setQuery("")}
+          title={t("lib.clearSearch")}
+          aria-label={t("lib.clearSearch")}
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+
+  const sortFilterFieldButtons = (
+    <>
+      <button
+        type="button"
+        className={`btn${sortIsDefault ? "" : " btn-modified"}`}
+        title={t(sortIsDefault ? "lib.sortDefaultTitle" : "lib.sortModifiedTitle")}
+        onClick={() => setShowSortPanel((v) => !v)}
+      >
+        {t("lib.sort")} {sortIsDefault ? "" : "● "}▾
+      </button>
+
+      <button
+        type="button"
+        className={`btn${hasActiveFilters ? " btn-modified" : ""}`}
+        title={
+          hasActiveFilters
+            ? t("lib.filterActiveTitle", { count: activeFilterCount })
+            : t("lib.filterNoneTitle")
+        }
+        onClick={() => setShowFilterPanel((v) => !v)}
+      >
+        {t("lib.filter")} {hasActiveFilters ? `(${activeFilterCount}) ` : ""}▾
+      </button>
+
+      <button
+        type="button"
+        className={`btn${changedFieldCount > 0 ? " btn-modified" : ""}`}
+        title={t(changedFieldCount > 0 ? "lib.fieldsModifiedTitle" : "lib.fieldsDefaultTitle")}
+        onClick={() => setShowFieldPanel((v) => !v)}
+      >
+        {t("lib.fields")} {changedFieldCount > 0 ? "● " : ""}▾
+      </button>
+
+      <ViewModeToggle viewMode={viewMode} onChange={changeViewMode} />
+    </>
+  );
+
   return (
     <section>
       <div className="page-header">
@@ -450,91 +520,69 @@ export default function Library({
       </div>
 
       <div className="library-toolbar">
-        <div className="search-row">
-          <div className="search-input-wrap">
-            <SearchIcon />
-            <input
-              type="search"
-              placeholder={t("lib.searchPlaceholder")}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            {/* Feature #102 — egen ryd-knap frem for at stole på browserens
-                indbyggede: `type="search"` viser kun et kryds i WebKit og
-                Chrome, ikke i Firefox, så den var usynlig for halvdelen af
-                brugerne. */}
-            {query && (
+        {wishlist ? (
+          <>
+            {/* Feature #124 — ønskelistens mobilvenlige variant: to store
+                handlingsknapper øverst (tilføj-flowet er det man bruger mest
+                her), og den generelle søgning demoted til en lille sekundær
+                række med sit eget "Filtrér"-ordlyd, så den ikke forveksles
+                med scan-panelets titel-søgning. */}
+            <div className="wishlist-add-actions">
               <button
                 type="button"
-                className="search-clear"
-                onClick={() => setQuery("")}
-                title={t("lib.clearSearch")}
-                aria-label={t("lib.clearSearch")}
+                className={`btn btn-primary wishlist-action${addMode === "scan" ? " active" : ""}`}
+                onClick={() => setAddMode((m) => (m === "scan" ? null : "scan"))}
               >
-                ✕
+                📷 {t("lib.wishScan")}
+              </button>
+              <button
+                type="button"
+                className={`btn btn-primary wishlist-action${addMode === "manual" ? " active" : ""}`}
+                onClick={() => setAddMode((m) => (m === "manual" ? null : "manual"))}
+              >
+                🔍 {t("lib.wishSearchTitle")}
+              </button>
+            </div>
+
+            <div className="search-row search-row-secondary">
+              {searchInputWrap(t("lib.wishlistFilterPlaceholder"))}
+              {sortFilterFieldButtons}
+            </div>
+          </>
+        ) : (
+          <div className="search-row">
+            {searchInputWrap(t("lib.searchPlaceholder"))}
+
+            {/* Feature #116 — gæster må oprette ønsker, så add-knappen vises for
+                dem i ønske-fanen, men aldrig i selve biblioteket. */}
+            {!isGuest && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setShowAddPanel((v) => !v)}
+              >
+                {showAddPanel ? t("common.close") : t("lib.addMovie")} ▾
               </button>
             )}
+
+            {sortFilterFieldButtons}
           </div>
+        )}
 
-          {/* Feature #116 — gæster må oprette ønsker, så add-knappen vises for
-              dem i ønske-fanen, men aldrig i selve biblioteket. */}
-          {(!isGuest || wishlist) && (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => setShowAddPanel((v) => !v)}
-            >
-              {showAddPanel
-                ? t("common.close")
-                : t(wishlist ? "lib.addWish" : "lib.addMovie")}{" "}
-              ▾
-            </button>
-          )}
-
-          <button
-            type="button"
-            className={`btn${sortIsDefault ? "" : " btn-modified"}`}
-            title={t(sortIsDefault ? "lib.sortDefaultTitle" : "lib.sortModifiedTitle")}
-            onClick={() => setShowSortPanel((v) => !v)}
-          >
-            {t("lib.sort")} {sortIsDefault ? "" : "● "}▾
-          </button>
-
-          <button
-            type="button"
-            className={`btn${hasActiveFilters ? " btn-modified" : ""}`}
-            title={
-              hasActiveFilters
-                ? t("lib.filterActiveTitle", { count: activeFilterCount })
-                : t("lib.filterNoneTitle")
-            }
-            onClick={() => setShowFilterPanel((v) => !v)}
-          >
-            {t("lib.filter")} {hasActiveFilters ? `(${activeFilterCount}) ` : ""}▾
-          </button>
-
-          <button
-            type="button"
-            className={`btn${changedFieldCount > 0 ? " btn-modified" : ""}`}
-            title={t(
-              changedFieldCount > 0 ? "lib.fieldsModifiedTitle" : "lib.fieldsDefaultTitle"
-            )}
-            onClick={() => setShowFieldPanel((v) => !v)}
-          >
-            {t("lib.fields")} {changedFieldCount > 0 ? "● " : ""}▾
-          </button>
-
-          <ViewModeToggle viewMode={viewMode} onChange={changeViewMode} />
-        </div>
-
-        {showAddPanel && (
+        {/* Feature #124 — ønskelisten åbner scan/titel-søg hver for sig via de
+            to store knapper (`addMode`); biblioteket bruger fortsat ét samlet
+            panel (`showAddPanel`, mode="both"). */}
+        {((wishlist && addMode) || (!wishlist && showAddPanel)) && (
           <div style={{ marginTop: 8 }}>
             <MovieLookupForm
               user={user}
               wishlist={wishlist}
+              mode={wishlist ? addMode : "both"}
+              key={wishlist ? addMode : "both"}
               onSaved={(kind) => {
                 refresh();
                 setShowAddPanel(false);
+                setAddMode(null);
                 // Scan/søgning her rammer også TMDb's TV-database, og en
                 // valgt TV-serie havner i tv_shows — en collection denne
                 // side aldrig viser. Uden beskeden nedenfor så det ud som

@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.100.0 build 0136] — 2026-08-12 — feature: mobilvenlig indkøbsønsker-side med to store handlingsknapper (FEATURES.md #124)
+
+Indkøbsønsker-fanen havde tre lignende tekstfelter — bibliotekets generelle filtersøgning (altid synlig) og, gemt bag "+ Tilføj", scan-panelets stregkode-felt + titel-søgning — så den generelle søgning blev forvekslet med "søg manuelt". På ønskelisten tilføjer man mest, så tilføj-flowet er nu det fremtrædende (Jans valg: to store handlingsknapper).
+
+- **Kun `wishlist`-varianten** (biblioteket urørt): øverst to store knapper "📷 Scan cover" og "🔍 Søg titel", der hver åbner *kun* den relevante del. Den generelle søgning er flyttet til en lille, demoted sekundær-række med sit eget "Filtrér dine ønsker"-placeholder, sammen med Sortér/Filter/Felter.
+- **`MovieLookupForm`** fik en `mode`-prop (`scan`/`manual`/`both`, default `both` = uændret bibliotek): i single-mode vises kun det ene kort, med et "Søg på titel i stedet"/"Scan cover i stedet"-skift, så scan→titel-fallbacken (forudfyldt gæt) bevares.
+- Ren frontend. Delte toolbar-dele (søgefelt + sortér/filter/felter-knapper) udtrukket i Library.jsx, så biblioteks- og ønske-layoutet ikke duplikerer dem.
+- **Tests**: `MovieLookupForm.test.jsx` (4 nye — mode viser kun det rette kort, fallback-skift). Frontend-suite grøn (43).
+- **Verifikation**: lint/build grønne. Live-verificeret i mobil-viewport (390×844, regel 18): to store knapper + demoted "Filtrér dine ønsker", "Søg titel" viser kun titel-søgningen, "Scan cover" viser kun scanneren.
+
+Berørte filer: `frontend/src/components/MovieLookupForm.jsx`, `frontend/src/components/MovieLookupForm.test.jsx` (ny), `frontend/src/pages/Library.jsx`, `frontend/src/pages/Library.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `version.json`.
+
 ## [0.99.0 build 0135] — 2026-08-11 — feature: undertekster som liste (Eng/DK + Andet-fritekst) med datamigration (FEATURES.md #123)
 
 Underteksterne gik fra ét frit tekstfelt (#109) til en liste: faste afkrydsnings-valg **Eng**/**DK** plus et **"Andet"**-fritekst-felt til alt andet (fx "Fastbrændt DA", "Norsk"). Jans valg: flere valg (afkrydsning), "Andet" åbner fritekst, og eksisterende data konverteres.

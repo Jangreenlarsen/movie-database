@@ -15,6 +15,32 @@
   flex-shrink: 0;
 }
 
+/* Feature #124 — ønskelistens to store handlingsknapper (Scan / Søg titel).
+   Deler bredden ligeligt og er tydeligt større end den demoted filter-række
+   nedenunder, så tilføj-flowet er det man ser først på mobil. */
+.wishlist-add-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.wishlist-action {
+  flex: 1;
+  justify-content: center;
+  padding: 16px 14px;
+  font-size: 1.05rem;
+}
+
+/* Aktiv knap = dens panel er foldet ud nedenfor. */
+.wishlist-action.active {
+  box-shadow: inset 0 0 0 2px var(--accent-contrast);
+}
+
+/* Den generelle filtrering er skubbet i baggrunden under handlingsknapperne:
+   mindre skrift, så den ikke konkurrerer visuelt med scan/søg-titel. */
+.search-row-secondary .search-input-wrap input {
+  font-size: 0.85rem;
+}
+
 /* Feature #108 — grid/liste-valg, samme pille-gruppe-stil som App.css'
    .tabs (nav-fanerne), gengivet lokalt her da resten af værktøjslinjen
    allerede bor i denne fil. */

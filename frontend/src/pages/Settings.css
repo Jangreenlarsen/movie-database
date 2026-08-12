@@ -24,6 +24,42 @@
   color: var(--text-muted);
 }
 
+/* Feature #131 — genbrugs-toggle er en checkbox på én linje, ikke stakket
+   som tal-felterne ovenfor. */
+.serial-config-form label.serial-reuse-toggle {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.serial-config-form label.serial-reuse-toggle input {
+  width: auto;
+}
+
+.serial-reuse-hint {
+  margin: -8px 0 0;
+  font-size: 0.78rem;
+}
+
+.serial-free-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.85rem;
+  padding: 3px 0;
+}
+
+.serial-free-label {
+  color: var(--text-muted);
+}
+
+.serial-free-values {
+  color: var(--text);
+  text-align: right;
+}
+
 .role-badge {
   display: inline-block;
   font-size: 0.7rem;

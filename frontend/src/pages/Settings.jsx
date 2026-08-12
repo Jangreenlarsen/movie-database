@@ -875,17 +875,31 @@ function SerialNumberSection({ isAdmin }) {
   const [startNumber, setStartNumber] = useState("");
   const [increment, setIncrement] = useState("");
   const [paddingWidth, setPaddingWidth] = useState("");
+  // Feature #131 — genbrug af frigjorte numre (fælles til/fra) + read-only
+  // oversigt over de ledige numre pr. serie.
+  const [reuseFreed, setReuseFreed] = useState(false);
+  const [freeNumbers, setFreeNumbers] = useState({
+    physical_movies: [],
+    physical_tv: [],
+    digital: [],
+  });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
+
+  function applyConfig(data) {
+    setStartNumber(String(data.start_number));
+    setIncrement(String(data.increment));
+    setPaddingWidth(String(data.padding_width));
+    setReuseFreed(Boolean(data.reuse_freed));
+    setFreeNumbers(data.free_numbers ?? { physical_movies: [], physical_tv: [], digital: [] });
+  }
 
   useEffect(() => {
     api
       .getSerialNumberConfig()
       .then((data) => {
-        setStartNumber(String(data.start_number));
-        setIncrement(String(data.increment));
-        setPaddingWidth(String(data.padding_width));
+        applyConfig(data);
         setStatus("ready");
       })
       .catch(() => setStatus("error"));
@@ -901,10 +915,9 @@ function SerialNumberSection({ isAdmin }) {
         start_number: Number(startNumber),
         increment: Number(increment),
         padding_width: Number(paddingWidth),
+        reuse_freed: reuseFreed,
       });
-      setStartNumber(String(updated.start_number));
-      setIncrement(String(updated.increment));
-      setPaddingWidth(String(updated.padding_width));
+      applyConfig(updated);
       setSaved(true);
     } catch (err) {
       setError(err.message);
@@ -960,6 +973,25 @@ function SerialNumberSection({ isAdmin }) {
             />
           </label>
 
+          {/* Feature #131 — til/fra for genbrug af frigjorte numre. */}
+          <label className="serial-reuse-toggle">
+            <input
+              type="checkbox"
+              disabled={!isAdmin}
+              checked={reuseFreed}
+              onChange={(e) => setReuseFreed(e.target.checked)}
+            />
+            {t("serial.reuseFreed")}
+          </label>
+          <p className="muted serial-reuse-hint">{t("serial.reuseFreedHint")}</p>
+
+          <div className="serial-free-numbers">
+            <div className="modal-section-label">{t("serial.freeNumbers")}</div>
+            <SerialFreeList label={t("serial.freeMovies")} numbers={freeNumbers.physical_movies} prefix="M" t={t} />
+            <SerialFreeList label={t("serial.freeTv")} numbers={freeNumbers.physical_tv} prefix="T" t={t} />
+            <SerialFreeList label={t("serial.freeDigital")} numbers={freeNumbers.digital} prefix="D" t={t} />
+          </div>
+
           {error && <div className="banner banner-error">{error}</div>}
           {saved && <div className="banner banner-info">{t("serial.saved")}</div>}
 
@@ -970,6 +1002,21 @@ function SerialNumberSection({ isAdmin }) {
           )}
         </form>
       )}
+    </div>
+  );
+}
+
+// Feature #131 — én række "ledige numre" for en serie (M/T/D). Tom serie viser
+// en dæmpet "ingen"-tekst frem for en tom liste.
+function SerialFreeList({ label, numbers, prefix, t }) {
+  return (
+    <div className="serial-free-row">
+      <span className="serial-free-label">{label}</span>
+      <span className="serial-free-values">
+        {numbers.length > 0
+          ? numbers.map((n) => `${prefix}#${n}`).join(", ")
+          : t("serial.freeNone")}
+      </span>
     </div>
   );
 }

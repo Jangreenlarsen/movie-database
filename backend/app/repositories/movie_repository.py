@@ -245,6 +245,9 @@ async def get_serial_config(db: AsyncIOMotorDatabase) -> dict:
         "start_number": config.get("next_value", DEFAULT_SERIAL_CONFIG["next_value"]),
         "increment": config.get("increment", DEFAULT_SERIAL_CONFIG["increment"]),
         "padding_width": config.get("padding_width", DEFAULT_SERIAL_CONFIG["padding_width"]),
+        # Feature #131 — det fælles genbrugs-flag (bor i digital_serial_repository,
+        # så alle tre serier læser samme kilde).
+        "reuse_freed": await digital_serial_repository.is_reuse_enabled(db),
     }
 
 
@@ -252,7 +255,7 @@ async def update_serial_config(db: AsyncIOMotorDatabase, updates: dict) -> dict:
     """`start_number` is a one-off "assign this to the next movie" action, not
     a historical origin — it directly moves the next-value pointer.
     `increment` only changes the step size going forward. `padding_width`
-    is display-only."""
+    is display-only. `reuse_freed` (feature #131) er den fælles genbrugs-til/fra."""
     await _ensure_serial_config(db)
 
     mongo_updates: dict = {}
@@ -267,10 +270,28 @@ async def update_serial_config(db: AsyncIOMotorDatabase, updates: dict) -> dict:
         await db[COUNTERS_COLLECTION].update_one(
             {"_id": SERIAL_COUNTER_ID}, {"$set": mongo_updates}
         )
+    if "reuse_freed" in updates:
+        await digital_serial_repository.set_reuse_enabled(db, updates["reuse_freed"])
     return await get_serial_config(db)
 
 
-async def next_serial_number(db: AsyncIOMotorDatabase) -> int:
+async def free_serial_numbers(db: AsyncIOMotorDatabase) -> list[int]:
+    """Feature #131 — de frigjorte M#-numre (huller i det brugte interval),
+    laveste først. Den fysiske film-serie: poster med medietype != Digital
+    (uklassificerede tælles med som fysiske, jf. next_serial_number)."""
+    taken: set[int] = set()
+    cursor = db[COLLECTION].find(
+        {"serial_number": {"$exists": True}, "media_type": {"$ne": DIGITAL_MEDIA_TYPE}},
+        {"serial_number": 1},
+    )
+    async for doc in cursor:
+        number = doc.get("serial_number")
+        if isinstance(number, int):
+            taken.add(number)
+    return digital_serial_repository.gaps(taken)
+
+
+async def _next_from_counter(db: AsyncIOMotorDatabase) -> int:
     """Race-safe even under concurrent creates. If the next value is already
     taken (possible right after `start_number` was moved onto an
     already-assigned number), keeps advancing by `increment` until a free
@@ -299,6 +320,16 @@ async def next_serial_number(db: AsyncIOMotorDatabase) -> int:
             return candidate
 
     raise RuntimeError("Could not find a free serial number after many attempts")
+
+
+async def next_serial_number(db: AsyncIOMotorDatabase) -> int:
+    """Feature #131 — genbruger det laveste frigjorte M#-nummer hvis genbrug er
+    slået til og der findes et hul; ellers fra tælleren som hidtil."""
+    if await digital_serial_repository.is_reuse_enabled(db):
+        free = await free_serial_numbers(db)
+        if free:
+            return free[0]
+    return await _next_from_counter(db)
 
 
 

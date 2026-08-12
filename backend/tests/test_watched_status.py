@@ -16,6 +16,23 @@ async def test_mark_as_watched_with_date(client):
     assert response.json()["watched_at"].startswith("2026-07-15")
 
 
+async def test_watched_at_is_stored_as_a_real_date(client, db):
+    """BUGS.md #59 — `watched_at` skal gemmes som en Date, ikke en ISO-streng
+    (så feltets BSON-type er konsistent med `created_at` og dato-forespørgsler
+    virker). update_movie brugte tidligere `mode="json"`, som serialiserede det
+    til en streng før den rå `$set`."""
+    from datetime import datetime
+
+    from bson import ObjectId
+
+    created = await client.post("/api/movies", json={"title": "Dated", "media_type": "Fysisk", "format": "F-DVD"})
+    movie_id = created.json()["id"]
+    await client.patch(f"/api/movies/{movie_id}", json={"watched": True, "watched_at": "2026-07-15"})
+
+    raw = await db["movies"].find_one({"_id": ObjectId(movie_id)})
+    assert isinstance(raw["watched_at"], datetime)
+
+
 async def test_unmark_watched(client):
     created = await client.post("/api/movies", json={"title": "Rewatchable", "media_type": "Fysisk", "format": "F-DVD"})
     movie_id = created.json()["id"]

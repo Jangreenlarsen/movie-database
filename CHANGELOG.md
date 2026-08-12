@@ -2,6 +2,19 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.108.1 build 0146] — 2026-08-12 — fix: fire systematiske fejl fra to-fase system-analyse (BUGS.md #59-#62)
+
+Rettelse af de fire fund fra den dybe to-fase-gennemgang:
+
+- **#59** `watched_at` gemtes som ISO-streng frem for Date (BUGS #33-klassen, latent): `mode="json"` fjernet fra `update_movie`/`update_tv_show`, + idempotent migration `_migrate_watched_at_to_date` (film+TV). Verificeret mod ægte MongoDB at feltet nu er en BSON Date.
+- **#60** En gæst kunne hente `GET /api/tv-shows/deleted` (mens `movies/deleted` blokerer dem, BUGS #46): tilføjet `require_not_guest` + test.
+- **#61** Tavs genindlæsning efter mutation i `Library.jsx`/`TvShows.jsx`: `refresh()` viser nu fejlen i et banner (`lib.refreshFailed`). Verificeret i browser.
+- **#62** En serienr-kollision (fra #131's ikke-atomiske genbrug) blev fejlmeldt som stregkode-dublet: ny `_is_serial_collision` + retry af assign+insert i `create_movie`/`create_tv_show` + tests.
+
+Verifikation: backend 597, frontend 47, build OK. Ingen regression fra `mode="json"`-fjernelsen (enums er `str`-enums og gemmes uændret).
+
+Berørte filer: `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`, `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/app/api/tv_shows.py`, `backend/tests/{test_watched_status,test_label_migrations,test_serial_reuse,test_review_findings}.py`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/i18n/{da,en}.json`, `BUGS.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`, `version.json`.
+
 ## [0.108.0 build 0145] — 2026-08-12 — feature: format-oprydning (F-præfiks, D-480, VHS fjernet) (FEATURES.md #132)
 
 Fysiske formater fik "F-"-præfiks: DVD→F-DVD, BD→F-BD, UHD→F-UHD. D-SD→D-480 (opløsnings-baseret). VHS fjernet som format. Enum-medlemsnavne uændrede.

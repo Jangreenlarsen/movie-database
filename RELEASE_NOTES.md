@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.108.1 (build 0146) — 2026-08-12
+
+- **Fire rettelser fra en dyb systemgennemgang.** "Set-dato" gemmes nu i det rigtige datoformat i databasen (så fremtidige dato-filtre virker). Gæster kan ikke længere se listen over slettede TV-serier (som det allerede gjaldt for film). Hvis en ændring gemmes men listen ikke kan genindlæses, får du nu en tydelig besked i stedet for en tavst forældet liste. Og en sjælden serienummer-kollision (når genbrug er slået til) rettes nu automatisk i stedet for at give en misvisende "stregkode findes allerede"-fejl.
+
 ## v0.108.0 (build 0145) — 2026-08-12
 
 - **Ryddede format-navne.** De fysiske formater har nu et **F-** foran: **F-DVD**, **F-BD**, **F-UHD** (så de matcher de digitale D-navne). **D-SD** hedder nu **D-480**. **VHS** er fjernet som format. Dine eksisterende film og serier får automatisk de nye navne, og gamle VHS-poster bliver til F-DVD.

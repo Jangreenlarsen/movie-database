@@ -83,6 +83,43 @@ async def test_reuse_is_shared_across_the_digital_series(client):
     assert reused["serial_number"] == 2
 
 
+async def test_create_retries_on_serial_collision(client, monkeypatch):
+    """BUGS.md #62 — genbrug af frigjorte numre er ikke atomisk, så to samtidige
+    oprettelser kan gribe samme nummer. En serienr-kollision skal retry'es (med
+    et frisk nummer), ikke fejlagtigt meldes som stregkode-dublet."""
+    from pymongo.errors import DuplicateKeyError
+
+    from app.repositories import movie_repository
+
+    original_insert = movie_repository.insert
+    calls = {"n": 0}
+
+    async def flaky_insert(db, document):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            # Simuler at en samtidig oprettelse nåede samme serienummer først.
+            raise DuplicateKeyError(
+                "E11000 duplicate key error index: serial_number_media_type "
+                "dup key: { serial_number: 1 }"
+            )
+        return await original_insert(db, document)
+
+    monkeypatch.setattr(movie_repository, "insert", flaky_insert)
+
+    response = await client.post("/api/movies", json={"title": "Retry", **PHYSICAL})
+    assert response.status_code == 201, response.text
+    assert calls["n"] == 2  # første insert fejlede på serienr, anden lykkedes
+
+
+async def test_barcode_collision_still_raises_duplicate_barcode(client):
+    """BUGS.md #62 — retry-løkken må kun retry'e serienr-kollisioner; en ægte
+    stregkode-dublet skal fortsat give 409 DuplicateBarcode (ikke retry i det
+    uendelige eller forkert fejltype)."""
+    await client.post("/api/movies", json={"title": "First", "barcode": "5711111111111", **PHYSICAL})
+    dup = await client.post("/api/movies", json={"title": "Second", "barcode": "5711111111111", **PHYSICAL})
+    assert dup.status_code == 409
+
+
 async def test_physical_movie_and_tv_series_have_independent_free_numbers(client):
     await client.patch("/api/settings/serial-number", json={"reuse_freed": True})
     ma = await _create(client, "MovA")

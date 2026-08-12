@@ -151,6 +151,8 @@ export default function TvShows({
   const [addMode, setAddMode] = useState(null);
   const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
   const [settingsError, setSettingsError] = useState(null);
+  // BUGS.md #61 — se den identiske note i Library.jsx.
+  const [refreshError, setRefreshError] = useState(null);
   const [savedMovie, setSavedMovie] = useState(false);
   // Feature #88 — "show" er Plex' eget navn for en TV-serie-sektion.
   const plex = usePlexAvailability("show");
@@ -273,8 +275,9 @@ export default function TvShows({
       .then((data) => {
         setShows(data.items);
         setTotal(data.total);
+        setRefreshError(null);
       })
-      .catch(() => {});
+      .catch((err) => setRefreshError(err.message));
   }
 
   function updateVisibleField(key, value) {
@@ -761,6 +764,12 @@ export default function TvShows({
       {settingsError && (
         <div className="banner banner-error">
           {t("lib.settingsNotSaved", { message: settingsError })}
+        </div>
+      )}
+
+      {refreshError && (
+        <div className="banner banner-error">
+          {t("lib.refreshFailed", { message: refreshError })}
         </div>
       )}
 

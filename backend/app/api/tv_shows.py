@@ -125,8 +125,12 @@ async def list_genres(db: AsyncIOMotorDatabase = Depends(get_database)):
     return await tv_show_service.list_genres(db)
 
 
-@router.get("/deleted", response_model=list[DeletedTvShow])
+@router.get(
+    "/deleted", response_model=list[DeletedTvShow], dependencies=[Depends(require_not_guest)]
+)
 async def list_deleted_tv_shows(db: AsyncIOMotorDatabase = Depends(get_database)):
+    # BUGS.md #60 — gæster må ikke se slette-lister (FEATURES #72), håndhævet i
+    # backend som for movies/deleted (BUGS #46), ikke kun i UI'et.
     return await tv_show_service.list_deleted_tv_shows(db)
 
 

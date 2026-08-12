@@ -169,11 +169,31 @@ async def _migrate_subtitles_to_list(db: AsyncIOMotorDatabase) -> None:
             )
 
 
+async def _migrate_watched_at_to_date(db: AsyncIOMotorDatabase) -> None:
+    """BUGS.md #59 — `update_movie` gemte tidligere `watched_at` som en ISO-
+    streng (`model_dump(mode="json")`), ikke som en Date. Konverter eksisterende
+    streng-værdier, så feltets BSON-type er konsistent med `created_at`/
+    `updated_at` og dato-interval-forespørgsler virker (samme klasse som
+    BUGS.md #33). Idempotent: rører kun dokumenter hvor feltet er en streng."""
+    collection = db[COLLECTION]
+    cursor = collection.find({"watched_at": {"$exists": True, "$ne": None}}, {"watched_at": 1})
+    async for doc in cursor:
+        value = doc.get("watched_at")
+        if not isinstance(value, str):
+            continue
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:  # pragma: no cover - ubrugelig streng, lades urørt
+            continue
+        await collection.update_one({"_id": doc["_id"]}, {"$set": {"watched_at": parsed}})
+
+
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     collection = db[COLLECTION]
     await _migrate_audio_type_labels(db)
     await _migrate_format_labels(db)
     await _migrate_subtitles_to_list(db)
+    await _migrate_watched_at_to_date(db)
     # BUGS.md #48 — søgningen går ikke længere gennem `$text`; det gamle
     # text-index ryddes op så det ikke koster skrivetid uden at blive brugt.
     await drop_legacy_text_index(collection)

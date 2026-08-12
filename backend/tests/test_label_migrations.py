@@ -170,6 +170,28 @@ async def test_tv_shows_migrate_digital_quality_tier_labels_on_startup(db):
     assert show["format"] == "D-4K"
 
 
+async def test_migrate_watched_at_string_to_date(db):
+    """BUGS.md #59 — gamle `watched_at`-værdier gemt som ISO-streng (fra det
+    tidligere `mode="json"`) konverteres til en ægte Date ved opstart."""
+    now = datetime.now(timezone.utc)
+    result = await db[movie_repository.COLLECTION].insert_one(
+        {
+            "title": "Legacy Watched",
+            "watched": True,
+            "watched_at": "2026-07-15T10:00:00+00:00",
+            "created_at": now,
+            "updated_at": now,
+        }
+    )
+
+    await movie_repository._migrate_watched_at_to_date(db)
+
+    doc = await db[movie_repository.COLLECTION].find_one({"_id": result.inserted_id})
+    assert isinstance(doc["watched_at"], datetime)
+    # En allerede-korrekt Date (eller None) røres ikke.
+    assert doc["watched_at"].year == 2026
+
+
 async def test_tv_shows_migrate_dts_hd_audio_labels_on_startup(db):
     """Feature v0.105.0 — TV-serier fik deres egen audio-migration for de nye
     DTS-HD-omdøbninger (de fandtes ikke ved v0.22.0's audio-relabel, men kan

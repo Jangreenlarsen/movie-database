@@ -183,6 +183,8 @@ export default function Library({
   const [addMode, setAddMode] = useState(null);
   const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
   const [settingsError, setSettingsError] = useState(null);
+  // BUGS.md #61 — en fejlet genindlæsning efter gem/slet vises nu (før slugt).
+  const [refreshError, setRefreshError] = useState(null);
   const [savedTvShow, setSavedTvShow] = useState(false);
   // Feature #88 — hele bibliotekets Plex-status i ét kald, slået op pr. kort.
   const plex = usePlexAvailability("movie");
@@ -315,8 +317,11 @@ export default function Library({
       .then((data) => {
         setMovies(data.items);
         setTotal(data.total);
+        setRefreshError(null);
       })
-      .catch(() => {});
+      // BUGS.md #61 — mutationen er gemt, men listen kunne ikke genindlæses;
+      // vis det frem for at lade listen stå tavst forældet.
+      .catch((err) => setRefreshError(err.message));
   }
 
   function updateVisibleField(key, value) {
@@ -837,6 +842,12 @@ export default function Library({
       {settingsError && (
         <div className="banner banner-error">
           {t("lib.settingsNotSaved", { message: settingsError })}
+        </div>
+      )}
+
+      {refreshError && (
+        <div className="banner banner-error">
+          {t("lib.refreshFailed", { message: refreshError })}
         </div>
       )}
 

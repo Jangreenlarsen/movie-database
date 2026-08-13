@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.models.movie import AudioType, MediaType, MovieFormat, OrderStatus
+from app.models.movie import AudioType, MediaType, MovieFormat, OrderStatus, WishlistStatus
 from app.models.scan import BarcodeSource
 
 
@@ -124,6 +124,8 @@ class TvShowUpdate(BaseModel):
     subtitles: list[str] | None = None
     order_status: OrderStatus | None = None
     is_wishlist: bool | None = None
+    # Feature #144 — kun admin må godkende; håndhæves i update_tv_show.
+    wishlist_status: WishlistStatus | None = None
     serial_number: int | None = Field(default=None, gt=0)
     personal_rating: int | None = Field(default=None, ge=1, le=10)
     personal_note: str | None = None
@@ -160,6 +162,9 @@ class TvShow(BaseModel):
     order_status: str | None = None
     registered_by: str | None = None
     is_wishlist: bool = False
+    # Feature #144/#145 — se de identiske felter på Movie.
+    wishlist_status: str | None = None
+    name_in_library: bool | None = None
     personal_rating: int | None = None
     personal_note: str | None = None
     watched: bool = False

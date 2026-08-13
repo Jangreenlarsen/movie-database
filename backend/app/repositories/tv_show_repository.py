@@ -323,6 +323,19 @@ async def find_all_library_tv_shows(db: AsyncIOMotorDatabase) -> list[dict]:
     return await cursor.to_list(length=None)
 
 
+async def library_titles_normalized(db: AsyncIOMotorDatabase) -> set[str]:
+    """Feature #145 — normaliserede navne (små bogstaver + trim) på TV-
+    biblioteks-poster (ikke ønsker). Se den identiske funktion i
+    movie_repository (som bruger `title` frem for `name`)."""
+    titles: set[str] = set()
+    cursor = db[COLLECTION].find({"is_wishlist": {"$ne": True}}, {"name": 1})
+    async for doc in cursor:
+        name = (doc.get("name") or "").strip().lower()
+        if name:
+            titles.add(name)
+    return titles
+
+
 async def replace_all(db: AsyncIOMotorDatabase, documents: list[dict]) -> None:
     """Wholesale replace of the collection — see movie_repository's
     counterpart for the same not-a-transaction caveat."""

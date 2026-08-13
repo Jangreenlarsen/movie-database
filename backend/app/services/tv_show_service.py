@@ -16,7 +16,7 @@ from app.core.errors import (
 )
 from app.integrations import omdb_client, tmdb_client
 from app.models.movie import TmdbSyncResult
-from app.models.movie import MediaType, coerce_subtitles
+from app.models.movie import MediaType, WishlistStatus, coerce_subtitles
 from app.models.tv_show import (
     DeletedTvShow,
     DuplicateTvShowMatch,
@@ -30,6 +30,7 @@ from app.models.tv_show import (
 )
 from app.repositories import (
     digital_serial_repository,
+    movie_repository,
     screening_repository,
     screening_request_repository,
     tv_show_repository,
@@ -67,6 +68,8 @@ def _to_model(document: dict) -> TvShow:
         order_status=document.get("order_status"),
         registered_by=document.get("registered_by"),
         is_wishlist=document.get("is_wishlist", False),
+        wishlist_status=document.get("wishlist_status"),
+        name_in_library=document.get("name_in_library"),
         personal_rating=document.get("personal_rating"),
         personal_note=document.get("personal_note"),
         watched=document.get("watched", False),
@@ -273,6 +276,12 @@ async def create_tv_show(
         "order_status": payload.order_status.value if payload.order_status else None,
         "registered_by": registered_by,
         "is_wishlist": payload.is_wishlist,
+        # Feature #144 — se den identiske logik i movie_service.create_movie.
+        "wishlist_status": (
+            (WishlistStatus.APPROVED.value if creator_is_admin else WishlistStatus.PENDING.value)
+            if payload.is_wishlist
+            else None
+        ),
         "created_at": now,
         "updated_at": now,
     }
@@ -366,6 +375,15 @@ async def list_tv_shows(
         limit,
         genres or None,
     )
+    # Feature #145 — markér ønsker hvis navnet falder sammen med en titel i
+    # biblioteket (TV ELLER film). Se den identiske logik i movie_service.
+    if is_wishlist and documents:
+        library_titles = await tv_show_repository.library_titles_normalized(db)
+        library_titles |= await movie_repository.library_titles_normalized(db)
+        for doc in documents:
+            name = (doc.get("name") or "").strip().lower()
+            doc["name_in_library"] = bool(name) and name in library_titles
+
     items = [_to_model(doc) for doc in documents]
 
     if paginating:
@@ -452,6 +470,10 @@ async def update_tv_show(
     # BUGS.md #59 — bevidst IKKE mode="json" (se den identiske note i
     # movie_service.update_movie): bevarer `watched_at` som ægte datetime.
     fields = payload.model_dump(exclude_unset=True)
+
+    # Feature #144 — kun en admin må godkende et ønske (regel 16).
+    if "wishlist_status" in fields and current_user.get("role") != "admin":
+        raise NotAuthorizedError("Kun en admin kan godkende ønsker")
 
     if "tags" in fields:
         canonical_tags = await tag_service.resolve_tags(db, fields["tags"])

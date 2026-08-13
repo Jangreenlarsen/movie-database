@@ -92,6 +92,15 @@ class OrderStatus(str, Enum):
     OTHER = "Bestilt ved div."
 
 
+class WishlistStatus(str, Enum):
+    """Feature #144 — et ønske tilføjet af en ikke-admin afventer en admins
+    godkendelse; admin-tilføjede (og ældre, fra før feltet) ønsker er godkendt
+    fra start. Kun relevant for `is_wishlist`-poster. Genbruges af tv_show.py."""
+
+    PENDING = "pending"
+    APPROVED = "approved"
+
+
 class AudioType(str, Enum):
     """Short labels (v0.22.0) — less horizontal space on cards/chips. The
     DTS-HD-varianterne blev omdøbt i v0.105.0 (DTS-HD-M -> DTS-HD5.1,
@@ -227,6 +236,9 @@ class MovieUpdate(BaseModel):
     subtitles: list[str] | None = None
     order_status: OrderStatus | None = None
     is_wishlist: bool | None = None
+    # Feature #144 — kun en admin må sætte denne (godkende); håndhæves i
+    # service-laget (update_movie).
+    wishlist_status: WishlistStatus | None = None
     serial_number: int | None = Field(default=None, gt=0)
     personal_rating: int | None = Field(default=None, ge=1, le=10)
     personal_note: str | None = None
@@ -261,6 +273,12 @@ class Movie(BaseModel):
     order_status: str | None = None
     registered_by: str | None = None
     is_wishlist: bool = False
+    # Feature #144 — "pending"/"approved" på ønskeliste-poster (None på
+    # biblioteks-poster og ældre ønsker uden feltet — de tælles som godkendt).
+    wishlist_status: str | None = None
+    # Feature #145 — sat ved læsning: True hvis ønskets titel falder sammen med
+    # en titel der allerede er i biblioteket (film eller TV). Aldrig gemt.
+    name_in_library: bool | None = None
     personal_rating: int | None = None
     personal_note: str | None = None
     watched: bool = False

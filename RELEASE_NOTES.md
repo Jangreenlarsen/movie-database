@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.120.0 (build 0163) — 2026-08-13
+
+- **Ønsker skal godkendes.** Tilføjer en ikke-admin et ønske til indkøbslisten, står det nu som "⏳ Afventer" indtil en admin godkender det (admin får en "Godkend ønske"-knap direkte på kortet). Admins egne ønsker er godkendt med det samme.
+- **Advarsel ved navne-sammenfald.** Har et ønske samme navn som en film eller serie du allerede har i biblioteket, får det nu en rød "⚠ I biblioteket"-markering — så du kan opdage at du måske allerede ejer den.
+
 ## v0.119.0 (build 0162) — 2026-08-13
 
 - **Hurtigere sider.** Film- og serie-kortene henter nu et poster-billede i en størrelse der passer til kortet i stedet for altid at hente det store — så biblioteket (især med mange små kort) loader mærkbart hurtigere, uden synligt kvalitetstab.

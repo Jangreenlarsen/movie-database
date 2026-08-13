@@ -31,6 +31,7 @@ from app.models.movie import (
     NamedCount,
     SerialHolder,
     TmdbSyncResult,
+    WishlistStatus,
     coerce_subtitles,
 )
 from app.models.settings import FreeSerialNumbers, SerialNumberConfig, SerialNumberConfigUpdate
@@ -72,6 +73,8 @@ def _to_model(document: dict) -> Movie:
         order_status=document.get("order_status"),
         registered_by=document.get("registered_by"),
         is_wishlist=document.get("is_wishlist", False),
+        wishlist_status=document.get("wishlist_status"),
+        name_in_library=document.get("name_in_library"),
         personal_rating=document.get("personal_rating"),
         personal_note=document.get("personal_note"),
         watched=document.get("watched", False),
@@ -247,6 +250,13 @@ async def create_movie(
         "order_status": payload.order_status.value if payload.order_status else None,
         "registered_by": registered_by,
         "is_wishlist": payload.is_wishlist,
+        # Feature #144 — et ønske fra en ikke-admin afventer godkendelse; en
+        # admins (og biblioteks-poster får slet ingen status).
+        "wishlist_status": (
+            (WishlistStatus.APPROVED.value if creator_is_admin else WishlistStatus.PENDING.value)
+            if payload.is_wishlist
+            else None
+        ),
         "created_at": now,
         "updated_at": now,
     }
@@ -360,6 +370,16 @@ async def list_movies(
         limit,
         genres or None,
     )
+    # Feature #145 — markér ønsker hvis titlen falder sammen med en titel der
+    # allerede er i biblioteket (film ELLER TV). Kun i ønske-visningen, og kun
+    # ét sæt-opslag pr. side frem for ét pr. post.
+    if is_wishlist and documents:
+        library_titles = await movie_repository.library_titles_normalized(db)
+        library_titles |= await tv_show_repository.library_titles_normalized(db)
+        for doc in documents:
+            title = (doc.get("title") or "").strip().lower()
+            doc["name_in_library"] = bool(title) and title in library_titles
+
     items = [_to_model(doc) for doc in documents]
 
     if paginating:
@@ -592,6 +612,11 @@ async def update_movie(
     # Enum-felterne (format/audio_types/media_type) er `str`-enums og gemmes
     # korrekt som strenge uden mode="json".
     fields = payload.model_dump(exclude_unset=True)
+
+    # Feature #144 — kun en admin må godkende et ønske (sætte wishlist_status).
+    # Håndhæves i backend (regel 16), ikke kun ved at skjule knappen i UI'et.
+    if "wishlist_status" in fields and current_user.get("role") != "admin":
+        raise NotAuthorizedError("Kun en admin kan godkende ønsker")
 
     if "tags" in fields:
         canonical_tags = await tag_service.resolve_tags(db, fields["tags"])

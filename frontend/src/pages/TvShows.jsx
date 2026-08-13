@@ -113,6 +113,7 @@ export default function TvShows({
 }) {
   const t = useT();
   const isGuest = user.role === "guest";
+  const isAdmin = user.role === "admin";
   const [query, setQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedFormats, setSelectedFormats] = useState([]);
@@ -279,6 +280,17 @@ export default function TvShows({
         setRefreshError(null);
       })
       .catch((err) => setRefreshError(err.message));
+  }
+
+  // Feature #144 — admin godkender et afventende TV-ønske fra kortet.
+  async function approveWishlist(show, event) {
+    event.stopPropagation();
+    try {
+      await api.updateTvShow(show.id, { wishlist_status: "approved" });
+      refresh();
+    } catch (err) {
+      setRefreshError(err.message);
+    }
   }
 
   function updateVisibleField(key, value) {
@@ -852,6 +864,17 @@ export default function TvShows({
                   <div className="movie-rating-badge">★ {show.rating.toFixed(1)}</div>
                 )}
                 <div className="movie-badge-stack">
+                  {/* Feature #144/#145 — se de identiske badges i Library.jsx. */}
+                  {wishlist && show.wishlist_status === "pending" && (
+                    <div className="movie-wishlist-badge" title={t("lib.wishlistPending")}>
+                      {t("lib.wishlistPendingShort")}
+                    </div>
+                  )}
+                  {wishlist && show.name_in_library && (
+                    <div className="movie-namematch-badge" title={t("lib.nameInLibrary")}>
+                      {t("lib.nameInLibraryShort")}
+                    </div>
+                  )}
                   {visibleFields.plex && <PlexCardBadge availability={plex.items[show.id]} />}
                   {show.number_of_seasons > 0 && (
                     <div className="movie-seasons-badge" title={t("tv.seasonsBadgeTitle")}>
@@ -890,6 +913,16 @@ export default function TvShows({
                     <span className="movie-meta-item">{show.genres.join(", ")}</span>
                   )}
                 </div>
+                {/* Feature #144 — admin godkender ønsket direkte fra kortet. */}
+                {wishlist && isAdmin && show.wishlist_status === "pending" && (
+                  <button
+                    type="button"
+                    className="btn btn-primary movie-approve-btn"
+                    onClick={(e) => approveWishlist(show, e)}
+                  >
+                    {t("lib.approveWishlist")}
+                  </button>
+                )}
                 {/* Feature #114/#116 — se den identiske note i Library.jsx
                     (kun ønske-kort, skjult for gæster). */}
                 {show.is_wishlist && !isGuest && (

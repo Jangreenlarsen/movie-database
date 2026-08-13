@@ -138,6 +138,7 @@ export default function Library({
 }) {
   const t = useT();
   const isGuest = user.role === "guest";
+  const isAdmin = user.role === "admin";
   const [query, setQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedFormats, setSelectedFormats] = useState([]);
@@ -323,6 +324,17 @@ export default function Library({
       // BUGS.md #61 — mutationen er gemt, men listen kunne ikke genindlæses;
       // vis det frem for at lade listen stå tavst forældet.
       .catch((err) => setRefreshError(err.message));
+  }
+
+  // Feature #144 — admin godkender et afventende ønske direkte fra kortet.
+  async function approveWishlist(movie, event) {
+    event.stopPropagation();
+    try {
+      await api.updateMovie(movie.id, { wishlist_status: "approved" });
+      refresh();
+    } catch (err) {
+      setRefreshError(err.message);
+    }
   }
 
   function updateVisibleField(key, value) {
@@ -941,6 +953,18 @@ export default function Library({
                   <div className="movie-rating-badge">★ {movie.rating.toFixed(1)}</div>
                 )}
                 <div className="movie-badge-stack">
+                  {/* Feature #144 — afventer admin-godkendelse. */}
+                  {wishlist && movie.wishlist_status === "pending" && (
+                    <div className="movie-wishlist-badge" title={t("lib.wishlistPending")}>
+                      {t("lib.wishlistPendingShort")}
+                    </div>
+                  )}
+                  {/* Feature #145 — navnet falder sammen med en titel i biblioteket. */}
+                  {wishlist && movie.name_in_library && (
+                    <div className="movie-namematch-badge" title={t("lib.nameInLibrary")}>
+                      {t("lib.nameInLibraryShort")}
+                    </div>
+                  )}
                   {visibleFields.plex && <PlexCardBadge availability={plex.items[movie.id]} />}
                   {movie.watched && (
                     <div className="movie-watched-badge" title={t("lib.watched")}>
@@ -973,6 +997,16 @@ export default function Library({
                     <span className="movie-meta-item">{movie.genres.join(", ")}</span>
                   )}
                 </div>
+                {/* Feature #144 — admin godkender ønsket direkte fra kortet. */}
+                {wishlist && isAdmin && movie.wishlist_status === "pending" && (
+                  <button
+                    type="button"
+                    className="btn btn-primary movie-approve-btn"
+                    onClick={(e) => approveWishlist(movie, e)}
+                  >
+                    {t("lib.approveWishlist")}
+                  </button>
+                )}
                 {/* Feature #114 — bestillingsstatus vises kun på ønske-kort,
                     i både grid- og liste-visning (samme markup, jf. #108).
                     Feature #116 — skjult for gæster, som ikke ser order-status. */}

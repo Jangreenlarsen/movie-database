@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.120.0 build 0163] — 2026-08-13 — feature: ønske-godkendelse + navne-sammenfald-badge (FEATURES.md #144, #145)
+
+To wishlist-ændringer (Jan, samme besked). **#144 — godkendelse:** en ikke-admins ønske oprettes nu som `pending` og skal godkendes af en admin; admin-oprettede ønsker er godkendt fra start (nyt `WishlistStatus`-felt på film+TV). Kun admin må godkende — håndhævet i backend (`update_*` afviser `wishlist_status` fra ikke-admins med 403). Frontend: afventende ønsker får en "⏳ Afventer"-badge, og admin får en "Godkend ønske"-knap på ønske-kortet. **#145 — navne-badge:** et ønske får en rød "⚠ I biblioteket"-badge hvis titlen falder sammen med en titel der allerede er i biblioteket — på tværs af både film og TV (normaliseret, læse-tids-beregning i `list_*`, `library_titles_normalized` i begge repos). Fanger navne-match selv når TMDb-id'et er et andet. Tests: `test_wishlist_approval.py` (6), `test_wishlist_name_match.py` (4).
+
 ## [0.119.0 build 0162] — 2026-08-13 — feature: poster-optimering — mindre billeder til små kort (FEATURES.md #143)
 
 Jans ønske: *"kan du optimere de film/tv iconer vi bruger så hvis det er små icon så loader side hurtige"*. Backenden gemmer poster-URL'en i TMDb-`w500`, unødigt stor for et lille kort. Ny frontend-util `utils/posterUrl.js` omskriver TMDb-URL'ens størrelse (`w500`→`w185`/`w342`) til visnings-konteksten; null/manuelle URL'er røres ikke. Biblioteks-/TV-kort henter nu efter kortstørrelse (small→w185, medium→w342, large→w500); program-kort → w342; små thumbnails → w185; detalje-modalen beholder w500. Ren frontend (den gemte w500-URL er uændret, kun det hentede billede skaleres). Test: `posterUrl.test.js` (5). Frontend-suite 57 grøn.

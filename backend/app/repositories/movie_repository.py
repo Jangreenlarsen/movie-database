@@ -386,6 +386,19 @@ async def count_library_by_media_type(db: AsyncIOMotorDatabase) -> dict:
         "wishlist": wishlist,
     }
 
+
+async def library_titles_normalized(db: AsyncIOMotorDatabase) -> set[str]:
+    """Feature #145 — normaliserede titler (små bogstaver + trim) på
+    biblioteks-poster (ikke ønsker), til at opdage om et ønske falder sammen med
+    en titel man allerede har."""
+    titles: set[str] = set()
+    cursor = db[COLLECTION].find({"is_wishlist": {"$ne": True}}, {"title": 1})
+    async for doc in cursor:
+        title = (doc.get("title") or "").strip().lower()
+        if title:
+            titles.add(title)
+    return titles
+
 async def insert(db: AsyncIOMotorDatabase, document: dict) -> dict:
     result = await db[COLLECTION].insert_one(document)
     return await db[COLLECTION].find_one({"_id": result.inserted_id})

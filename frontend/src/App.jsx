@@ -337,6 +337,12 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
                     })}
                   </span>
                 </span>
+                {/* Feature #142 — antal film+serier på indkøbslisten. */}
+                <span className="header-count header-count--wishlist">
+                  {t("counts.wishlist", {
+                    count: counts.movies.wishlist + counts.tv_shows.wishlist,
+                  })}
+                </span>
               </span>
             )}
             {/* Feature #140 — vis også brugerens rolle (Jans ønske). */}

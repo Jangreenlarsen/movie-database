@@ -612,6 +612,7 @@
   "counts.movies": "{count} film",
   "counts.shows": "{count} serier",
   "counts.breakdown": " ({physical} fysisk / {digital} digital)",
+  "counts.wishlist": "{count} på indkøbslisten",
   "sort.serialDigitalFirst": "Serienummer (D først)",
   "sort.serialMoviesFirst": "Serienummer (M først)",
   "sort.serialShowsFirst": "Serienummer (T først)",

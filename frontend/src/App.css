@@ -106,6 +106,14 @@
   border: 1px solid var(--border);
 }
 
+/* Feature #142 — antal på indkøbslisten. Stiplet kant, så den skiller sig ud
+   fra biblioteks-tallene som "det du endnu ikke har". */
+.header-count--wishlist {
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+}
+
 /* Feature #107 — fysisk/digital-fordelingen er lidt lysere end totaltallet,
    så det stadig er totaltallet blikket lander på først. Skjules på smalle
    skærme, se media query nederst. */

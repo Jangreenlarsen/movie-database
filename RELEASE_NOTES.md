@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.118.0 (build 0160) — 2026-08-13
+
+- **Indkøbslisten i toppen.** Øverst i portalen står nu — ud over antal film og serier — også hvor mange film og serier du har på indkøbslisten.
+
 ## v0.117.0 (build 0159) — 2026-08-13
 
 - **Besked når dit ønske er købt.** Hvis du har sat en film eller serie på indkøbslisten, får du nu automatisk en besked når den bliver købt og flyttet ind i biblioteket.

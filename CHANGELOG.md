@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.118.0 build 0160] — 2026-08-13 — feature: indkøbsliste-antal i top-baren (FEATURES.md #142)
+
+Jans ønske: *"i top bar hvor der stå hvor mange film og serie der så også stå hvor mange film/tv der er på indkøbs listen"*. App-headeren viser nu et tredje tal — antal film+serier på indkøbslisten — ved siden af film- og serie-tællerne. Ren frontend: `GET /library/counts` returnerede allerede `wishlist` pr. ressource (feature #94), så headeren summerer `counts.movies.wishlist + counts.tv_shows.wishlist`. Ny `header-count--wishlist`-stil (stiplet kant) + i18n `counts.wishlist` (da+en).
+
 ## [0.117.0 build 0159] — 2026-08-13 — feature: besked når et ønske flyttes til biblioteket (FEATURES.md #141)
 
 Jans ønske: *"hvis en film/tv bliver indkøbt og flyttet til film/tv database efterfølgende så skal den user som har tilføret den til indkøbs listen have besked"*. Når `update_movie`/`update_tv_show` flytter en post fra ønskelisten ind i biblioteket (`is_wishlist` true→false), sendes en besked (feature #100's system) til den der satte den på listen (`registered_by`): "Din ønskede film/serie er nu i biblioteket". Fælles helper `message_service.notify_wishlist_moved`. Springes over hvis flytteren selv er opretteren. Best-effort (try/except) så en notifikations-fejl ikke vælter flytningen. Dukker op via besked-banneret (auto-poll #135). Tests: `test_wishlist_move_notification.py` (3).

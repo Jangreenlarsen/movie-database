@@ -612,6 +612,7 @@
   "counts.movies": "{count} movies",
   "counts.shows": "{count} shows",
   "counts.breakdown": " ({physical} physical / {digital} digital)",
+  "counts.wishlist": "{count} on the wishlist",
   "sort.serialDigitalFirst": "Serial number (D first)",
   "sort.serialMoviesFirst": "Serial number (M first)",
   "sort.serialShowsFirst": "Serial number (T first)",

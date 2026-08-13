@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.122.0 (build 0165) — 2026-08-13
+
+- **Ryd op i ønskerne automatisk.** Registrerer du en film eller serie i biblioteket, og den allerede står på din indkøbsliste, spørger appen nu om du vil fjerne ønsket derfra — så listen ikke fyldes med ting du allerede har.
+
 ## v0.121.0 (build 0164) — 2026-08-13
 
 - **Sortér på genre.** Du kan nu vælge "Genrer" i sorteringen på Film- og TV-siderne, så titlerne grupperes efter genre.

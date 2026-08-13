@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.122.0 build 0165] — 2026-08-13 — feature: tilbyd at fjerne ønsket ved registrering til biblioteket (FEATURES.md #147)
+
+Jan: *"ved registrering af film/tv ... og film/tv findes i ønske seksion skal man have valg ... om man vil slette den i ønske seksion"*. Bygger på #38/#128's dublet-tjek (`DuplicateMatch` bærer `is_wishlist` + `id`): gemmer man en kladde til biblioteket og en dublet er et ønske, spørger en dialog efter oprettelsen om ønsket skal fjernes fra indkøbslisten (Ja → `deleteMovie`/`deleteTvShow`). Kun ønske-dubletter, kun ved oprettelse, film+TV. Ren frontend + i18n `scan.removeFromWishlistConfirm` (da+en).
+
 ## [0.121.0 build 0164] — 2026-08-13 — feature: genre som sorterings-valg (FEATURES.md #146)
 
 Jan: *"i sorte liste er der ikke kategori genrer som valg"*. "Genrer" er nu et valg i sorterings-dropdownen på både Film- og TV-siden. `genres` tilføjet til `SORT_FIELDS`-whitelisten i begge repos; MongoDB sorterer array-feltet på dets mindste element, så posterne grupperes efter deres alfabetisk første genre. Genbruger `field.genres`-nøglen. Tests: `test_sort_genre.py` (stigende/faldende).

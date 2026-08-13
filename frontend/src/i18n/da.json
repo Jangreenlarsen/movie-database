@@ -188,6 +188,7 @@
   "scan.duplicateInLibrary": "i biblioteket",
   "scan.duplicateJoin": " og ",
   "scan.duplicateConfirm": "Denne findes allerede {where}. Vil du tilføje en kopi mere?",
+  "scan.removeFromWishlistConfirm": "\"{title}\" står på indkøbslisten. Vil du fjerne den derfra nu, hvor den er i biblioteket?",
   "scan.seasonsAddToWish": "Føj til eksisterende indkøbsønske i stedet",
   "scan.seasonsAddToShow": "Føj til eksisterende serie i stedet",
   "scan.seasonsPickWished": "Vælg hvilke sæsoner du ønsker dig",

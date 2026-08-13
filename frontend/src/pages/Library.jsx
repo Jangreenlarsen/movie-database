@@ -1299,6 +1299,15 @@ export function MovieDetailModal({
           barcode_source: movie.barcode_source,
           is_wishlist: movie.is_wishlist,
         });
+        // Feature #147 — registrerer man til biblioteket (ikke ønskelisten) og
+        // titlen allerede lå på ønskelisten, så tilbyd at fjerne ønsket derfra
+        // (man ejer den jo nu). Kun ønske-dubletter, aldrig en biblioteks-kopi.
+        if (!movie.is_wishlist) {
+          const wish = duplicates?.find((d) => d.is_wishlist);
+          if (wish && window.confirm(t("scan.removeFromWishlistConfirm", { title: wish.title }))) {
+            await api.deleteMovie(wish.id);
+          }
+        }
       }
       onChanged();
       onClose();

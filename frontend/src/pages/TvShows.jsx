@@ -1131,6 +1131,14 @@ export function TvShowDetailModal({
           is_wishlist: show.is_wishlist,
           ...(ownedSeasonNumbers.length > 0 ? { owned_seasons: ownedSeasonNumbers } : {}),
         });
+        // Feature #147 — se den identiske logik i Library.jsx: registrerer man
+        // til biblioteket og titlen lå på ønskelisten, tilbyd at fjerne ønsket.
+        if (!show.is_wishlist) {
+          const wish = duplicates?.find((d) => d.is_wishlist);
+          if (wish && window.confirm(t("scan.removeFromWishlistConfirm", { title: wish.title }))) {
+            await api.deleteTvShow(wish.id);
+          }
+        }
       }
       onChanged();
       onClose();

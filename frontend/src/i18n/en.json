@@ -188,6 +188,7 @@
   "scan.duplicateInLibrary": "in the library",
   "scan.duplicateJoin": " and ",
   "scan.duplicateConfirm": "This one is already {where}. Do you want to add another copy?",
+  "scan.removeFromWishlistConfirm": "\"{title}\" is on the wishlist. Remove it from there now that it's in the library?",
   "scan.seasonsAddToWish": "Add to the existing shopping-list item instead",
   "scan.seasonsAddToShow": "Add to the existing show instead",
   "scan.seasonsPickWished": "Choose which seasons you want",

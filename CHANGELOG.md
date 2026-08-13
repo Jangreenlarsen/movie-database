@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.115.0 build 0157] — 2026-08-13 — feature: delt 5000+-serie for "andre ejere" (FEATURES.md #139)
+
+Jans regel: en post får serienummer fra en **delt 5000+-pulje** hvis ejeren (normaliseret: små bogstaver + mellemrum fjernet) ikke er blandt `{jan, lis, jan&lis, lis&jan}` **og** posten ikke er oprettet af en admin. Ellers de normale M#/T#/D#-serier. Jans valg: **ÉN fælles pulje** på tværs af film/TV/fysisk/digital. Implementering: ny `other_serial`-tæller i `digital_serial_repository` (start 5000, kun opad, race-sikker); `_uses_other_pool(owner, creator_is_admin)` i begge services; `create_movie`/`create_tv_show` tager nu `creator_is_admin` (default True → normal serie, så interne kaldere/Plex aldrig utilsigtet rammer 5000+; API sender den faktiske rolle). Gælder også wishlist→bibliotek-flyt og medietype-skift. De tre `free_serial_numbers` ekskluderer nu ≥ 5000, så "Ledige numre"/genbrug (#131) ikke viser falske huller. Ingen migration (kun nye poster; eksisterende numre urørt). Tests: `test_serial_other_pool.py` (5 — andre→5000, jan/lis→normal, admin→normal, delt pulje, gaps-eksklusion). Fuld suite grøn.
+
 ## [0.114.1 build 0156] — 2026-08-13 — fix: print gav kun én side på iOS (BUGS.md #63)
 
 Jan: *"print se ud til kun at printe en side på ios"*. På iPhone/iPad (Safari) blev kun første side af print-listen udskrevet. Årsag: `html, body, #root` er låst til `height: 100%` (og `#root` er flex-column) for app-layoutet; iOS Safari tvinger derved hele dokumentet ind i én sidehøjde ved print. `@media print` i `index.css` frigiver nu rod-elementerne (`height: auto; min-height: 0; overflow: visible` + `#root { display: block }`), så listen paginerer over flere sider (kompletterer BUGS #49's flex→block-reset af `.app`/`.app-main`). Ren CSS, kun ved print. **Skal bekræftes på iPhone** (regel 16/18 — kan ikke verificeres fra desktop).

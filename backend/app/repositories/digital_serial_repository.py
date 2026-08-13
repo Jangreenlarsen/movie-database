@@ -26,6 +26,13 @@ REUSE_FLAG_ID = "serial_reuse"
 DEFAULT_SERIAL_CONFIG = {"next_value": 1, "increment": 1}
 MAX_SERIAL_ASSIGN_ATTEMPTS = 10_000
 
+# Feature #139 — den delte 5000+-pulje. Poster hvis ejer ikke er en
+# jan/lis-variant og som ikke er oprettet af en admin, får serienummer herfra
+# (Jans valg: ÉN fælles serie på tværs af film/TV/digital, ikke tre). Bor her
+# af samme grund som D#-serien: tildelingen skal kunne se begge collections.
+OTHER_SERIAL_COUNTER_ID = "other_serial"
+OTHER_SERIAL_START = 5000
+
 # Bevidst hardkodet frem for importeret fra de to repositories: de importerer
 # ikke dette modul, og at gå den anden vej ville lave en cyklus for en oplysning
 # der er to konstante strenge.
@@ -87,14 +94,57 @@ def gaps(taken: set[int]) -> list[int]:
 async def _taken_digital_numbers(db: AsyncIOMotorDatabase) -> set[int]:
     taken: set[int] = set()
     for collection in (MOVIE_COLLECTION, TV_SHOW_COLLECTION):
+        # Feature #139 — 5000+-pulje-numre hører ikke til D#-serien og udelades
+        # her, ellers ville D#-genbrugets "huller" (og "Ledige numre"-oversigten)
+        # række helt op til 5000+ og udpege tusindvis af falske ledige numre.
         cursor = db[collection].find(
-            {"media_type": DIGITAL, "serial_number": {"$exists": True}}, {"serial_number": 1}
+            {
+                "media_type": DIGITAL,
+                "serial_number": {"$exists": True, "$lt": OTHER_SERIAL_START},
+            },
+            {"serial_number": 1},
         )
         async for doc in cursor:
             number = doc.get("serial_number")
             if isinstance(number, int):
                 taken.add(number)
     return taken
+
+
+async def _ensure_other_config(db: AsyncIOMotorDatabase) -> dict:
+    doc = await db[COUNTERS_COLLECTION].find_one({"_id": OTHER_SERIAL_COUNTER_ID})
+    if doc is None:
+        doc = {"_id": OTHER_SERIAL_COUNTER_ID, "next_value": OTHER_SERIAL_START, "increment": 1}
+        await db[COUNTERS_COLLECTION].insert_one(doc)
+    return doc
+
+
+async def _is_other_taken(db: AsyncIOMotorDatabase, candidate: int) -> bool:
+    """Er 5000+-nummeret allerede brugt af NOGEN post? Puljen er fælles på tværs
+    af film/TV og fysisk/digital, så tjekket ignorerer media_type (i modsætning
+    til `_is_taken`, der kun ser på digitale)."""
+    for collection in (MOVIE_COLLECTION, TV_SHOW_COLLECTION):
+        if await db[collection].find_one({"serial_number": candidate}, {"_id": 1}) is not None:
+            return True
+    return False
+
+
+async def next_other_serial_number(db: AsyncIOMotorDatabase) -> int:
+    """Feature #139 — næste ledige nummer fra den delte 5000+-pulje. Tæller kun
+    opad fra 5000 (ingen genbrug — bevidst adskilt fra #131's M/T/D-genbrug), med
+    samme race-sikre "spring optagne over"-tilgang som de øvrige serier."""
+    for _ in range(MAX_SERIAL_ASSIGN_ATTEMPTS):
+        config = await _ensure_other_config(db)
+        increment = config.get("increment", 1)
+        before = await db[COUNTERS_COLLECTION].find_one_and_update(
+            {"_id": OTHER_SERIAL_COUNTER_ID},
+            {"$inc": {"next_value": increment}},
+            return_document=ReturnDocument.BEFORE,
+        )
+        candidate = before["next_value"]
+        if not await _is_other_taken(db, candidate):
+            return candidate
+    raise RuntimeError("Kunne ikke finde et ledigt 5000+-serienummer")
 
 
 async def free_serial_numbers(db: AsyncIOMotorDatabase) -> list[int]:

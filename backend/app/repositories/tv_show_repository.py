@@ -203,8 +203,12 @@ async def free_serial_numbers(db: AsyncIOMotorDatabase) -> list[int]:
     """Feature #131 — de frigjorte T#-numre (huller i det brugte interval),
     laveste først. Se den identiske funktion i movie_repository."""
     taken: set[int] = set()
+    # Feature #139 — 5000+-pulje-numre hører ikke til T#-serien; udelades her.
     cursor = db[COLLECTION].find(
-        {"serial_number": {"$exists": True}, "media_type": {"$ne": DIGITAL_MEDIA_TYPE}},
+        {
+            "serial_number": {"$exists": True, "$lt": digital_serial_repository.OTHER_SERIAL_START},
+            "media_type": {"$ne": DIGITAL_MEDIA_TYPE},
+        },
         {"serial_number": 1},
     )
     async for doc in cursor:

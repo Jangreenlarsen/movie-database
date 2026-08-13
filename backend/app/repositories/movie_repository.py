@@ -309,8 +309,13 @@ async def free_serial_numbers(db: AsyncIOMotorDatabase) -> list[int]:
     laveste først. Den fysiske film-serie: poster med medietype != Digital
     (uklassificerede tælles med som fysiske, jf. next_serial_number)."""
     taken: set[int] = set()
+    # Feature #139 — 5000+-pulje-numre hører ikke til M#-serien; udelades her, så
+    # M#-genbruget og "Ledige numre"-oversigten ikke rækker op til 5000+.
     cursor = db[COLLECTION].find(
-        {"serial_number": {"$exists": True}, "media_type": {"$ne": DIGITAL_MEDIA_TYPE}},
+        {
+            "serial_number": {"$exists": True, "$lt": digital_serial_repository.OTHER_SERIAL_START},
+            "media_type": {"$ne": DIGITAL_MEDIA_TYPE},
+        },
         {"serial_number": 1},
     )
     async for doc in cursor:

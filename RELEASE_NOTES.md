@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.115.0 (build 0157) — 2026-08-13
+
+- **Serienumre 5000+ for andres ting.** Tilføjer en ikke-admin en film/serie hvis ejer ikke er Jan/Lis (eller Jan & Lis), får den nu et serienummer fra en fælles serie der starter ved 5000 — så andres udgaver holdes tydeligt adskilt fra jeres egne numre. Opretter en admin noget, bruges de normale numre uanset ejer.
+
 ## v0.114.1 (build 0156) — 2026-08-13
 
 - **Print virker nu på iPhone.** Udskrivning fra Safari på iPhone/iPad tog tidligere kun den første side med; nu printes hele listen over flere sider.

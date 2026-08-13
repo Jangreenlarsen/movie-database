@@ -159,7 +159,27 @@ def _is_serial_collision(exc: DuplicateKeyError) -> bool:
     return "serial_number" in str(exc)
 
 
-async def _assign_serial_number(db, is_wishlist: bool, media_type) -> int | None:
+# Feature #139 — se den identiske regel i movie_service (ejere med normal serie
+# vs. den delte 5000+-pulje). Bevidst duplikeret her, som resten af serie-logikken
+# spejles mellem de to services.
+STANDARD_OWNERS = {"jan", "lis", "jan&lis", "lis&jan"}
+
+
+def _normalize_owner(owner: str | None) -> str:
+    return (owner or "").lower().replace(" ", "")
+
+
+def _uses_other_pool(owner: str | None, creator_is_admin: bool) -> bool:
+    """Feature #139 — 5000+-puljen kun når ejeren ikke er en jan/lis-variant OG
+    posten ikke er oprettet af en admin. Se movie_service._uses_other_pool."""
+    if creator_is_admin:
+        return False
+    return _normalize_owner(owner) not in STANDARD_OWNERS
+
+
+async def _assign_serial_number(
+    db, is_wishlist: bool, media_type, owner: str | None, creator_is_admin: bool
+) -> int | None:
     """Tildeler et serienummer fra den rigtige serie, eller None.
 
     Feature #92 gav kun fysiske udgaver et nummer; feature #93 gav digitale
@@ -170,12 +190,17 @@ async def _assign_serial_number(db, is_wishlist: bool, media_type) -> int | None
     (T#) og *alle* digitale udgaver under ét (D#, delt på tværs af film og
     serier, så et D#-nummer altid peger på præcis én ting).
 
+    Feature #139 — poster hvis ejer ikke er en jan/lis-variant, og som ikke er
+    oprettet af en admin, får nummer fra den delte 5000+-pulje uanset type.
+
     `media_type` er påkrævet ved oprettelse af en biblioteks-post, så "ikke
     sat" kan kun forekomme på dokumenter fra før den regel. De får intet
     nummer her; eksisterende dokumenter røres kun af migreringen i
     `digital_serial_repository.backfill`."""
     if is_wishlist:
         return None
+    if _uses_other_pool(owner, creator_is_admin):
+        return await digital_serial_repository.next_other_serial_number(db)
     if media_type == MediaType.PHYSICAL:
         return await tv_show_repository.next_serial_number(db)
     if media_type == MediaType.DIGITAL:
@@ -183,8 +208,12 @@ async def _assign_serial_number(db, is_wishlist: bool, media_type) -> int | None
     return None
 
 
+# `creator_is_admin` defaulter til True — se movie_service.create_movie (#139).
 async def create_tv_show(
-    db: AsyncIOMotorDatabase, payload: TvShowCreate, registered_by: str
+    db: AsyncIOMotorDatabase,
+    payload: TvShowCreate,
+    registered_by: str,
+    creator_is_admin: bool = True,
 ) -> TvShow:
     canonical_tags = await tag_service.resolve_tags(
         db, [*payload.tags, tag_service.added_by_tag(registered_by)]
@@ -258,7 +287,13 @@ async def create_tv_show(
 
     # BUGS.md #62 — se den identiske løkke i movie_service.create_movie.
     for _attempt in range(SERIAL_ASSIGN_RETRY_LIMIT):
-        serial_number = await _assign_serial_number(db, payload.is_wishlist, payload.media_type)
+        serial_number = await _assign_serial_number(
+            db,
+            payload.is_wishlist,
+            payload.media_type,
+            payload.owner or registered_by,
+            creator_is_admin,
+        )
         if serial_number is not None:
             document["serial_number"] = serial_number
         try:
@@ -446,7 +481,13 @@ async def update_tv_show(
         fields["is_wishlist"] = requested_wishlist
         media_type = requested_media_type or current_doc.get("media_type")
         if was_wishlist and not requested_wishlist:
-            assigned = await _assign_serial_number(db, False, media_type)
+            assigned = await _assign_serial_number(
+                db,
+                False,
+                media_type,
+                fields.get("owner", current_doc.get("owner")),
+                current_user.get("role") == "admin",
+            )
             if assigned is not None:
                 fields["serial_number"] = assigned
         elif not was_wishlist and requested_wishlist:
@@ -465,7 +506,11 @@ async def update_tv_show(
         is_digital = requested_media_type == MediaType.DIGITAL.value
         series_changed = was_digital != is_digital
         assigned = await _assign_serial_number(
-            db, current_doc.get("is_wishlist", False), requested_media_type
+            db,
+            current_doc.get("is_wishlist", False),
+            requested_media_type,
+            fields.get("owner", current_doc.get("owner")),
+            current_user.get("role") == "admin",
         )
         has_now = current_doc.get("serial_number") is not None
         if assigned is not None and (not has_now or series_changed):

@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.111.0 build 0152] — 2026-08-13 — feature: beskeder dukker op automatisk uden genindlæsning (FEATURES.md #135)
+
+Jans ønske: *"kan vi lave sådan at hvis besked bliver sendt til en user så kommer den automatisk op på skræm uden de skal logout og login igen"*. `MessageBanner` hentede før kun indbakken **én gang** ved mount, så en besked sendt til en allerede-indlogget bruger (fx en godkendt sæde-reservation, #134) først dukkede op ved næste sideindlæsning. Nu poller banneret `GET /api/messages/inbox` hvert 20. sekund (`POLL_INTERVAL_MS`, overstyrbart via `pollIntervalMs`-prop til test) og **tilføjer** nye beskeder til de viste — fjerner aldrig en åben besked ved poll, så den ikke blinker/genopstår. En `dismissedRef` (lokalt lukkede id'er) sikrer at en netop lukket besked ikke kommer tilbage hvis en poll når indbakken før `markMessageRead` er registreret (race-værn). Poll-fejl er tavse som før. Ren frontend; besked-API'et er uændret. Tests: `MessageBanner.test.jsx` +2 (besked dukker op ved næste poll; lukket besked kommer ikke igen). Frontend-suite 52 grøn, build OK.
+
 ## [0.110.1 build 0151] — 2026-08-13 — juster: seat-valg-knap som kompakt ikon (FEATURES.md #133)
 
 Jans ønske: *"sæde icon er udfoldet nu skal det ikke være først når man trykker på den"*. Knappens billede var `Seat valg.png` — et screenshot af HELE sæde-modulet — så knappen så "udfoldet" ud. Skiftet til det rene biografstole-billede (`movie-seat.png`) vist som et lille rundt ikon (26px, beskåret cirkel) med "Vælg plads"-label i en kompakt vandret knap. Selve sædekortet folder først ud i modalen ved klik. Ren layout/asset-ændring i Cinema.jsx/Cinema.css.

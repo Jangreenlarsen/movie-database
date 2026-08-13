@@ -10,6 +10,7 @@ from app.core.errors import (
     ScreeningNotFoundError,
     SeatTakenError,
 )
+from app.models.message import MessageCreate
 from app.models.reservation import (
     SEAT_IDS,
     SEAT_NUMBER_BY_ID,
@@ -19,8 +20,8 @@ from app.models.reservation import (
     SeatMap,
     SeatMapEntry,
 )
-from app.repositories import reservation_repository, screening_repository
-from app.services import screening_service
+from app.repositories import reservation_repository, screening_repository, user_repository
+from app.services import message_service, screening_service
 
 
 async def _to_model(db: AsyncIOMotorDatabase, document: dict) -> Reservation:
@@ -201,7 +202,7 @@ async def create_hold(
 
 
 async def approve_reservation(
-    db: AsyncIOMotorDatabase, reservation_id: str, admin_username: str
+    db: AsyncIOMotorDatabase, reservation_id: str, admin: dict
 ) -> Reservation:
     existing = await reservation_repository.find_by_id(db, reservation_id)
     if existing is None:
@@ -211,11 +212,43 @@ async def approve_reservation(
         reservation_id,
         {
             "status": "approved",
-            "approved_by": admin_username,
+            "approved_by": admin["username"],
             "updated_at": datetime.now(timezone.utc),
         },
     )
-    return await _to_model(db, updated)
+    reservation = await _to_model(db, updated)
+    # Feature #134 — giv ejeren besked i indbakken om godkendelsen.
+    await _notify_owner_approved(db, reservation, admin)
+    return reservation
+
+
+async def _notify_owner_approved(
+    db: AsyncIOMotorDatabase, reservation: Reservation, admin: dict
+) -> None:
+    """Feature #134 — sender en personlig besked (feature #100's system) til
+    reservationens ejer når konduktøren har godkendt. Best-effort sidekanal:
+    selve godkendelsen er allerede gemt, så en fejl her må aldrig vælte den
+    (CLAUDE.md regel 16) — derfor try/except omkring afsendelsen."""
+    owner = await user_repository.find_by_username_normalized(
+        db, reservation.reserved_by.lower()
+    )
+    if owner is None:
+        return
+    film = f'"{reservation.screening_title}"' if reservation.screening_title else "fremvisningen"
+    when = f" d. {reservation.screening_at:%d-%m-%Y kl. %H:%M}" if reservation.screening_at else ""
+    payload = MessageCreate(
+        subject="Din pladsreservation er godkendt",
+        body=(
+            f"Din reservation af sæde {reservation.seat_number} til {film}{when} "
+            "er nu godkendt af biograf-konduktøren. Vi ses i Voldby BIO! 🎬"
+        ),
+        recipient_user_id=str(owner["_id"]),
+    )
+    try:
+        await message_service.send(db, payload, admin)
+    except Exception:
+        # Notifikationen er en sidekanal; godkendelsen står ved magt uanset.
+        pass
 
 
 async def cancel_reservation(

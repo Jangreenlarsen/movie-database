@@ -100,9 +100,7 @@ async def approve_reservation(
     current_user: dict = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
-    result = await reservation_service.approve_reservation(
-        db, reservation_id, current_user["username"]
-    )
+    result = await reservation_service.approve_reservation(db, reservation_id, current_user)
     await audit_log_service.record(
         db,
         current_user["username"],

@@ -7,9 +7,10 @@ import { formatDateHeading, formatShortDate, formatTime, groupByDate } from "../
 import { useLocale, useT } from "../i18n";
 import "./Cinema.css";
 
-// Feature #133 — billedet Jan valgte som seat-valg-knap (public/cinema/).
-// Mellemrummet i filnavnet skal URL-encodes.
-const SEAT_BUTTON_IMG = "/cinema/Seat%20valg.png";
+// Feature #133/#134 — lille biografstole-ikon på seat-valg-knappen. (Det
+// tidligere `Seat valg.png` var et screenshot af HELE modulet, så knappen så
+// "udfoldet" ud; sædekortet folder først ud i modalen ved klik — Jan 2026-08-13.)
+const SEAT_BUTTON_IMG = "/cinema/movie-seat.png";
 
 // Feature #133 — de 14 faste sæder (samme katalog som backendens
 // models/reservation.py), til admin-hold-vælgeren.

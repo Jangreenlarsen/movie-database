@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.110.1 (build 0151) — 2026-08-13
+
+- **"Vælg plads"-knappen er nu et lille ikon.** Tidligere viste knappen et helt billede af sædekortet, så det så ud som om pladsvælgeren allerede var åben; nu er det et kompakt biografstole-ikon, og selve sædekortet åbner først når du trykker på det.
+
 ## v0.110.0 (build 0150) — 2026-08-13
 
 - **Besked når din plads er godkendt.** Når biograf-konduktøren godkender din sæde-reservation, får du nu automatisk en besked i din indbakke — "Din pladsreservation er godkendt" med sæde, film og tidspunkt.

@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.110.1 build 0151] — 2026-08-13 — juster: seat-valg-knap som kompakt ikon (FEATURES.md #133)
+
+Jans ønske: *"sæde icon er udfoldet nu skal det ikke være først når man trykker på den"*. Knappens billede var `Seat valg.png` — et screenshot af HELE sæde-modulet — så knappen så "udfoldet" ud. Skiftet til det rene biografstole-billede (`movie-seat.png`) vist som et lille rundt ikon (26px, beskåret cirkel) med "Vælg plads"-label i en kompakt vandret knap. Selve sædekortet folder først ud i modalen ved klik. Ren layout/asset-ændring i Cinema.jsx/Cinema.css.
+
 ## [0.110.0 build 0150] — 2026-08-13 — feature: besked til bruger ved godkendt sæde-reservation (FEATURES.md #134)
 
 Jans ønske: *"lave en meddeles til user som har få godkendt sin sæd resevasion ved godkendelse fra admin"*. Genbruger feature #100's besked-system: `reservation_service.approve_reservation` sender efter godkendelsen en personlig besked til reservationens ejer via `message_service.send` (afsender = den godkendende admin, modtager = ejeren, slået op på normaliseret brugernavn). Beskeden — "Din pladsreservation er godkendt" — indeholder sæde-nummer + film + dato/tid og lander i ejerens indbakke (den eksisterende besked-banner i UI'et, ingen frontend-ændring). Notifikationen er en **best-effort sidekanal** i try/except, så en fejl aldrig vælter selve godkendelsen (regel 16). `approve_reservation` tager nu hele admin-dict'en (til afsender). Test: `test_approving_notifies_the_owner`. Backend-suite grøn.

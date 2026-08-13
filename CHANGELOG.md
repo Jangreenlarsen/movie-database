@@ -2,6 +2,22 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.114.1 build 0156] — 2026-08-13 — fix: print gav kun én side på iOS (BUGS.md #63)
+
+Jan: *"print se ud til kun at printe en side på ios"*. På iPhone/iPad (Safari) blev kun første side af print-listen udskrevet. Årsag: `html, body, #root` er låst til `height: 100%` (og `#root` er flex-column) for app-layoutet; iOS Safari tvinger derved hele dokumentet ind i én sidehøjde ved print. `@media print` i `index.css` frigiver nu rod-elementerne (`height: auto; min-height: 0; overflow: visible` + `#root { display: block }`), så listen paginerer over flere sider (kompletterer BUGS #49's flex→block-reset af `.app`/`.app-main`). Ren CSS, kun ved print. **Skal bekræftes på iPhone** (regel 16/18 — kan ikke verificeres fra desktop).
+
+## [0.114.0 build 0155] — 2026-08-13 — feature: tag-UI — gæst obligatorisk auto-tag, andre dropdown (FEATURES.md #138)
+
+Jans ønske: gæster skal altid have det obligatoriske "Tilføjet af"-tag (intet valg), og alle andre skal vælge tags fra en dropdown. I detalje-modalen (film + TV): **(#4)** for en gæst er tag-feltet erstattet af en note ("Tilføjes automatisk med tagget 'Tilføjet af {navn}'") — backenden tilføjer i forvejen ubetinget tagget (feature #18), så det er obligatorisk uanset UI. **(#5)** for alle andre er væggen af klikbare tag-chips erstattet af en dropdown ("Vælg et eksisterende tag…"), mens fri-tekst-feltet til nye tags er bevaret. Rører kun tag-*indtastningen* — filter-panelernes tag-chips er urørt. Ren frontend; nye i18n-nøgler `detail.guestTagNote`/`detail.pickTag` (da+en). Frontend-suite grøn.
+
+## [0.113.0 build 0154] — 2026-08-13 — feature: konduktør ser + tilbagetrækker godkendte/for-reserverede sæder (FEATURES.md #137)
+
+Jans ønske: *"admin af sæder skal kunne se hvad sæder som er godkendt sådan man kan tilbage træk godkendelse og det skal også gælde for global admin sæder"*. Konduktør-modulet (`ReservationAdmin`, Voldby BIO-fanen) fik en ny sektion "Godkendte / for-reserverede sæder" ud over den ventende kø. Den henter `GET /api/reservations?status=approved` — både godkendte gæste-reservationer og admin-hold har status `approved`, så begge vises — med sæde, film/global-beskrivelse og hvem, hver med en "Tilbagetræk"-knap (`DELETE` efter bekræftelse) der frigiver sædet. Dækker også globale hold. Ren frontend (backend understøttede allerede `?status=approved` + DELETE); ny `ApprovedRow` + i18n (da+en). Backend-test `test_list_approved_includes_holds_and_guest_reservations` låser antagelsen (21 reservations-tests grøn).
+
+## [0.112.0 build 0153] — 2026-08-13 — feature: generel opdater-knap i portalen (FEATURES.md #136)
+
+Jans ønske: *"vi skal brug en generalt refresh knap i portal"*. Ny "🔄 Opdatér"-knap i app-headeren (ved Log ud) der genindlæser siden (`window.location.reload()`), så man kan hente friske data på tværs af faner uden log ud/ind. Ren frontend, ny i18n-nøgle `app.refresh` (da+en).
+
 ## [0.111.0 build 0152] — 2026-08-13 — feature: beskeder dukker op automatisk uden genindlæsning (FEATURES.md #135)
 
 Jans ønske: *"kan vi lave sådan at hvis besked bliver sendt til en user så kommer den automatisk op på skræm uden de skal logout og login igen"*. `MessageBanner` hentede før kun indbakken **én gang** ved mount, så en besked sendt til en allerede-indlogget bruger (fx en godkendt sæde-reservation, #134) først dukkede op ved næste sideindlæsning. Nu poller banneret `GET /api/messages/inbox` hvert 20. sekund (`POLL_INTERVAL_MS`, overstyrbart via `pollIntervalMs`-prop til test) og **tilføjer** nye beskeder til de viste — fjerner aldrig en åben besked ved poll, så den ikke blinker/genopstår. En `dismissedRef` (lokalt lukkede id'er) sikrer at en netop lukket besked ikke kommer tilbage hvis en poll når indbakken før `markMessageRead` er registreret (race-værn). Poll-fejl er tavse som før. Ren frontend; besked-API'et er uændret. Tests: `MessageBanner.test.jsx` +2 (besked dukker op ved næste poll; lukket besked kommer ikke igen). Frontend-suite 52 grøn, build OK.

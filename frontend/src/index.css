@@ -104,6 +104,23 @@
     --accent-strong: #92400e !important;
     --accent-contrast: #ffffff !important;
   }
+
+  /* BUGS.md #63 — iOS Safari printede kun ÉN side. `html/body/#root` er låst
+     til `height: 100%` (og `#root` er en flex-column) for app-layoutet; ved
+     print tvinger det indholdet ind i én sidehøjde, så resten klippes væk i
+     stedet for at paginere. Frigiv højde/overflow/flex ved print, så en lang
+     liste flyder over flere sider (kompletterer BUGS #49's flex→block-reset af
+     `.app`/`.app-main`, der ikke rørte selve rod-elementerne). */
+  html,
+  body,
+  #root {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+  #root {
+    display: block !important;
+  }
 }
 
 * {

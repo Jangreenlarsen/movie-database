@@ -1,5 +1,21 @@
 # Release Notes
 
+## v0.114.1 (build 0156) — 2026-08-13
+
+- **Print virker nu på iPhone.** Udskrivning fra Safari på iPhone/iPad tog tidligere kun den første side med; nu printes hele listen over flere sider.
+
+## v0.114.0 (build 0155) — 2026-08-13
+
+- **Tags ved tilføjelse.** Gæster vælger ikke længere tags selv — deres ønsker får automatisk et fast "Tilføjet af [navn]"-tag. For alle andre vælges eksisterende tags nu fra en dropdown-liste (og du kan stadig skrive nye tags i fri tekst).
+
+## v0.113.0 (build 0154) — 2026-08-13
+
+- **Overblik over godkendte pladser.** På Voldby BIO-siden kan konduktøren nu se alle godkendte og for-reserverede sæder (også de faste/globale admin-reservationer) og trække en godkendelse tilbage med ét klik, så sædet bliver ledigt igen.
+
+## v0.112.0 (build 0153) — 2026-08-13
+
+- **Opdater-knap.** Der er nu en "🔄 Opdatér"-knap øverst i portalen (ved siden af Log ud), så du kan hente friske data uden at logge ud og ind.
+
 ## v0.111.0 (build 0152) — 2026-08-13
 
 - **Beskeder dukker op af sig selv.** Du behøver ikke længere logge ud og ind for at se en ny besked. Er du allerede logget ind, kommer beskeden automatisk frem på skærmen inden for ~20 sekunder — fx når din sæde-reservation bliver godkendt.

@@ -138,24 +138,27 @@ function ScreeningCard({ screening, isAdmin, onChanged }) {
 
   return (
     <div className="cinema-card">
-      <div className="cinema-card-poster">
-        {screening.poster_url ? (
-          <img src={screening.poster_url} alt={screening.title ?? ""} loading="lazy" />
-        ) : (
-          <span>{screening.media_kind === "movie" ? "🎬" : "📺"}</span>
-        )}
+      {/* Feature #133 — film-ikon + seat-valg-knap i en lodret media-kolonne,
+          så knappen står UNDER ikonet og titlen/teksten får fuld bredde i
+          boksen (Jans ønske 2026-08-13). */}
+      <div className="cinema-card-media">
+        <div className="cinema-card-poster">
+          {screening.poster_url ? (
+            <img src={screening.poster_url} alt={screening.title ?? ""} loading="lazy" />
+          ) : (
+            <span>{screening.media_kind === "movie" ? "🎬" : "📺"}</span>
+          )}
+        </div>
+        <button
+          type="button"
+          className="cinema-card-seat"
+          onClick={() => setSeatOpen(true)}
+          title={t("seat.button")}
+        >
+          <img src={SEAT_BUTTON_IMG} alt="" />
+          <span>{t("seat.button")}</span>
+        </button>
       </div>
-      {/* Feature #133 — seat-valg-knap ved siden af film-ikonet: åbner
-          sæde-vælgeren for netop denne fremvisning. */}
-      <button
-        type="button"
-        className="cinema-card-seat"
-        onClick={() => setSeatOpen(true)}
-        title={t("seat.button")}
-      >
-        <img src={SEAT_BUTTON_IMG} alt="" />
-        <span>{t("seat.button")}</span>
-      </button>
       {seatOpen && (
         <SeatSelectionModal
           screeningId={screening.id}

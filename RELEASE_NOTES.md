@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.109.1 (build 0149) — 2026-08-13
+
+- **Pænere program-kort.** "Vælg plads"-knappen sidder nu **under** filmplakaten i stedet for ved siden af, så titel og tekst får fuld bredde i kortet.
+
 ## v0.109.0 (build 0148) — 2026-08-13
 
 - **Sæde-reservation til Voldby BIO.** Du kan nu vælge din plads i salen direkte fra en film på programmet: på Voldby BIO-siden har hver kommende visning en lille "Vælg plads"-knap ved siden af plakaten, der åbner et sædekort over salen (sofaen forrest + to stolerækker, 14 pladser i alt). Vælg et eller flere ledige sæder og send dem til godkendelse — en biograf-konduktør godkender bagefter. Konduktøren har sit eget modul på Voldby BIO-siden: en kø over ventende reservationer (godkend/afvis) og et værktøj til på forhånd at reservere et bestemt sæde, enten fast på alle visninger eller kun én bestemt.

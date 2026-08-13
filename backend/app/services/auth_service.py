@@ -30,6 +30,7 @@ def to_user_model(document: dict) -> User:
     return User(
         id=str(document["_id"]),
         username=document["username"],
+        full_name=document.get("full_name"),
         role=document.get("role", UserRole.STANDARD),
         status=document.get("status", UserStatus.ACTIVE),
         settings=UserSettings(**merged_settings),
@@ -58,6 +59,8 @@ async def register(db: AsyncIOMotorDatabase, payload: UserRegister) -> User:
     document = {
         "username": payload.username,
         "username_normalized": _normalize_username(payload.username),
+        # Feature #140 — trimmet/None-normaliseret af UserRegister.full_name_clean.
+        "full_name": payload.full_name,
         "password_hash": hash_password(payload.password),
         "role": UserRole.ADMIN if is_first_user else UserRole.STANDARD,
         "status": UserStatus.ACTIVE if is_first_user else UserStatus.PENDING,

@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.116.0 build 0158] — 2026-08-13 — feature: fuldt navn ved registrering + rolle i header (FEATURES.md #140)
+
+Jans ønsker: obligatorisk fuldt navn ved bruger-oprettelse (så admin ser hvem der beder om adgang), og vis brugerens rolle i portalen. **(a)** Nyt `full_name` på `UserRegister`/`User`, gemt + returneret. Håndhæves som `required` i registrerings-formularen (`Login.jsx` + offentlig `/bio`-login), kun i opret-tilstand; backend-modellen holder feltet valgfrit (tomt→None) så den eksisterende API-kontrakt + testsuiten (113 register-kald) ikke brydes — det er et identitets-, ikke sikkerhedsfelt. Admin ser navnet i Indstillinger → Brugere ("brugernavn · Fuldt navn"). Eksisterende konti: None. **(b)** Den indloggede brugers rolle vises nu i headeren ("brugernavn · Admin/Standard/Guest"). `api.register` fik `fullName`-param; nye i18n `auth.fullName`/`auth.fullNamePlaceholder` (da+en). Tests: `test_full_name.py` (3).
+
 ## [0.115.0 build 0157] — 2026-08-13 — feature: delt 5000+-serie for "andre ejere" (FEATURES.md #139)
 
 Jans regel: en post får serienummer fra en **delt 5000+-pulje** hvis ejeren (normaliseret: små bogstaver + mellemrum fjernet) ikke er blandt `{jan, lis, jan&lis, lis&jan}` **og** posten ikke er oprettet af en admin. Ellers de normale M#/T#/D#-serier. Jans valg: **ÉN fælles pulje** på tværs af film/TV/fysisk/digital. Implementering: ny `other_serial`-tæller i `digital_serial_repository` (start 5000, kun opad, race-sikker); `_uses_other_pool(owner, creator_is_admin)` i begge services; `create_movie`/`create_tv_show` tager nu `creator_is_admin` (default True → normal serie, så interne kaldere/Plex aldrig utilsigtet rammer 5000+; API sender den faktiske rolle). Gælder også wishlist→bibliotek-flyt og medietype-skift. De tre `free_serial_numbers` ekskluderer nu ≥ 5000, så "Ledige numre"/genbrug (#131) ikke viser falske huller. Ingen migration (kun nye poster; eksisterende numre urørt). Tests: `test_serial_other_pool.py` (5 — andre→5000, jan/lis→normal, admin→normal, delt pulje, gaps-eksklusion). Fuld suite grøn.

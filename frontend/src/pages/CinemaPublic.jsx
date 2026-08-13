@@ -176,6 +176,7 @@ function PublicLoginPanel({ language, onClose }) {
   const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -197,7 +198,7 @@ function PublicLoginPanel({ language, onClose }) {
         // man registrerer fra forsiden. Derfor samme redirect i begge
         // tilstande frem for en særskilt kvitteringsbesked her.
         // Feature #97 — se den identiske note i Login.jsx.
-        await api.register(username, password, language);
+        await api.register(username, password, language, fullName);
       }
       window.location.assign("/");
     } catch (err) {
@@ -217,6 +218,20 @@ function PublicLoginPanel({ language, onClose }) {
           klik på det mørke backdrop udenom (eller Annullér-knappen). */}
       <div className="cinema-public-login-panel" onClick={(e) => e.stopPropagation()}>
         <form className="auth-form" onSubmit={handleSubmit}>
+        {/* Feature #140 — obligatorisk fuldt navn ved oprettelse (kun i
+            opret-tilstand), så en admin kan se hvem der beder om adgang. */}
+        {mode === "register" && (
+          <label>
+            {t("auth.fullName")}
+            <input
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              autoComplete="name"
+              placeholder={t("auth.fullNamePlaceholder")}
+              required
+            />
+          </label>
+        )}
         <label>
           {t("auth.username")}
           <input

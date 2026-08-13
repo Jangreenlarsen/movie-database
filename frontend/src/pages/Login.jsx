@@ -9,6 +9,7 @@ export default function Login({ onAuthenticated, language, onLanguageChange }) {
   const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -21,8 +22,8 @@ export default function Login({ onAuthenticated, language, onLanguageChange }) {
         mode === "login"
           ? await api.login(username, password)
           // Feature #97 — sprogvalget følger med, så en ny konto starter på
-          // det sprog brugeren allerede har valgt her.
-          : await api.register(username, password, language);
+          // det sprog brugeren allerede har valgt her. Feature #140 — fuldt navn.
+          : await api.register(username, password, language, fullName);
       onAuthenticated(user);
     } catch (err) {
       setError(err.message);
@@ -50,6 +51,20 @@ export default function Login({ onAuthenticated, language, onLanguageChange }) {
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
+          {/* Feature #140 — obligatorisk fuldt navn ved oprettelse, så en admin
+              kan se hvem der beder om adgang. Vises kun i opret-tilstand. */}
+          {mode === "register" && (
+            <label>
+              {t("auth.fullName")}
+              <input
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                autoComplete="name"
+                placeholder={t("auth.fullNamePlaceholder")}
+                required
+              />
+            </label>
+          )}
           <label>
             {t("auth.username")}
             <input

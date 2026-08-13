@@ -154,10 +154,24 @@ class UserSettingsUpdate(BaseModel):
 class UserRegister(BaseModel):
     username: str = Field(min_length=3, max_length=32)
     password: str = Field(min_length=8, max_length=128)
+    # Feature #140 — fuldt navn, så en admin kan se HVEM der beder om adgang før
+    # de godkendes. Håndhæves som påkrævet i selve registrerings-formularen
+    # (Login.jsx + den offentlige /bio-login); modellen holder feltet valgfrit,
+    # så den eksisterende API-kontrakt (og hele testsuiten, der registrerer uden
+    # feltet) ikke brydes — det er et identitets-/oplysningsfelt, ikke et
+    # sikkerhedsfelt. Tomt/kun-mellemrum normaliseres til None.
+    full_name: str | None = Field(default=None, max_length=100)
     # Feature #97 — sproget valgt i login-boksen, så en ny konto starter på
     # det sprog brugeren allerede har valgt frem for altid på dansk.
     # Valgfrit: ældre klienter og API-kald uden feltet får kildesproget.
     language: Language | None = None
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_clean(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
 
     @field_validator("username")
     @classmethod
@@ -212,6 +226,9 @@ class UserStatusUpdate(BaseModel):
 class User(BaseModel):
     id: str
     username: str
+    # Feature #140 — vises for admin (bruger-listen) og for brugeren selv
+    # (/users/me). None på konti oprettet før feltet eller via API uden det.
+    full_name: str | None = None
     role: UserRole
     status: UserStatus
     settings: UserSettings

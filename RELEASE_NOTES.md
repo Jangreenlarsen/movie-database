@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.116.0 (build 0158) — 2026-08-13
+
+- **Fuldt navn ved oprettelse.** Når man opretter en konto, skal man nu angive sit fulde navn — så du som admin kan se hvem der beder om adgang, før du godkender dem (navnet vises under Indstillinger → Brugere).
+- **Din rolle i toppen.** Øverst i portalen står nu din rolle ved siden af dit brugernavn (Admin / Standard / Guest).
+
 ## v0.115.0 (build 0157) — 2026-08-13
 
 - **Serienumre 5000+ for andres ting.** Tilføjer en ikke-admin en film/serie hvis ejer ikke er Jan/Lis (eller Jan & Lis), får den nu et serienummer fra en fælles serie der starter ved 5000 — så andres udgaver holdes tydeligt adskilt fra jeres egne numre. Opretter en admin noget, bruges de normale numre uanset ejer.

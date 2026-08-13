@@ -10,6 +10,8 @@
   "app.logout": "Log ud",
   "app.refresh": "🔄 Opdatér",
   "auth.username": "Brugernavn",
+  "auth.fullName": "Fuldt navn",
+  "auth.fullNamePlaceholder": "Fornavn Efternavn",
   "auth.password": "Adgangskode",
   "auth.submitting": "Vent venligst...",
   "auth.login": "Log ind",

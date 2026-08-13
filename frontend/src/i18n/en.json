@@ -10,6 +10,8 @@
   "app.logout": "Log out",
   "app.refresh": "🔄 Refresh",
   "auth.username": "Username",
+  "auth.fullName": "Full name",
+  "auth.fullNamePlaceholder": "First Last",
   "auth.password": "Password",
   "auth.submitting": "Please wait...",
   "auth.login": "Log in",

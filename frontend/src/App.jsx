@@ -339,7 +339,17 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
                 </span>
               </span>
             )}
-            <span className="muted">{user.username}</span>
+            {/* Feature #140 — vis også brugerens rolle (Jans ønske). */}
+            <span className="muted">
+              {user.username} ·{" "}
+              {t(
+                user.role === "admin"
+                  ? "account.roleAdmin"
+                  : user.role === "guest"
+                    ? "account.roleGuest"
+                    : "account.roleStandard"
+              )}
+            </span>
             {/* Feature #136 — generel opdater-knap: genindlæser portalen, så
                 man kan hente friske data uden at logge ud/ind (Jans ønske). */}
             <button

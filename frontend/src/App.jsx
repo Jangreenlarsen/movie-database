@@ -337,9 +337,25 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
                     })}
                   </span>
                 </span>
+                {/* Feature #142 — antal film+serier på indkøbslisten. */}
+                <span className="header-count header-count--wishlist">
+                  {t("counts.wishlist", {
+                    count: counts.movies.wishlist + counts.tv_shows.wishlist,
+                  })}
+                </span>
               </span>
             )}
-            <span className="muted">{user.username}</span>
+            {/* Feature #140 — vis også brugerens rolle (Jans ønske). */}
+            <span className="muted">
+              {user.username} ·{" "}
+              {t(
+                user.role === "admin"
+                  ? "account.roleAdmin"
+                  : user.role === "guest"
+                    ? "account.roleGuest"
+                    : "account.roleStandard"
+              )}
+            </span>
             {/* Feature #136 — generel opdater-knap: genindlæser portalen, så
                 man kan hente friske data uden at logge ud/ind (Jans ønske). */}
             <button

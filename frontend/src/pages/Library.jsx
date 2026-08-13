@@ -521,7 +521,9 @@ export default function Library({
       <div className="page-header">
         <h1>{t(wishlist ? "lib.wishlistTitle" : "lib.title")}</h1>
         <span className="muted">
-          {status === "ready" ? t("lib.count", { count: movies.length }) : " "}
+          {/* BUGS.md #64 — total på tværs af alle sider, ikke kun de viste på
+              den aktuelle side (`movies` er kun den hentede side). */}
+          {status === "ready" ? t("lib.count", { count: total }) : " "}
         </span>
       </div>
 

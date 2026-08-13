@@ -1,5 +1,22 @@
 # Release Notes
 
+## v0.118.1 (build 0161) — 2026-08-13
+
+- **Rigtigt antal på Film- og TV-siderne.** Tallet øverst ("X film" / "X serier") viste før kun hvor mange der var på den aktuelle side; nu viser det det samlede antal i hele biblioteket.
+
+## v0.118.0 (build 0160) — 2026-08-13
+
+- **Indkøbslisten i toppen.** Øverst i portalen står nu — ud over antal film og serier — også hvor mange film og serier du har på indkøbslisten.
+
+## v0.117.0 (build 0159) — 2026-08-13
+
+- **Besked når dit ønske er købt.** Hvis du har sat en film eller serie på indkøbslisten, får du nu automatisk en besked når den bliver købt og flyttet ind i biblioteket.
+
+## v0.116.0 (build 0158) — 2026-08-13
+
+- **Fuldt navn ved oprettelse.** Når man opretter en konto, skal man nu angive sit fulde navn — så du som admin kan se hvem der beder om adgang, før du godkender dem (navnet vises under Indstillinger → Brugere).
+- **Din rolle i toppen.** Øverst i portalen står nu din rolle ved siden af dit brugernavn (Admin / Standard / Guest).
+
 ## v0.115.0 (build 0157) — 2026-08-13
 
 - **Serienumre 5000+ for andres ting.** Tilføjer en ikke-admin en film/serie hvis ejer ikke er Jan/Lis (eller Jan & Lis), får den nu et serienummer fra en fælles serie der starter ved 5000 — så andres udgaver holdes tydeligt adskilt fra jeres egne numre. Opretter en admin noget, bruges de normale numre uanset ejer.

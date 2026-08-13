@@ -2332,6 +2332,8 @@ function UsersSection({ currentUserId }) {
             <li key={u.id} className="user-row">
               <span className="user-row-name">
                 {u.username}
+                {/* Feature #140 — fulde navn, så admin ser hvem der beder om adgang. */}
+                {u.full_name && <span className="muted"> · {u.full_name}</span>}
                 {u.id === currentUserId && <span className="muted">{t("users.you")}</span>}
               </span>
               {u.status === "pending" && (

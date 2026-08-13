@@ -2,6 +2,22 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.118.1 build 0161] — 2026-08-13 — fix: antal-overskrift viste side-antal frem for total (BUGS.md #64)
+
+Jan: *"i top af seksionen hvor mange film/tv der er, den viser hvor mange elementer der vise på side ... den skal vise total antal"*. Overskriften "X film"/"X serier" øverst på Film-/TV-siderne brugte `movies.length`/`shows.length` (kun den aktuelle sides poster) i stedet for `total` (hele antallet på tværs af alle sider). `Library.jsx`/`TvShows.jsx` bruger nu `total`. Ren frontend.
+
+## [0.118.0 build 0160] — 2026-08-13 — feature: indkøbsliste-antal i top-baren (FEATURES.md #142)
+
+Jans ønske: *"i top bar hvor der stå hvor mange film og serie der så også stå hvor mange film/tv der er på indkøbs listen"*. App-headeren viser nu et tredje tal — antal film+serier på indkøbslisten — ved siden af film- og serie-tællerne. Ren frontend: `GET /library/counts` returnerede allerede `wishlist` pr. ressource (feature #94), så headeren summerer `counts.movies.wishlist + counts.tv_shows.wishlist`. Ny `header-count--wishlist`-stil (stiplet kant) + i18n `counts.wishlist` (da+en).
+
+## [0.117.0 build 0159] — 2026-08-13 — feature: besked når et ønske flyttes til biblioteket (FEATURES.md #141)
+
+Jans ønske: *"hvis en film/tv bliver indkøbt og flyttet til film/tv database efterfølgende så skal den user som har tilføret den til indkøbs listen have besked"*. Når `update_movie`/`update_tv_show` flytter en post fra ønskelisten ind i biblioteket (`is_wishlist` true→false), sendes en besked (feature #100's system) til den der satte den på listen (`registered_by`): "Din ønskede film/serie er nu i biblioteket". Fælles helper `message_service.notify_wishlist_moved`. Springes over hvis flytteren selv er opretteren. Best-effort (try/except) så en notifikations-fejl ikke vælter flytningen. Dukker op via besked-banneret (auto-poll #135). Tests: `test_wishlist_move_notification.py` (3).
+
+## [0.116.0 build 0158] — 2026-08-13 — feature: fuldt navn ved registrering + rolle i header (FEATURES.md #140)
+
+Jans ønsker: obligatorisk fuldt navn ved bruger-oprettelse (så admin ser hvem der beder om adgang), og vis brugerens rolle i portalen. **(a)** Nyt `full_name` på `UserRegister`/`User`, gemt + returneret. Håndhæves som `required` i registrerings-formularen (`Login.jsx` + offentlig `/bio`-login), kun i opret-tilstand; backend-modellen holder feltet valgfrit (tomt→None) så den eksisterende API-kontrakt + testsuiten (113 register-kald) ikke brydes — det er et identitets-, ikke sikkerhedsfelt. Admin ser navnet i Indstillinger → Brugere ("brugernavn · Fuldt navn"). Eksisterende konti: None. **(b)** Den indloggede brugers rolle vises nu i headeren ("brugernavn · Admin/Standard/Guest"). `api.register` fik `fullName`-param; nye i18n `auth.fullName`/`auth.fullNamePlaceholder` (da+en). Tests: `test_full_name.py` (3).
+
 ## [0.115.0 build 0157] — 2026-08-13 — feature: delt 5000+-serie for "andre ejere" (FEATURES.md #139)
 
 Jans regel: en post får serienummer fra en **delt 5000+-pulje** hvis ejeren (normaliseret: små bogstaver + mellemrum fjernet) ikke er blandt `{jan, lis, jan&lis, lis&jan}` **og** posten ikke er oprettet af en admin. Ellers de normale M#/T#/D#-serier. Jans valg: **ÉN fælles pulje** på tværs af film/TV/fysisk/digital. Implementering: ny `other_serial`-tæller i `digital_serial_repository` (start 5000, kun opad, race-sikker); `_uses_other_pool(owner, creator_is_admin)` i begge services; `create_movie`/`create_tv_show` tager nu `creator_is_admin` (default True → normal serie, så interne kaldere/Plex aldrig utilsigtet rammer 5000+; API sender den faktiske rolle). Gælder også wishlist→bibliotek-flyt og medietype-skift. De tre `free_serial_numbers` ekskluderer nu ≥ 5000, så "Ledige numre"/genbrug (#131) ikke viser falske huller. Ingen migration (kun nye poster; eksisterende numre urørt). Tests: `test_serial_other_pool.py` (5 — andre→5000, jan/lis→normal, admin→normal, delt pulje, gaps-eksklusion). Fuld suite grøn.

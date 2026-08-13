@@ -88,4 +88,32 @@ describe("MessageBanner", () => {
     expect(await screen.findByText("Visning fredag")).toBeInTheDocument();
     expect(screen.getByText("Ny film på hylden")).toBeInTheDocument();
   });
+
+  it("henter nye beskeder automatisk via polling (feature #135)", async () => {
+    // Kernen: en besked sendt EFTER at brugeren er logget ind, skal dukke op
+    // af sig selv — uden genindlæsning. Tom ved mount, besked ved næste poll.
+    api.getInbox.mockResolvedValueOnce([]).mockResolvedValue([MESSAGE]);
+    render(<MessageBanner pollIntervalMs={20} />);
+
+    await waitFor(() => expect(api.getInbox).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText("Visning fredag")).not.toBeInTheDocument();
+
+    // Næste poll leverer beskeden — den dukker op uden nogen brugerhandling.
+    expect(await screen.findByText("Visning fredag")).toBeInTheDocument();
+  });
+
+  it("en lukket besked dukker ikke op igen ved næste poll (feature #135)", async () => {
+    // Race-værn: en poll der henter beskeden lige efter lukning (før
+    // markMessageRead er registreret) må ikke sætte den tilbage på skærmen.
+    api.getInbox.mockResolvedValue([MESSAGE]);
+    render(<MessageBanner pollIntervalMs={20} />);
+    await screen.findByText("Visning fredag");
+
+    await userEvent.click(screen.getByRole("button", { name: /luk besked/i }));
+    await waitFor(() => expect(screen.queryByText("Visning fredag")).not.toBeInTheDocument());
+
+    // Lad et par polls køre; beskeden må ikke komme igen.
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(screen.queryByText("Visning fredag")).not.toBeInTheDocument();
+  });
 });

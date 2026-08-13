@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.117.0 (build 0159) — 2026-08-13
+
+- **Besked når dit ønske er købt.** Hvis du har sat en film eller serie på indkøbslisten, får du nu automatisk en besked når den bliver købt og flyttet ind i biblioteket.
+
 ## v0.116.0 (build 0158) — 2026-08-13
 
 - **Fuldt navn ved oprettelse.** Når man opretter en konto, skal man nu angive sit fulde navn — så du som admin kan se hvem der beder om adgang, før du godkender dem (navnet vises under Indstillinger → Brugere).

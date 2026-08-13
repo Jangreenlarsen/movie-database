@@ -73,6 +73,42 @@ async def send(
     return _to_model(await message_repository.insert(db, document))
 
 
+async def notify_wishlist_moved(
+    db: AsyncIOMotorDatabase,
+    wishlist_doc: dict,
+    mover: dict,
+    title: str | None,
+    is_tv: bool,
+) -> None:
+    """Feature #141 — når et ønske flyttes fra indkøbslisten ind i biblioteket
+    (dvs. er blevet købt), får den bruger der oprindeligt satte det på listen
+    besked. Best-effort sidekanal i try/except, så en fejl i notifikationen
+    aldrig vælter selve flytningen (CLAUDE.md regel 16). Springes over hvis
+    flytteren selv er den der ønskede det — man skal ikke have besked om sin
+    egen handling. Bor her (message-laget) frem for i begge medie-services, så
+    logikken ikke duplikeres og kan divergere."""
+    owner_username = wishlist_doc.get("registered_by")
+    if not owner_username or owner_username == mover.get("username"):
+        return
+    owner = await user_repository.find_by_username_normalized(db, owner_username.lower())
+    if owner is None:
+        return
+    kind = "serie" if is_tv else "film"
+    display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or kind
+    payload = MessageCreate(
+        subject=f"Din ønskede {kind} er nu i biblioteket",
+        body=(
+            f'Den {kind} du satte på indkøbslisten — "{display_title}" — er nu købt '
+            "og lagt i biblioteket. 🎬"
+        ),
+        recipient_user_id=str(owner["_id"]),
+    )
+    try:
+        await send(db, payload, mover)
+    except Exception:
+        pass
+
+
 async def list_sent(db: AsyncIOMotorDatabase) -> list[Message]:
     return [_to_model(document) for document in await message_repository.list_all(db)]
 

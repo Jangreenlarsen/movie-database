@@ -41,7 +41,7 @@ from app.repositories import (
     screening_request_repository,
     tv_show_repository,
 )
-from app.services import tag_service
+from app.services import message_service, tag_service
 
 
 def _to_model(document: dict) -> Movie:
@@ -617,6 +617,9 @@ async def update_movie(
         if current_doc is None:
             raise MovieNotFoundError(movie_id)
 
+    # Feature #141 — flyttes et ønske ind i biblioteket, får den der satte det
+    # på ønskelisten besked (efter selve skrivningen, nederst i funktionen).
+    moved_to_library = False
     if requested_wishlist is not None:
         was_wishlist = current_doc.get("is_wishlist", False)
         fields["is_wishlist"] = requested_wishlist
@@ -625,6 +628,7 @@ async def update_movie(
         # den nye værdi der afgør om der skal tildeles et nummer.
         media_type = requested_media_type or current_doc.get("media_type")
         if was_wishlist and not requested_wishlist:
+            moved_to_library = True
             # Moving from the wishlist into the real collection (feature
             # #28/#32) — assign a fresh serial number, same as at creation.
             # Unrestricted, like POST /api/movies: this isn't "editing" an
@@ -679,6 +683,10 @@ async def update_movie(
     document = await movie_repository.update(db, movie_id, fields)
     if document is None:
         raise MovieNotFoundError(movie_id)
+    if moved_to_library:
+        await message_service.notify_wishlist_moved(
+            db, current_doc, current_user, document.get("title"), is_tv=False
+        )
     return _to_model(document)
 
 

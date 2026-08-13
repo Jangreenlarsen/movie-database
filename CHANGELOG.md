@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.117.0 build 0159] — 2026-08-13 — feature: besked når et ønske flyttes til biblioteket (FEATURES.md #141)
+
+Jans ønske: *"hvis en film/tv bliver indkøbt og flyttet til film/tv database efterfølgende så skal den user som har tilføret den til indkøbs listen have besked"*. Når `update_movie`/`update_tv_show` flytter en post fra ønskelisten ind i biblioteket (`is_wishlist` true→false), sendes en besked (feature #100's system) til den der satte den på listen (`registered_by`): "Din ønskede film/serie er nu i biblioteket". Fælles helper `message_service.notify_wishlist_moved`. Springes over hvis flytteren selv er opretteren. Best-effort (try/except) så en notifikations-fejl ikke vælter flytningen. Dukker op via besked-banneret (auto-poll #135). Tests: `test_wishlist_move_notification.py` (3).
+
 ## [0.116.0 build 0158] — 2026-08-13 — feature: fuldt navn ved registrering + rolle i header (FEATURES.md #140)
 
 Jans ønsker: obligatorisk fuldt navn ved bruger-oprettelse (så admin ser hvem der beder om adgang), og vis brugerens rolle i portalen. **(a)** Nyt `full_name` på `UserRegister`/`User`, gemt + returneret. Håndhæves som `required` i registrerings-formularen (`Login.jsx` + offentlig `/bio`-login), kun i opret-tilstand; backend-modellen holder feltet valgfrit (tomt→None) så den eksisterende API-kontrakt + testsuiten (113 register-kald) ikke brydes — det er et identitets-, ikke sikkerhedsfelt. Admin ser navnet i Indstillinger → Brugere ("brugernavn · Fuldt navn"). Eksisterende konti: None. **(b)** Den indloggede brugers rolle vises nu i headeren ("brugernavn · Admin/Standard/Guest"). `api.register` fik `fullName`-param; nye i18n `auth.fullName`/`auth.fullNamePlaceholder` (da+en). Tests: `test_full_name.py` (3).

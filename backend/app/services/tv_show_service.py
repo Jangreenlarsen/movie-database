@@ -34,7 +34,7 @@ from app.repositories import (
     screening_request_repository,
     tv_show_repository,
 )
-from app.services import tag_service
+from app.services import message_service, tag_service
 
 
 def _to_model(document: dict) -> TvShow:
@@ -476,11 +476,15 @@ async def update_tv_show(
         if current_doc is None:
             raise TvShowNotFoundError(tv_show_id)
 
+    # Feature #141 — flyttes et ønske ind i biblioteket, får ønske-opretteren
+    # besked efter skrivningen (se movie_service for den identiske logik).
+    moved_to_library = False
     if requested_wishlist is not None:
         was_wishlist = current_doc.get("is_wishlist", False)
         fields["is_wishlist"] = requested_wishlist
         media_type = requested_media_type or current_doc.get("media_type")
         if was_wishlist and not requested_wishlist:
+            moved_to_library = True
             assigned = await _assign_serial_number(
                 db,
                 False,
@@ -524,6 +528,10 @@ async def update_tv_show(
     document = await tv_show_repository.update(db, tv_show_id, fields)
     if document is None:
         raise TvShowNotFoundError(tv_show_id)
+    if moved_to_library:
+        await message_service.notify_wishlist_moved(
+            db, current_doc, current_user, document.get("name"), is_tv=True
+        )
     return _to_model(document)
 
 

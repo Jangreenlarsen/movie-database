@@ -10,7 +10,7 @@ import CinemaPublic from "./pages/CinemaPublic";
 import Login from "./pages/Login";
 import MessageBanner from "./components/MessageBanner";
 import PendingApproval from "./pages/PendingApproval";
-import { api } from "./api/client";
+import { api, setOnSessionExpired } from "./api/client";
 import I18nProvider from "./i18n/I18nProvider";
 import { SOURCE_LANGUAGE, readStoredLanguage, storeLanguage, useT } from "./i18n";
 import "./App.css";
@@ -93,6 +93,9 @@ function App() {
   }, [isGuest, tab]);
 
   useEffect(() => {
+    // Feature #148 — udløber sessionen (8 timers idle), fører en 401 på et
+    // vilkårligt kald pænt tilbage til login-skærmen i stedet for en rå fejl.
+    setOnSessionExpired(() => setUser(null));
     api
       .me()
       .then(setUser)

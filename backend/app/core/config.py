@@ -53,7 +53,12 @@ class Settings(BaseSettings):
 
     jwt_secret_key: str = INSECURE_DEFAULT_JWT_SECRET
     jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 60 * 24 * 30  # 30 dage
+    # Feature #148 — 8 timers skydende idle-timeout (Jans ønske 2026-08-13): en
+    # aktiv bruger smides aldrig ud midt i arbejdet (sessionen forlænges ved
+    # aktivitet, se _sliding_session-middleware i main.py), men 8 timers
+    # inaktivitet lader cookien/tokenet udløbe. Både JWT-`exp` og cookiens
+    # Max-Age læser herfra.
+    jwt_expire_minutes: int = 60 * 8  # 8 timer
     cookie_secure: bool = False
 
     # OTA-opdatering (feature #20) — kun meningsfuldt i produktion, se DEPLOYMENT.md.

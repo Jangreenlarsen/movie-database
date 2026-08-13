@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.121.0 build 0164] — 2026-08-13 — feature: genre som sorterings-valg (FEATURES.md #146)
+
+Jan: *"i sorte liste er der ikke kategori genrer som valg"*. "Genrer" er nu et valg i sorterings-dropdownen på både Film- og TV-siden. `genres` tilføjet til `SORT_FIELDS`-whitelisten i begge repos; MongoDB sorterer array-feltet på dets mindste element, så posterne grupperes efter deres alfabetisk første genre. Genbruger `field.genres`-nøglen. Tests: `test_sort_genre.py` (stigende/faldende).
+
 ## [0.120.0 build 0163] — 2026-08-13 — feature: ønske-godkendelse + navne-sammenfald-badge (FEATURES.md #144, #145)
 
 To wishlist-ændringer (Jan, samme besked). **#144 — godkendelse:** en ikke-admins ønske oprettes nu som `pending` og skal godkendes af en admin; admin-oprettede ønsker er godkendt fra start (nyt `WishlistStatus`-felt på film+TV). Kun admin må godkende — håndhævet i backend (`update_*` afviser `wishlist_status` fra ikke-admins med 403). Frontend: afventende ønsker får en "⏳ Afventer"-badge, og admin får en "Godkend ønske"-knap på ønske-kortet. **#145 — navne-badge:** et ønske får en rød "⚠ I biblioteket"-badge hvis titlen falder sammen med en titel der allerede er i biblioteket — på tværs af både film og TV (normaliseret, læse-tids-beregning i `list_*`, `library_titles_normalized` i begge repos). Fanger navne-match selv når TMDb-id'et er et andet. Tests: `test_wishlist_approval.py` (6), `test_wishlist_name_match.py` (4).

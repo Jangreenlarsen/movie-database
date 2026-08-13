@@ -56,6 +56,8 @@ SORT_FIELDS = {
     "location": [("location", "user")],
     "owner": [("owner", "user")],
     "registered_by": [("registered_by", "user")],
+    # Feature #146 — sortér på genre (array-felt, se movie_repository).
+    "genres": [("genres", "user")],
     "watched_at": [("watched_at", "user")],
     # Feature #127 — se den identiske note i movie_repository.
     "order_status": [("order_status", "user")],

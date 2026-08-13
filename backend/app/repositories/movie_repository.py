@@ -56,6 +56,10 @@ SORT_FIELDS = {
     "location": [("location", "user")],
     "owner": [("owner", "user")],
     "registered_by": [("registered_by", "user")],
+    # Feature #146 — sortér på genre. `genres` er en liste; MongoDB sorterer et
+    # array-felt på dets mindste element (stigende), så posterne grupperes efter
+    # deres alfabetisk første genre.
+    "genres": [("genres", "user")],
     "watched_at": [("watched_at", "user")],
     # Feature #127 — bestillingsstatus (kun sat på ønskeliste-poster, feature
     # #114; None = ikke bestilt, sorteres først stigende). Meningsfuldt på

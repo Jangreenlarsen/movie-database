@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.121.0 (build 0164) — 2026-08-13
+
+- **Sortér på genre.** Du kan nu vælge "Genrer" i sorteringen på Film- og TV-siderne, så titlerne grupperes efter genre.
+
 ## v0.120.0 (build 0163) — 2026-08-13
 
 - **Ønsker skal godkendes.** Tilføjer en ikke-admin et ønske til indkøbslisten, står det nu som "⏳ Afventer" indtil en admin godkender det (admin får en "Godkend ønske"-knap direkte på kortet). Admins egne ønsker er godkendt med det samme.

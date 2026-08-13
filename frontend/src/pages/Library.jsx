@@ -32,6 +32,8 @@ const SORT_OPTIONS = [
   { value: "format", labelKey: "field.format" },
   { value: "audio_types", labelKey: "field.audioType" },
   { value: "media_type", labelKey: "field.mediaType" },
+  // Feature #146 — sortér på genre.
+  { value: "genres", labelKey: "field.genres" },
   { value: "location", labelKey: "field.location" },
   { value: "owner", labelKey: "field.owner" },
   { value: "registered_by", labelKey: "field.registeredBy" },

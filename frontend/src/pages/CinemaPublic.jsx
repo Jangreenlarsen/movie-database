@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import CinemaShowcase from "../components/CinemaShowcase";
 import { formatShortDate, formatTime } from "../utils/cinemaFormat";
+import { posterSrc } from "../utils/posterUrl";
 import LanguagePicker from "../components/LanguagePicker";
 import { useLocale, useT } from "../i18n";
 import "./CinemaPublic.css";
@@ -309,7 +310,7 @@ function PublicScreeningCard({ screening }) {
     <div className="cinema-card cinema-card--public">
       <div className="cinema-card-poster">
         {screening.poster_url ? (
-          <img src={screening.poster_url} alt={screening.title ?? ""} loading="lazy" />
+          <img src={posterSrc(screening.poster_url, "w342")} alt={screening.title ?? ""} loading="lazy" />
         ) : (
           <span>{screening.media_kind === "movie" ? "🎬" : "📺"}</span>
         )}

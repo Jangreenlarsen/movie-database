@@ -10,6 +10,7 @@ import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import SubtitlesPicker from "../components/SubtitlesPicker";
 import ViewModeToggle from "../components/ViewModeToggle";
 import { useLocale, useT } from "../i18n";
+import { cardPosterSize, posterSrc } from "../utils/posterUrl";
 import { formatSerial, serialPrefix } from "../utils/serialNumber";
 import "../pages/Library.css";
 import "./TvShows.css";
@@ -838,7 +839,12 @@ export default function TvShows({
               {show.format && <div className="movie-format-badge">{show.format}</div>}
               <div className="movie-poster">
                 {show.poster_url ? (
-                  <img src={show.poster_url} alt={show.name} loading="lazy" />
+                  // Feature #143 — poster-størrelse efter kortet, ikke altid w500.
+                  <img
+                    src={posterSrc(show.poster_url, cardPosterSize(user.settings.card_size ?? "medium"))}
+                    alt={show.name}
+                    loading="lazy"
+                  />
                 ) : (
                   "📺"
                 )}

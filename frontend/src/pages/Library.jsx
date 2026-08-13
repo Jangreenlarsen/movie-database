@@ -10,6 +10,7 @@ import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import SubtitlesPicker from "../components/SubtitlesPicker";
 import ViewModeToggle from "../components/ViewModeToggle";
 import { useLocale, useT } from "../i18n";
+import { cardPosterSize, posterSrc } from "../utils/posterUrl";
 import { formatSerial, serialPrefix } from "../utils/serialNumber";
 import "./Library.css";
 
@@ -925,7 +926,14 @@ export default function Library({
               {movie.format && <div className="movie-format-badge">{movie.format}</div>}
               <div className="movie-poster">
                 {movie.poster_url ? (
-                  <img src={movie.poster_url} alt={movie.title} loading="lazy" />
+                  // Feature #143 — hent en poster-størrelse der passer til
+                  // kortet i stedet for altid w500, så et lille kort loader
+                  // et lille billede.
+                  <img
+                    src={posterSrc(movie.poster_url, cardPosterSize(user.settings.card_size ?? "medium"))}
+                    alt={movie.title}
+                    loading="lazy"
+                  />
                 ) : (
                   "🎬"
                 )}

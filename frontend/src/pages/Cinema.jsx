@@ -4,6 +4,7 @@ import CinemaShowcase from "../components/CinemaShowcase";
 import DateTime24Input from "../components/DateTime24Input";
 import SeatSelectionModal from "../components/SeatSelectionModal";
 import { formatDateHeading, formatShortDate, formatTime, groupByDate } from "../utils/cinemaFormat";
+import { posterSrc } from "../utils/posterUrl";
 import { useLocale, useT } from "../i18n";
 import "./Cinema.css";
 
@@ -145,7 +146,7 @@ function ScreeningCard({ screening, isAdmin, onChanged }) {
       <div className="cinema-card-media">
         <div className="cinema-card-poster">
           {screening.poster_url ? (
-            <img src={screening.poster_url} alt={screening.title ?? ""} loading="lazy" />
+            <img src={posterSrc(screening.poster_url, "w342")} alt={screening.title ?? ""} loading="lazy" />
           ) : (
             <span>{screening.media_kind === "movie" ? "🎬" : "📺"}</span>
           )}
@@ -338,7 +339,7 @@ function RequestRow({ request, onChanged }) {
     <div className="cinema-request-row">
       <div className="cinema-request-poster">
         {request.poster_url ? (
-          <img src={request.poster_url} alt={request.title ?? ""} />
+          <img src={posterSrc(request.poster_url, "w185")} alt={request.title ?? ""} />
         ) : (
           <span>{request.media_kind === "movie" ? "🎬" : "📺"}</span>
         )}
@@ -480,7 +481,7 @@ function DirectAddSection({ onChanged }) {
               className="cinema-search-result"
               onClick={() => setSelected(result)}
             >
-              {result.poster_url ? <img src={result.poster_url} alt="" /> : <span>{result.media_kind === "movie" ? "🎬" : "📺"}</span>}
+              {result.poster_url ? <img src={posterSrc(result.poster_url, "w185")} alt="" /> : <span>{result.media_kind === "movie" ? "🎬" : "📺"}</span>}
               <span>
                 {result.title} {result.year ? `(${result.year})` : ""}
               </span>

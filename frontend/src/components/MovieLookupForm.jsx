@@ -5,6 +5,7 @@ import Chip from "./Chip";
 import { MovieDetailModal } from "../pages/Library";
 import { TvShowDetailModal } from "../pages/TvShows";
 import { useT } from "../i18n";
+import { posterSrc } from "../utils/posterUrl";
 import "./MovieLookupForm.css";
 
 function toggleValue(list, value) {
@@ -440,7 +441,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved, mode 
               >
                 <div className="candidate-poster">
                   {candidate.poster_url ? (
-                    <img src={candidate.poster_url} alt={candidate.title} />
+                    <img src={posterSrc(candidate.poster_url, "w185")} alt={candidate.title} />
                   ) : (
                     "🎬"
                   )}
@@ -499,7 +500,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved, mode 
               <div className="modal-header">
                 <div className="modal-poster">
                   {selectedCandidate.poster_url ? (
-                    <img src={selectedCandidate.poster_url} alt={selectedCandidate.title} />
+                    <img src={posterSrc(selectedCandidate.poster_url, "w342")} alt={selectedCandidate.title} />
                   ) : (
                     "📺"
                   )}

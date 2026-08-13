@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.119.0 (build 0162) — 2026-08-13
+
+- **Hurtigere sider.** Film- og serie-kortene henter nu et poster-billede i en størrelse der passer til kortet i stedet for altid at hente det store — så biblioteket (især med mange små kort) loader mærkbart hurtigere, uden synligt kvalitetstab.
+
 ## v0.118.1 (build 0161) — 2026-08-13
 
 - **Rigtigt antal på Film- og TV-siderne.** Tallet øverst ("X film" / "X serier") viste før kun hvor mange der var på den aktuelle side; nu viser det det samlede antal i hele biblioteket.

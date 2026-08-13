@@ -222,3 +222,32 @@ class NoRecipientsError(Exception):
 
     def __init__(self):
         super().__init__("Der er ingen aktive brugere at sende beskeden til")
+
+
+class ReservationNotFoundError(Exception):
+    """Feature #133 — sæde-reservationen findes ikke (eller er allerede
+    annulleret/afvist af en anden)."""
+
+    def __init__(self, reservation_id: str):
+        self.reservation_id = reservation_id
+        super().__init__(f"Sæde-reservation {reservation_id} findes ikke")
+
+
+class InvalidSeatError(Exception):
+    """Feature #133 — et sæde-id der ikke findes i Voldby BIOs faste 14-sæde-sal."""
+
+    def __init__(self, seat_id: str):
+        self.seat_id = seat_id
+        super().__init__(f"Ukendt sæde: {seat_id}")
+
+
+class SeatTakenError(Exception):
+    """Feature #133 — sædet er allerede reserveret/optaget for denne
+    fremvisning (eller blokeret af et globalt admin-hold). Oversættes til en
+    pæn 409 frem for en rå DuplicateKeyError-500 (CLAUDE.md regel 16 — også
+    databasens egne fejl skal fanges), så to gæster der griber samme sæde
+    samtidig får en forståelig besked."""
+
+    def __init__(self, seat_number: int):
+        self.seat_number = seat_number
+        super().__init__(f"Sæde {seat_number} er allerede optaget — vælg et andet.")

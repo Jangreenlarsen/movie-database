@@ -10,7 +10,13 @@ from app.models.screening import (
     ScreeningRequest,
     ScreeningUpdate,
 )
-from app.repositories import movie_repository, screening_repository, screening_request_repository, tv_show_repository
+from app.repositories import (
+    movie_repository,
+    reservation_repository,
+    screening_repository,
+    screening_request_repository,
+    tv_show_repository,
+)
 
 
 async def _resolve_display_info(
@@ -236,3 +242,8 @@ async def delete_screening(db: AsyncIOMotorDatabase, screening_id: str) -> None:
     deleted = await screening_repository.delete(db, screening_id)
     if not deleted:
         raise ScreeningNotFoundError(screening_id)
+    # Feature #133 — fjern fremvisningens sæde-reservationer, så de ikke bliver
+    # forældreløse (en reservation viser filmen ved reference; uden fremvisning
+    # ville konduktør-køen få en tom række). Globale hold hører ikke til nogen
+    # fremvisning og røres ikke.
+    await reservation_repository.delete_for_screening(db, screening_id)

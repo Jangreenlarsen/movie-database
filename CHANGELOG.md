@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.119.0 build 0162] — 2026-08-13 — feature: poster-optimering — mindre billeder til små kort (FEATURES.md #143)
+
+Jans ønske: *"kan du optimere de film/tv iconer vi bruger så hvis det er små icon så loader side hurtige"*. Backenden gemmer poster-URL'en i TMDb-`w500`, unødigt stor for et lille kort. Ny frontend-util `utils/posterUrl.js` omskriver TMDb-URL'ens størrelse (`w500`→`w185`/`w342`) til visnings-konteksten; null/manuelle URL'er røres ikke. Biblioteks-/TV-kort henter nu efter kortstørrelse (small→w185, medium→w342, large→w500); program-kort → w342; små thumbnails → w185; detalje-modalen beholder w500. Ren frontend (den gemte w500-URL er uændret, kun det hentede billede skaleres). Test: `posterUrl.test.js` (5). Frontend-suite 57 grøn.
+
 ## [0.118.1 build 0161] — 2026-08-13 — fix: antal-overskrift viste side-antal frem for total (BUGS.md #64)
 
 Jan: *"i top af seksionen hvor mange film/tv der er, den viser hvor mange elementer der vise på side ... den skal vise total antal"*. Overskriften "X film"/"X serier" øverst på Film-/TV-siderne brugte `movies.length`/`shows.length` (kun den aktuelle sides poster) i stedet for `total` (hele antallet på tværs af alle sider). `Library.jsx`/`TvShows.jsx` bruger nu `total`. Ren frontend.

@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.118.1 build 0161] — 2026-08-13 — fix: antal-overskrift viste side-antal frem for total (BUGS.md #64)
+
+Jan: *"i top af seksionen hvor mange film/tv der er, den viser hvor mange elementer der vise på side ... den skal vise total antal"*. Overskriften "X film"/"X serier" øverst på Film-/TV-siderne brugte `movies.length`/`shows.length` (kun den aktuelle sides poster) i stedet for `total` (hele antallet på tværs af alle sider). `Library.jsx`/`TvShows.jsx` bruger nu `total`. Ren frontend.
+
 ## [0.118.0 build 0160] — 2026-08-13 — feature: indkøbsliste-antal i top-baren (FEATURES.md #142)
 
 Jans ønske: *"i top bar hvor der stå hvor mange film og serie der så også stå hvor mange film/tv der er på indkøbs listen"*. App-headeren viser nu et tredje tal — antal film+serier på indkøbslisten — ved siden af film- og serie-tællerne. Ren frontend: `GET /library/counts` returnerede allerede `wishlist` pr. ressource (feature #94), så headeren summerer `counts.movies.wishlist + counts.tv_shows.wishlist`. Ny `header-count--wishlist`-stil (stiplet kant) + i18n `counts.wishlist` (da+en).

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.118.1 (build 0161) — 2026-08-13
+
+- **Rigtigt antal på Film- og TV-siderne.** Tallet øverst ("X film" / "X serier") viste før kun hvor mange der var på den aktuelle side; nu viser det det samlede antal i hele biblioteket.
+
 ## v0.118.0 (build 0160) — 2026-08-13
 
 - **Indkøbslisten i toppen.** Øverst i portalen står nu — ud over antal film og serier — også hvor mange film og serier du har på indkøbslisten.

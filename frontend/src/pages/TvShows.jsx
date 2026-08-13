@@ -466,7 +466,8 @@ export default function TvShows({
       <div className="page-header">
         <h1>{t(wishlist ? "tv.wishlistTitle" : "tv.title")}</h1>
         <span className="muted">
-          {status === "ready" ? t("tv.count", { count: shows.length }) : " "}
+          {/* BUGS.md #64 — total på tværs af alle sider, ikke kun de viste. */}
+          {status === "ready" ? t("tv.count", { count: total }) : " "}
         </span>
       </div>
 

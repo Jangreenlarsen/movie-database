@@ -56,6 +56,8 @@ SORT_FIELDS = {
     "location": [("location", "user")],
     "owner": [("owner", "user")],
     "registered_by": [("registered_by", "user")],
+    # Feature #146 — sortér på genre (array-felt, se movie_repository).
+    "genres": [("genres", "user")],
     "watched_at": [("watched_at", "user")],
     # Feature #127 — se den identiske note i movie_repository.
     "order_status": [("order_status", "user")],
@@ -321,6 +323,19 @@ async def find_all_library_tv_shows(db: AsyncIOMotorDatabase) -> list[dict]:
     stregkode-kilde-breakdown (feature #77), which covers film+TV."""
     cursor = db[COLLECTION].find({"is_wishlist": {"$ne": True}})
     return await cursor.to_list(length=None)
+
+
+async def library_titles_normalized(db: AsyncIOMotorDatabase) -> set[str]:
+    """Feature #145 — normaliserede navne (små bogstaver + trim) på TV-
+    biblioteks-poster (ikke ønsker). Se den identiske funktion i
+    movie_repository (som bruger `title` frem for `name`)."""
+    titles: set[str] = set()
+    cursor = db[COLLECTION].find({"is_wishlist": {"$ne": True}}, {"name": 1})
+    async for doc in cursor:
+        name = (doc.get("name") or "").strip().lower()
+        if name:
+            titles.add(name)
+    return titles
 
 
 async def replace_all(db: AsyncIOMotorDatabase, documents: list[dict]) -> None:

@@ -56,6 +56,10 @@ SORT_FIELDS = {
     "location": [("location", "user")],
     "owner": [("owner", "user")],
     "registered_by": [("registered_by", "user")],
+    # Feature #146 — sortér på genre. `genres` er en liste; MongoDB sorterer et
+    # array-felt på dets mindste element (stigende), så posterne grupperes efter
+    # deres alfabetisk første genre.
+    "genres": [("genres", "user")],
     "watched_at": [("watched_at", "user")],
     # Feature #127 — bestillingsstatus (kun sat på ønskeliste-poster, feature
     # #114; None = ikke bestilt, sorteres først stigende). Meningsfuldt på
@@ -385,6 +389,19 @@ async def count_library_by_media_type(db: AsyncIOMotorDatabase) -> dict:
         "unclassified": total - physical - digital,
         "wishlist": wishlist,
     }
+
+
+async def library_titles_normalized(db: AsyncIOMotorDatabase) -> set[str]:
+    """Feature #145 — normaliserede titler (små bogstaver + trim) på
+    biblioteks-poster (ikke ønsker), til at opdage om et ønske falder sammen med
+    en titel man allerede har."""
+    titles: set[str] = set()
+    cursor = db[COLLECTION].find({"is_wishlist": {"$ne": True}}, {"title": 1})
+    async for doc in cursor:
+        title = (doc.get("title") or "").strip().lower()
+        if title:
+            titles.add(title)
+    return titles
 
 async def insert(db: AsyncIOMotorDatabase, document: dict) -> dict:
     result = await db[COLLECTION].insert_one(document)

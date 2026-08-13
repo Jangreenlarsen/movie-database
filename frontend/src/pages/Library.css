@@ -512,6 +512,36 @@
   backdrop-filter: blur(4px);
 }
 
+/* Feature #144 — ønske afventer admin-godkendelse (gul/amber). */
+.movie-wishlist-badge {
+  background: rgba(180, 83, 9, 0.9);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+}
+
+/* Feature #145 — navnet falder sammen med en titel i biblioteket (rød advarsel). */
+.movie-namematch-badge {
+  background: rgba(185, 45, 45, 0.9);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+}
+
+/* Feature #144 — godkend-knap på et afventende ønske-kort. */
+.movie-approve-btn {
+  margin-top: 8px;
+  width: 100%;
+  font-size: 0.78rem;
+  padding: 5px 8px;
+}
+
 /* Plex' egen mærkefarve — badget skal kunne genkendes som "det er Plex"
    uden at man læser teksten. */
 .movie-plex-badge {

@@ -2,9 +2,24 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import CinemaShowcase from "../components/CinemaShowcase";
 import DateTime24Input from "../components/DateTime24Input";
+import SeatSelectionModal from "../components/SeatSelectionModal";
 import { formatDateHeading, formatShortDate, formatTime, groupByDate } from "../utils/cinemaFormat";
 import { useLocale, useT } from "../i18n";
 import "./Cinema.css";
+
+// Feature #133 — billedet Jan valgte som seat-valg-knap (public/cinema/).
+// Mellemrummet i filnavnet skal URL-encodes.
+const SEAT_BUTTON_IMG = "/cinema/Seat%20valg.png";
+
+// Feature #133 — de 14 faste sæder (samme katalog som backendens
+// models/reservation.py), til admin-hold-vælgeren.
+const SEAT_OPTIONS = [
+  { id: "N1-1", number: 1 }, { id: "N1-2", number: 2 }, { id: "N1-3", number: 3 },
+  { id: "N1-4", number: 4 }, { id: "N2-1", number: 5 }, { id: "N2-2", number: 6 },
+  { id: "N2-3", number: 7 }, { id: "N2-4", number: 8 }, { id: "N2-5", number: 9 },
+  { id: "N3-1", number: 10 }, { id: "N3-2", number: 11 }, { id: "N3-3", number: 12 },
+  { id: "N3-4", number: 13 }, { id: "N3-5", number: 14 },
+];
 
 export default function Cinema({ user }) {
   const t = useT();
@@ -53,6 +68,7 @@ export default function Cinema({ user }) {
       <CinemaShowcase />
 
       {isAdmin && <AdminScreeningTools onChanged={refresh} />}
+      {isAdmin && <ReservationAdmin screenings={screenings} />}
 
       <div className="cinema-program">
         {status === "loading" && <p className="muted">{t("cinema.loadingProgram")}</p>}
@@ -91,6 +107,7 @@ function ScreeningCard({ screening, isAdmin, onChanged }) {
   const [note, setNote] = useState(screening.note ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [seatOpen, setSeatOpen] = useState(false);
 
   async function saveEdit() {
     setBusy(true);
@@ -128,6 +145,24 @@ function ScreeningCard({ screening, isAdmin, onChanged }) {
           <span>{screening.media_kind === "movie" ? "🎬" : "📺"}</span>
         )}
       </div>
+      {/* Feature #133 — seat-valg-knap ved siden af film-ikonet: åbner
+          sæde-vælgeren for netop denne fremvisning. */}
+      <button
+        type="button"
+        className="cinema-card-seat"
+        onClick={() => setSeatOpen(true)}
+        title={t("seat.button")}
+      >
+        <img src={SEAT_BUTTON_IMG} alt="" />
+        <span>{t("seat.button")}</span>
+      </button>
+      {seatOpen && (
+        <SeatSelectionModal
+          screeningId={screening.id}
+          screeningTitle={screening.title ?? t("cinema.unknownTitle")}
+          onClose={() => setSeatOpen(false)}
+        />
+      )}
       <div className="cinema-card-body">
         <div className="cinema-card-time">{formatTime(screening.scheduled_at, locale)}</div>
         <h3 className="cinema-card-title">
@@ -472,6 +507,199 @@ function DirectAddSection({ onChanged }) {
           </button>
         </div>
       )}
+      {error && <div className="banner banner-error" style={{ marginTop: 8 }}>{error}</div>}
+    </div>
+  );
+}
+
+// Feature #133 — konduktør-modulet: kø over ventende sæde-reservationer
+// (godkend/afvis) + værktøj til at for-reservere et bestemt sæde (global eller
+// film-specifik). Kun admin (renderes bag isAdmin i Cinema).
+function ReservationAdmin({ screenings }) {
+  const t = useT();
+  const [reservations, setReservations] = useState([]);
+  const [status, setStatus] = useState("loading");
+
+  function refresh() {
+    return api
+      .listReservations({ status: "pending" })
+      .then((data) => {
+        setReservations(data);
+        setStatus("ready");
+      })
+      .catch(() => setStatus("error"));
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  return (
+    <div className="card cinema-panel">
+      <h2>{t("cinema.reservations")}</h2>
+      <p className="muted">{t("cinema.reservationsHint")}</p>
+
+      {status === "loading" && <p className="muted">{t("common.loading")}</p>}
+      {status === "error" && (
+        <div className="banner banner-error">{t("cinema.reservationsLoadError")}</div>
+      )}
+      {status === "ready" && reservations.length === 0 && (
+        <p className="muted">{t("cinema.noPendingReservations")}</p>
+      )}
+
+      <div className="cinema-reservations">
+        {reservations.map((reservation) => (
+          <ReservationRow key={reservation.id} reservation={reservation} onChanged={refresh} />
+        ))}
+      </div>
+
+      <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
+
+      <HoldTool screenings={screenings} onChanged={refresh} />
+    </div>
+  );
+}
+
+function ReservationRow({ reservation, onChanged }) {
+  const t = useT();
+  const locale = useLocale();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function approve() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.approveReservation(reservation.id);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  async function decline() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.cancelReservation(reservation.id);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="cinema-reservation-row">
+      <div className="cinema-reservation-info">
+        <strong>{t("seat.seatLabel", { number: reservation.seat_number })}</strong>
+        <div className="muted">
+          {reservation.screening_title ?? t("cinema.unknownTitle")}
+          {reservation.screening_at
+            ? ` · ${formatShortDate(reservation.screening_at, locale)} ${formatTime(reservation.screening_at, locale)}`
+            : ""}
+        </div>
+        <div className="muted">{t("cinema.reservedBy", { name: reservation.reserved_by })}</div>
+      </div>
+      <div className="cinema-reservation-actions">
+        <button type="button" className="btn btn-primary" onClick={approve} disabled={busy}>
+          {t("cinema.approve")}
+        </button>
+        <button type="button" className="btn" onClick={decline} disabled={busy}>
+          {t("cinema.decline")}
+        </button>
+      </div>
+      {error && <div className="banner banner-error" style={{ marginTop: 8 }}>{error}</div>}
+    </div>
+  );
+}
+
+function HoldTool({ screenings, onChanged }) {
+  const t = useT();
+  const locale = useLocale();
+  const [seatId, setSeatId] = useState("N1-1");
+  const [scope, setScope] = useState("global");
+  const [screeningId, setScreeningId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [ok, setOk] = useState(false);
+
+  const canSubmit = seatId && (scope === "global" || screeningId);
+
+  async function submit() {
+    if (!canSubmit) return;
+    setBusy(true);
+    setError(null);
+    setOk(false);
+    try {
+      await api.holdSeat({
+        seat_id: seatId,
+        scope,
+        ...(scope === "screening" ? { screening_id: screeningId } : {}),
+      });
+      setOk(true);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <h3 style={{ marginTop: 0 }}>{t("cinema.holdTitle")}</h3>
+      <p className="muted">{t("cinema.holdHint")}</p>
+      <div className="cinema-hold-form">
+        <label>
+          {t("cinema.holdSeat")}
+          <select value={seatId} onChange={(e) => setSeatId(e.target.value)}>
+            {SEAT_OPTIONS.map((seat) => (
+              <option key={seat.id} value={seat.id}>
+                {t("seat.seatLabel", { number: seat.number })}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t("cinema.holdScope")}
+          <select
+            value={scope}
+            onChange={(e) => {
+              setScope(e.target.value);
+              setOk(false);
+            }}
+          >
+            <option value="global">{t("cinema.holdGlobal")}</option>
+            <option value="screening">{t("cinema.holdScreening")}</option>
+          </select>
+        </label>
+        {scope === "screening" && (
+          <label>
+            {t("cinema.holdPickScreening")}
+            <select value={screeningId} onChange={(e) => setScreeningId(e.target.value)}>
+              <option value="">{t("cinema.holdChoose")}</option>
+              {screenings.map((screening) => (
+                <option key={screening.id} value={screening.id}>
+                  {(screening.title ?? t("cinema.unknownTitle")) +
+                    " · " +
+                    formatShortDate(screening.scheduled_at, locale)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={submit}
+          disabled={busy || !canSubmit}
+        >
+          {t(busy ? "cinema.holding" : "cinema.holdSubmit")}
+        </button>
+      </div>
+      {ok && <div className="banner banner-info" style={{ marginTop: 8 }}>{t("cinema.holdSuccess")}</div>}
       {error && <div className="banner banner-error" style={{ marginTop: 8 }}>{error}</div>}
     </div>
   );

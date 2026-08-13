@@ -244,6 +244,27 @@ export const api = {
     request(`/screenings/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteScreening: (id) => request(`/screenings/${id}`, { method: "DELETE" }),
 
+  // Feature #133 — sæde-reservation til Voldby BIO.
+  getSeatMap: (screeningId) => request(`/screenings/${screeningId}/seats`),
+  reserveSeats: (screeningId, seatIds) =>
+    request(`/screenings/${screeningId}/reservations`, {
+      method: "POST",
+      body: JSON.stringify({ seat_ids: seatIds }),
+    }),
+  listReservations: ({ status, screeningId } = {}) => {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (screeningId) params.set("screening_id", screeningId);
+    const query = params.toString();
+    return request(`/reservations${query ? `?${query}` : ""}`);
+  },
+  myReservations: () => request("/reservations/mine"),
+  approveReservation: (id) =>
+    request(`/reservations/${id}/approve`, { method: "POST" }),
+  cancelReservation: (id) => request(`/reservations/${id}`, { method: "DELETE" }),
+  holdSeat: (payload) =>
+    request("/reservations/hold", { method: "POST", body: JSON.stringify(payload) }),
+
   // TV-serier (feature #47) — egen ressource, samme kontrakt-form som film.
   listTvShows: (
     { q, tags, format, audioTypes, mediaTypes, sort, wishlist, watched, page, pageSize, genres } = {}

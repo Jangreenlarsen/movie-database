@@ -1,8 +1,8 @@
 # Release Notes
 
-## v0.109.0 (build 0147) — 2026-08-13
+## v0.109.0 (build 0148) — 2026-08-13
 
-- **Sæde-reservation til Voldby BIO er på vej.** Denne opdatering lægger fundamentet: du kan snart vælge din plads i salen direkte fra en film på programmet. Salen har 14 pladser (sofaen forrest + to stolerækker), en gæst vælger et eller flere ledige sæder, og en biograf-konduktør godkender bagefter. Konduktøren kan også på forhånd reservere et bestemt sæde — enten til én bestemt visning eller fast på alle visninger. Selve sæde-vælgeren (med billedet af salen) kommer i næste opdatering; denne del er systemet bagved.
+- **Sæde-reservation til Voldby BIO.** Du kan nu vælge din plads i salen direkte fra en film på programmet: på Voldby BIO-siden har hver kommende visning en lille "Vælg plads"-knap ved siden af plakaten, der åbner et sædekort over salen (sofaen forrest + to stolerækker, 14 pladser i alt). Vælg et eller flere ledige sæder og send dem til godkendelse — en biograf-konduktør godkender bagefter. Konduktøren har sit eget modul på Voldby BIO-siden: en kø over ventende reservationer (godkend/afvis) og et værktøj til på forhånd at reservere et bestemt sæde, enten fast på alle visninger eller kun én bestemt.
 
 ## v0.108.1 (build 0146) — 2026-08-12
 

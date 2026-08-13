@@ -61,14 +61,14 @@
 .cinema-card-seat {
   width: 100%;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 5px;
-  padding: 6px;
+  justify-content: center;
+  gap: 7px;
+  padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
-  color: var(--text-muted);
+  color: var(--text);
   cursor: pointer;
   transition: border-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
 }
@@ -81,19 +81,21 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* Lille rundt ikon — beskærer billedets ru akvarel-kant væk, så knappen
+   læses som et kompakt ikon frem for et udfoldet panel. */
 .cinema-card-seat img {
-  width: 100%;
-  aspect-ratio: 4 / 3;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
   object-fit: cover;
-  border-radius: 6px;
+  flex-shrink: 0;
   display: block;
 }
 .cinema-card-seat span {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  text-align: center;
-  line-height: 1.15;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
 }
 
 .cinema-card-body {

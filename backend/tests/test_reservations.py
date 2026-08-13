@@ -317,3 +317,28 @@ async def test_deleting_screening_removes_its_reservations(client):
     await client.delete(f"/api/screenings/{screening_id}")
     assert (await client.get("/api/reservations")).json() == []
     await guest.aclose()
+
+
+async def test_approving_notifies_the_owner(client):
+    """Feature #134 — når konduktøren godkender, får ejeren en besked i
+    indbakken (genbruger feature #100's besked-system)."""
+    movie_id = await _create_movie(client, "Notifikations Film")
+    screening_id = await _create_screening(client, movie_id)
+    guest = await _member_client(client, "g_notify", role="guest")
+    reservation = (
+        await guest.post(
+            f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N2-3"]}
+        )
+    ).json()[0]
+
+    # Ingen besked før godkendelsen.
+    assert (await guest.get("/api/messages/inbox")).json() == []
+
+    await client.post(f"/api/reservations/{reservation['id']}/approve")
+
+    inbox = (await guest.get("/api/messages/inbox")).json()
+    assert len(inbox) == 1
+    assert inbox[0]["subject"] == "Din pladsreservation er godkendt"
+    assert "sæde 7" in inbox[0]["body"].lower()  # N2-3 = sæde 7
+    assert "Notifikations Film" in inbox[0]["body"]
+    await guest.aclose()

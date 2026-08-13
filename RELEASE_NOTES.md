@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.113.0 (build 0154) — 2026-08-13
+
+- **Overblik over godkendte pladser.** På Voldby BIO-siden kan konduktøren nu se alle godkendte og for-reserverede sæder (også de faste/globale admin-reservationer) og trække en godkendelse tilbage med ét klik, så sædet bliver ledigt igen.
+
 ## v0.112.0 (build 0153) — 2026-08-13
 
 - **Opdater-knap.** Der er nu en "🔄 Opdatér"-knap øverst i portalen (ved siden af Log ud), så du kan hente friske data uden at logge ud og ind.

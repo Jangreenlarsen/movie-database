@@ -521,14 +521,22 @@ function DirectAddSection({ onChanged }) {
 // film-specifik). Kun admin (renderes bag isAdmin i Cinema).
 function ReservationAdmin({ screenings }) {
   const t = useT();
-  const [reservations, setReservations] = useState([]);
+  const [pending, setPending] = useState([]);
+  const [approved, setApproved] = useState([]);
   const [status, setStatus] = useState("loading");
 
   function refresh() {
-    return api
-      .listReservations({ status: "pending" })
-      .then((data) => {
-        setReservations(data);
+    // Feature #133/#137 — både ventende (til godkendelse) og godkendte/hold
+    // (til tilbagetrækning). Godkendte gæste-reservationer OG admin-hold har
+    // begge status "approved" i backenden, så én ?status=approved-hentning
+    // dækker begge.
+    return Promise.all([
+      api.listReservations({ status: "pending" }),
+      api.listReservations({ status: "approved" }),
+    ])
+      .then(([pendingRows, approvedRows]) => {
+        setPending(pendingRows);
+        setApproved(approvedRows);
         setStatus("ready");
       })
       .catch(() => setStatus("error"));
@@ -547,19 +555,87 @@ function ReservationAdmin({ screenings }) {
       {status === "error" && (
         <div className="banner banner-error">{t("cinema.reservationsLoadError")}</div>
       )}
-      {status === "ready" && reservations.length === 0 && (
+      {status === "ready" && pending.length === 0 && (
         <p className="muted">{t("cinema.noPendingReservations")}</p>
       )}
 
       <div className="cinema-reservations">
-        {reservations.map((reservation) => (
+        {pending.map((reservation) => (
           <ReservationRow key={reservation.id} reservation={reservation} onChanged={refresh} />
         ))}
       </div>
 
       <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
 
+      {/* Feature #137 — godkendte + for-reserverede sæder, med tilbagetrækning
+          (gælder også globale admin-hold, Jans ønske 2026-08-13). */}
+      <h3 style={{ marginTop: 0 }}>{t("cinema.approvedSeats")}</h3>
+      <p className="muted">{t("cinema.approvedSeatsHint")}</p>
+      {status === "ready" && approved.length === 0 && (
+        <p className="muted">{t("cinema.noApprovedSeats")}</p>
+      )}
+      <div className="cinema-reservations">
+        {approved.map((reservation) => (
+          <ApprovedRow key={reservation.id} reservation={reservation} onChanged={refresh} />
+        ))}
+      </div>
+
+      <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
+
       <HoldTool screenings={screenings} onChanged={refresh} />
+    </div>
+  );
+}
+
+function ApprovedRow({ reservation, onChanged }) {
+  const t = useT();
+  const locale = useLocale();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function retract() {
+    if (!window.confirm(t("cinema.retractConfirm", { seat: reservation.seat_number }))) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.cancelReservation(reservation.id);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  const descriptor = reservation.is_hold
+    ? reservation.scope === "global"
+      ? t("cinema.holdGlobalLabel")
+      : t("cinema.holdScreeningLabel", {
+          title: reservation.screening_title ?? t("cinema.unknownTitle"),
+        })
+    : reservation.screening_title ?? t("cinema.unknownTitle");
+
+  return (
+    <div className="cinema-reservation-row">
+      <div className="cinema-reservation-info">
+        <strong>{t("seat.seatLabel", { number: reservation.seat_number })}</strong>
+        <div className="muted">
+          {descriptor}
+          {!reservation.is_hold && reservation.screening_at
+            ? ` · ${formatShortDate(reservation.screening_at, locale)} ${formatTime(reservation.screening_at, locale)}`
+            : ""}
+        </div>
+        <div className="muted">
+          {reservation.is_hold
+            ? t("cinema.heldBy", { name: reservation.reserved_by })
+            : t("cinema.reservedBy", { name: reservation.reserved_by })}
+        </div>
+      </div>
+      <div className="cinema-reservation-actions">
+        <button type="button" className="btn" onClick={retract} disabled={busy}>
+          {t("cinema.retract")}
+        </button>
+      </div>
+      {error && <div className="banner banner-error" style={{ marginTop: 8 }}>{error}</div>}
     </div>
   );
 }

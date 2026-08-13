@@ -342,3 +342,34 @@ async def test_approving_notifies_the_owner(client):
     assert "sæde 7" in inbox[0]["body"].lower()  # N2-3 = sæde 7
     assert "Notifikations Film" in inbox[0]["body"]
     await guest.aclose()
+
+
+async def test_list_approved_includes_holds_and_guest_reservations(client):
+    """Feature #137 — konduktørens 'godkendte / for-reserverede'-liste henter
+    ?status=approved; både en godkendt gæste-reservation og et admin-hold har
+    status 'approved', så begge skal med (så de kan tilbagetrækkes)."""
+    movie_id = await _create_movie(client)
+    screening_id = await _create_screening(client, movie_id)
+    guest = await _member_client(client, "g_appr_list", role="guest")
+    reservation = (
+        await guest.post(
+            f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N1-1"]}
+        )
+    ).json()[0]
+    await client.post(f"/api/reservations/{reservation['id']}/approve")
+    await client.post("/api/reservations/hold", json={"seat_id": "N2-2", "scope": "global"})
+
+    approved = (
+        await client.get("/api/reservations", params={"status": "approved"})
+    ).json()
+    assert sorted(r["seat_number"] for r in approved) == [1, 6]  # sæde 1 + sæde 6 (hold)
+    holds = [r for r in approved if r["is_hold"]]
+    assert len(holds) == 1 and holds[0]["scope"] == "global"
+
+    # Tilbagetræk hold'et → sædet er frit igen.
+    await client.delete(f"/api/reservations/{holds[0]['id']}")
+    still_approved = (
+        await client.get("/api/reservations", params={"status": "approved"})
+    ).json()
+    assert [r["seat_number"] for r in still_approved] == [1]
+    await guest.aclose()

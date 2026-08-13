@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.114.0 (build 0155) — 2026-08-13
+
+- **Tags ved tilføjelse.** Gæster vælger ikke længere tags selv — deres ønsker får automatisk et fast "Tilføjet af [navn]"-tag. For alle andre vælges eksisterende tags nu fra en dropdown-liste (og du kan stadig skrive nye tags i fri tekst).
+
 ## v0.113.0 (build 0154) — 2026-08-13
 
 - **Overblik over godkendte pladser.** På Voldby BIO-siden kan konduktøren nu se alle godkendte og for-reserverede sæder (også de faste/globale admin-reservationer) og trække en godkendelse tilbage med ét klik, så sædet bliver ledigt igen.

@@ -120,6 +120,8 @@
   "detail.cast": "Cast:",
   "detail.noTags": "No tags",
   "detail.notSpecified": "Not specified",
+  "detail.guestTagNote": "Added automatically with the tag \"Tilføjet af {name}\".",
+  "detail.pickTag": "Pick an existing tag…",
   "detail.createHint": "Not created yet — press \"Create\" below to save it to the library. A serial number is assigned automatically.",
   "detail.serialSwapHint": "If the number is already used by another movie, the two swap places automatically.",
   "detail.serialSwapConfirm": "No. {serial} is already used by \"{title}\". The two will swap places. Continue?",

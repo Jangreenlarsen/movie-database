@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.114.0 build 0155] — 2026-08-13 — feature: tag-UI — gæst obligatorisk auto-tag, andre dropdown (FEATURES.md #138)
+
+Jans ønske: gæster skal altid have det obligatoriske "Tilføjet af"-tag (intet valg), og alle andre skal vælge tags fra en dropdown. I detalje-modalen (film + TV): **(#4)** for en gæst er tag-feltet erstattet af en note ("Tilføjes automatisk med tagget 'Tilføjet af {navn}'") — backenden tilføjer i forvejen ubetinget tagget (feature #18), så det er obligatorisk uanset UI. **(#5)** for alle andre er væggen af klikbare tag-chips erstattet af en dropdown ("Vælg et eksisterende tag…"), mens fri-tekst-feltet til nye tags er bevaret. Rører kun tag-*indtastningen* — filter-panelernes tag-chips er urørt. Ren frontend; nye i18n-nøgler `detail.guestTagNote`/`detail.pickTag` (da+en). Frontend-suite grøn.
+
 ## [0.113.0 build 0154] — 2026-08-13 — feature: konduktør ser + tilbagetrækker godkendte/for-reserverede sæder (FEATURES.md #137)
 
 Jans ønske: *"admin af sæder skal kunne se hvad sæder som er godkendt sådan man kan tilbage træk godkendelse og det skal også gælde for global admin sæder"*. Konduktør-modulet (`ReservationAdmin`, Voldby BIO-fanen) fik en ny sektion "Godkendte / for-reserverede sæder" ud over den ventende kø. Den henter `GET /api/reservations?status=approved` — både godkendte gæste-reservationer og admin-hold har status `approved`, så begge vises — med sæde, film/global-beskrivelse og hvem, hver med en "Tilbagetræk"-knap (`DELETE` efter bekræftelse) der frigiver sædet. Dækker også globale hold. Ren frontend (backend understøttede allerede `?status=approved` + DELETE); ny `ApprovedRow` + i18n (da+en). Backend-test `test_list_approved_includes_holds_and_guest_reservations` låser antagelsen (21 reservations-tests grøn).

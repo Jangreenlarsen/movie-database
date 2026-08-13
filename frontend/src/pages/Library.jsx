@@ -1563,13 +1563,32 @@ export function MovieDetailModal({
 
               <div>
                 <div className="modal-section-label">{t("field.tags")}</div>
-                <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} />
-                {allTags.length > 0 && (
-                  <div className="chip-row" style={{ marginTop: 8 }}>
-                    {allTags.map((tag) => (
-                      <Chip key={tag} label={tag} onClick={() => addTag(tag)} />
-                    ))}
-                  </div>
+                {/* Feature #138 — gæster vælger ikke tags; ønsket tagges
+                    obligatorisk "Tilføjet af {navn}" af backenden (#4). Alle
+                    andre vælger eksisterende tags fra en dropdown (+ fri tekst
+                    til nye) i stedet for en chip-væg (#5). */}
+                {isGuest ? (
+                  <p className="muted">{t("detail.guestTagNote", { name: user.username })}</p>
+                ) : (
+                  <>
+                    <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} />
+                    {allTags.length > 0 && (
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          if (e.target.value) addTag(e.target.value);
+                        }}
+                        style={{ marginTop: 8, display: "block" }}
+                      >
+                        <option value="">{t("detail.pickTag")}</option>
+                        {allTags.map((tag) => (
+                          <option key={tag} value={tag}>
+                            {tag}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </>
                 )}
               </div>
 

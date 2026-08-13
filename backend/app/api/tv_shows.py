@@ -71,7 +71,9 @@ async def create_tv_show(
 ):
     # Feature #116 — se den identiske note i api/movies.create_movie.
     enforce_guest_wishlist_only(current_user, payload)
-    return await tv_show_service.create_tv_show(db, payload, current_user["username"])
+    return await tv_show_service.create_tv_show(
+        db, payload, current_user["username"], current_user.get("role") == "admin"
+    )
 
 
 # NOTE: must be registered before GET /{tv_show_id} — see movies.py for the

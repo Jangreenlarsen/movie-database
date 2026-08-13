@@ -89,7 +89,9 @@ async def create_movie(
     # Feature #116 — gæster må oprette ønsker (men ikke bibliotekspost eller
     # sætte bestillingsstatus); alle andre roller er uændret.
     enforce_guest_wishlist_only(current_user, payload)
-    return await movie_service.create_movie(db, payload, current_user["username"])
+    return await movie_service.create_movie(
+        db, payload, current_user["username"], current_user.get("role") == "admin"
+    )
 
 
 # NOTE: must be registered before GET /{movie_id} — otherwise these literal

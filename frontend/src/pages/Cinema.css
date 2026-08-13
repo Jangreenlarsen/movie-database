@@ -49,11 +49,17 @@
   object-fit: cover;
 }
 
-/* Feature #133 — seat-valg-knap ved siden af film-ikonet i program-boksen. */
-.cinema-card-seat {
+/* Feature #133 — film-ikon + seat-valg-knap i en lodret kolonne, så knappen
+   står under posteren og titlen/teksten får fuld bredde. */
+.cinema-card-media {
   flex-shrink: 0;
-  width: 82px;
-  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+.cinema-card-seat {
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -282,6 +288,11 @@
 
   .cinema-card {
     flex-direction: column;
+  }
+
+  .cinema-card-media {
+    width: 100%;
+    max-width: 160px;
   }
 
   .cinema-card-poster {

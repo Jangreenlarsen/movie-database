@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.109.1 build 0149] — 2026-08-13 — juster: seat-valg-knap under film-ikonet (FEATURES.md #133)
+
+Jans ønske: *"sæt plads bestilling under film icon så film icon og tekst få plads i boks"*. Film-ikonet (poster) og seat-valg-knappen er nu samlet i en lodret media-kolonne (`.cinema-card-media`) i `ScreeningCard`, så knappen står **under** posteren i stedet for som en egen kolonne ved siden af. Titlen og teksten får dermed fuld bredde i program-boksen. Knappen fylder posterens bredde (capped 160px på mobil). Ren layout-ændring i Cinema.jsx/Cinema.css.
+
 ## [0.109.0 build 0148] — 2026-08-13 — feature: sæde-reservation til Voldby BIO — frontend (FEATURES.md #133)
 
 Anden milepæl: hele brugerfladen oven på build 0147's backend.

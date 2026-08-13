@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.114.1 (build 0156) — 2026-08-13
+
+- **Print virker nu på iPhone.** Udskrivning fra Safari på iPhone/iPad tog tidligere kun den første side med; nu printes hele listen over flere sider.
+
 ## v0.114.0 (build 0155) — 2026-08-13
 
 - **Tags ved tilføjelse.** Gæster vælger ikke længere tags selv — deres ønsker får automatisk et fast "Tilføjet af [navn]"-tag. For alle andre vælges eksisterende tags nu fra en dropdown-liste (og du kan stadig skrive nye tags i fri tekst).

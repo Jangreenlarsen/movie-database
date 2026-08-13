@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.114.1 build 0156] — 2026-08-13 — fix: print gav kun én side på iOS (BUGS.md #63)
+
+Jan: *"print se ud til kun at printe en side på ios"*. På iPhone/iPad (Safari) blev kun første side af print-listen udskrevet. Årsag: `html, body, #root` er låst til `height: 100%` (og `#root` er flex-column) for app-layoutet; iOS Safari tvinger derved hele dokumentet ind i én sidehøjde ved print. `@media print` i `index.css` frigiver nu rod-elementerne (`height: auto; min-height: 0; overflow: visible` + `#root { display: block }`), så listen paginerer over flere sider (kompletterer BUGS #49's flex→block-reset af `.app`/`.app-main`). Ren CSS, kun ved print. **Skal bekræftes på iPhone** (regel 16/18 — kan ikke verificeres fra desktop).
+
 ## [0.114.0 build 0155] — 2026-08-13 — feature: tag-UI — gæst obligatorisk auto-tag, andre dropdown (FEATURES.md #138)
 
 Jans ønske: gæster skal altid have det obligatoriske "Tilføjet af"-tag (intet valg), og alle andre skal vælge tags fra en dropdown. I detalje-modalen (film + TV): **(#4)** for en gæst er tag-feltet erstattet af en note ("Tilføjes automatisk med tagget 'Tilføjet af {navn}'") — backenden tilføjer i forvejen ubetinget tagget (feature #18), så det er obligatorisk uanset UI. **(#5)** for alle andre er væggen af klikbare tag-chips erstattet af en dropdown ("Vælg et eksisterende tag…"), mens fri-tekst-feltet til nye tags er bevaret. Rører kun tag-*indtastningen* — filter-panelernes tag-chips er urørt. Ren frontend; nye i18n-nøgler `detail.guestTagNote`/`detail.pickTag` (da+en). Frontend-suite grøn.

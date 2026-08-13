@@ -49,6 +49,47 @@
   object-fit: cover;
 }
 
+/* Feature #133 — seat-valg-knap ved siden af film-ikonet i program-boksen. */
+.cinema-card-seat {
+  flex-shrink: 0;
+  width: 82px;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+}
+.cinema-card-seat:hover {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  box-shadow: var(--shadow-sm);
+}
+.cinema-card-seat:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.cinema-card-seat img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+}
+.cinema-card-seat span {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: center;
+  line-height: 1.15;
+}
+
 .cinema-card-body {
   flex: 1;
   min-width: 0;
@@ -247,4 +288,54 @@
     width: 100%;
     max-width: 160px;
   }
+}
+
+/* Feature #133 — konduktør-modul: reservations-kø + hold-værktøj. */
+.cinema-reservations {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cinema-reservation-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.cinema-reservation-info {
+  flex: 1;
+  min-width: 0;
+}
+.cinema-reservation-info strong {
+  font-variant-numeric: tabular-nums;
+}
+.cinema-reservation-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.cinema-hold-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+.cinema-hold-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.cinema-hold-form select {
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
 }

@@ -15,6 +15,7 @@ from app.api import (
     messages,
     movies,
     plex,
+    reservations,
     scan,
     screening_requests,
     screenings,
@@ -39,12 +40,15 @@ from app.core.errors import (
     LastAdminError,
     MessageNotFoundError,
     MovieNotFoundError,
+    InvalidSeatError,
     NoCertStagedError,
     NoRecipientsError,
     NoPendingCsrError,
     NotAuthenticatedError,
     NotAuthorizedError,
     Pkcs12ImportError,
+    ReservationNotFoundError,
+    SeatTakenError,
     SerialNumberConflictError,
     ScreeningNotFoundError,
     ScreeningRequestNotFoundError,
@@ -61,6 +65,7 @@ from app.repositories import (
     audit_log_repository,
     message_repository,
     movie_repository,
+    reservation_repository,
     screening_repository,
     screening_request_repository,
     tag_repository,
@@ -95,6 +100,7 @@ async def lifespan(app: FastAPI):
     await audit_log_repository.ensure_indexes(db)
     await message_repository.ensure_indexes(db)
     await visit_repository.ensure_indexes(db)
+    await reservation_repository.ensure_indexes(db)
     logger.info("MongoDB client initialized (%s)", settings.mongo_db_name)
     yield
     await close_client()
@@ -270,6 +276,23 @@ async def no_cert_staged_handler(request: Request, exc: NoCertStagedError) -> JS
     return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
+@app.exception_handler(ReservationNotFoundError)
+async def reservation_not_found_handler(
+    request: Request, exc: ReservationNotFoundError
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(InvalidSeatError)
+async def invalid_seat_handler(request: Request, exc: InvalidSeatError) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(SeatTakenError)
+async def seat_taken_handler(request: Request, exc: SeatTakenError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
 app.include_router(health.router)
 app.include_router(analytics.router)
 app.include_router(audit_log.router)
@@ -286,4 +309,5 @@ app.include_router(system.router)
 app.include_router(library_backup.router)
 app.include_router(screening_requests.router)
 app.include_router(screenings.router)
+app.include_router(reservations.router)
 app.include_router(messages.router)

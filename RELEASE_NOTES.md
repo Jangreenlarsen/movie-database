@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.109.0 (build 0148) — 2026-08-13
+
+- **Sæde-reservation til Voldby BIO.** Du kan nu vælge din plads i salen direkte fra en film på programmet: på Voldby BIO-siden har hver kommende visning en lille "Vælg plads"-knap ved siden af plakaten, der åbner et sædekort over salen (sofaen forrest + to stolerækker, 14 pladser i alt). Vælg et eller flere ledige sæder og send dem til godkendelse — en biograf-konduktør godkender bagefter. Konduktøren har sit eget modul på Voldby BIO-siden: en kø over ventende reservationer (godkend/afvis) og et værktøj til på forhånd at reservere et bestemt sæde, enten fast på alle visninger eller kun én bestemt.
+
 ## v0.108.1 (build 0146) — 2026-08-12
 
 - **Fire rettelser fra en dyb systemgennemgang.** "Set-dato" gemmes nu i det rigtige datoformat i databasen (så fremtidige dato-filtre virker). Gæster kan ikke længere se listen over slettede TV-serier (som det allerede gjaldt for film). Hvis en ændring gemmes men listen ikke kan genindlæses, får du nu en tydelig besked i stedet for en tavst forældet liste. Og en sjælden serienummer-kollision (når genbrug er slået til) rettes nu automatisk i stedet for at give en misvisende "stregkode findes allerede"-fejl.

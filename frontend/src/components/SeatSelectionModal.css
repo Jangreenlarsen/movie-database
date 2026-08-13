@@ -1,0 +1,353 @@
+/* Feature #133 — sæde-vælger-modal. Genbruger appens design-tokens
+   (--surface/--accent/--border/--text-muted ...), så den følger tema
+   automatisk. Den ene ekstra farve — grøn "din plads" — defineres lokalt for
+   begge temaer efter samme tre-tilstands-mønster som index.css. */
+.seat-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 120;
+}
+
+.seat-modal {
+  --seat-mine: #2f7d54;
+  --seat-mine-soft: rgba(47, 125, 84, 0.14);
+  position: relative;
+  width: 720px;
+  max-width: 100%;
+  max-height: 92vh;
+  overflow-y: auto;
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 22px 24px 26px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .seat-modal {
+    --seat-mine: #5fbf8a;
+    --seat-mine-soft: rgba(95, 191, 138, 0.18);
+  }
+}
+:root[data-theme="dark"] .seat-modal {
+  --seat-mine: #5fbf8a;
+  --seat-mine-soft: rgba(95, 191, 138, 0.18);
+}
+
+.seat-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.seat-modal-close:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.seat-modal-header {
+  margin-bottom: 16px;
+  padding-right: 32px;
+}
+.seat-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.seat-modal-header h2 {
+  margin: 4px 0 2px;
+  font-size: 1.25rem;
+}
+.seat-intro {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.seat-modal-body {
+  display: grid;
+  grid-template-columns: auto 220px;
+  gap: 22px;
+  align-items: start;
+  justify-content: center;
+}
+@media (max-width: 640px) {
+  .seat-modal-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- salen set oppefra --- */
+.seat-room {
+  position: relative;
+  width: 300px;
+  max-width: 100%;
+  margin: 0 auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px 22px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.seat-screen {
+  width: 80%;
+  text-align: center;
+  padding: 7px 0 26px;
+  background: linear-gradient(180deg, var(--accent-soft-strong), transparent 85%);
+  border-radius: 4px 4px 0 0;
+}
+.seat-screen-bar {
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  box-shadow: 0 0 12px var(--accent-soft-strong);
+}
+.seat-screen-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+}
+.seat-gap {
+  height: 12px;
+}
+
+.seat-row {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.seat-chairs {
+  display: flex;
+  gap: 9px;
+}
+
+/* sofaen: tre dele — 2 i midten, en fløj i hver side vinklet ~10° ind mod
+   lærredet; ens ~6px afstand mellem alle fire sæder, rammer der ikke fordobles */
+.seat-sofa {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+}
+.seat-sofa-unit {
+  display: flex;
+  gap: 6px;
+  padding: 7px 7px 5px;
+  border-radius: 15px 15px 11px 11px;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+}
+.seat-sofa-unit--mid {
+  padding-left: 2px;
+  padding-right: 2px;
+}
+.seat-sofa-unit--left {
+  transform: rotate(10deg);
+  transform-origin: top right;
+  padding-right: 2px;
+}
+.seat-sofa-unit--right {
+  transform: rotate(-10deg);
+  transform-origin: top left;
+  padding-left: 2px;
+}
+
+.seat-door {
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 68px;
+  height: 15px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+
+/* --- sæderne --- */
+.seat {
+  appearance: none;
+  font: inherit;
+  width: 40px;
+  height: 38px;
+  border-radius: 9px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.seat--wide {
+  width: 44px;
+  height: 40px;
+  border-radius: 11px 11px 8px 8px;
+}
+.seat--free:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  transform: translateY(-2px);
+}
+.seat:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.seat--selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+.seat--mine {
+  background: var(--seat-mine-soft);
+  border-color: var(--seat-mine);
+  color: var(--seat-mine);
+}
+.seat--taken {
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  border-color: transparent;
+  cursor: not-allowed;
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    rgba(128, 128, 128, 0.18) 4px,
+    rgba(128, 128, 128, 0.18) 5px
+  );
+}
+.seat--pending {
+  background: var(--surface);
+  color: var(--text-muted);
+  border-style: dashed;
+  border-color: var(--accent);
+  cursor: not-allowed;
+}
+
+/* --- sidepanel --- */
+.seat-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.seat-panel {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+.seat-panel h3 {
+  margin: 0 0 10px;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.seat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 24px;
+  margin-bottom: 12px;
+}
+.seat-chip {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border: 1px solid var(--accent-soft-strong);
+}
+.seat-reserve {
+  width: 100%;
+}
+.seat-hint {
+  margin: 10px 0 0;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+.seat-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.seat-legend li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.86rem;
+}
+.seat-sw {
+  width: 22px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border);
+  flex: none;
+}
+.seat-sw--free {
+  background: var(--surface);
+}
+.seat-sw--selected {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.seat-sw--taken {
+  background: var(--surface-hover);
+  border-color: transparent;
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 3px,
+    rgba(128, 128, 128, 0.2) 3px,
+    rgba(128, 128, 128, 0.2) 4px
+  );
+}
+.seat-sw--mine {
+  background: var(--seat-mine-soft);
+  border-color: var(--seat-mine);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seat {
+    transition: none;
+  }
+}

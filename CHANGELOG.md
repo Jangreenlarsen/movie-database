@@ -2,6 +2,29 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.109.0 build 0148] — 2026-08-13 — feature: sæde-reservation til Voldby BIO — frontend (FEATURES.md #133)
+
+Anden milepæl: hele brugerfladen oven på build 0147's backend.
+
+- **`SeatSelectionModal`** (`components/SeatSelectionModal.jsx` + `.css`): sæde-vælgeren som modal, portet fra den godkendte sæde-vælger-artefakt (lærred → hjørnesofa med ~10°-vinklede fløje → to stolerækker → dør), men data-drevet fra `GET /api/screenings/{id}/seats`. Backend-tilstande `free`/`mine`/`pending`/`taken` → ledig (klikbar) / din plads (grøn, klik = annullér) / afventer (deaktiveret) / optaget (deaktiveret). Vælg ledige sæder → `Reservér valgte (n)` → `pending`. Genbruger appens design-tokens (tema-korrekt); grøn "din plads"-farve defineret lokalt for begge temaer.
+- **Seat-valg-knap på `ScreeningCard`** (Cinema.jsx): `Seat valg.png` (Jans valg) ved siden af film-ikonet i program-boksen, åbner modalen for den fremvisning.
+- **Konduktør-modul** (admin, Cinema.jsx): reservations-kø (`GET /api/reservations?status=pending`) med Godkend/Afvis pr. reservation, + hold-værktøj (vælg sæde 1–14 × global/film-specifik).
+- **API-klient**: `getSeatMap`/`reserveSeats`/`listReservations`/`myReservations`/`approveReservation`/`cancelReservation`/`holdSeat`. **i18n**: nye `seat.*` + `cinema.*`-nøgler i da+en (katalog-parity-test grøn).
+- Tests: `SeatSelectionModal.test.jsx` (3 — tilstand→klikbarhed, valg aktiverer Reservér + sender sæde-id, fravalg). Frontend-suite **50 passed**, build + lint grøn.
+- **Regel 18**: rum-geometrien er godkendt via artefakten; modal-ramme/kort-knap/konduktør-panel i appen afventer visuelt tjek. Offentlig `/bio` har bevidst ikke knappen endnu (kræver login-gating).
+
+## [0.109.0 build 0147] — 2026-08-13 — feature: sæde-reservation til Voldby BIO — backend/API (FEATURES.md #133)
+
+Første milepæl af det fulde sæde-reservationssystem (Jans valg: fuldt system for registrerede gæster). **Backend/API + tests**; frontend (sæde-vælger-modal, knap på program-boksen, konduktør-modul) følger i næste commit under samme version.
+
+- **Ny `seat_reservations`-collection** + lag: `models/reservation.py` (fast 14-sæde-katalog — sofa 1–4, række 2 sæde 5–9, række 3 sæde 10–14 — samt Reservation/SeatMap-modeller), `reservation_repository`, `reservation_service`, `api/reservations.py`.
+- **Sædekort pr. fremvisning** (`GET /api/screenings/{id}/seats`): de 14 sæder med tilstand `free`/`mine`/`pending`/`taken` set fra kalderens perspektiv. Kræver login.
+- **Gæst reserverer** (`POST /api/screenings/{id}/reservations`): et eller flere ledige sæder → `pending`. Tilladt for guests (som `POST /api/screening-requests`, #62/#72). Race-sikkert unikt index `(seat_id, screening_id)` (BUGS #44-mønster) + `SeatTakenError`→409 mod dobbelt-booking; hele reservationen fejler fremfor at efterlade en delvis (regel 16).
+- **Konduktør-modul** (admin): `GET /api/reservations` (kø, `?status=`/`?screening_id=`), `POST /api/reservations/{id}/approve`, `DELETE /api/reservations/{id}` (ejer eller admin — håndhævet i backend), `POST /api/reservations/hold` (global eller film-specifik for-reservation).
+- **Oprydning**: sletning af en fremvisning fjerner dens reservationer (`screening_service.delete_screening`).
+- Nye fejl: `ReservationNotFoundError`/`InvalidSeatError`/`SeatTakenError` (404/400/409). ARCHITECTURE.md endpoint-tabel opdateret.
+- Tests: `test_reservations.py` (19 — sædekort, gæst-reservation, dobbelt-booking + ingen delvis, idempotens, godkend/annullér-rettigheder, global vs. film-hold, sletning rydder). Fuld suite: **616 passed**.
+
 ## [0.108.1 build 0146] — 2026-08-12 — fix: fire systematiske fejl fra to-fase system-analyse (BUGS.md #59-#62)
 
 Rettelse af de fire fund fra den dybe to-fase-gennemgang:

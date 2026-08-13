@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.112.0 (build 0153) — 2026-08-13
+
+- **Opdater-knap.** Der er nu en "🔄 Opdatér"-knap øverst i portalen (ved siden af Log ud), så du kan hente friske data uden at logge ud og ind.
+
 ## v0.111.0 (build 0152) — 2026-08-13
 
 - **Beskeder dukker op af sig selv.** Du behøver ikke længere logge ud og ind for at se en ny besked. Er du allerede logget ind, kommer beskeden automatisk frem på skærmen inden for ~20 sekunder — fx når din sæde-reservation bliver godkendt.

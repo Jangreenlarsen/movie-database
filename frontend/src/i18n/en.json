@@ -8,6 +8,7 @@
   "app.nav.stats": "Statistics",
   "app.nav.settings": "Settings",
   "app.logout": "Log out",
+  "app.refresh": "🔄 Refresh",
   "auth.username": "Username",
   "auth.password": "Password",
   "auth.submitting": "Please wait...",

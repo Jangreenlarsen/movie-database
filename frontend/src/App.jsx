@@ -340,6 +340,16 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
               </span>
             )}
             <span className="muted">{user.username}</span>
+            {/* Feature #136 — generel opdater-knap: genindlæser portalen, så
+                man kan hente friske data uden at logge ud/ind (Jans ønske). */}
+            <button
+              type="button"
+              className="btn"
+              onClick={() => window.location.reload()}
+              title={t("app.refresh")}
+            >
+              {t("app.refresh")}
+            </button>
             <button type="button" className="btn" onClick={onLogout}>
               {t("app.logout")}
             </button>

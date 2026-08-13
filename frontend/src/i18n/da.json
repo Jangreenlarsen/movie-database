@@ -8,6 +8,7 @@
   "app.nav.stats": "Statistik",
   "app.nav.settings": "Indstillinger",
   "app.logout": "Log ud",
+  "app.refresh": "🔄 Opdatér",
   "auth.username": "Brugernavn",
   "auth.password": "Adgangskode",
   "auth.submitting": "Vent venligst...",

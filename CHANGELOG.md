@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.126.0 build 0169] — 2026-08-14 — feature: mindre knap-tekst + fane-linjen ombryder på mobil (FEATURES.md #151)
+
+Jan: *"gør tekst i de 3 felter mindre og se på hoved menu line da den også er meget lang på en mobil, kan vi ikke lave den i 2 line eventuelt"*. To mobil-justeringer (≤640px, ren CSS): (a) de tre værktøjs-knapper (Sortér/Filtrér/Vis felter) fik mindre tekst (`Library.css`, font 0.8→0.72rem). (b) Fane-linjen lå på én lang, vandret-scrollende linje — med 7 faner blev den for lang. Nu ombryder den til flere linjer (`App.css`: `flex-wrap:wrap`, `overflow-x:visible`, centreret, knap-font 0.9→0.82rem): 2 linjer ved ~390px, 3 ved ~320px. Ingen JSX-/i18n-ændring. Berørte filer: `frontend/src/pages/Library.css`, `frontend/src/App.css`. Regel 18: visuelt verificeret i Edge (playwright) ved 390px og 320px.
+
 ## [0.125.0 build 0168] — 2026-08-14 — feature: kompakt værktøjslinje på mobil (FEATURES.md #150)
 
 Jan: *"sorte, filter, vis felter samt list view mode skal kunne være på en linie"*. Biblioteks-værktøjslinjen (delt af Film, TV og indkøbslisten) ombrød knapperne til flere linjer på en telefon. Ny mobil-regel (≤640px, ren CSS i `Library.css`): søgefeltet tvinges op på sin egen linje (`min-width:100%`), og de fire kontroller — Sortér, Filtrér, Vis felter + visnings-toggelen — lægges på linjen under, hvor de tre tekst-knapper deler bredden (`flex:1; min-width:0; white-space:nowrap`, så de aldrig ombryder til to linjer) og toggelen beholder sin bredde. Ingen JSX-/i18n-ændring. Berørt fil: `frontend/src/pages/Library.css`. Regel 18: visuelt verificeret i Edge (playwright) ved 360px og 320px — alle fire kontroller på én linje uden klipning.

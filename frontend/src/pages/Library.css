@@ -144,8 +144,10 @@
     flex: 1;
     min-width: 0;
     justify-content: center;
-    padding: 9px 6px;
-    font-size: 0.8rem;
+    /* Feature #151 — mindre knap-tekst på mobil (Jans ønske 2026-08-14), så de
+       tre kontroller får bedre luft på den ene linje. */
+    padding: 8px 5px;
+    font-size: 0.72rem;
     white-space: nowrap;
   }
 

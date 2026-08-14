@@ -276,15 +276,20 @@
     font-size: 0.95rem;
   }
 
+  /* Feature #151 — fanerne ombryder til flere linjer i stedet for at ligge på
+     én lang, vandret-scrollende linje (Jans ønske 2026-08-14: menu-linjen var
+     for lang på mobil). */
   .tabs {
     order: 3;
     width: 100%;
-    overflow-x: auto;
-    justify-content: flex-start;
+    flex-wrap: wrap;
+    overflow-x: visible;
+    justify-content: center;
   }
 
   .tabs button {
-    padding: 8px 14px;
+    padding: 7px 12px;
+    font-size: 0.82rem;
     white-space: nowrap;
   }
 

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.126.0 (build 0169) — 2026-08-14
+
+- **Mere overskuelig top på telefon.** Menu-fanerne (Film, TV, Indkøbsønsker, Voldby BIO …) ombryder nu til to linjer i stedet for at ligge på én lang linje du skal scrolle i. Og teksten på Sortér/Filtrér/Vis felter-knapperne er gjort lidt mindre, så de fylder pænere.
+
 ## v0.125.0 (build 0168) — 2026-08-14
 
 - **Værktøjslinjen fylder mindre på telefon.** På Film-, TV- og indkøbsliste-siderne står Sortér, Filtrér, Vis felter og grid/liste-knappen nu pænt på én linje under søgefeltet — i stedet for at ombryde til flere rækker på en lille skærm.

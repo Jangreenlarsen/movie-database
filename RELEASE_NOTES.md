@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.126.1 (build 0170) — 2026-08-14
+
+- **System-backup dækker nu hele systemet.** En fuld system-backup manglede Voldby BIO's program, sæde-reservationer, beskeder og revisionsloggen — en gendannelse ville stiltiende have slettet dem. Backup og gendannelse dækker nu alt.
+
 ## v0.126.0 (build 0169) — 2026-08-14
 
 - **Mere overskuelig top på telefon.** Menu-fanerne (Film, TV, Indkøbsønsker, Voldby BIO …) ombryder nu til to linjer i stedet for at ligge på én lang linje du skal scrolle i. Og teksten på Sortér/Filtrér/Vis felter-knapperne er gjort lidt mindre, så de fylder pænere.

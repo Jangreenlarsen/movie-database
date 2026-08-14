@@ -9,15 +9,51 @@ async def test_backup_includes_all_expected_collections(client):
     created = await client.post("/api/movies", json={"title": "Deleted Movie", "media_type": "Fysisk", "format": "F-DVD"})
     await client.delete(f"/api/movies/{created.json()['id']}")
 
+    # BUGS.md #65 — screenings/screening_requests/seat_reservations/messages/
+    # audit_log/visits were silently missing from the backup entirely; a
+    # regression test needs actual rows in each to prove they now come back.
+    movie_for_screening = await client.post(
+        "/api/movies", json={"title": "Screening Movie", "media_type": "Fysisk", "format": "F-DVD"}
+    )
+    movie_id = movie_for_screening.json()["id"]
+    await client.post("/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id})
+    await client.post(
+        "/api/screenings",
+        json={"media_kind": "movie", "movie_id": movie_id, "scheduled_at": "2026-09-01T20:00:00"},
+    )
+    await client.post("/api/reservations/hold", json={"seat_id": "N1-1", "scope": "global"})
+    # A broadcast message excludes its own sender from the recipient list
+    # (message_service._resolve_recipients), so a second active user is
+    # needed or there'd be nobody to receive it (409 NoRecipientsError).
+    # Registered through a *separate* client — registering through `client`
+    # itself would log it in as the new (non-admin) user, demoting every
+    # later admin-only call in this test to a 403.
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as recipient_client:
+        recipient = await recipient_client.post(
+            "/api/auth/register", json={"username": "backuprecipient", "password": "testpassword123"}
+        )
+    await client.patch(f"/api/users/{recipient.json()['id']}/status", json={"status": "active"})
+    await client.post("/api/messages", json={"subject": "Hej", "body": "Test", "recipient_user_id": None})
+    await client.post("/api/analytics/visit", json={"page": "library"})
+
     response = await client.get("/api/system/backup")
     assert response.status_code == 200
     data = response.json()
 
-    assert len(data["movies"]) == 1
+    assert len(data["movies"]) == 2
     assert len(data["tv_shows"]) == 1
     assert len(data["deleted_movies"]) == 1
-    assert len(data["users"]) == 1
+    assert len(data["users"]) == 2
     assert len(data["counters"]) >= 1
+    assert len(data["screenings"]) == 1
+    assert len(data["screening_requests"]) == 1
+    assert len(data["seat_reservations"]) == 1
+    assert len(data["messages"]) == 1
+    # Creating the screening + the screening-request above are themselves
+    # audit-logged actions, so the audit trail is non-empty here too.
+    assert len(data["audit_log"]) >= 2
+    assert len(data["visits"]) == 1
     assert "backed_up_at" in data
     assert "app_version" in data
     # system_settings must never appear anywhere in the backup — the whole
@@ -46,22 +82,40 @@ async def test_backup_requires_admin(client):
 async def test_restore_round_trip_preserves_everything(client):
     await client.post("/api/movies", json={"title": "Roundtrip Movie", "tags": ["Favorite"], "media_type": "Fysisk", "format": "F-DVD"})
     await client.post("/api/tv-shows", json={"name": "Roundtrip Show", "media_type": "Fysisk", "format": "F-DVD"})
+    await client.post("/api/reservations/hold", json={"seat_id": "N1-1", "scope": "global"})
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as recipient_client:
+        recipient = await recipient_client.post(
+            "/api/auth/register", json={"username": "roundtriprecipient", "password": "testpassword123"}
+        )
+    await client.patch(f"/api/users/{recipient.json()['id']}/status", json={"status": "active"})
+    await client.post("/api/messages", json={"subject": "Hej", "body": "Test", "recipient_user_id": None})
     backup = (await client.get("/api/system/backup")).json()
 
     # Mutate everything after the backup was taken.
     await client.post("/api/movies", json={"title": "Should Disappear After Restore", "media_type": "Fysisk", "format": "F-DVD"})
+    await client.post("/api/reservations/hold", json={"seat_id": "N1-2", "scope": "global"})
 
     response = await client.post("/api/system/restore", json=backup)
     assert response.status_code == 200
     result = response.json()
     assert result["movies_imported"] == 1
     assert result["tv_shows_imported"] == 1
-    assert result["users_imported"] == 1
+    assert result["users_imported"] == 2
+    assert result["seat_reservations_imported"] == 1
+    assert result["messages_imported"] == 1
 
     movies = (await client.get("/api/movies")).json()["items"]
     assert len(movies) == 1
     assert movies[0]["title"] == "Roundtrip Movie"
     assert movies[0]["tags"] == ["Favorite", "Tilføjet af testuser"]
+
+    # BUGS.md #65 — the second hold (N1-2, taken after the backup) must be
+    # gone, and the first (N1-1, in the backup) must still be there. Proves
+    # seat_reservations actually round-trips through restore now, not just
+    # that the restore call succeeds.
+    reservations = (await client.get("/api/reservations?status=approved")).json()
+    assert [r["seat_id"] for r in reservations] == ["N1-1"]
 
     # The logged-in session survives the restore because the same user
     # document (same _id) came back — proves the round trip didn't corrupt

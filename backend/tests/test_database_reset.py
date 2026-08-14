@@ -44,6 +44,9 @@ async def test_reset_clears_library_and_related_data(client):
         "/api/screenings",
         json={"media_kind": "movie", "movie_id": movie_id, "scheduled_at": "2026-09-01T20:00:00"},
     )
+    # BUGS.md #65 — a seat reservation references a screening_id; if reset
+    # cleared screenings but left this behind, it would dangle.
+    await client.post("/api/reservations/hold", json={"seat_id": "N1-1", "scope": "global"})
 
     response = await client.post(
         "/api/system/reset", json={"current_password": "testpassword123"}
@@ -61,6 +64,7 @@ async def test_reset_clears_library_and_related_data(client):
     assert result["tags_removed"] == 2
     assert result["screenings_removed"] == 1
     assert result["screening_requests_removed"] == 1
+    assert result["seat_reservations_removed"] == 1
 
     assert (await client.get("/api/movies")).json()["items"] == []
     assert (await client.get("/api/tv-shows")).json()["items"] == []
@@ -68,6 +72,7 @@ async def test_reset_clears_library_and_related_data(client):
     assert (await client.get("/api/tags")).json() == []
     assert (await client.get("/api/screenings")).json() == []
     assert (await client.get("/api/screening-requests")).json() == []
+    assert (await client.get("/api/reservations?status=approved")).json() == []
 
 
 async def test_reset_does_not_touch_users_or_system_settings(client, monkeypatch):

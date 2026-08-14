@@ -25,7 +25,9 @@ from app.api import (
     tv_shows,
     users,
 )
+from app.api.deps import COOKIE_NAME
 from app.core.config import settings
+from app.core.security import create_access_token, decode_access_token
 from app.core.errors import (
     AccountDisabledError,
     AccountPendingError,
@@ -115,6 +117,38 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Feature #148 — 8 timers skydende idle-timeout. Har requesten en gyldig
+# session-cookie, gen-udstedes den med en frisk 8-timers levetid, så en aktiv
+# bruger aldrig smides ud midt i arbejdet; 8 timers inaktivitet lader den
+# udløbe. Undtaget: /api/auth (login/register sætter cookien selv, logout
+# sletter den — en refresh her ville genoplive en udlogget session) og
+# baggrunds-polls markeret med X-Background-Poll (fx besked-pollen hvert 20.
+# sek, feature #135), så et åbent men uovervåget vindue faktisk timeouter.
+BACKGROUND_POLL_HEADER = "x-background-poll"
+
+
+@app.middleware("http")
+async def _sliding_session(request: Request, call_next):
+    response = await call_next(request)
+    if (
+        not request.url.path.startswith("/api/auth")
+        and request.headers.get(BACKGROUND_POLL_HEADER) != "1"
+    ):
+        token = request.cookies.get(COOKIE_NAME)
+        if token:
+            payload = decode_access_token(token)
+            if payload and payload.get("sub"):
+                response.set_cookie(
+                    key=COOKIE_NAME,
+                    value=create_access_token(payload["sub"]),
+                    httponly=True,
+                    secure=settings.cookie_secure,
+                    samesite="lax",
+                    max_age=settings.jwt_expire_minutes * 60,
+                    path="/",
+                )
+    return response
 
 
 @app.exception_handler(MovieNotFoundError)

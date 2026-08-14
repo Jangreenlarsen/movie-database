@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.123.0 (build 0166) — 2026-08-13
+
+- **Login udløber efter 8 timers inaktivitet.** Du bliver ikke længere logget ind i 30 dage. Sessionen holder så længe du bruger appen (den forlænges automatisk mens du arbejder), men efter 8 timer uden aktivitet skal du logge ind igen. Udløber den, mens du har appen åben, sendes du pænt tilbage til login-skærmen.
+
 ## v0.122.0 (build 0165) — 2026-08-13
 
 - **Ryd op i ønskerne automatisk.** Registrerer du en film eller serie i biblioteket, og den allerede står på din indkøbsliste, spørger appen nu om du vil fjerne ønsket derfra — så listen ikke fyldes med ting du allerede har.

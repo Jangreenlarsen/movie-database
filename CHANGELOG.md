@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.123.0 build 0166] — 2026-08-13 — feature: 8 timers skydende idle-session-timeout (FEATURES.md #148)
+
+Jan: *"Max-Age skal ned på 8 timer, men ... de 8 timer først fra når session bliver idel"*. Login-sessionen er sat fra 30 dage til **8 timer** (`jwt_expire_minutes`), men som en **skydende idle-timeout**: en ny `_sliding_session`-middleware gen-udsteder session-cookien med frisk 8-timers levetid ved hver aktivitet, så en aktiv bruger aldrig smides ud midt i arbejdet — 8 timers inaktivitet lader den udløbe. Undtaget: `/api/auth` (så logout ikke genoplives) og baggrunds-polls markeret med `X-Background-Poll` (besked-pollen hvert 20. sek, sat på `getInbox`), så et åbent uovervåget vindue faktisk timeouter. Ny pæn udløbs-håndtering: en 401 på et almindeligt endpoint fører nu tilbage til login (`setOnSessionExpired` i client.js → `setUser(null)` i App.jsx) frem for en rå fejl. Tests: `test_session_sliding.py` (4). Cookien er i forvejen httpOnly + SameSite=Lax + Secure (i produktion).
+
 ## [0.122.0 build 0165] — 2026-08-13 — feature: tilbyd at fjerne ønsket ved registrering til biblioteket (FEATURES.md #147)
 
 Jan: *"ved registrering af film/tv ... og film/tv findes i ønske seksion skal man have valg ... om man vil slette den i ønske seksion"*. Bygger på #38/#128's dublet-tjek (`DuplicateMatch` bærer `is_wishlist` + `id`): gemmer man en kladde til biblioteket og en dublet er et ønske, spørger en dialog efter oprettelsen om ønsket skal fjernes fra indkøbslisten (Ja → `deleteMovie`/`deleteTvShow`). Kun ønske-dubletter, kun ved oprettelse, film+TV. Ren frontend + i18n `scan.removeFromWishlistConfirm` (da+en).

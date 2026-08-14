@@ -25,11 +25,20 @@ function readableDetail(detail) {
   return messages.length > 0 ? messages.join(" · ") : null;
 }
 
+// Feature #148 — global "session udløbet"-handler. En 401 midt i en session
+// (efter 8 timers idle-timeout) skal føre pænt tilbage til login frem for at
+// vise en rå fejl. App.jsx registrerer den (setUser(null)).
+let onSessionExpired = null;
+export function setOnSessionExpired(handler) {
+  onSessionExpired = handler;
+}
+
 async function request(path, options = {}) {
+  const { headers: extraHeaders, ...rest } = options;
   const response = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...extraHeaders },
     credentials: "include",
-    ...options,
+    ...rest,
   });
 
   if (!response.ok) {
@@ -38,6 +47,17 @@ async function request(path, options = {}) {
       detail = (await response.json()).detail;
     } catch {
       // ignore — no JSON body
+    }
+    // Feature #148 — 401 på et almindeligt endpoint = sessionen er udløbet;
+    // nulstil til login. Undtag selve auth-/session-tjekkene, hvor en 401 er en
+    // normal "ikke logget ind"-tilstand (og har egen håndtering).
+    if (
+      response.status === 401 &&
+      onSessionExpired &&
+      !path.startsWith("/auth") &&
+      path !== "/users/me"
+    ) {
+      onSessionExpired();
     }
     const error = new Error(
       readableDetail(detail) ?? `API request failed: ${response.status} ${path}`
@@ -178,7 +198,9 @@ export const api = {
     request("/settings/system", { method: "PATCH", body: JSON.stringify(payload) }),
   testSystemSetting: (key) => request(`/settings/system/test/${key}`, { method: "POST" }),
   // Feature #100 — beskeder fra admin.
-  getInbox: () => request("/messages/inbox"),
+  // Feature #148 — besked-pollen (hvert 20. sek, #135) markeres som baggrund,
+  // så den ikke tæller som aktivitet og holder en uovervåget session i live.
+  getInbox: () => request("/messages/inbox", { headers: { "X-Background-Poll": "1" } }),
   markMessageRead: (id) => request(`/messages/${id}/read`, { method: "POST" }),
   listMessages: () => request("/messages"),
   sendMessage: (payload) =>

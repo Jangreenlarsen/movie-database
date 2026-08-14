@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.125.0 build 0168] — 2026-08-14 — feature: kompakt værktøjslinje på mobil (FEATURES.md #150)
+
+Jan: *"sorte, filter, vis felter samt list view mode skal kunne være på en linie"*. Biblioteks-værktøjslinjen (delt af Film, TV og indkøbslisten) ombrød knapperne til flere linjer på en telefon. Ny mobil-regel (≤640px, ren CSS i `Library.css`): søgefeltet tvinges op på sin egen linje (`min-width:100%`), og de fire kontroller — Sortér, Filtrér, Vis felter + visnings-toggelen — lægges på linjen under, hvor de tre tekst-knapper deler bredden (`flex:1; min-width:0; white-space:nowrap`, så de aldrig ombryder til to linjer) og toggelen beholder sin bredde. Ingen JSX-/i18n-ændring. Berørt fil: `frontend/src/pages/Library.css`. Regel 18: visuelt verificeret i Edge (playwright) ved 360px og 320px — alle fire kontroller på én linje uden klipning.
+
 ## [0.124.0 build 0167] — 2026-08-14 — feature: kompakt hoved på mobil (FEATURES.md #149)
 
 Jan: *"vi skal have se på layout når en mobil tlf er på, lige nu fylder portal for meget i primæet i breden"* (valg: topmenuen/hovedet). App-headeren fyldte for meget i bredden på en telefon. Opdater-knappen (#136) er nu kun ikon (🔄) på mobil: emoji'en flyttet fra `app.refresh`-strengen ud i JSX (`<span aria-hidden>🔄</span>` + `.header-btn-label` med teksten), labelen skjules under 640px via CSS, og knappen får strammere padding. Tættere afstande i hovedet på mobil: `.header-user` gap 10→6px, `.header-counts` gap 6→4px. Ingen ændring i hvad der vises — kun bredde-forbrug. Berørte filer: `frontend/src/App.jsx`, `frontend/src/App.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Ren frontend; i18n-parity uændret. Regel 18: bygget, afventer visuelt tjek på telefon.

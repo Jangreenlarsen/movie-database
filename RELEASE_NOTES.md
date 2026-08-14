@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.125.0 (build 0168) — 2026-08-14
+
+- **Værktøjslinjen fylder mindre på telefon.** På Film-, TV- og indkøbsliste-siderne står Sortér, Filtrér, Vis felter og grid/liste-knappen nu pænt på én linje under søgefeltet — i stedet for at ombryde til flere rækker på en lille skærm.
+
 ## v0.124.0 (build 0167) — 2026-08-14
 
 - **Mere plads i toppen på telefon.** Portalens hoved fyldte for meget i bredden på en mobil. Opdater-knappen viser nu kun 🔄-ikonet på telefon (teksten er der stadig på større skærme), og tallene og knapperne sidder tættere — så alt er lettere at overskue på en lille skærm.

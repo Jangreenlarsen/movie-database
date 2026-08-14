@@ -128,6 +128,36 @@
   background: var(--surface);
 }
 
+/* Feature #150 — på mobil skal Sortér/Filtrér/Vis felter + visnings-toggle
+   kunne stå på én linje (Jans ønske 2026-08-14). Søgefeltet tvinges op på sin
+   egen linje (min-width:100% → ombrydning efter det), og de fire kontroller
+   flyder ned på linjen under: de tre tekst-knapper deler bredden (flex:1 +
+   min-width:0, så de kan krympe under deres tekst og aldrig ombryder til to
+   linjer), mens toggelen beholder sin faste bredde. Gælder Film, TV og
+   indkøbslisten, som alle deler denne værktøjslinje. */
+@media (max-width: 640px) {
+  .search-input-wrap {
+    min-width: 100%;
+  }
+
+  .search-row > .btn {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+    padding: 9px 6px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .search-row > .view-mode-toggle {
+    flex-shrink: 0;
+  }
+
+  .view-mode-toggle button {
+    width: 30px;
+  }
+}
+
 .filter-panel {
   display: flex;
   flex-direction: column;

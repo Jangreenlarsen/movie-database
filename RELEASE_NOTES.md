@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.127.0 (build 0172) — 2026-08-14
+
+- **Genanvendelig server-skabelon (ingen app-ændring).** Der findes nu en genanvendelig VM-skabelon af produktionsstakken, klar til import i Synology Virtual Machine Manager — praktisk hvis serveren nogensinde skal genskabes eller flyttes.
+
 ## v0.126.2 (build 0171) — 2026-08-14
 
 - **Repo-oprydning (ingen app-ændring).** En fil med klartekst-adgangskoder til produktions-infrastruktur er nu beskyttet mod at kunne committes ved et uheld.

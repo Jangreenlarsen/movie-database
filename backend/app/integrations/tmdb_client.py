@@ -4,7 +4,8 @@ from app.core.config import settings
 from app.core.errors import TmdbNotFoundError, TmdbRateLimitedError, TmdbUnavailableError
 
 BASE_URL = "https://api.themoviedb.org/3"
-IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
+IMAGE_HOST = "https://image.tmdb.org/t/p"
+IMAGE_BASE_URL = f"{IMAGE_HOST}/w500"
 
 
 def _require_token() -> str:
@@ -65,6 +66,26 @@ def _raise_for_status(response: httpx.Response) -> None:
         raise TmdbUnavailableError(
             f"TMDb svarede med uventet status {response.status_code}"
         ) from exc
+
+
+async def fetch_poster_image(size: str, path: str) -> tuple[bytes, str] | None:
+    """Feature #153 — henter de rå billed-bytes for en poster direkte fra
+    TMDb's *billed*-CDN (image.tmdb.org), ikke JSON-API'et — intet
+    API-token nødvendigt her, TMDb's billeder er offentlige. Bruges
+    udelukkende af `poster_cache_service` til at varme cachen op første (og
+    eneste) gang et givent (size, path)-par efterspørges. Returnerer None
+    ved enhver fejl (netværk, 404 osv.) — kaldestedet cacher da intet og
+    lader frontend falde tilbage til sin egen "intet billede"-visning,
+    fremfor at kaste en fejl der vælter hele sidevisningen."""
+    url = f"{IMAGE_HOST}/{size}/{path}"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(url)
+    except httpx.HTTPError:
+        return None
+    if response.status_code != 200:
+        return None
+    return response.content, response.headers.get("content-type", "image/jpeg")
 
 
 async def test_connection() -> tuple[bool, str]:

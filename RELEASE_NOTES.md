@@ -1,5 +1,21 @@
 # Release Notes
 
+## v0.127.1 (build 0173) — 2026-08-14
+
+- **Appliance-skabelon justeret (ingen app-ændring).** VM-skabelonen fra v0.127.0 bruger nu almindeligt login (bruger/adgangskode) i stedet for en nøglefil, så konsol-login virker direkte i Synology VMM. Build afventer stadig en vellykket kørsel.
+
+## v0.128.0 (build 0174) — 2026-08-14
+
+- **Postere overlever nu manglende internetadgang.** Film- og serie-postere hentes ikke længere direkte fra TMDb i browseren, men caches permanent på vores egen server, første gang de vises. Er internettet nede, virker allerede-viste postere fortsat — kun helt nye, aldrig-viste titler kræver internet én gang.
+
+## v0.127.0 (build 0172) — 2026-08-14
+
+- **Genanvendelig server-skabelon (ingen app-ændring).** Der findes nu en genanvendelig VM-skabelon af produktionsstakken, klar til import i Synology Virtual Machine Manager — praktisk hvis serveren nogensinde skal genskabes eller flyttes.
+
+## v0.126.2 (build 0171) — 2026-08-14
+
+- **Repo-oprydning (ingen app-ændring).** En fil med klartekst-adgangskoder til produktions-infrastruktur er nu beskyttet mod at kunne committes ved et uheld.
+
 ## v0.126.1 (build 0170) — 2026-08-14
 
 - **System-backup dækker nu hele systemet.** En fuld system-backup manglede Voldby BIO's program, sæde-reservationer, beskeder og revisionsloggen — en gendannelse ville stiltiende have slettet dem. Backup og gendannelse dækker nu alt.

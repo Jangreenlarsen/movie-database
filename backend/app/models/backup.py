@@ -52,6 +52,12 @@ class SystemBackup(BaseModel):
     messages: list[dict] = Field(default_factory=list)
     audit_log: list[dict] = Field(default_factory=list)
     visits: list[dict] = Field(default_factory=list)
+    # Feature #153 — cachede TMDb-poster-billeder (rå bytes, base64 via
+    # mongo_json's "$binary"-nøgle). Rent teknisk genskabbar fra TMDb, men
+    # regel 20 kræver den med alligevel — uden den ville en gendannelse på en
+    # frisk installation kræve internet igen for hver eneste poster, indtil
+    # nogen tilfældigvis besøger hver film/serie én gang til.
+    poster_cache: list[dict] = Field(default_factory=list)
 
 
 class SystemRestoreResult(BaseModel):
@@ -71,6 +77,7 @@ class SystemRestoreResult(BaseModel):
     # not the backup's total audit_log count.
     audit_log_imported: int
     visits_imported: int
+    poster_cache_imported: int
 
 
 class DatabaseResetConfirm(BaseModel):

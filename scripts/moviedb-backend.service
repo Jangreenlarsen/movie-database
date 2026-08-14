@@ -1,0 +1,31 @@
+[Unit]
+Description=Movie database — FastAPI-backend (uvicorn)
+After=network.target mongod.service
+Wants=mongod.service
+
+# DEPLOYMENT.md's "Sådan blev serveren sat op" (trin 8) har hidtil kun
+# beskrevet denne unit i prosa — aldrig som en rigtig, versionsstyret fil.
+# Genskabt her ordret efter de dokumenterede flag, både så den kan bruges af
+# feature #152's Packer-skabelon og så den endelig er i git som sine
+# søskende-units (moviedb-deploy-restart.*/moviedb-cert-install.*).
+#
+# ProtectSystem=strict + NoNewPrivileges=true gør `sudo` permanent ubrugeligt
+# for denne service og alle dens child-processer — derfor styrer OTA-deploy
+# (scripts/deploy.sh) og cert-install (scripts/cert-install.sh) genstart af
+# services via en trigger-fil + en separat, ikke-sandboxed root-ejet
+# systemd path-unit i stedet for sudo. Se DEPLOYMENT.md "Opdatere produktion"
+# for den fulde begrundelse.
+[Service]
+Type=simple
+User=jgl
+WorkingDirectory=/opt/moviedb/backend
+ExecStart=/opt/moviedb/backend/.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+
+NoNewPrivileges=true
+ProtectSystem=strict
+PrivateTmp=true
+ReadWritePaths=/opt/moviedb /opt/moviedb-deploy.log
+
+[Install]
+WantedBy=multi-user.target

@@ -1,9 +1,18 @@
 from httpx import ASGITransport, AsyncClient
 
+from app.integrations import tmdb_client
 from app.main import app
 
 
-async def test_backup_includes_all_expected_collections(client):
+async def test_backup_includes_all_expected_collections(client, monkeypatch):
+    async def fake_fetch(size, path):
+        return b"fake-poster-bytes", "image/jpeg"
+
+    monkeypatch.setattr(tmdb_client, "fetch_poster_image", fake_fetch)
+    # Feature #153 — varmer poster_cache op med præcis én post via den
+    # offentlige endpoint, samme måde en rigtig browser ville.
+    await client.get("/api/posters/w185/backup-test.jpg")
+
     await client.post("/api/movies", json={"title": "Backup Movie", "media_type": "Fysisk", "format": "F-DVD"})
     await client.post("/api/tv-shows", json={"name": "Backup Show", "media_type": "Fysisk", "format": "F-DVD"})
     created = await client.post("/api/movies", json={"title": "Deleted Movie", "media_type": "Fysisk", "format": "F-DVD"})
@@ -54,6 +63,7 @@ async def test_backup_includes_all_expected_collections(client):
     # audit-logged actions, so the audit trail is non-empty here too.
     assert len(data["audit_log"]) >= 2
     assert len(data["visits"]) == 1
+    assert len(data["poster_cache"]) == 1
     assert "backed_up_at" in data
     assert "app_version" in data
     # system_settings must never appear anywhere in the backup — the whole
@@ -79,10 +89,19 @@ async def test_backup_requires_admin(client):
         assert response.status_code == 403
 
 
-async def test_restore_round_trip_preserves_everything(client):
+async def test_restore_round_trip_preserves_everything(client, monkeypatch):
+    fetch_calls = []
+
+    async def fake_fetch(size, path):
+        fetch_calls.append((size, path))
+        return b"real-poster-bytes", "image/jpeg"
+
+    monkeypatch.setattr(tmdb_client, "fetch_poster_image", fake_fetch)
+
     await client.post("/api/movies", json={"title": "Roundtrip Movie", "tags": ["Favorite"], "media_type": "Fysisk", "format": "F-DVD"})
     await client.post("/api/tv-shows", json={"name": "Roundtrip Show", "media_type": "Fysisk", "format": "F-DVD"})
     await client.post("/api/reservations/hold", json={"seat_id": "N1-1", "scope": "global"})
+    await client.get("/api/posters/w185/roundtrip.jpg")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as recipient_client:
         recipient = await recipient_client.post(
@@ -104,6 +123,17 @@ async def test_restore_round_trip_preserves_everything(client):
     assert result["users_imported"] == 2
     assert result["seat_reservations_imported"] == 1
     assert result["messages_imported"] == 1
+    assert result["poster_cache_imported"] == 1
+
+    # Feature #153 — det er ikke nok at tallet stemmer; selve billed-bytes
+    # skal også have overlevet base64-rundturen (mongo_json's "$binary") og
+    # rent faktisk stå i databasen efter restore, ikke kun i backup-JSON'en.
+    # Genfetch af samme sti skal derfor IKKE udløse et nyt TMDb-kald.
+    fetch_calls.clear()
+    poster_after_restore = await client.get("/api/posters/w185/roundtrip.jpg")
+    assert poster_after_restore.status_code == 200
+    assert poster_after_restore.content == b"real-poster-bytes"
+    assert fetch_calls == []
 
     movies = (await client.get("/api/movies")).json()["items"]
     assert len(movies) == 1

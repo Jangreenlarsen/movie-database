@@ -10,6 +10,7 @@ from app.repositories import (
     audit_log_repository,
     message_repository,
     movie_repository,
+    poster_cache_repository,
     reservation_repository,
     screening_repository,
     screening_request_repository,
@@ -45,7 +46,12 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
     full system backup is a mongodump-style operation, not application
     logic. Every collection here comes from the *same* snapshot, so cross-
     collection references (e.g. a reservation's screening_id) stay mutually
-    consistent on restore without any special ordering."""
+    consistent on restore without any special ordering.
+
+    `poster_cache` (feature #153) is included for the same regel-20 reason:
+    it's technically re-derivable from TMDb, but restoring onto a fresh
+    install without it means every poster requires live internet again
+    until someone happens to view each title once."""
     movies = await movie_repository.find_all_raw(db)
     tv_shows = await tv_show_repository.find_all_raw(db)
     deleted_movies = await db[movie_repository.DELETED_COLLECTION].find({}).to_list(length=None)
@@ -59,6 +65,7 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
     messages = await db[message_repository.COLLECTION].find({}).to_list(length=None)
     audit_log = await db[audit_log_repository.COLLECTION].find({}).to_list(length=None)
     visits = await db[visit_repository.COLLECTION].find({}).to_list(length=None)
+    poster_cache = await poster_cache_repository.find_all_raw(db)
 
     return SystemBackup(
         backed_up_at=datetime.now(timezone.utc),
@@ -76,6 +83,7 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
         messages=[to_json_safe(doc) for doc in messages],
         audit_log=[to_json_safe(doc) for doc in audit_log],
         visits=[to_json_safe(doc) for doc in visits],
+        poster_cache=[to_json_safe(doc) for doc in poster_cache],
     )
 
 
@@ -159,6 +167,7 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
     messages = [from_json_safe(doc) for doc in backup.messages]
     audit_log = [from_json_safe(doc) for doc in backup.audit_log]
     visits = [from_json_safe(doc) for doc in backup.visits]
+    poster_cache = [from_json_safe(doc) for doc in backup.poster_cache]
 
     await movie_repository.replace_all(db, movies)
     await tv_show_repository.replace_all(db, tv_shows)
@@ -173,6 +182,7 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
     await _replace_raw_collection(db, message_repository.COLLECTION, messages)
     audit_log_imported = await _merge_raw_collection(db, audit_log_repository.COLLECTION, audit_log)
     await _replace_raw_collection(db, visit_repository.COLLECTION, visits)
+    await _replace_raw_collection(db, poster_cache_repository.COLLECTION, poster_cache)
 
     return SystemRestoreResult(
         movies_imported=len(movies),
@@ -188,6 +198,7 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
         messages_imported=len(messages),
         audit_log_imported=audit_log_imported,
         visits_imported=len(visits),
+        poster_cache_imported=len(poster_cache),
     )
 
 
@@ -207,9 +218,13 @@ async def reset_library(db: AsyncIOMotorDatabase) -> DatabaseResetResult:
     Seat reservations (feature #133) are cleared alongside screenings for
     the same reason — a reservation references a screening_id, and would
     otherwise dangle once its screening is gone (BUGS.md #65). Deliberately
-    does NOT touch `users`, `system_settings`, `messages`, `audit_log` or
-    `visits` — this is a library reset, not a factory reset of the whole
-    app, and none of those are library data."""
+    does NOT touch `users`, `system_settings`, `messages`, `audit_log`,
+    `visits` or `poster_cache` — this is a library reset, not a factory
+    reset of the whole app, and none of those are library data.
+    `poster_cache` specifically is keyed on TMDb (size, path), not on any
+    movie/tv_show id, so it stays valid and reusable even across a reset
+    (the same TMDb image is the same bytes regardless of which library
+    entry references it)."""
     movies_removed = await _clear_collection(db, movie_repository.COLLECTION)
     tv_shows_removed = await _clear_collection(db, tv_show_repository.COLLECTION)
     deleted_movies_removed = await _clear_collection(db, movie_repository.DELETED_COLLECTION)

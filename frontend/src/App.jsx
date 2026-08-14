@@ -360,14 +360,18 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
               )}
             </span>
             {/* Feature #136 — generel opdater-knap: genindlæser portalen, så
-                man kan hente friske data uden at logge ud/ind (Jans ønske). */}
+                man kan hente friske data uden at logge ud/ind (Jans ønske).
+                Feature #149 — ikon + tekst opdelt, så teksten kan skjules på
+                mobil (kun 🔄), hvor hovedet ellers fylder for meget i bredden. */}
             <button
               type="button"
-              className="btn"
+              className="btn header-refresh"
               onClick={() => window.location.reload()}
               title={t("app.refresh")}
+              aria-label={t("app.refresh")}
             >
-              {t("app.refresh")}
+              <span aria-hidden="true">🔄</span>
+              <span className="header-btn-label">{t("app.refresh")}</span>
             </button>
             <button type="button" className="btn" onClick={onLogout}>
               {t("app.logout")}

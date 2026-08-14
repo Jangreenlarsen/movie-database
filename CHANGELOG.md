@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.124.0 build 0167] — 2026-08-14 — feature: kompakt hoved på mobil (FEATURES.md #149)
+
+Jan: *"vi skal have se på layout når en mobil tlf er på, lige nu fylder portal for meget i primæet i breden"* (valg: topmenuen/hovedet). App-headeren fyldte for meget i bredden på en telefon. Opdater-knappen (#136) er nu kun ikon (🔄) på mobil: emoji'en flyttet fra `app.refresh`-strengen ud i JSX (`<span aria-hidden>🔄</span>` + `.header-btn-label` med teksten), labelen skjules under 640px via CSS, og knappen får strammere padding. Tættere afstande i hovedet på mobil: `.header-user` gap 10→6px, `.header-counts` gap 6→4px. Ingen ændring i hvad der vises — kun bredde-forbrug. Berørte filer: `frontend/src/App.jsx`, `frontend/src/App.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Ren frontend; i18n-parity uændret. Regel 18: bygget, afventer visuelt tjek på telefon.
+
 ## [0.123.0 build 0166] — 2026-08-13 — feature: 8 timers skydende idle-session-timeout (FEATURES.md #148)
 
 Jan: *"Max-Age skal ned på 8 timer, men ... de 8 timer først fra når session bliver idel"*. Login-sessionen er sat fra 30 dage til **8 timer** (`jwt_expire_minutes`), men som en **skydende idle-timeout**: en ny `_sliding_session`-middleware gen-udsteder session-cookien med frisk 8-timers levetid ved hver aktivitet, så en aktiv bruger aldrig smides ud midt i arbejdet — 8 timers inaktivitet lader den udløbe. Undtaget: `/api/auth` (så logout ikke genoplives) og baggrunds-polls markeret med `X-Background-Poll` (besked-pollen hvert 20. sek, sat på `getInbox`), så et åbent uovervåget vindue faktisk timeouter. Ny pæn udløbs-håndtering: en 401 på et almindeligt endpoint fører nu tilbage til login (`setOnSessionExpired` i client.js → `setUser(null)` i App.jsx) frem for en rå fejl. Tests: `test_session_sliding.py` (4). Cookien er i forvejen httpOnly + SameSite=Lax + Secure (i produktion).

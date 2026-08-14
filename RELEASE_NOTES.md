@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.124.0 (build 0167) — 2026-08-14
+
+- **Mere plads i toppen på telefon.** Portalens hoved fyldte for meget i bredden på en mobil. Opdater-knappen viser nu kun 🔄-ikonet på telefon (teksten er der stadig på større skærme), og tallene og knapperne sidder tættere — så alt er lettere at overskue på en lille skærm.
+
 ## v0.123.0 (build 0166) — 2026-08-13
 
 - **Login udløber efter 8 timers inaktivitet.** Du bliver ikke længere logget ind i 30 dage. Sessionen holder så længe du bruger appen (den forlænges automatisk mens du arbejder), men efter 8 timer uden aktivitet skal du logge ind igen. Udløber den, mens du har appen åben, sendes du pænt tilbage til login-skærmen.

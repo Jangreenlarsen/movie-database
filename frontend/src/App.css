@@ -132,6 +132,13 @@
   margin-left: auto;
 }
 
+/* Feature #149 — opdater-knappen: ikon + tekst inline; teksten skjules på mobil. */
+.header-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .app-main {
   flex: 1;
   width: 100%;
@@ -309,5 +316,24 @@
 
   .btn {
     padding: 10px 14px;
+  }
+
+  /* Feature #149 — kompakt hoved på mobil: opdater-knappen bliver kun 🔄, og
+     bruger-/tælle-blokkene får tættere afstand, så hovedet ikke fylder for
+     meget i bredden. */
+  .header-refresh .header-btn-label {
+    display: none;
+  }
+
+  .header-refresh {
+    padding: 10px 12px;
+  }
+
+  .header-user {
+    gap: 6px;
+  }
+
+  .header-counts {
+    gap: 4px;
   }
 }

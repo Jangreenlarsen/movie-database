@@ -104,11 +104,13 @@ async def reset(
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     """Wipes the film/TV library (feature #67) — movies, TV shows, their
-    soft-deleted logs, tags, serial-number counters, and Voldby BIO
-    screenings/requests. Confirmed by the admin's own password (stronger
-    than the text confirmation phrase used by backup/restore, since this is
-    more irreversible than a restore — there's no backup file to undo it
-    with unless the admin took one first)."""
+    soft-deleted logs, tags, serial-number counters, Voldby BIO screenings/
+    requests, and their seat reservations (BUGS.md #65 — reservations
+    reference a screening_id, so they'd otherwise dangle once screenings
+    are cleared). Confirmed by the admin's own password (stronger than the
+    text confirmation phrase used by backup/restore, since this is more
+    irreversible than a restore — there's no backup file to undo it with
+    unless the admin took one first)."""
     await auth_service.verify_current_password(
         db, str(current_user["_id"]), payload.current_password
     )

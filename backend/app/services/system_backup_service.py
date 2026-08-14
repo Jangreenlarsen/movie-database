@@ -7,12 +7,16 @@ from app.core.mongo_json import from_json_safe, to_json_safe
 from app.core.version_info import VERSION_INFO
 from app.models.backup import DatabaseResetResult, SystemBackup, SystemRestoreResult
 from app.repositories import (
+    audit_log_repository,
+    message_repository,
     movie_repository,
+    reservation_repository,
     screening_repository,
     screening_request_repository,
     tag_repository,
     tv_show_repository,
     user_repository,
+    visit_repository,
 )
 
 # `counters` isn't owned by any single domain repository — it's a shared
@@ -32,7 +36,16 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
     Discogs/OMDb/Plex keys, which CLAUDE.md regel 6 forbids returning to
     the frontend under any circumstance. Restoring from this backup is
     therefore not 100% complete — those keys must be re-entered manually
-    afterwards."""
+    afterwards.
+
+    CLAUDE.md regel 20 / BUGS.md #65 — screenings/screening_requests/
+    seat_reservations/messages/audit_log/visits are read straight off their
+    collections (same low-level pattern as deleted_movies/counters below)
+    rather than through each repository's business-logic functions, since a
+    full system backup is a mongodump-style operation, not application
+    logic. Every collection here comes from the *same* snapshot, so cross-
+    collection references (e.g. a reservation's screening_id) stay mutually
+    consistent on restore without any special ordering."""
     movies = await movie_repository.find_all_raw(db)
     tv_shows = await tv_show_repository.find_all_raw(db)
     deleted_movies = await db[movie_repository.DELETED_COLLECTION].find({}).to_list(length=None)
@@ -40,6 +53,12 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
     tags = await tag_repository.find_all_raw(db)
     users = await user_repository.find_all_raw(db)
     counters = await db[_COUNTERS_COLLECTION].find({}).to_list(length=None)
+    screenings = await db[screening_repository.COLLECTION].find({}).to_list(length=None)
+    screening_requests = await db[screening_request_repository.COLLECTION].find({}).to_list(length=None)
+    seat_reservations = await db[reservation_repository.COLLECTION].find({}).to_list(length=None)
+    messages = await db[message_repository.COLLECTION].find({}).to_list(length=None)
+    audit_log = await db[audit_log_repository.COLLECTION].find({}).to_list(length=None)
+    visits = await db[visit_repository.COLLECTION].find({}).to_list(length=None)
 
     return SystemBackup(
         backed_up_at=datetime.now(timezone.utc),
@@ -51,6 +70,12 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
         tags=[to_json_safe(doc) for doc in tags],
         users=[to_json_safe(doc) for doc in users],
         counters=[to_json_safe(doc) for doc in counters],
+        screenings=[to_json_safe(doc) for doc in screenings],
+        screening_requests=[to_json_safe(doc) for doc in screening_requests],
+        seat_reservations=[to_json_safe(doc) for doc in seat_reservations],
+        messages=[to_json_safe(doc) for doc in messages],
+        audit_log=[to_json_safe(doc) for doc in audit_log],
+        visits=[to_json_safe(doc) for doc in visits],
     )
 
 
@@ -58,6 +83,27 @@ async def _replace_raw_collection(db: AsyncIOMotorDatabase, name: str, documents
     await db[name].delete_many({})
     if documents:
         await db[name].insert_many(documents)
+
+
+async def _merge_raw_collection(db: AsyncIOMotorDatabase, name: str, documents: list[dict]) -> int:
+    """Insert-only: adds documents from the backup whose `_id` isn't already
+    present, never deletes anything already in the live collection. Used
+    for `audit_log` (BUGS.md #65) — it's an accountability trail, not
+    ordinary application data, and a restore must never be able to erase
+    part of its own record. Concretely: `create_backup` writes its snapshot
+    *before* the "system_backup.created" entry for that very backup is
+    logged, so that entry (and anything else logged between backup and
+    restore) is never in the snapshot being restored — wholesale-replacing
+    the collection would silently delete it. On a genuinely empty target
+    (disaster recovery onto a fresh database) this behaves identically to a
+    full restore, since there is nothing pre-existing to preserve."""
+    if not documents:
+        return 0
+    existing_ids = {doc["_id"] async for doc in db[name].find({}, {"_id": 1})}
+    to_insert = [doc for doc in documents if doc.get("_id") not in existing_ids]
+    if to_insert:
+        await db[name].insert_many(to_insert)
+    return len(to_insert)
 
 
 def _assert_restorable(backup: SystemBackup) -> None:
@@ -89,8 +135,13 @@ def _assert_restorable(backup: SystemBackup) -> None:
 
 async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> SystemRestoreResult:
     """Wholesale-replaces every included collection with the backup's
-    contents. Not transactional (standalone MongoDB, no replica set) — a
-    failure partway through leaves some collections restored and others
+    contents — EXCEPT `audit_log`, which is merged in insert-only (see
+    `_merge_raw_collection`): it's the system's own accountability trail,
+    and a restore must never be able to erase part of it, including the
+    "system_backup.created" entry for the very backup being restored (that
+    entry is logged after the snapshot was taken, so it can never be *in*
+    the snapshot). Not transactional (standalone MongoDB, no replica set) —
+    a failure partway through leaves some collections restored and others
     not; processed in a fixed order so a partial failure is at least
     predictable. `system_settings` is untouched (see `create_backup`)."""
     _assert_restorable(backup)
@@ -102,6 +153,12 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
     tags = [from_json_safe(doc) for doc in backup.tags]
     users = [from_json_safe(doc) for doc in backup.users]
     counters = [from_json_safe(doc) for doc in backup.counters]
+    screenings = [from_json_safe(doc) for doc in backup.screenings]
+    screening_requests = [from_json_safe(doc) for doc in backup.screening_requests]
+    seat_reservations = [from_json_safe(doc) for doc in backup.seat_reservations]
+    messages = [from_json_safe(doc) for doc in backup.messages]
+    audit_log = [from_json_safe(doc) for doc in backup.audit_log]
+    visits = [from_json_safe(doc) for doc in backup.visits]
 
     await movie_repository.replace_all(db, movies)
     await tv_show_repository.replace_all(db, tv_shows)
@@ -110,6 +167,12 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
     await tag_repository.replace_all(db, tags)
     await user_repository.replace_all(db, users)
     await _replace_raw_collection(db, _COUNTERS_COLLECTION, counters)
+    await _replace_raw_collection(db, screening_repository.COLLECTION, screenings)
+    await _replace_raw_collection(db, screening_request_repository.COLLECTION, screening_requests)
+    await _replace_raw_collection(db, reservation_repository.COLLECTION, seat_reservations)
+    await _replace_raw_collection(db, message_repository.COLLECTION, messages)
+    audit_log_imported = await _merge_raw_collection(db, audit_log_repository.COLLECTION, audit_log)
+    await _replace_raw_collection(db, visit_repository.COLLECTION, visits)
 
     return SystemRestoreResult(
         movies_imported=len(movies),
@@ -119,6 +182,12 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
         tags_imported=len(tags),
         users_imported=len(users),
         counters_imported=len(counters),
+        screenings_imported=len(screenings),
+        screening_requests_imported=len(screening_requests),
+        seat_reservations_imported=len(seat_reservations),
+        messages_imported=len(messages),
+        audit_log_imported=audit_log_imported,
+        visits_imported=len(visits),
     )
 
 
@@ -135,8 +204,12 @@ async def reset_library(db: AsyncIOMotorDatabase) -> DatabaseResetResult:
     number). Also clears Voldby BIO screenings/screening-requests, since
     otherwise they'd be left pointing at movie/tv_show ids that no longer
     exist (Jan's confirmed choice 2026-08-03 — "kun film/TV + relateret").
-    Deliberately does NOT touch `users` or `system_settings` — this is a
-    library reset, not a factory reset of the whole app."""
+    Seat reservations (feature #133) are cleared alongside screenings for
+    the same reason — a reservation references a screening_id, and would
+    otherwise dangle once its screening is gone (BUGS.md #65). Deliberately
+    does NOT touch `users`, `system_settings`, `messages`, `audit_log` or
+    `visits` — this is a library reset, not a factory reset of the whole
+    app, and none of those are library data."""
     movies_removed = await _clear_collection(db, movie_repository.COLLECTION)
     tv_shows_removed = await _clear_collection(db, tv_show_repository.COLLECTION)
     deleted_movies_removed = await _clear_collection(db, movie_repository.DELETED_COLLECTION)
@@ -145,6 +218,7 @@ async def reset_library(db: AsyncIOMotorDatabase) -> DatabaseResetResult:
     counters_removed = await _clear_collection(db, _COUNTERS_COLLECTION)
     screenings_removed = await _clear_collection(db, screening_repository.COLLECTION)
     screening_requests_removed = await _clear_collection(db, screening_request_repository.COLLECTION)
+    seat_reservations_removed = await _clear_collection(db, reservation_repository.COLLECTION)
 
     return DatabaseResetResult(
         movies_removed=movies_removed,
@@ -155,4 +229,5 @@ async def reset_library(db: AsyncIOMotorDatabase) -> DatabaseResetResult:
         counters_removed=counters_removed,
         screenings_removed=screenings_removed,
         screening_requests_removed=screening_requests_removed,
+        seat_reservations_removed=seat_reservations_removed,
     )

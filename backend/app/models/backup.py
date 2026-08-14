@@ -28,7 +28,14 @@ class SystemBackup(BaseModel):
     returning the actual TMDb/UPC/Discogs/OMDb/Plex keys to the frontend,
     which CLAUDE.md regel 6 forbids outright. A restore from this backup is
     therefore not 100% complete — those keys must be re-entered manually
-    afterwards on the Indstillinger page."""
+    afterwards on the Indstillinger page.
+
+    CLAUDE.md regel 20 — every collection a feature adds must be checked
+    into this dump as part of that same feature. screenings/screening_
+    requests/seat_reservations/messages/audit_log/visits were added
+    retroactively (BUGS.md #65): the collections existed and were reachable
+    through the API, but a system backup silently omitted them, so a
+    restore quietly lost Voldby BIO's whole program and reservation state."""
 
     backed_up_at: datetime
     app_version: str
@@ -39,6 +46,12 @@ class SystemBackup(BaseModel):
     tags: list[dict] = Field(default_factory=list)
     users: list[dict] = Field(default_factory=list)
     counters: list[dict] = Field(default_factory=list)
+    screenings: list[dict] = Field(default_factory=list)
+    screening_requests: list[dict] = Field(default_factory=list)
+    seat_reservations: list[dict] = Field(default_factory=list)
+    messages: list[dict] = Field(default_factory=list)
+    audit_log: list[dict] = Field(default_factory=list)
+    visits: list[dict] = Field(default_factory=list)
 
 
 class SystemRestoreResult(BaseModel):
@@ -49,6 +62,15 @@ class SystemRestoreResult(BaseModel):
     tags_imported: int
     users_imported: int
     counters_imported: int
+    screenings_imported: int
+    screening_requests_imported: int
+    seat_reservations_imported: int
+    messages_imported: int
+    # Merged insert-only, not wholesale-replaced (system_backup_service.
+    # _merge_raw_collection) — this is how many entries were actually new,
+    # not the backup's total audit_log count.
+    audit_log_imported: int
+    visits_imported: int
 
 
 class DatabaseResetConfirm(BaseModel):
@@ -69,6 +91,7 @@ class DatabaseResetResult(BaseModel):
     counters_removed: int
     screenings_removed: int
     screening_requests_removed: int
+    seat_reservations_removed: int
 
 
 class MediaTypeCounts(BaseModel):

@@ -1,6 +1,10 @@
 # Secrets
 .env
 backend/.env
+# Indeholder klartekst-adgangskoder til prod-infrastruktur (proxy/appserver) —
+# må aldrig committes. Se filens eget afsnit 6 ("Adgang").
+movie-laces-dk-runbook.md
+*-runbook.md
 
 # Python
 backend/__pycache__/

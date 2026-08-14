@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.126.2 build 0171] — 2026-08-14 — fix: klartekst-produktionsadgangskoder ubeskyttet i repo-roden (BUGS.md #66)
+
+Opdaget under research til feature #152: `movie-laces-dk-runbook.md` (proxy-server-dokumentation) indeholder rigtige klartekst-adgangskoder til prod-infrastruktur, lå utracket men **ikke** i `.gitignore` — ét `git add -A` fra at blive committet til GitHub. Tilføjet `movie-laces-dk-runbook.md` + mønsteret `*-runbook.md` til `.gitignore`. Selve adgangskoderne er ikke roteret (uden for scope, kræver adgang til kørende infrastruktur) — Jan er gjort opmærksom på at rotation stadig udestår. Berørt fil: `.gitignore`.
+
 ## [0.126.1 build 0170] — 2026-08-14 — fix: system-backup/-restore manglede seks collections (BUGS.md #65)
 
 Jan: *"det se ud til at backup/restore mangler en del"*. Feature #61's fulde system-backup dumpede kun movies/tv_shows/deleted/tags/users/counters — men siden er `screenings`/`screening_requests` (Voldby BIO's program), `seat_reservations` (feature #133), `messages` (feature #100), `audit_log` og `visits` kommet til uden at backup'en blev udvidet, så en gendannelse ville stiltiende have slettet programmet og alle sæde-reservationer. `SystemBackup`/`SystemRestoreResult` udvidet med alle seks. Fandt undervejs to relaterede huller: `reset_library` ryddede ikke `seat_reservations` (dinglende referencer til slettede screenings efter et bibliotek-reset) — rettet; og en første udgave lod restore erstatte `audit_log` wholesale, hvilket viste sig at slette dele af sit eget revisionsspor (`system_backup.created`-loggen skrives efter snapshottet tages, så den kan aldrig være med i det der gendannes) — rettet med en ny insert-only `_merge_raw_collection`, kun brugt til `audit_log`. Ny ufravigelig CLAUDE.md-regel (20): backup/restore skal tjekkes for huller som del af enhver feature der udvider et data-sæt, ikke bagefter. Tests: `test_system_backup.py`/`test_database_reset.py` udvidet, fuld suite (645) grøn.

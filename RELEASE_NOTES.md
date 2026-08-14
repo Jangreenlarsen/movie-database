@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.126.2 (build 0171) — 2026-08-14
+
+- **Repo-oprydning (ingen app-ændring).** En fil med klartekst-adgangskoder til produktions-infrastruktur er nu beskyttet mod at kunne committes ved et uheld.
+
 ## v0.126.1 (build 0170) — 2026-08-14
 
 - **System-backup dækker nu hele systemet.** En fuld system-backup manglede Voldby BIO's program, sæde-reservationer, beskeder og revisionsloggen — en gendannelse ville stiltiende have slettet dem. Backup og gendannelse dækker nu alt.

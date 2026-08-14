@@ -186,22 +186,24 @@ Produktionsdatabasen startede **tom** (bevidst valg — ingen data migreret fra 
 En **frisk, generisk** VM-skabelon af basissystemet ovenfor (Debian 13 + MongoDB 8.0 + Node 22 + Caddy + ufw), byggeklar til import i **Synology Virtual Machine Manager** (`.ova`, som VMM importerer direkte via Image → Add → Import) eller enhver anden hypervisor der forstår OVA/OVF. Findes i `packer/` (repo-roden), bygget med [HashiCorp Packer](https://www.packer.io/) + VirtualBox — **ikke** afhængig af eller forbundet til den kørende prod-VM på noget tidspunkt.
 
 **Bevidst uden hemmeligheder eller data** (CLAUDE.md regel 6/16 — en delt skabelon må aldrig indeholde rigtige secrets):
-- `jgl` har **kun** SSH-nøgle-login (adgangskoden er låst) + passwordless sudo. Den bagte offentlige nøgle matcher `packer/moviedb_appliance_key.pub` — den private modpart er git-ignoreret og findes kun lokalt hos den der byggede imaget.
+- **Login** (Jans valg 2026-08-14, efter første forsøg med SSH-nøgle-only — konsol-login i VMM skal virke uden en nøglefil): `jgl` / bootstrap-adgangskoden i `packer/variables.pkr.hcl` (`jgl_password`, default `ChangeMe123!`) + passwordless sudo. Adgangskoden er bevidst simpel, men **ubrugelig efter første login** — `chage -d 0` tvinger et skifte (både konsol og SSH) før en shell overhovedet startes, så standardværdien aldrig reelt forbliver i brug (regel 16).
+- **Init-/velkomstrutine ved første login** (`scripts/moviedb-welcome-profile.sh`, installeret som `/etc/profile.d/moviedb-welcome.sh`): viser hostname + DHCP-tildelt IP og de næste skridt — løser det konkrete problem at et frisk importeret VM ikke har nogen kendt IP før man kan logge ind. Vises kun én gang pr. bruger (markørfil i `$HOME`).
 - Intet app-repo klonet, intet rigtigt `JWT_SECRET_KEY`/GitHub-deploy-key/TMDb-token, ingen Caddyfile (afhænger af den endelige VM's hostname/IP), og `moviedb-backend`-servicen er *staged men ikke aktiveret* (den vil fejle uden appen).
 - OTA-deploy og cert-install-scriptene/-units (`scripts/deploy.sh`, `scripts/cert-install.sh` + deres `.path`/`.service`-units) **er** forudinstalleret og aktiveret — de er passive indtil en trigger-fil røres, så det er sikkert.
+
+**Kendt boot-fejl i VMM**: en importeret VM kan starte direkte i en UEFI-`Shell>`-prompt i stedet for at boote Debian. Skabelonens disk er installeret til **legacy BIOS-boot** (VirtualBox's standard), men VMM opretter/importerer nogle gange VM'en med UEFI-firmware — de to matcher ikke. Løsning: i VM'ens indstillinger i VMM, sæt boot-mode/firmware til **Legacy BIOS** og genstart.
 
 **Bygge lokalt**:
 ```bash
 cd packer
-ssh-keygen -t ed25519 -f moviedb_appliance_key -N ""   # kun hvis nøgleparret mangler
 packer init .
-packer build .
+packer build -force .
 ```
 Producerer `packer/output/moviedb-appliance.ova`. Bygget/verificeret lokalt via VirtualBox (headless) — ingen ekstern hypervisor-adgang nødvendig for selve build-trinnet.
 
-**Efter import i VMM** — samme trin som denne fils "Sådan blev serveren sat op" 7-10, kun kortere (1-6+11 er allerede i skabelonen):
+**Efter import i VMM** — find VM'ens IP via velkomstrutinen ovenfor (eller VMM's egen netværks-fane / DHCP-lease-tabellen for hostname `moviedb-appliance`), log ind, skift adgangskoden når du bliver bedt om det, og følg derefter samme trin som denne fils "Sådan blev serveren sat op" 7-10, kun kortere (1-6+11 er allerede i skabelonen):
 ```bash
-ssh -i packer/moviedb_appliance_key jgl@<den nye VM's IP>
+ssh jgl@<den nye VM's IP>   # bedes om at skifte adgangskoden ved dette første login
 
 sudo mkdir -p /opt/moviedb && sudo chown jgl:jgl /opt/moviedb   # allerede oprettet, men chown for en sikkerheds skyld
 git clone <deploy-key-URL> /opt/moviedb   # ny/dedikeret deploy key til DENNE VM, se trin 7 ovenfor for mønsteret

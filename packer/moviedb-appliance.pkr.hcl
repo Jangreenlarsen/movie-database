@@ -42,7 +42,7 @@ source "virtualbox-iso" "moviedb" {
   ]
 
   ssh_username           = "jgl"
-  ssh_private_key_file   = "moviedb_appliance_key"
+  ssh_password           = var.jgl_password
   ssh_timeout            = "40m"
   shutdown_command       = "sudo shutdown -P now"
   shutdown_timeout       = "5m"
@@ -62,7 +62,12 @@ build {
   }
 
   provisioner "shell" {
-    script          = "provision.sh"
-    execute_command = "chmod +x {{ .Path }} && sudo {{ .Path }}"
+    script = "provision.sh"
+    # jgl har (bevidst, se preseed.cfg) ingen NOPASSWD-sudo-regel før
+    # provision.sh selv opretter den (trin 6) — reglen kan derfor ikke
+    # forudsættes for dette allerførste sudo-kald. Adgangskoden sendes ind
+    # via stdin til `sudo -S` i stedet; resten af scriptet kører videre i
+    # samme allerede-eskalerede proces, uanset om sudoers-filen findes.
+    execute_command = "echo '${var.jgl_password}' | sudo -S -p '' sh -c 'chmod +x {{ .Path }} && {{ .Path }}'"
   }
 }

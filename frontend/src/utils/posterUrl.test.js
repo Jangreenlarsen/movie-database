@@ -1,26 +1,31 @@
 /**
- * Feature #143 — poster-størrelses-omskrivning. Det testværdige (regel 19): en
+ * Feature #143/#153 — poster-cache-omskrivning. Det testværdige (regel 19): en
  * forkert regex ville enten ødelægge ALLE billed-URL'er (broken img) eller slet
- * ikke optimere. Og en manuelt angivet (ikke-TMDb) poster-URL må aldrig røres.
+ * ikke pege på vores egen cache. Og en manuelt angivet (ikke-TMDb) poster-URL
+ * må aldrig røres.
  */
 
 import { describe, expect, it } from "vitest";
 
 import { cardPosterSize, posterSrc } from "./posterUrl";
 
-describe("posterSrc (feature #143)", () => {
-  it("skifter TMDb-størrelsen til den ønskede", () => {
+describe("posterSrc (feature #143/#153)", () => {
+  it("omskriver en TMDb-URL til vores egen cache-endpoint i den ønskede størrelse", () => {
     expect(posterSrc("https://image.tmdb.org/t/p/w500/abc123.jpg", "w185")).toBe(
-      "https://image.tmdb.org/t/p/w185/abc123.jpg"
+      "/api/posters/w185/abc123.jpg"
     );
     expect(posterSrc("https://image.tmdb.org/t/p/w500/abc123.jpg", "w342")).toBe(
-      "https://image.tmdb.org/t/p/w342/abc123.jpg"
+      "/api/posters/w342/abc123.jpg"
     );
   });
 
   it("bruger w342 som standard", () => {
-    expect(posterSrc("https://image.tmdb.org/t/p/w500/x.jpg")).toBe(
-      "https://image.tmdb.org/t/p/w342/x.jpg"
+    expect(posterSrc("https://image.tmdb.org/t/p/w500/x.jpg")).toBe("/api/posters/w342/x.jpg");
+  });
+
+  it("bevarer stier med undermapper i TMDb-billedets path", () => {
+    expect(posterSrc("https://image.tmdb.org/t/p/w500/nested/abc.jpg", "w185")).toBe(
+      "/api/posters/w185/nested/abc.jpg"
     );
   });
 

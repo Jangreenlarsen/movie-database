@@ -1,12 +1,17 @@
 # Feature #152 — build-variabler for den genanvendelige VM-skabelon.
-# Ingen af disse er hemmeligheder i sig selv (den offentlige SSH-nøgle er
-# netop offentlig) — selve hemmeligheden (den private nøgle,
-# moviedb_appliance_key uden .pub) rører aldrig denne fil og er gitignored.
+#
+# Jans valg (2026-08-14, efter første forsøg): almindeligt bruger/adgangskode-
+# login i stedet for SSH-nøgle-only — konsol-login i VMM skal virke uden en
+# nøglefil. Adgangskoden nedenfor er en bevidst simpel bootstrap-værdi: den
+# er UBRUGELIG efter første login, fordi provision.sh sætter kontoen til at
+# skulle skiftes med det samme (`chage -d 0`) — samme mønster som CLAUDE.md
+# regel 16 kræver for usikre standardværdier.
 
-variable "ssh_public_key_path" {
+variable "jgl_password" {
   type        = string
-  default     = "moviedb_appliance_key.pub"
-  description = "Offentlig SSH-nøgle der bages ind for jgl. Genereret med: ssh-keygen -t ed25519 -f moviedb_appliance_key -N \"\""
+  default     = "ChangeMe123!"
+  description = "Bootstrap-adgangskode for jgl. Bruges også af Packer selv til at forbinde under build. SKAL skiftes ved første login — håndhæves automatisk (chage -d 0), ikke kun en anbefaling."
+  sensitive   = true
 }
 
 variable "vm_name" {

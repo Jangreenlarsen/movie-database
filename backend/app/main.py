@@ -15,6 +15,7 @@ from app.api import (
     messages,
     movies,
     plex,
+    posters,
     reservations,
     scan,
     screening_requests,
@@ -67,6 +68,7 @@ from app.repositories import (
     audit_log_repository,
     message_repository,
     movie_repository,
+    poster_cache_repository,
     reservation_repository,
     screening_repository,
     screening_request_repository,
@@ -103,6 +105,7 @@ async def lifespan(app: FastAPI):
     await message_repository.ensure_indexes(db)
     await visit_repository.ensure_indexes(db)
     await reservation_repository.ensure_indexes(db)
+    await poster_cache_repository.ensure_indexes(db)
     logger.info("MongoDB client initialized (%s)", settings.mongo_db_name)
     yield
     await close_client()
@@ -345,3 +348,4 @@ app.include_router(screening_requests.router)
 app.include_router(screenings.router)
 app.include_router(reservations.router)
 app.include_router(messages.router)
+app.include_router(posters.router)

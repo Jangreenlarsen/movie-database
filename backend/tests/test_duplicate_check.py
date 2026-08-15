@@ -41,6 +41,9 @@ async def test_finds_existing_library_movie(client, monkeypatch):
     assert matches[0]["title"] == "Already Owned"
     assert matches[0]["serial_number"] == serial
     assert matches[0]["is_wishlist"] is False
+    # BUGS.md — uden medietypen kan frontend ikke skelne den fysiske disk fra
+    # den digitale/Plex-udgave i dublet-advarslen (bare "#42" uden præfiks).
+    assert matches[0]["media_type"] == "Fysisk"
 
 
 async def test_finds_existing_wishlist_entry(client, monkeypatch):

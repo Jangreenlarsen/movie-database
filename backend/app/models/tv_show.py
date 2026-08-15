@@ -195,6 +195,8 @@ class DuplicateTvShowMatch(BaseModel):
     name: str
     serial_number: int | None = None
     is_wishlist: bool = False
+    # BUGS.md — se den identiske note i movie.py's DuplicateMatch.
+    media_type: str | None = None
 
 
 class DeletedTvShow(BaseModel):

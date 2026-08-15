@@ -6,6 +6,7 @@ import { MovieDetailModal } from "../pages/Library";
 import { TvShowDetailModal } from "../pages/TvShows";
 import { useT } from "../i18n";
 import { posterSrc } from "../utils/posterUrl";
+import { duplicateSerialSuffix } from "../utils/serialNumber";
 import "./MovieLookupForm.css";
 
 function toggleValue(list, value) {
@@ -523,7 +524,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved, mode 
                         .map((d) =>
                           d.is_wishlist
                             ? t("scan.duplicateOnWishlist")
-                            : `${t("scan.duplicateInLibrary")}${d.serial_number ? ` (#${d.serial_number})` : ""}`
+                            : `${t("scan.duplicateInLibrary")}${duplicateSerialSuffix(d, "tv", serialPaddingWidth)}`
                         )
                         .join(t("scan.duplicateJoin")),
                     })}

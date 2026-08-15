@@ -339,6 +339,8 @@ async def test_check_duplicate_finds_existing_show(client, monkeypatch):
     assert len(matches) == 1
     assert matches[0]["name"] == "Some Show"
     assert matches[0]["serial_number"] == created.json()["serial_number"]
+    # BUGS.md — se den identiske test i test_duplicate_check.py.
+    assert matches[0]["media_type"] == "Fysisk"
 
 
 async def test_search_filter_and_sort(client):

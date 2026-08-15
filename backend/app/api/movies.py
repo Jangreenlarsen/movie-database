@@ -37,9 +37,13 @@ router = APIRouter(prefix="/api/movies", tags=["movies"], dependencies=[Depends(
 async def list_movies(
     q: str | None = Query(default=None),
     tags: str | None = Query(default=None),
+    tags_exclude: str | None = Query(default=None),
     format: str | None = Query(default=None, alias="format"),
+    format_exclude: str | None = Query(default=None),
     audio_types: str | None = Query(default=None),
+    audio_types_exclude: str | None = Query(default=None),
     media_types: str | None = Query(default=None),
+    media_types_exclude: str | None = Query(default=None),
     sort: str | None = Query(
         default=None,
         description='Comma-separated "field:direction" tokens, up to 3, '
@@ -55,13 +59,22 @@ async def list_movies(
     page: int | None = Query(default=None, ge=1),
     page_size: int | None = Query(default=None, ge=1, le=500),
     genres: str | None = Query(default=None),
+    genres_exclude: str | None = Query(default=None),
+    # Feature #156 — Plex-filter-badget: uspecificeret (udelades = intet
+    # filter), True = kun film bekræftet på Plex, False = kun film der ikke er.
+    plex: bool | None = Query(default=None),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     tag_list = tags.split(",") if tags else None
+    tag_exclude_list = tags_exclude.split(",") if tags_exclude else None
     format_list = format.split(",") if format else None
+    format_exclude_list = format_exclude.split(",") if format_exclude else None
     audio_type_list = audio_types.split(",") if audio_types else None
+    audio_type_exclude_list = audio_types_exclude.split(",") if audio_types_exclude else None
     media_type_list = media_types.split(",") if media_types else None
+    media_type_exclude_list = media_types_exclude.split(",") if media_types_exclude else None
     genre_list = genres.split(",") if genres else None
+    genre_exclude_list = genres_exclude.split(",") if genres_exclude else None
     return await movie_service.list_movies(
         db,
         q,
@@ -77,6 +90,12 @@ async def list_movies(
         page,
         page_size,
         genre_list,
+        tag_exclude_list,
+        format_exclude_list,
+        audio_type_exclude_list,
+        media_type_exclude_list,
+        genre_exclude_list,
+        plex,
     )
 
 

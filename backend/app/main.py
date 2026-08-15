@@ -52,6 +52,7 @@ from app.core.errors import (
     NotAuthorizedError,
     NotSupportedOnThisPlatformError,
     Pkcs12ImportError,
+    PlexFilterUnavailableError,
     ReservationNotFoundError,
     SeatTakenError,
     SerialNumberConflictError,
@@ -332,6 +333,13 @@ async def reservation_not_found_handler(
 @app.exception_handler(InvalidSeatError)
 async def invalid_seat_handler(request: Request, exc: InvalidSeatError) -> JSONResponse:
     return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(PlexFilterUnavailableError)
+async def plex_filter_unavailable_handler(
+    request: Request, exc: PlexFilterUnavailableError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 @app.exception_handler(SeatTakenError)

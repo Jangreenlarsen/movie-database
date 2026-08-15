@@ -547,70 +547,81 @@ async def clear_serial_number(db: AsyncIOMotorDatabase, movie_id: str) -> None:
     )
 
 
-def _build_find_many_filter(
-    query: str | None,
-    normalized_tags: list[str] | None,
-    formats: list[str] | None = None,
-    audio_types: list[str] | None = None,
-    media_types: list[str] | None = None,
-    is_wishlist: bool = False,
-    watched: bool | None = None,
-    cast: str | None = None,
-    director: str | None = None,
-    genres: list[str] | None = None,
-) -> dict:
-    """`is_wishlist=False` matches both `is_wishlist: false` *and* documents
+def _build_find_many_filter(filters: dict) -> dict:
+    """`filters` is the plain dict `movie_service.list_movies` builds once
+    and passes unchanged to both `find_many`/`count_many` (feature #15) —
+    kept as a single dict rather than ~16 positional params (feature #156
+    added five `*_exclude` lists plus `id_in`/`id_nin` for the Plex filter
+    on top of the original ten) so the two callers can never drift apart on
+    argument order, and so a new filter dimension is one new key, not one
+    new parameter in three function signatures at once.
+
+    `is_wishlist=False` matches both `is_wishlist: false` *and* documents
     that predate this field entirely (`$ne: True`, not a `False` equality
     check) — see FEATURES.md #28 and BUGS.md's "check every representation
-    of empty" lesson (CLAUDE.md regel 16). Shared by `find_many`/`count_many`
-    (feature #15) so the two can never drift apart on what counts as a
-    match."""
-    filter_: dict = {"is_wishlist": True if is_wishlist else {"$ne": True}}
+    of empty" lesson (CLAUDE.md regel 16)."""
+    filter_: dict = {"is_wishlist": True if filters.get("is_wishlist") else {"$ne": True}}
+    query = filters.get("query")
     if query:
         text_query = build_text_query(query, TEXT_SEARCH_FIELDS, SERIAL_PREFIXES)
         if text_query:
             filter_.update(text_query)
-    if normalized_tags:
-        filter_["tags_normalized"] = {"$all": normalized_tags}
-    if formats:
-        filter_["format"] = {"$in": formats}
-    if audio_types:
-        filter_["audio_types"] = {"$in": audio_types}
-    if media_types:
-        filter_["media_type"] = {"$in": media_types}
-    if genres:
-        # $in, ikke $all — samme "vis alt der matcher mindst én valgt chip"
-        # semantik som format/audio_types/media_types ovenfor, ikke
-        # tags_normalized's "skal have dem alle".
-        filter_["genres"] = {"$in": genres}
+
+    # Hvert felt kombinerer sit include- og exclude-operator i én dict — flere
+    # operatorer på samme Mongo-felt ANDes automatisk sammen, så "skal have
+    # tag A" og "må ikke have tag B" begge kan gælde på samme filter.
+    def _add(field: str, include_op: str, include_key: str, exclude_key: str) -> None:
+        include = filters.get(include_key)
+        exclude = filters.get(exclude_key)
+        clause: dict = {}
+        if include:
+            clause[include_op] = include
+        if exclude:
+            clause["$nin"] = exclude
+        if clause:
+            filter_[field] = clause
+
+    _add("tags_normalized", "$all", "tags", "tags_exclude")
+    _add("format", "$in", "formats", "formats_exclude")
+    _add("audio_types", "$in", "audio_types", "audio_types_exclude")
+    _add("media_type", "$in", "media_types", "media_types_exclude")
+    # $in, ikke $all — samme "vis alt der matcher mindst én valgt chip"
+    # semantik som format/audio_types/media_types ovenfor, ikke
+    # tags_normalized's "skal have dem alle".
+    _add("genres", "$in", "genres", "genres_exclude")
+
+    watched = filters.get("watched")
     if watched is not None:
         # Same "missing field != False" pitfall as is_wishlist above — movies
         # created before this feature (or simply never marked) have no
         # `watched` key at all, so `False` must match "not True", not a
         # literal equality check that would silently exclude them.
         filter_["watched"] = True if watched else {"$ne": True}
-    if cast:
-        filter_["cast"] = cast
-    if director:
-        filter_["director"] = director
+    if filters.get("cast"):
+        filter_["cast"] = filters["cast"]
+    if filters.get("director"):
+        filter_["director"] = filters["director"]
+
+    # Feature #156 — Plex-filter. `id_in`/`id_nin` er allerede resolvede
+    # ObjectId-strenge fra `movie_service` (via `plex_service.get_available_ids`);
+    # denne funktion ved intet om Plex, kun om et generisk _id-filter.
+    id_clause: dict = {}
+    if filters.get("id_in") is not None:
+        id_clause["$in"] = [ObjectId(i) for i in filters["id_in"]]
+    if filters.get("id_nin") is not None:
+        id_clause["$nin"] = [ObjectId(i) for i in filters["id_nin"]]
+    if id_clause:
+        filter_["_id"] = id_clause
+
     return filter_
 
 
 async def find_many(
     db: AsyncIOMotorDatabase,
-    query: str | None,
-    normalized_tags: list[str] | None,
-    formats: list[str] | None = None,
-    audio_types: list[str] | None = None,
-    media_types: list[str] | None = None,
+    filters: dict,
     sort_spec: list[tuple[str, int]] | None = None,
-    is_wishlist: bool = False,
-    watched: bool | None = None,
-    cast: str | None = None,
-    director: str | None = None,
     skip: int = 0,
     limit: int | None = None,
-    genres: list[str] | None = None,
 ) -> list[dict]:
     """`sort_spec` is a list of up to `MAX_SORT_LEVELS` (already-whitelisted
     mongo field name, direction) tuples for compound multi-level sorting
@@ -622,9 +633,7 @@ async def find_many(
     `movie_service.list_movies` passes a real `limit` for the paginated
     library view (feature #15), which used to be silently capped at 500
     with no way to see or reach anything past it."""
-    filter_ = _build_find_many_filter(
-        query, normalized_tags, formats, audio_types, media_types, is_wishlist, watched, cast, director, genres
-    )
+    filter_ = _build_find_many_filter(filters)
     cursor = db[COLLECTION].find(filter_)
     cursor = cursor.sort(sort_spec) if sort_spec else cursor.sort(DEFAULT_SORT_FIELD, -1)
     if skip:
@@ -634,22 +643,8 @@ async def find_many(
     return await cursor.to_list(length=limit)
 
 
-async def count_many(
-    db: AsyncIOMotorDatabase,
-    query: str | None,
-    normalized_tags: list[str] | None,
-    formats: list[str] | None = None,
-    audio_types: list[str] | None = None,
-    media_types: list[str] | None = None,
-    is_wishlist: bool = False,
-    watched: bool | None = None,
-    cast: str | None = None,
-    director: str | None = None,
-    genres: list[str] | None = None,
-) -> int:
-    filter_ = _build_find_many_filter(
-        query, normalized_tags, formats, audio_types, media_types, is_wishlist, watched, cast, director, genres
-    )
+async def count_many(db: AsyncIOMotorDatabase, filters: dict) -> int:
+    filter_ = _build_find_many_filter(filters)
     return await db[COLLECTION].count_documents(filter_)
 
 

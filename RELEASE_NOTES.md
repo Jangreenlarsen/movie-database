@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.131.0 (build 0177) — 2026-08-15
+
+- **Filtre kan nu udelukke, ikke kun inkludere.** Klik en gang på et filter-badge (tag, genre, format, lyd, medietype, Set, Plex) for at vise kun det; klik igen for at udelukke det i stedet — badget bliver rødt med en diagonal streg. Klik en tredje gang for at rydde det. Nyt "Plex"-filter i filter-sektionen viser kun det der er (eller ikke er) bekræftet på Plex.
+
 ## v0.130.0 (build 0176) — 2026-08-15
 
 - **"Slettede film" i Indstillinger bladres nu i sider.** Listen viser højst 10 ad gangen med forrige/næste-knapper, i stedet for at vise alle slettede film på én lang, fyldt side.

@@ -71,6 +71,64 @@ async def test_filter_by_tag_is_case_insensitive(client):
     assert titles == ["Tagged"]
 
 
+# --- negerbare filter-badges (feature #156) ---------------------------------
+
+
+async def test_filter_excludes_by_tag(client):
+    await client.post("/api/movies", json={"title": "Julefilm", "tags": ["Christmas"], "media_type": "Fysisk", "format": "F-DVD"})
+    await client.post("/api/movies", json={"title": "Uden tag", "media_type": "Fysisk", "format": "F-DVD"})
+
+    response = await client.get("/api/movies", params={"tags_exclude": "christmas"})
+    titles = [m["title"] for m in response.json()["items"]]
+    assert titles == ["Uden tag"]
+
+
+async def test_filter_can_combine_include_and_exclude_on_same_dimension(client):
+    """"skal have 4K, men ikke Julefilm" — de to sider af samme felt skal
+    kunne bruges samtidig (regel 16: en regel der kun holder for én gren)."""
+    await client.post("/api/movies", json={"title": "4K Jul", "tags": ["4K", "Christmas"], "media_type": "Fysisk", "format": "F-DVD"})
+    await client.post("/api/movies", json={"title": "4K uden jul", "tags": ["4K"], "media_type": "Fysisk", "format": "F-DVD"})
+
+    response = await client.get("/api/movies", params={"tags": "4k", "tags_exclude": "christmas"})
+    titles = [m["title"] for m in response.json()["items"]]
+    assert titles == ["4K uden jul"]
+
+
+async def test_filter_excludes_by_format_audio_media_type_and_genre(client):
+    await client.post(
+        "/api/movies",
+        json={
+            "title": "Blu-ray Horror",
+            "format": "F-BD",
+            "audio_types": ["DTS"],
+            "genres": ["Horror"],
+            "media_type": "Fysisk",
+        },
+    )
+    await client.post(
+        "/api/movies",
+        json={
+            "title": "DVD Comedy",
+            "format": "F-DVD",
+            "audio_types": ["Stereo"],
+            "genres": ["Comedy"],
+            "media_type": "Fysisk",
+        },
+    )
+
+    by_format = await client.get("/api/movies", params={"format_exclude": "F-BD"})
+    assert [m["title"] for m in by_format.json()["items"]] == ["DVD Comedy"]
+
+    by_audio = await client.get("/api/movies", params={"audio_types_exclude": "DTS"})
+    assert [m["title"] for m in by_audio.json()["items"]] == ["DVD Comedy"]
+
+    by_genre = await client.get("/api/movies", params={"genres_exclude": "Horror"})
+    assert [m["title"] for m in by_genre.json()["items"]] == ["DVD Comedy"]
+
+    by_media_type = await client.get("/api/movies", params={"media_types_exclude": "Fysisk"})
+    assert by_media_type.json()["items"] == []
+
+
 async def test_update_and_delete_movie(client):
     create_response = await client.post("/api/movies", json={"title": "Old Title", "media_type": "Fysisk", "format": "F-DVD"})
     movie_id = create_response.json()["id"]

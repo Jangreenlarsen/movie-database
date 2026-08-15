@@ -109,9 +109,13 @@ export const api = {
     {
       q,
       tags,
+      tagsExclude,
       format,
+      formatExclude,
       audioTypes,
+      audioTypesExclude,
       mediaTypes,
+      mediaTypesExclude,
       sort,
       wishlist,
       watched,
@@ -120,14 +124,20 @@ export const api = {
       page,
       pageSize,
       genres,
+      genresExclude,
+      plex,
     } = {}
   ) => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (tags?.length) params.set("tags", tags.join(","));
+    if (tagsExclude?.length) params.set("tags_exclude", tagsExclude.join(","));
     if (format?.length) params.set("format", format.join(","));
+    if (formatExclude?.length) params.set("format_exclude", formatExclude.join(","));
     if (audioTypes?.length) params.set("audio_types", audioTypes.join(","));
+    if (audioTypesExclude?.length) params.set("audio_types_exclude", audioTypesExclude.join(","));
     if (mediaTypes?.length) params.set("media_types", mediaTypes.join(","));
+    if (mediaTypesExclude?.length) params.set("media_types_exclude", mediaTypesExclude.join(","));
     // `sort` is either a ready-made "field:direction,..." string, or an
     // array of { field, direction } levels (up to 3, see Library.jsx).
     const sortParam = Array.isArray(sort)
@@ -143,6 +153,9 @@ export const api = {
     if (page != null) params.set("page", String(page));
     if (pageSize != null) params.set("page_size", String(pageSize));
     if (genres?.length) params.set("genres", genres.join(","));
+    if (genresExclude?.length) params.set("genres_exclude", genresExclude.join(","));
+    // Feature #156 — Plex-filter-badget: udeladt = intet filter.
+    if (plex != null) params.set("plex", String(plex));
     const query = params.toString();
     return request(`/movies${query ? `?${query}` : ""}`);
   },
@@ -310,14 +323,36 @@ export const api = {
 
   // TV-serier (feature #47) — egen ressource, samme kontrakt-form som film.
   listTvShows: (
-    { q, tags, format, audioTypes, mediaTypes, sort, wishlist, watched, page, pageSize, genres } = {}
+    {
+      q,
+      tags,
+      tagsExclude,
+      format,
+      formatExclude,
+      audioTypes,
+      audioTypesExclude,
+      mediaTypes,
+      mediaTypesExclude,
+      sort,
+      wishlist,
+      watched,
+      page,
+      pageSize,
+      genres,
+      genresExclude,
+      plex,
+    } = {}
   ) => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (tags?.length) params.set("tags", tags.join(","));
+    if (tagsExclude?.length) params.set("tags_exclude", tagsExclude.join(","));
     if (format?.length) params.set("format", format.join(","));
+    if (formatExclude?.length) params.set("format_exclude", formatExclude.join(","));
     if (audioTypes?.length) params.set("audio_types", audioTypes.join(","));
+    if (audioTypesExclude?.length) params.set("audio_types_exclude", audioTypesExclude.join(","));
     if (mediaTypes?.length) params.set("media_types", mediaTypes.join(","));
+    if (mediaTypesExclude?.length) params.set("media_types_exclude", mediaTypesExclude.join(","));
     const sortParam = Array.isArray(sort)
       ? sort.map((level) => `${level.field}:${level.direction}`).join(",")
       : sort;
@@ -327,6 +362,8 @@ export const api = {
     if (page != null) params.set("page", String(page));
     if (pageSize != null) params.set("page_size", String(pageSize));
     if (genres?.length) params.set("genres", genres.join(","));
+    if (genresExclude?.length) params.set("genres_exclude", genresExclude.join(","));
+    if (plex != null) params.set("plex", String(plex));
     const query = params.toString();
     return request(`/tv-shows${query ? `?${query}` : ""}`);
   },

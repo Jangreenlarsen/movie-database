@@ -390,60 +390,67 @@ async def clear_serial_number(db: AsyncIOMotorDatabase, tv_show_id: str) -> None
     )
 
 
-def _build_find_many_filter(
-    query: str | None,
-    normalized_tags: list[str] | None,
-    formats: list[str] | None = None,
-    audio_types: list[str] | None = None,
-    media_types: list[str] | None = None,
-    is_wishlist: bool = False,
-    watched: bool | None = None,
-    genres: list[str] | None = None,
-) -> dict:
-    """Shared by `find_many`/`count_many` (feature #15) so the two can never
-    drift apart on what counts as a match."""
-    filter_: dict = {"is_wishlist": True if is_wishlist else {"$ne": True}}
+def _build_find_many_filter(filters: dict) -> dict:
+    """`filters` is the plain dict `tv_show_service.list_tv_shows` builds
+    once and passes unchanged to both `find_many`/`count_many` (feature #15)
+    — kept as a single dict rather than a growing positional-param list
+    (feature #156 added five `*_exclude` lists plus `id_in`/`id_nin` for the
+    Plex filter) so the two callers can never drift apart on argument order.
+    Mirrors `movie_repository._build_find_many_filter` exactly — the two
+    resources are separate collections (CLAUDE.md) but share this filtering
+    shape, so a fix/addition here must be made there too and vice versa."""
+    filter_: dict = {"is_wishlist": True if filters.get("is_wishlist") else {"$ne": True}}
+    query = filters.get("query")
     if query:
         text_query = build_text_query(query, TEXT_SEARCH_FIELDS, SERIAL_PREFIXES)
         if text_query:
             filter_.update(text_query)
-    if normalized_tags:
-        filter_["tags_normalized"] = {"$all": normalized_tags}
-    if formats:
-        filter_["format"] = {"$in": formats}
-    if audio_types:
-        filter_["audio_types"] = {"$in": audio_types}
-    if media_types:
-        filter_["media_type"] = {"$in": media_types}
-    if genres:
-        filter_["genres"] = {"$in": genres}
+
+    def _add(field: str, include_op: str, include_key: str, exclude_key: str) -> None:
+        include = filters.get(include_key)
+        exclude = filters.get(exclude_key)
+        clause: dict = {}
+        if include:
+            clause[include_op] = include
+        if exclude:
+            clause["$nin"] = exclude
+        if clause:
+            filter_[field] = clause
+
+    _add("tags_normalized", "$all", "tags", "tags_exclude")
+    _add("format", "$in", "formats", "formats_exclude")
+    _add("audio_types", "$in", "audio_types", "audio_types_exclude")
+    _add("media_type", "$in", "media_types", "media_types_exclude")
+    _add("genres", "$in", "genres", "genres_exclude")
+
+    watched = filters.get("watched")
     if watched is not None:
         filter_["watched"] = True if watched else {"$ne": True}
+
+    id_clause: dict = {}
+    if filters.get("id_in") is not None:
+        id_clause["$in"] = [ObjectId(i) for i in filters["id_in"]]
+    if filters.get("id_nin") is not None:
+        id_clause["$nin"] = [ObjectId(i) for i in filters["id_nin"]]
+    if id_clause:
+        filter_["_id"] = id_clause
+
     return filter_
 
 
 async def find_many(
     db: AsyncIOMotorDatabase,
-    query: str | None,
-    normalized_tags: list[str] | None,
-    formats: list[str] | None = None,
-    audio_types: list[str] | None = None,
-    media_types: list[str] | None = None,
+    filters: dict,
     sort_spec: list[tuple[str, int]] | None = None,
-    is_wishlist: bool = False,
-    watched: bool | None = None,
     skip: int = 0,
     limit: int | None = None,
-    genres: list[str] | None = None,
 ) -> list[dict]:
     """`limit=None` (the default) fetches every match, no cap — used by
     callers that need the whole filtered set (Print-siden, Voldby BIO's
     søgning). `tv_show_service.list_tv_shows` passes a real `limit` for the
     paginated library view (feature #15), which used to be silently capped
     at 500 with no way to see or reach anything past it."""
-    filter_ = _build_find_many_filter(
-        query, normalized_tags, formats, audio_types, media_types, is_wishlist, watched, genres
-    )
+    filter_ = _build_find_many_filter(filters)
     cursor = db[COLLECTION].find(filter_)
     cursor = cursor.sort(sort_spec) if sort_spec else cursor.sort(DEFAULT_SORT_FIELD, -1)
     if skip:
@@ -453,20 +460,8 @@ async def find_many(
     return await cursor.to_list(length=limit)
 
 
-async def count_many(
-    db: AsyncIOMotorDatabase,
-    query: str | None,
-    normalized_tags: list[str] | None,
-    formats: list[str] | None = None,
-    audio_types: list[str] | None = None,
-    media_types: list[str] | None = None,
-    is_wishlist: bool = False,
-    watched: bool | None = None,
-    genres: list[str] | None = None,
-) -> int:
-    filter_ = _build_find_many_filter(
-        query, normalized_tags, formats, audio_types, media_types, is_wishlist, watched, genres
-    )
+async def count_many(db: AsyncIOMotorDatabase, filters: dict) -> int:
+    filter_ = _build_find_many_filter(filters)
     return await db[COLLECTION].count_documents(filter_)
 
 

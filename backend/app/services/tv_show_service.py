@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.core.errors import (
     DuplicateBarcodeError,
     NotAuthorizedError,
+    PlexFilterUnavailableError,
     SerialNumberConflictError,
     TmdbNotFoundError,
     TmdbRateLimitedError,
@@ -337,6 +338,19 @@ def parse_sort_param(sort: str | None) -> list[tuple[str, int]]:
     return levels
 
 
+async def _resolve_plex_id_filter(db: AsyncIOMotorDatabase, plex: bool | None) -> dict:
+    """Feature #156 — se den identiske funktion i movie_service.py (samme
+    begrundelse for det lokale import af `plex_service`)."""
+    if plex is None:
+        return {}
+    from app.services import plex_service
+
+    available_ids = await plex_service.get_available_ids(db, "show")
+    if available_ids is None:
+        raise PlexFilterUnavailableError()
+    return {"id_in": list(available_ids)} if plex else {"id_nin": list(available_ids)}
+
+
 async def list_tv_shows(
     db: AsyncIOMotorDatabase,
     q: str | None,
@@ -350,31 +364,44 @@ async def list_tv_shows(
     page: int | None = None,
     page_size: int | None = None,
     genres: list[str] | None = None,
+    tags_exclude: list[str] | None = None,
+    formats_exclude: list[str] | None = None,
+    audio_types_exclude: list[str] | None = None,
+    media_types_exclude: list[str] | None = None,
+    genres_exclude: list[str] | None = None,
+    plex: bool | None = None,
 ) -> TvShowPage:
     """`page`/`page_size` omitted (the default) fetches every match, no cap
     — used by callers that need the whole filtered set (Print-siden, Voldby
     BIO's søgning), not just the biblioteks-visningens aktuelle side
     (feature #15)."""
     normalized_tags = [tag_service.normalize(tag) for tag in (tags or []) if tag.strip()]
+    normalized_tags_exclude = [
+        tag_service.normalize(tag) for tag in (tags_exclude or []) if tag.strip()
+    ]
     sort_spec = parse_sort_param(sort)
     paginating = page is not None and page_size is not None
     skip = (page - 1) * page_size if paginating else 0
     limit = page_size if paginating else None
 
-    documents = await tv_show_repository.find_many(
-        db,
-        q,
-        normalized_tags or None,
-        formats or None,
-        audio_types or None,
-        media_types or None,
-        sort_spec or None,
-        is_wishlist,
-        watched,
-        skip,
-        limit,
-        genres or None,
-    )
+    filters = {
+        "query": q,
+        "tags": normalized_tags or None,
+        "tags_exclude": normalized_tags_exclude or None,
+        "formats": formats or None,
+        "formats_exclude": formats_exclude or None,
+        "audio_types": audio_types or None,
+        "audio_types_exclude": audio_types_exclude or None,
+        "media_types": media_types or None,
+        "media_types_exclude": media_types_exclude or None,
+        "genres": genres or None,
+        "genres_exclude": genres_exclude or None,
+        "is_wishlist": is_wishlist,
+        "watched": watched,
+        **(await _resolve_plex_id_filter(db, plex)),
+    }
+
+    documents = await tv_show_repository.find_many(db, filters, sort_spec or None, skip, limit)
     # Feature #145 — markér ønsker hvis navnet falder sammen med en titel i
     # biblioteket (TV ELLER film). Se den identiske logik i movie_service.
     if is_wishlist and documents:
@@ -387,10 +414,7 @@ async def list_tv_shows(
     items = [_to_model(doc) for doc in documents]
 
     if paginating:
-        total = await tv_show_repository.count_many(
-            db, q, normalized_tags or None, formats or None, audio_types or None,
-            media_types or None, is_wishlist, watched, genres or None,
-        )
+        total = await tv_show_repository.count_many(db, filters)
     else:
         total = len(items)
 

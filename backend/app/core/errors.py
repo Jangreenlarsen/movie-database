@@ -253,6 +253,17 @@ class InvalidSeatError(Exception):
         super().__init__(f"Ukendt sæde: {seat_id}")
 
 
+class PlexFilterUnavailableError(Exception):
+    """Feature #156 — et Plex-filter (badge i biblioteks-filteret) blev
+    anvendt, men Plex er ikke konfigureret eller kan ikke nås lige nu. Uden
+    denne fejl ville filteret enten stille springes over (viser film der ikke
+    reelt er bekræftet) eller give et vilkårligt tomt/fuldt resultat — begge
+    dele misvisende for en bruger der eksplicit har bedt om et Plex-filter."""
+
+    def __init__(self):
+        super().__init__("Plex er ikke konfigureret eller kan ikke nås — kan ikke filtrere på Plex.")
+
+
 class SeatTakenError(Exception):
     """Feature #133 — sædet er allerede reserveret/optaget for denne
     fremvisning (eller blokeret af et globalt admin-hold). Oversættes til en

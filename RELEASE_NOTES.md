@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.129.0 (build 0175) — 2026-08-15
+
+- **Ny systemovervågnings-side.** Under Indstillinger → Drift kan admins nu se serverens CPU, RAM og diskforbrug samt status for de tjenester der driver appen (database, webserver, backend). To nye knapper: genstart kun app-tjenesten (hurtig, ingen adgangskode), eller genstart hele serveren (kræver din adgangskode, da det er en mere forstyrrende handling).
+
 ## v0.127.1 (build 0173) — 2026-08-14
 
 - **Appliance-skabelon justeret (ingen app-ændring).** VM-skabelonen fra v0.127.0 bruger nu almindeligt login (bruger/adgangskode) i stedet for en nøglefil, så konsol-login virker direkte i Synology VMM. Build afventer stadig en vellykket kørsel.

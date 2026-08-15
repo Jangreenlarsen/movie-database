@@ -13,6 +13,7 @@ from app.api import (
     health,
     library_backup,
     messages,
+    monitor,
     movies,
     plex,
     posters,
@@ -49,6 +50,7 @@ from app.core.errors import (
     NoPendingCsrError,
     NotAuthenticatedError,
     NotAuthorizedError,
+    NotSupportedOnThisPlatformError,
     Pkcs12ImportError,
     ReservationNotFoundError,
     SeatTakenError,
@@ -283,6 +285,13 @@ async def deploy_script_not_found_handler(
     return JSONResponse(status_code=500, content={"detail": str(exc)})
 
 
+@app.exception_handler(NotSupportedOnThisPlatformError)
+async def not_supported_on_platform_handler(
+    request: Request, exc: NotSupportedOnThisPlatformError
+) -> JSONResponse:
+    return JSONResponse(status_code=501, content={"detail": str(exc)})
+
+
 @app.exception_handler(NoPendingCsrError)
 async def no_pending_csr_handler(request: Request, exc: NoPendingCsrError) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": str(exc)})
@@ -349,3 +358,4 @@ app.include_router(screenings.router)
 app.include_router(reservations.router)
 app.include_router(messages.router)
 app.include_router(posters.router)
+app.include_router(monitor.router)

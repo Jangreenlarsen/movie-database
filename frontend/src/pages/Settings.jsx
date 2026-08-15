@@ -116,6 +116,7 @@ export default function Settings({ user, onSettingsChanged }) {
 
       {activeTab === "drift" && isAdmin && (
         <>
+          <MonitorSection />
           <DeploySection />
           <TlsCertSection />
         </>
@@ -1865,6 +1866,8 @@ const AUDIT_ACTION_KEYS = {
   "screening.scheduled": "audit.action.screeningScheduled",
   "message.sent": "audit.action.messageSent",
   "plex.imported": "audit.action.plexImported",
+  "system.service_restarted": "audit.action.serviceRestarted",
+  "system.reboot_triggered": "audit.action.rebootTriggered",
 };
 
 const AUDIT_PAGE_SIZE = 10;
@@ -2139,6 +2142,231 @@ function ApiKeyRow({ label, field, status, onSaved, testable = true }) {
         )}
       </div>
     </form>
+  );
+}
+
+// Feature #154 — CPU/RAM/disk/tjeneste-status + genstart, under Drift-fanen.
+export function formatUptime(seconds) {
+  if (seconds == null) return "—";
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}t`;
+  if (hours > 0) return `${hours}t ${minutes}m`;
+  return `${minutes}m`;
+}
+
+function MonitorMetric({ label, percent, detail }) {
+  const value = percent ?? 0;
+  return (
+    <div className="monitor-metric">
+      <div className="monitor-metric-label">
+        <span>{label}</span>
+        <span>{percent != null ? `${percent}%` : "—"}</span>
+      </div>
+      <div className="monitor-metric-bar">
+        <div className="monitor-metric-bar-fill" style={{ width: `${Math.min(value, 100)}%` }} />
+      </div>
+      {detail && <div className="monitor-metric-detail muted">{detail}</div>}
+    </div>
+  );
+}
+
+function MonitorSection() {
+  const t = useT();
+  const [health, setHealth] = useState(null);
+  const [healthError, setHealthError] = useState(null);
+
+  const [restartStatus, setRestartStatus] = useState("idle");
+  const [restartError, setRestartError] = useState(null);
+
+  const [rebootPassword, setRebootPassword] = useState("");
+  const [rebootStatus, setRebootStatus] = useState("idle");
+  const [rebootError, setRebootError] = useState(null);
+
+  async function loadHealth(background) {
+    try {
+      const data = await api.getSystemHealth(background);
+      setHealth(data);
+      setHealthError(null);
+    } catch (err) {
+      if (!background) setHealthError(err.message);
+    }
+  }
+
+  useEffect(() => {
+    loadHealth(false);
+    const interval = setInterval(() => loadHealth(true), 10_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Poller /api/health (ubeskyttet, kræver ikke login) indtil backend'en
+  // svarer igen, eller tiden løber ud — samme grundmønster som
+  // DeploySection's polling nedenfor, men uden build-nummer-sammenligningen
+  // (en genstart ændrer ikke build-nummeret, kun om processen kører).
+  function waitForHealthAgain(maxMs, intervalMs, onSuccess, onTimeout) {
+    const deadline = Date.now() + maxMs;
+    const poll = setInterval(async () => {
+      if (Date.now() > deadline) {
+        clearInterval(poll);
+        onTimeout();
+        return;
+      }
+      try {
+        await api.health();
+        clearInterval(poll);
+        onSuccess();
+      } catch {
+        // Stadig nede (eller midt i en genstart) — prøv igen ved næste tick.
+      }
+    }, intervalMs);
+  }
+
+  async function restartService() {
+    setRestartStatus("restarting");
+    setRestartError(null);
+    try {
+      await api.restartService();
+    } catch (err) {
+      setRestartError(err.message);
+      setRestartStatus("error");
+      return;
+    }
+    waitForHealthAgain(
+      30_000,
+      2000,
+      () => {
+        setRestartStatus("done");
+        loadHealth(true);
+      },
+      () => setRestartStatus("done")
+    );
+  }
+
+  async function rebootServer() {
+    if (!rebootPassword) return;
+    setRebootStatus("rebooting");
+    setRebootError(null);
+    try {
+      await api.rebootServer(rebootPassword);
+      setRebootPassword("");
+    } catch (err) {
+      setRebootError(err.message);
+      setRebootStatus("error");
+      return;
+    }
+    waitForHealthAgain(
+      180_000,
+      5000,
+      () => {
+        setRebootStatus("done");
+        loadHealth(true);
+      },
+      () => setRebootStatus("timeout")
+    );
+  }
+
+  return (
+    <div className="card settings-section">
+      <h2>{t("monitor.heading")}</h2>
+      <p className="muted">{t("monitor.description")}</p>
+
+      {healthError && (
+        <div className="banner banner-error" style={{ marginTop: 12 }}>
+          {healthError}
+        </div>
+      )}
+
+      {health && (
+        <>
+          <div className="monitor-metrics">
+            <MonitorMetric label={t("monitor.cpu")} percent={health.cpu_percent} />
+            <MonitorMetric
+              label={t("monitor.memory")}
+              percent={health.memory_percent}
+              detail={t("monitor.memoryDetail", {
+                used: health.memory_used_mb,
+                total: health.memory_total_mb,
+              })}
+            />
+            <MonitorMetric
+              label={t("monitor.disk")}
+              percent={health.disk_percent}
+              detail={t("monitor.diskDetail", {
+                used: health.disk_used_gb,
+                total: health.disk_total_gb,
+              })}
+            />
+          </div>
+
+          <p className="muted" style={{ marginTop: 12 }}>
+            {t("monitor.uptime", { uptime: formatUptime(health.uptime_seconds) })}
+          </p>
+
+          <div className="monitor-services">
+            <span className={`monitor-service-badge ${health.mongo_ok ? "ok" : "down"}`}>
+              MongoDB {health.mongo_ok ? "●" : "✕"}
+            </span>
+            {health.services.map((service) => (
+              <span
+                key={service.name}
+                className={`monitor-service-badge ${
+                  service.active === true ? "ok" : service.active === false ? "down" : "unknown"
+                }`}
+              >
+                {service.name} {service.active === true ? "●" : service.active === false ? "✕" : "?"}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+
+      <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 24 }}>
+        <div>
+          <button
+            type="button"
+            className="btn"
+            onClick={restartService}
+            disabled={restartStatus === "restarting"}
+          >
+            {t(restartStatus === "restarting" ? "monitor.restarting" : "monitor.restartService")}
+          </button>
+          {restartStatus === "done" && (
+            <p className="muted" style={{ marginTop: 6 }}>
+              {t("monitor.restartServiceDone")}
+            </p>
+          )}
+          {restartStatus === "error" && (
+            <div className="banner banner-error" style={{ marginTop: 6 }}>
+              {restartError}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 320 }}>
+          <input
+            type="password"
+            value={rebootPassword}
+            onChange={(e) => setRebootPassword(e.target.value)}
+            placeholder={t("monitor.rebootPasswordPlaceholder")}
+            autoComplete="current-password"
+          />
+          <button
+            type="button"
+            className="btn"
+            onClick={rebootServer}
+            disabled={!rebootPassword || rebootStatus === "rebooting"}
+          >
+            {t(rebootStatus === "rebooting" ? "monitor.rebooting" : "monitor.rebootServer")}
+          </button>
+          {rebootStatus === "done" && <p className="muted">{t("monitor.rebootDone")}</p>}
+          {rebootStatus === "timeout" && <p className="muted">{t("monitor.rebootTimeout")}</p>}
+          {rebootStatus === "error" && <div className="banner banner-error">{rebootError}</div>}
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for moviedb server-reboot trigger (feature #154)
+
+[Path]
+PathExists=/opt/moviedb/.reboot-trigger
+Unit=moviedb-reboot.service
+
+[Install]
+WantedBy=multi-user.target

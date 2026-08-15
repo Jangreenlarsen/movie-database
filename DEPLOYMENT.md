@@ -166,6 +166,23 @@ npm run build
 sudo systemctl reload caddy   # for en sikkerheds skyld, filerne læses direkte fra dist/
 ```
 
+## Systemovervågning og genstart (feature #154)
+
+Indstillinger-siden har en admin-only "Systemovervågning"-sektion (under Drift) der viser CPU/RAM/disk (via `psutil`) og status for `mongod`/`caddy`/`moviedb-backend` (via `systemctl is-active`, som ikke kræver sudo). To handlinger er tilgængelige:
+
+- **Genstart tjeneste** — ingen adgangskode-bekræftelse, samme lave friktion som "Opdatér fra GitHub". `POST /api/system/monitor/restart-service`.
+- **Genstart serveren** — kræver admins eget password (samme mønster som database-reset), fordi hele VM'en er nede i genstarts-perioden, ikke kun web-laget. `POST /api/system/monitor/reboot`.
+
+Samme sandboxing-begrundelse som deploy-flowet ovenfor gælder her: `moviedb-backend.service`s `NoNewPrivileges=true` gør `sudo`/`reboot` permanent utilgængeligt for servicen. Backend rører derfor kun en trigger-fil (`/opt/moviedb/.reboot-trigger`), som en separat, ikke-sandboxed root-ejet systemd path-unit reagerer på og selv udfører den faktiske `reboot`. "Genstart tjeneste" genbruger den **eksisterende** `moviedb-deploy-restart.path`/`.service` (samme trigger-fil, `/opt/moviedb/.deploy-restart-trigger`, allerede sat op ovenfor) — kun "Genstart serveren" kræver en ny unit.
+
+**Opsætning på serveren** (kun nødvendigt én gang, eller hvis de to nye unit-filer ændres i repoet):
+
+```bash
+sudo cp /opt/moviedb/scripts/moviedb-reboot.path /opt/moviedb/scripts/moviedb-reboot.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now moviedb-reboot.path
+```
+
 ## Fejlsøgning
 
 ```bash

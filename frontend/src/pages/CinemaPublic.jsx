@@ -56,6 +56,7 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
   // steder i træet.
   const [loginOpen, setLoginOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [pressOpen, setPressOpen] = useState(false);
   const [screenings, setScreenings] = useState([]);
   const [status, setStatus] = useState("loading");
 
@@ -117,14 +118,13 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
         <section>
           <div className="cinema-public-section-heading-row">
             <h2 className="cinema-public-section-heading">{t("public.about")}</h2>
-            <a
+            <button
+              type="button"
               className="cinema-public-press-btn"
-              href={PRESS_PDF_HREF}
-              target="_blank"
-              rel="noreferrer"
+              onClick={() => setPressOpen(true)}
             >
               📰 {t("public.pressNews")}
-            </a>
+            </button>
             <button
               type="button"
               className="cinema-public-gallery-btn"
@@ -166,14 +166,75 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
       )}
 
       {galleryOpen && <GalleryModal onClose={() => setGalleryOpen(false)} />}
+
+      {pressOpen && <PressModal onClose={() => setPressOpen(false)} />}
+    </div>
+  );
+}
+
+// Feature #161 — Jans ønske: en tilbage-knap i stedet for at åbne PDF'en i
+// en helt separat browser-fane uden nogen vej tilbage til /bio. Samme
+// overlay-panel som GalleryModal (genbruger dets CSS via en fælles klasse),
+// men med et <iframe> i stedet for et grid. iOS/desktop Safari og Chrome
+// kan alle vise en PDF inde i et iframe med deres indbyggede PDF-viewer;
+// "Åbn i ny fane" står med som fallback for den sjældne browser der ikke kan.
+function PressModal({ onClose }) {
+  const t = useT();
+  return (
+    <div
+      className="cinema-public-gallery-overlay"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        className="cinema-public-gallery-panel cinema-public-press-panel"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="cinema-public-gallery-header">
+          <button type="button" className="cinema-public-gallery-back" onClick={onClose}>
+            ← {t("common.back")}
+          </button>
+          <a
+            className="cinema-public-press-newtab"
+            href={PRESS_PDF_HREF}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t("public.pressOpenNewTab")}
+          </a>
+        </div>
+        <iframe
+          className="cinema-public-press-frame"
+          src={PRESS_PDF_HREF}
+          title={t("public.pressNews")}
+        />
+      </div>
     </div>
   );
 }
 
 // Feature #160 — byggeri-galleriet. Samme centrerede overlay-mønster som
 // PublicLoginPanel (BUGS.md #57), bare bredere til et billed-grid.
+// Feature #161 — billeder åbner nu i et lightbox-underview med Forrige/
+// Næste-navigation i stedet for direkte i en ny fane (Jans ønske: "vi
+// mangler navigation på de billeder"), med en tilbage-knap til gridet.
+// Videoer forbliver klikbare direkte i gridet (native afspiller-kontroller)
+// — at gøre dem til endnu en lightbox-knap ville forhindre et klik på
+// afspil-knappen i at virke, se koden nedenfor.
 function GalleryModal({ onClose }) {
   const t = useT();
+  const [lightboxIndex, setLightboxIndex] = useState(null);
+  const activeItem = lightboxIndex != null ? GALLERY_ITEMS[lightboxIndex] : null;
+
+  function showPrev() {
+    setLightboxIndex((i) => (i - 1 + GALLERY_ITEMS.length) % GALLERY_ITEMS.length);
+  }
+
+  function showNext() {
+    setLightboxIndex((i) => (i + 1) % GALLERY_ITEMS.length);
+  }
+
   return (
     <div
       className="cinema-public-gallery-overlay"
@@ -183,7 +244,17 @@ function GalleryModal({ onClose }) {
     >
       <div className="cinema-public-gallery-panel" onClick={(e) => e.stopPropagation()}>
         <div className="cinema-public-gallery-header">
-          <h2>{t("public.gallery")}</h2>
+          {activeItem ? (
+            <button
+              type="button"
+              className="cinema-public-gallery-back"
+              onClick={() => setLightboxIndex(null)}
+            >
+              ← {t("common.back")}
+            </button>
+          ) : (
+            <h2>{t("public.gallery")}</h2>
+          )}
           <button
             type="button"
             className="cinema-public-gallery-close"
@@ -193,32 +264,70 @@ function GalleryModal({ onClose }) {
             ✕
           </button>
         </div>
-        <div className="cinema-public-gallery-grid">
-          {GALLERY_ITEMS.map((item) => {
-            const src = encodeURI(`${GALLERY_DIR}${item.file}`);
-            return item.type === "video" ? (
+        {activeItem ? (
+          <div className="cinema-public-gallery-lightbox">
+            <button
+              type="button"
+              className="cinema-public-gallery-nav cinema-public-gallery-nav-prev"
+              onClick={showPrev}
+              aria-label={t("public.galleryPrev")}
+            >
+              ‹
+            </button>
+            {activeItem.type === "video" ? (
               <video
-                key={item.file}
-                className="cinema-public-gallery-item"
+                key={activeItem.file}
+                className="cinema-public-gallery-lightbox-media"
                 controls
                 preload="metadata"
               >
-                <source src={src} />
+                <source src={encodeURI(`${GALLERY_DIR}${activeItem.file}`)} />
                 {t("public.galleryVideoUnsupported")}
               </video>
             ) : (
-              <a
-                key={item.file}
-                className="cinema-public-gallery-item"
-                href={src}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <img src={src} alt="" loading="lazy" />
-              </a>
-            );
-          })}
-        </div>
+              <img
+                key={activeItem.file}
+                className="cinema-public-gallery-lightbox-media"
+                src={encodeURI(`${GALLERY_DIR}${activeItem.file}`)}
+                alt=""
+              />
+            )}
+            <button
+              type="button"
+              className="cinema-public-gallery-nav cinema-public-gallery-nav-next"
+              onClick={showNext}
+              aria-label={t("public.galleryNext")}
+            >
+              ›
+            </button>
+          </div>
+        ) : (
+          <div className="cinema-public-gallery-grid">
+            {GALLERY_ITEMS.map((item, index) => {
+              const src = encodeURI(`${GALLERY_DIR}${item.file}`);
+              return item.type === "video" ? (
+                <video
+                  key={item.file}
+                  className="cinema-public-gallery-item"
+                  controls
+                  preload="metadata"
+                >
+                  <source src={src} />
+                  {t("public.galleryVideoUnsupported")}
+                </video>
+              ) : (
+                <button
+                  key={item.file}
+                  type="button"
+                  className="cinema-public-gallery-item cinema-public-gallery-item-button"
+                  onClick={() => setLightboxIndex(index)}
+                >
+                  <img src={src} alt="" loading="lazy" />
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

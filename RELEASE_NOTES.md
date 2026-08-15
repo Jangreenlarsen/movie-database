@@ -1,5 +1,13 @@
 # Release Notes
 
+## v0.138.0 (build 0188) — 2026-08-15
+
+- **Sortér/Filtrér/Vis felter lukker nu hinanden.** Når du åbner et af de tre paneler i værktøjslinjen (Film og TV-serier), lukker de andre automatisk — kun ét er åbent ad gangen.
+
+## v0.137.1 (build 0187) — 2026-08-15
+
+- **Rettet: to indstillinger manglede i system-backup.** Plex-serveradressen og den foretrukne stregkode-kilde blev ikke gemt i en system-backup og gik derfor tabt ved en gendannelse. De to (ikke-hemmelige) indstillinger tages nu med.
+
 ## v0.137.0 (build 0186) — 2026-08-15
 
 - **Presse Nyt er nu en rigtig side, ikke en PDF.** Artiklen om Voldby Bios åbning vises nu direkte på siden som almindelig, læsevenlig tekst — på både dansk og engelsk. Den oprindelige PDF kan stadig ses via "Vis som PDF".

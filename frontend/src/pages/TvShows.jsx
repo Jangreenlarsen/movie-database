@@ -152,9 +152,9 @@ export default function TvShows({
   const [visibleFields, setVisibleFields] = useState(() => visibleFieldsFromSettings(user.settings));
   // Feature #108 — se den identiske note i Library.jsx.
   const [viewMode, setViewMode] = useState(user.settings.view_mode ?? "grid");
-  const [showFieldPanel, setShowFieldPanel] = useState(false);
-  const [showSortPanel, setShowSortPanel] = useState(false);
-  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  // Feature #164 — se den identiske note i Library.jsx.
+  const [openPanel, setOpenPanel] = useState(null); // null | "sort" | "filter" | "fields"
+  const togglePanel = (name) => setOpenPanel((current) => (current === name ? null : name));
   // Feature #126 — tilføj-flowets to store knapper: "scan" | "manual" | null
   // (spejler Library.jsx). Erstatter det tidligere `showAddPanel`.
   const [addMode, setAddMode] = useState(null);
@@ -479,7 +479,7 @@ export default function TvShows({
         type="button"
         className={`btn${sortIsDefault ? "" : " btn-modified"}`}
         title={t(sortIsDefault ? "lib.sortDefaultTitle" : "lib.sortModifiedTitle")}
-        onClick={() => setShowSortPanel((v) => !v)}
+        onClick={() => togglePanel("sort")}
       >
         {t("lib.sort")} {sortIsDefault ? "" : "● "}▾
       </button>
@@ -492,7 +492,7 @@ export default function TvShows({
             ? t("lib.filterActiveTitle", { count: activeFilterCount })
             : t("lib.filterNoneTitle")
         }
-        onClick={() => setShowFilterPanel((v) => !v)}
+        onClick={() => togglePanel("filter")}
       >
         {t("lib.filter")} {hasActiveFilters ? `(${activeFilterCount}) ` : ""}▾
       </button>
@@ -501,7 +501,7 @@ export default function TvShows({
         type="button"
         className={`btn${changedFieldCount > 0 ? " btn-modified" : ""}`}
         title={t(changedFieldCount > 0 ? "lib.fieldsModifiedTitle" : "lib.fieldsDefaultTitle")}
-        onClick={() => setShowFieldPanel((v) => !v)}
+        onClick={() => togglePanel("fields")}
       >
         {t("lib.fields")} {changedFieldCount > 0 ? "● " : ""}▾
       </button>
@@ -567,7 +567,7 @@ export default function TvShows({
           </div>
         )}
 
-        {showSortPanel && (
+        {openPanel === "sort" && (
           <div className="filter-panel">
             <div className="sort-levels">
               {sortLevels.map((level, index) => (
@@ -666,7 +666,7 @@ export default function TvShows({
           </div>
         )}
 
-        {showFieldPanel && (
+        {openPanel === "fields" && (
           <div className="filter-panel">
             <div className="filter-group">
               <span className="filter-group-label">{t("lib.showOnCard")}</span>
@@ -694,7 +694,7 @@ export default function TvShows({
           </div>
         )}
 
-        {showFilterPanel && (
+        {openPanel === "filter" && (
           <div className="filter-panel">
             {allTags.length > 0 && (
               <div className="filter-group">

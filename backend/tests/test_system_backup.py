@@ -69,6 +69,9 @@ async def test_backup_includes_all_expected_collections(client, monkeypatch):
     # system_settings must never appear anywhere in the backup — the whole
     # point of excluding it (CLAUDE.md regel 6 / FEATURES.md #61).
     assert "system_settings" not in data
+    # 2026-08-15 sync audit — the two non-secret keys ARE captured, always
+    # both present ("" meaning "no override"), unlike the excluded whole.
+    assert data["system_settings_plain"] == {"plex_server_url": "", "primary_barcode_source": ""}
 
 
 async def test_backup_never_exposes_api_keys(client, monkeypatch):
@@ -77,6 +80,49 @@ async def test_backup_never_exposes_api_keys(client, monkeypatch):
     monkeypatch.setattr(settings, "tmdb_api_token", "super-secret-tmdb-token")
     response = await client.get("/api/system/backup")
     assert "super-secret-tmdb-token" not in response.text
+
+
+async def test_backup_includes_plain_settings_but_never_secret_ones(client):
+    # A plain (non-secret) override and a secret override, set together.
+    await client.patch(
+        "/api/settings/system",
+        json={"plex_server_url": "http://plex.local:32400", "tmdb_api_token": "super-secret-token"},
+    )
+
+    response = await client.get("/api/system/backup")
+    data = response.json()
+
+    assert data["system_settings_plain"] == {
+        "plex_server_url": "http://plex.local:32400",
+        "primary_barcode_source": "",
+    }
+    assert "super-secret-token" not in response.text
+    assert "tmdb_api_token" not in data["system_settings_plain"]
+
+
+async def test_restore_reapplies_plain_settings_without_touching_secrets(client):
+    await client.patch(
+        "/api/settings/system",
+        json={"plex_server_url": "http://plex.local:32400", "tmdb_api_token": "super-secret-token"},
+    )
+    backup = (await client.get("/api/system/backup")).json()
+
+    # Changed after the backup was taken — restore should bring back the
+    # backed-up value, exactly like every other wholesale-replaced collection.
+    await client.patch("/api/settings/system", json={"plex_server_url": "http://changed.local:32400"})
+
+    response = await client.post("/api/system/restore", json=backup)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["system_settings_plain_restored"] == 1
+
+    status = (await client.get("/api/settings/system")).json()
+    assert status["plex_server_url"] == "http://plex.local:32400"
+    # The secret set alongside it survived too — restore never touches
+    # system_settings wholesale, so it was never at risk, but confirm it
+    # explicitly: a live secret must never be clobbered by a plain-keys-only
+    # restore step (CLAUDE.md regel 6).
+    assert status["tmdb_api_token"]["configured"] is True
 
 
 async def test_backup_requires_admin(client):

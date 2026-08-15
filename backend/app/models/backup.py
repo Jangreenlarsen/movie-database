@@ -23,19 +23,28 @@ class LibraryImportResult(BaseModel):
 
 class SystemBackup(BaseModel):
     """Feature #61 — a full low-level dump of every collection needed to
-    restore the whole system, deliberately EXCLUDING `system_settings`
-    (Jan's decision 2026-08-03): a genuinely complete dump would require
-    returning the actual TMDb/UPC/Discogs/OMDb/Plex keys to the frontend,
-    which CLAUDE.md regel 6 forbids outright. A restore from this backup is
-    therefore not 100% complete — those keys must be re-entered manually
-    afterwards on the Indstillinger page.
+    restore the whole system. `system_settings` (Jan's decision 2026-08-03)
+    is deliberately NOT dumped wholesale: a genuinely complete dump would
+    require returning the actual TMDb/UPC/Discogs/OMDb/Plex keys to the
+    frontend, which CLAUDE.md regel 6 forbids outright — those six stay
+    excluded and must be re-entered manually on the Indstillinger page after
+    a restore.
 
     CLAUDE.md regel 20 — every collection a feature adds must be checked
     into this dump as part of that same feature. screenings/screening_
     requests/seat_reservations/messages/audit_log/visits were added
     retroactively (BUGS.md #65): the collections existed and were reachable
     through the API, but a system backup silently omitted them, so a
-    restore quietly lost Voldby BIO's whole program and reservation state."""
+    restore quietly lost Voldby BIO's whole program and reservation state.
+
+    2026-08-15 backup/restore sync audit (Jan: "de skal med") — the blanket
+    `system_settings` exclusion above was itself catching two fields that
+    aren't secrets at all: `plex_server_url`/`primary_barcode_source`
+    (system_settings_repository.PLAIN_KEYS) are already returned with their
+    real value by GET /api/settings/system, so excluding the whole
+    collection lost them for no privacy reason — just two settings an admin
+    had to retype after a restore. `system_settings_plain` fixes that
+    narrowly, without touching the six-secret exclusion above."""
 
     backed_up_at: datetime
     app_version: str
@@ -58,6 +67,10 @@ class SystemBackup(BaseModel):
     # frisk installation kræve internet igen for hver eneste poster, indtil
     # nogen tilfældigvis besøger hver film/serie én gang til.
     poster_cache: list[dict] = Field(default_factory=list)
+    # Kun system_settings_repository.PLAIN_KEYS (ikke-hemmelige nøgler) —
+    # "" betyder eksplicit "ingen override" (samme konvention som
+    # apply_updates), ikke "feltet blev ikke taget med".
+    system_settings_plain: dict = Field(default_factory=dict)
 
 
 class SystemRestoreResult(BaseModel):
@@ -78,6 +91,8 @@ class SystemRestoreResult(BaseModel):
     audit_log_imported: int
     visits_imported: int
     poster_cache_imported: int
+    # 0, 1 or 2 — how many of PLAIN_KEYS had a real (non-"") value restored.
+    system_settings_plain_restored: int
 
 
 class DatabaseResetConfirm(BaseModel):

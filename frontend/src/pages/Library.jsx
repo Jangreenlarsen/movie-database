@@ -186,9 +186,12 @@ export default function Library({
   // ligesom card_size; ingen lokal "ikke gemt endnu"-tilstand nødvendig, da
   // valget skal slå igennem med det samme og altid er én af de to.
   const [viewMode, setViewMode] = useState(user.settings.view_mode ?? "grid");
-  const [showFieldPanel, setShowFieldPanel] = useState(false);
-  const [showSortPanel, setShowSortPanel] = useState(false);
-  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  // Feature #164 (Jan) — Sortér/Filtrér/Vis felter er nu gensidigt eksklusive:
+  // ét delt "hvilket panel er åbent"-felt i stedet for tre uafhængige
+  // booleans, så det er umuligt for to at stå åbne på samme tid (i stedet for
+  // at skulle huske at lukke de andre to ved hvert af de tre onClick'et).
+  const [openPanel, setOpenPanel] = useState(null); // null | "sort" | "filter" | "fields"
+  const togglePanel = (name) => setOpenPanel((current) => (current === name ? null : name));
   // Feature #124/#126 — tilføj-flowets to store handlingsknapper: "scan" |
   // "manual" | null. Bruges nu på både bibliotek og ønskeliste (#126 bredte
   // det ud fra kun ønskelisten), så scan og titel-søgning åbnes hver for sig
@@ -543,7 +546,7 @@ export default function Library({
         type="button"
         className={`btn${sortIsDefault ? "" : " btn-modified"}`}
         title={t(sortIsDefault ? "lib.sortDefaultTitle" : "lib.sortModifiedTitle")}
-        onClick={() => setShowSortPanel((v) => !v)}
+        onClick={() => togglePanel("sort")}
       >
         {t("lib.sort")} {sortIsDefault ? "" : "● "}▾
       </button>
@@ -556,7 +559,7 @@ export default function Library({
             ? t("lib.filterActiveTitle", { count: activeFilterCount })
             : t("lib.filterNoneTitle")
         }
-        onClick={() => setShowFilterPanel((v) => !v)}
+        onClick={() => togglePanel("filter")}
       >
         {t("lib.filter")} {hasActiveFilters ? `(${activeFilterCount}) ` : ""}▾
       </button>
@@ -565,7 +568,7 @@ export default function Library({
         type="button"
         className={`btn${changedFieldCount > 0 ? " btn-modified" : ""}`}
         title={t(changedFieldCount > 0 ? "lib.fieldsModifiedTitle" : "lib.fieldsDefaultTitle")}
-        onClick={() => setShowFieldPanel((v) => !v)}
+        onClick={() => togglePanel("fields")}
       >
         {t("lib.fields")} {changedFieldCount > 0 ? "● " : ""}▾
       </button>
@@ -640,7 +643,7 @@ export default function Library({
           </div>
         )}
 
-        {showSortPanel && (
+        {openPanel === "sort" && (
           <div className="filter-panel">
             <div className="sort-levels">
               {sortLevels.map((level, index) => (
@@ -739,7 +742,7 @@ export default function Library({
           </div>
         )}
 
-        {showFieldPanel && (
+        {openPanel === "fields" && (
           <div className="filter-panel">
             <div className="filter-group">
               <span className="filter-group-label">{t("lib.showOnCard")}</span>
@@ -767,7 +770,7 @@ export default function Library({
           </div>
         )}
 
-        {showFilterPanel &&
+        {openPanel === "filter" &&
           (allTags.length > 0 ||
             allGenres.length > 0 ||
             attributeOptions.formats.length > 0 ||

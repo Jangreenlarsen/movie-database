@@ -6,6 +6,7 @@ from app.core.errors import InvalidBackupError
 from app.core.mongo_json import from_json_safe, to_json_safe
 from app.core.version_info import VERSION_INFO
 from app.models.backup import DatabaseResetResult, SystemBackup, SystemRestoreResult
+from app.models.settings import SystemSettingsUpdate
 from app.repositories import (
     audit_log_repository,
     message_repository,
@@ -14,11 +15,13 @@ from app.repositories import (
     reservation_repository,
     screening_repository,
     screening_request_repository,
+    system_settings_repository,
     tag_repository,
     tv_show_repository,
     user_repository,
     visit_repository,
 )
+from app.services import system_settings_service
 
 # `counters` isn't owned by any single domain repository — it's a shared
 # low-level primitive (both movie_repository and tv_show_repository read/
@@ -32,12 +35,13 @@ _COUNTERS_COLLECTION = movie_repository.COUNTERS_COLLECTION
 
 async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
     """Full low-level dump of every collection needed to restore the whole
-    system — deliberately EXCLUDING `system_settings` (FEATURES.md #61):
-    a genuinely complete dump would have to include the actual TMDb/UPC/
-    Discogs/OMDb/Plex keys, which CLAUDE.md regel 6 forbids returning to
+    system — `system_settings`'s six SECRET keys stay EXCLUDED (FEATURES.md
+    #61): a genuinely complete dump would have to include the actual TMDb/
+    UPC/Discogs/OMDb/Plex keys, which CLAUDE.md regel 6 forbids returning to
     the frontend under any circumstance. Restoring from this backup is
-    therefore not 100% complete — those keys must be re-entered manually
-    afterwards.
+    therefore not 100% complete — those six keys must be re-entered manually
+    afterwards. Its two PLAIN (non-secret) keys are captured separately below
+    (2026-08-15 sync audit) since excluding them bought no privacy.
 
     CLAUDE.md regel 20 / BUGS.md #65 — screenings/screening_requests/
     seat_reservations/messages/audit_log/visits are read straight off their
@@ -66,6 +70,13 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
     audit_log = await db[audit_log_repository.COLLECTION].find({}).to_list(length=None)
     visits = await db[visit_repository.COLLECTION].find({}).to_list(length=None)
     poster_cache = await poster_cache_repository.find_all_raw(db)
+    settings_overrides = await system_settings_repository.get_overrides(db)
+    # Always both PLAIN_KEYS, "" for "no override configured" — a full
+    # wholesale-replace snapshot of just these two fields, same convention
+    # `apply_updates` already uses for "clear this key".
+    system_settings_plain = {
+        key: settings_overrides.get(key, "") for key in system_settings_repository.PLAIN_KEYS
+    }
 
     return SystemBackup(
         backed_up_at=datetime.now(timezone.utc),
@@ -84,6 +95,7 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
         audit_log=[to_json_safe(doc) for doc in audit_log],
         visits=[to_json_safe(doc) for doc in visits],
         poster_cache=[to_json_safe(doc) for doc in poster_cache],
+        system_settings_plain=to_json_safe(system_settings_plain),
     )
 
 
@@ -151,7 +163,10 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
     the snapshot). Not transactional (standalone MongoDB, no replica set) —
     a failure partway through leaves some collections restored and others
     not; processed in a fixed order so a partial failure is at least
-    predictable. `system_settings` is untouched (see `create_backup`)."""
+    predictable. `system_settings`'s six secret keys are untouched (see
+    `create_backup`) — only its two plain keys are restored, via the same
+    `$set`/`$unset`-per-key `apply_updates` the settings page itself uses,
+    never a wholesale document replace that could clobber a live secret."""
     _assert_restorable(backup)
 
     movies = [from_json_safe(doc) for doc in backup.movies]
@@ -168,6 +183,7 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
     audit_log = [from_json_safe(doc) for doc in backup.audit_log]
     visits = [from_json_safe(doc) for doc in backup.visits]
     poster_cache = [from_json_safe(doc) for doc in backup.poster_cache]
+    system_settings_plain = from_json_safe(backup.system_settings_plain)
 
     await movie_repository.replace_all(db, movies)
     await tv_show_repository.replace_all(db, tv_shows)
@@ -183,6 +199,12 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
     audit_log_imported = await _merge_raw_collection(db, audit_log_repository.COLLECTION, audit_log)
     await _replace_raw_collection(db, visit_repository.COLLECTION, visits)
     await _replace_raw_collection(db, poster_cache_repository.COLLECTION, poster_cache)
+    # Via the service, not repository.apply_updates directly — update_settings
+    # also syncs the in-memory `settings` singleton and invalidates the Plex
+    # cache, neither of which a raw DB write would trigger (the rest of the
+    # running app reads `settings.plex_server_url` etc., not the database).
+    await system_settings_service.update_settings(db, SystemSettingsUpdate(**system_settings_plain))
+    system_settings_plain_restored = sum(1 for value in system_settings_plain.values() if value)
 
     return SystemRestoreResult(
         movies_imported=len(movies),
@@ -199,6 +221,7 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
         audit_log_imported=audit_log_imported,
         visits_imported=len(visits),
         poster_cache_imported=len(poster_cache),
+        system_settings_plain_restored=system_settings_plain_restored,
     )
 
 

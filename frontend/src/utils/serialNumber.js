@@ -45,3 +45,19 @@ export function formatSerial(serialNumber, paddingWidth, prefix) {
   if (serialNumber == null) return "—";
   return `${prefix}${String(serialNumber).padStart(paddingWidth, "0")}`;
 }
+
+/**
+ * BUGS.md #67 — dublet-advarslens serienummer-hale, fx " (D0042)", eller tom
+ * streng hvis matchet slet ikke har et nummer (en ønskeliste-post). Delt af
+ * Library.jsx/TvShows.jsx/MovieLookupForm.jsx (feature #38s dublet-tjek), så
+ * de tre ikke kan drive fra hinanden på formatet igen — det er præcis den
+ * slags drift der gav den oprindelige bug (et bart "#42" uden M/T/D-præfiks).
+ *
+ * @param match et element fra `duplicates` (`{serial_number, media_type}`)
+ * @param kind "movie" eller "tv"
+ * @param paddingWidth fra serienummer-opsætningen
+ */
+export function duplicateSerialSuffix(match, kind, paddingWidth) {
+  if (match.serial_number == null) return "";
+  return ` (${formatSerial(match.serial_number, paddingWidth, serialPrefix(match.media_type, kind))})`;
+}

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.132.1 (build 0179) — 2026-08-15
+
+- **Dublet-advarslen viser nu om det er fysisk eller digitalt.** Når du opretter en film/serie der allerede findes, viser advarslen nu serienummeret med rigtigt præfiks (fx "D0042" for digital, "M0042"/"T0007" for fysisk) i stedet for et bart tal du ikke kunne bruge til noget.
+
 ## v0.132.0 (build 0178) — 2026-08-15
 
 - **Nyt filter på bestillingsstatus.** På ønskelisten kan du nu filtrere på om noget er bestilt (og hvor), samme udelukkelses-badges som de øvrige filtre.

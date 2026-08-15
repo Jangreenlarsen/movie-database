@@ -12,7 +12,7 @@ import ViewModeToggle from "../components/ViewModeToggle";
 import { useLocale, useT } from "../i18n";
 import { cycleFilterValue, cycleTriState, EMPTY_FILTER_STATE } from "../utils/filterCycle";
 import { cardPosterSize, posterSrc } from "../utils/posterUrl";
-import { formatSerial, serialPrefix } from "../utils/serialNumber";
+import { duplicateSerialSuffix, formatSerial, serialPrefix } from "../utils/serialNumber";
 import "../pages/Library.css";
 import "./TvShows.css";
 
@@ -1342,7 +1342,7 @@ export function TvShowDetailModal({
                   .map((d) =>
                     d.is_wishlist
                       ? t("scan.duplicateOnWishlist")
-                      : `${t("scan.duplicateInLibrary")}${d.serial_number ? ` (#${d.serial_number})` : ""}`
+                      : `${t("scan.duplicateInLibrary")}${duplicateSerialSuffix(d, "tv", serialPaddingWidth)}`
                   )
                   .join(t("scan.duplicateJoin")),
               })}

@@ -348,6 +348,10 @@ class DuplicateMatch(BaseModel):
     title: str
     serial_number: int | None = None
     is_wishlist: bool = False
+    # BUGS.md — uden medietypen kan frontend ikke vise M/T/D-præfikset, og et
+    # dublet-fund ser derfor identisk ud uanset om det er den fysiske disk
+    # eller den digitale/Plex-udgave der allerede er registreret.
+    media_type: str | None = None
 
 
 class SerialHolder(BaseModel):

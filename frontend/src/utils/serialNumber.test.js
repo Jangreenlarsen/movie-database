@@ -12,6 +12,7 @@ import {
   DIGITAL_SERIAL_PREFIX,
   MOVIE_SERIAL_PREFIX,
   TV_SERIAL_PREFIX,
+  duplicateSerialSuffix,
   formatSerial,
   serialPrefix,
 } from "./serialNumber";
@@ -60,5 +61,35 @@ describe("formatSerial", () => {
   it("viser nummer 0 frem for at forveksle det med 'intet nummer'", () => {
     // 0 er falsy i JavaScript; en ren truthiness-check ville skjule det.
     expect(formatSerial(0, 3, "M")).toBe("M000");
+  });
+});
+
+describe("duplicateSerialSuffix", () => {
+  // BUGS.md #67 — dublet-advarslen viste et bart "#42" uden M/T/D-præfiks,
+  // fordi den formaterede serienummeret selv i stedet for at bruge
+  // formatSerial/serialPrefix. Låser formatet fast fremover.
+  it("viser præfikset for en digital duplet, ikke et bart tal", () => {
+    expect(duplicateSerialSuffix({ serial_number: 42, media_type: "Digital" }, "movie", 4)).toBe(
+      " (D0042)"
+    );
+  });
+
+  it("viser M/T-præfikset for en fysisk duplet, efter ressourcen", () => {
+    expect(duplicateSerialSuffix({ serial_number: 7, media_type: "Fysisk" }, "movie", 0)).toBe(
+      " (M7)"
+    );
+    expect(duplicateSerialSuffix({ serial_number: 7, media_type: "Fysisk" }, "tv", 0)).toBe(
+      " (T7)"
+    );
+  });
+
+  it("indeholder aldrig #, samme regel som formatSerial", () => {
+    expect(duplicateSerialSuffix({ serial_number: 42, media_type: "Fysisk" }, "movie", 4)).not.toContain(
+      "#"
+    );
+  });
+
+  it("er tom streng uden noget nummer (fx et dublet-fund på ønskelisten)", () => {
+    expect(duplicateSerialSuffix({ serial_number: null, media_type: null }, "movie", 4)).toBe("");
   });
 });

@@ -540,6 +540,7 @@ async def check_tmdb_duplicates(db: AsyncIOMotorDatabase, tmdb_id: int) -> list[
             title=doc["title"],
             serial_number=doc.get("serial_number"),
             is_wishlist=doc.get("is_wishlist", False),
+            media_type=doc.get("media_type"),
         )
         for doc in documents
     ]

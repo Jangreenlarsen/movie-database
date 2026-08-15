@@ -367,6 +367,8 @@ async def list_movies(
     media_types_exclude: list[str] | None = None,
     genres_exclude: list[str] | None = None,
     plex: bool | None = None,
+    order_statuses: list[str] | None = None,
+    order_statuses_exclude: list[str] | None = None,
 ) -> MoviePage:
     """`page`/`page_size` omitted (the default) fetches every match, no cap
     — used by callers that need the whole filtered set (Print-siden, Voldby
@@ -393,6 +395,8 @@ async def list_movies(
         "media_types_exclude": media_types_exclude or None,
         "genres": genres or None,
         "genres_exclude": genres_exclude or None,
+        "order_statuses": order_statuses or None,
+        "order_statuses_exclude": order_statuses_exclude or None,
         "is_wishlist": is_wishlist,
         "watched": watched,
         "cast": cast,

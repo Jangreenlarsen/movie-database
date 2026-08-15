@@ -209,6 +209,20 @@ async def test_filter_excludes_tv_shows_by_tag_and_genre(client):
     assert [s["name"] for s in by_genre.json()["items"]] == ["Uden jul"]
 
 
+async def test_filter_tv_shows_by_order_status(client):
+    """Feature #157 — se den identiske test i test_movies.py."""
+    await client.post(
+        "/api/tv-shows",
+        json={"name": "Bestilt Serie", "is_wishlist": True, "order_status": "Bestilt ved iMusic"},
+    )
+    await client.post("/api/tv-shows", json={"name": "Ikke Bestilt Serie", "is_wishlist": True})
+
+    by_include = await client.get(
+        "/api/tv-shows", params={"wishlist": "true", "order_statuses": "Bestilt ved iMusic"}
+    )
+    assert [s["name"] for s in by_include.json()["items"]] == ["Bestilt Serie"]
+
+
 async def test_list_tv_genres_returns_distinct_values_from_library(client):
     """Feature #111 — se den identiske test i test_movies.py."""
     await client.post(

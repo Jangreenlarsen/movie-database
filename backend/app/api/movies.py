@@ -63,6 +63,9 @@ async def list_movies(
     # Feature #156 — Plex-filter-badget: uspecificeret (udelades = intet
     # filter), True = kun film bekræftet på Plex, False = kun film der ikke er.
     plex: bool | None = Query(default=None),
+    # Feature #157 — bestillingsstatus (kun reelt relevant på ønskelisten).
+    order_statuses: str | None = Query(default=None),
+    order_statuses_exclude: str | None = Query(default=None),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     tag_list = tags.split(",") if tags else None
@@ -75,6 +78,8 @@ async def list_movies(
     media_type_exclude_list = media_types_exclude.split(",") if media_types_exclude else None
     genre_list = genres.split(",") if genres else None
     genre_exclude_list = genres_exclude.split(",") if genres_exclude else None
+    order_status_list = order_statuses.split(",") if order_statuses else None
+    order_status_exclude_list = order_statuses_exclude.split(",") if order_statuses_exclude else None
     return await movie_service.list_movies(
         db,
         q,
@@ -96,6 +101,8 @@ async def list_movies(
         media_type_exclude_list,
         genre_exclude_list,
         plex,
+        order_status_list,
+        order_status_exclude_list,
     )
 
 

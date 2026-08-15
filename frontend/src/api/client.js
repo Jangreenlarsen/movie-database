@@ -126,6 +126,8 @@ export const api = {
       genres,
       genresExclude,
       plex,
+      orderStatuses,
+      orderStatusesExclude,
     } = {}
   ) => {
     const params = new URLSearchParams();
@@ -156,6 +158,10 @@ export const api = {
     if (genresExclude?.length) params.set("genres_exclude", genresExclude.join(","));
     // Feature #156 — Plex-filter-badget: udeladt = intet filter.
     if (plex != null) params.set("plex", String(plex));
+    // Feature #157 — bestillingsstatus (kun relevant på ønskelisten).
+    if (orderStatuses?.length) params.set("order_statuses", orderStatuses.join(","));
+    if (orderStatusesExclude?.length)
+      params.set("order_statuses_exclude", orderStatusesExclude.join(","));
     const query = params.toString();
     return request(`/movies${query ? `?${query}` : ""}`);
   },
@@ -341,6 +347,8 @@ export const api = {
       genres,
       genresExclude,
       plex,
+      orderStatuses,
+      orderStatusesExclude,
     } = {}
   ) => {
     const params = new URLSearchParams();
@@ -364,6 +372,9 @@ export const api = {
     if (genres?.length) params.set("genres", genres.join(","));
     if (genresExclude?.length) params.set("genres_exclude", genresExclude.join(","));
     if (plex != null) params.set("plex", String(plex));
+    if (orderStatuses?.length) params.set("order_statuses", orderStatuses.join(","));
+    if (orderStatusesExclude?.length)
+      params.set("order_statuses_exclude", orderStatusesExclude.join(","));
     const query = params.toString();
     return request(`/tv-shows${query ? `?${query}` : ""}`);
   },

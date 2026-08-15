@@ -126,6 +126,8 @@ export default function TvShows({
   // Feature #111 — se den identiske note i Library.jsx.
   const [genreFilter, setGenreFilter] = useState(EMPTY_FILTER_STATE);
   const [allGenres, setAllGenres] = useState([]);
+  // Feature #157 — se den identiske note i Library.jsx.
+  const [orderStatusFilter, setOrderStatusFilter] = useState(EMPTY_FILTER_STATE);
   const [watchedFilter, setWatchedFilter] = useState(null);
   const [plexFilter, setPlexFilter] = useState(null);
   const [sortLevels, setSortLevels] = useState(() => initialSortLevels(user.settings));
@@ -231,6 +233,8 @@ export default function TvShows({
       mediaTypesExclude: mediaTypeFilter.excluded,
       genres: genreFilter.included,
       genresExclude: genreFilter.excluded,
+      orderStatuses: orderStatusFilter.included,
+      orderStatusesExclude: orderStatusFilter.excluded,
       sort: sortLevels,
       wishlist,
       watched: watchedFilter,
@@ -252,6 +256,7 @@ export default function TvShows({
     audioTypeFilter,
     mediaTypeFilter,
     genreFilter,
+    orderStatusFilter,
     sortLevels,
     watchedFilter,
     plexFilter,
@@ -279,6 +284,7 @@ export default function TvShows({
     audioTypeFilter,
     mediaTypeFilter,
     genreFilter,
+    orderStatusFilter,
     sortLevels,
     watchedFilter,
     plexFilter,
@@ -411,6 +417,8 @@ export default function TvShows({
     mediaTypeFilter.excluded.length +
     genreFilter.included.length +
     genreFilter.excluded.length +
+    orderStatusFilter.included.length +
+    orderStatusFilter.excluded.length +
     (watchedFilter != null ? 1 : 0) +
     (plexFilter != null ? 1 : 0);
   const hasActiveFilters = activeFilterCount > 0;
@@ -430,6 +438,7 @@ export default function TvShows({
     setAudioTypeFilter(EMPTY_FILTER_STATE);
     setMediaTypeFilter(EMPTY_FILTER_STATE);
     setGenreFilter(EMPTY_FILTER_STATE);
+    setOrderStatusFilter(EMPTY_FILTER_STATE);
     setWatchedFilter(null);
     setPlexFilter(null);
   }
@@ -793,6 +802,25 @@ export default function TvShows({
                     negated={plexFilter === false}
                     onClick={() => setPlexFilter((prev) => cycleTriState(prev))}
                   />
+                </div>
+              </div>
+            )}
+            {/* Feature #157 — se den identiske note i Library.jsx. */}
+            {wishlist && !isGuest && attributeOptions.order_statuses.length > 0 && (
+              <div className="filter-group">
+                <span className="filter-group-label">{t("field.orderStatus")}</span>
+                <div className="chip-row">
+                  {attributeOptions.order_statuses.map((status) => (
+                    <Chip
+                      key={status}
+                      label={status}
+                      active={orderStatusFilter.included.includes(status)}
+                      negated={orderStatusFilter.excluded.includes(status)}
+                      onClick={() =>
+                        setOrderStatusFilter((prev) => cycleFilterValue(prev, status))
+                      }
+                    />
+                  ))}
                 </div>
               </div>
             )}

@@ -56,6 +56,8 @@ async def list_tv_shows(
     genres: str | None = Query(default=None),
     genres_exclude: str | None = Query(default=None),
     plex: bool | None = Query(default=None),
+    order_statuses: str | None = Query(default=None),
+    order_statuses_exclude: str | None = Query(default=None),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     tag_list = tags.split(",") if tags else None
@@ -68,11 +70,14 @@ async def list_tv_shows(
     media_type_exclude_list = media_types_exclude.split(",") if media_types_exclude else None
     genre_list = genres.split(",") if genres else None
     genre_exclude_list = genres_exclude.split(",") if genres_exclude else None
+    order_status_list = order_statuses.split(",") if order_statuses else None
+    order_status_exclude_list = order_statuses_exclude.split(",") if order_statuses_exclude else None
     return await tv_show_service.list_tv_shows(
         db, q, tag_list, format_list, audio_type_list, media_type_list, sort, wishlist, watched,
         page, page_size, genre_list,
         tag_exclude_list, format_exclude_list, audio_type_exclude_list, media_type_exclude_list,
         genre_exclude_list, plex,
+        order_status_list, order_status_exclude_list,
     )
 
 

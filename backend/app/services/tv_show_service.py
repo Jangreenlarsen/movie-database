@@ -370,6 +370,8 @@ async def list_tv_shows(
     media_types_exclude: list[str] | None = None,
     genres_exclude: list[str] | None = None,
     plex: bool | None = None,
+    order_statuses: list[str] | None = None,
+    order_statuses_exclude: list[str] | None = None,
 ) -> TvShowPage:
     """`page`/`page_size` omitted (the default) fetches every match, no cap
     — used by callers that need the whole filtered set (Print-siden, Voldby
@@ -396,6 +398,8 @@ async def list_tv_shows(
         "media_types_exclude": media_types_exclude or None,
         "genres": genres or None,
         "genres_exclude": genres_exclude or None,
+        "order_statuses": order_statuses or None,
+        "order_statuses_exclude": order_statuses_exclude or None,
         "is_wishlist": is_wishlist,
         "watched": watched,
         **(await _resolve_plex_id_filter(db, plex)),

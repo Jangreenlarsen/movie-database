@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.137.0 build 0186] — 2026-08-15 — feature: Presse Nyt som rigtig web-artikel i stedet for PDF-embed (FEATURES.md #163)
+
+Jan: *"kan vi konvertere den pdf til noget mere 'web' venligt for den pdf skal views med en pdf klient/plugin og det er sgu noget pis"*. Direkte i forlængelse af BUGS.md #69 (som kun dæmpede PDFium's værktøjslinje) — nu er PDF-visningen helt væk fra standardflowet. PDF'ens fulde tekst er transskriberet og oversat til engelsk, og `PressModal` viser den som rigtig HTML via nye `public.press*`-i18n-nøgler (flerafsnits-sektioner gemt som `\n\n`-separerede strenge, splittet til `<p>` ved rendering). Et let masthead ("Voldby Dagblad", small-caps tagline, dobbelt-streg-regel) nikker til avis-formatet uden fuld skeuomorfi; titler får en system-serif (Georgia), brødtekst sidens egen sans-serif. Panelet er smallet ind til en 62ch læse-spalte. PDF-filen findes stadig via "Vis som PDF ↗" (omdøbt fra "Åbn i ny fane ↗") som en bevidst sekundær handling. Berørte filer: `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Ingen backend-ændring. Fuld backend-suite (672) + frontend (78) grøn.
+
 ## [0.136.1 build 0185] — 2026-08-15 — fix: Presse Nyt-visningen viste browserens PDF-værktøjslinje (BUGS.md #69)
 
 Jan: *"der er en tool bar i den pdf view på side vi skal ikke have nogen former for toolbars i den view"*. `PressModal`s `<iframe>` lod browseren falde tilbage til sin egen PDFium-værktøjslinje (side-nav/zoom/download/print) oven på PDF'en. Rettet med PDF'ens standardiserede open-parameter-fragment `#toolbar=0&navpanes=0` på iframets `src` (ny `PRESS_PDF_VIEWER_SRC`, kun brugt der — "Åbn i ny fane"-linket er uændret). Ren klient-side URL-fragment, ingen backend-ændring. Verificeret mod en rigtig lokal Microsoft Edge (Playwrights bundlede Chromium downloader PDF'er i stedet for at rendere dem inline og kunne ikke bruges til verifikationen). Berørt fil: `frontend/src/pages/CinemaPublic.jsx`. Fuld backend-suite (672) + frontend (78) grøn.

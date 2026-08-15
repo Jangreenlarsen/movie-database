@@ -382,14 +382,13 @@ video.cinema-public-gallery-item {
   color: var(--accent-strong);
 }
 
-/* Feature #161 — presse-PDF'en vist i et iframe i stedet for en ny fane.
-   Bredere/højere end galleri-panelet, så PDF'ens indbyggede viewer har
-   plads til at være læsbar uden konstant zoom. */
+/* Feature #163 — presse-siden vist som en rigtig artikel i stedet for et
+   PDF-embed (se JSX-kommentaren ved PressModal). Panelet er nu et smallere
+   læse-format (var 1000px til PDF-viewerens skærmbredde), ikke bredere end
+   godt er for løbende tekst. */
 .cinema-public-press-panel {
-  width: 1000px;
-  max-height: 95vh;
-  display: flex;
-  flex-direction: column;
+  width: 720px;
+  max-height: 90vh;
 }
 
 .cinema-public-press-newtab {
@@ -402,13 +401,69 @@ video.cinema-public-gallery-item {
   color: var(--accent-strong);
 }
 
-.cinema-public-press-frame {
-  width: 100%;
-  flex: 1;
-  min-height: 70vh;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: #fff;
+.cinema-public-press-article {
+  max-width: 62ch;
+  margin: 0 auto;
+  color: var(--text);
+}
+
+.cinema-public-press-masthead {
+  text-align: center;
+  padding-bottom: 10px;
+  margin-bottom: 22px;
+  border-bottom: 3px double var(--border);
+}
+
+.cinema-public-press-masthead-name {
+  margin: 0;
+  font-family: Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.cinema-public-press-masthead-tagline {
+  margin: 4px 0 10px;
+  font-size: 0.76rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cinema-public-press-masthead-rule {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.cinema-public-press-headline {
+  margin: 0 0 6px;
+  font-family: Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif;
+  font-size: 1.6rem;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.cinema-public-press-subheadline {
+  margin: 0 0 20px;
+  font-size: 1rem;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.cinema-public-press-body p {
+  margin: 0 0 14px;
+  line-height: 1.65;
+}
+
+.cinema-public-press-body h3 {
+  margin: 22px 0 10px;
+  font-family: Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif;
+  font-size: 1.1rem;
 }
 
 /* Feature #120 — på de offentlige visnings-kort sidder dato/tid-badgen i

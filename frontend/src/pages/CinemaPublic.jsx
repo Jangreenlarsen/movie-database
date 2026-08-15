@@ -14,10 +14,13 @@ import "./Login.css";
 // Feature #160 — Jans presse-PDF og byggeri-galleri, begge statiske filer i
 // frontend/public/cinema/ (ikke en del af databasen). `encodeURI` fordi
 // filnavnene har mellemrum/æøå, som ellers ikke er gyldige rå URL-tegn.
+// Feature #163: PDF'en er ikke længere selve visningen (Jan: "det er sgu
+// noget pis" at skulle vises med browserens pdf-klient/plugin, jf. BUGS.md
+// #69) — kun en downloadbar kilde via "Vis som PDF"-linket. Selve indholdet
+// er transskriberet + oversat til i18n-nøglerne `public.press*` og vist som
+// rigtig HTML i PressModal; skal opdateres manuelt begge steder, hvis PDF'en
+// nogensinde ændres (samme afvejning som GALLERY_ITEMS nedenfor).
 const PRESS_PDF_HREF = encodeURI("/cinema/Ny biograf åbner i Voldby 2026.pdf");
-// #toolbar=0&navpanes=0 er browserens indbyggede PDF-visnings egne open-parameters
-// (ikke noget vi kan style med CSS) — skjuler dens værktøjslinje/sidepanel i modal-visningen.
-const PRESS_PDF_VIEWER_SRC = `${PRESS_PDF_HREF}#toolbar=0&navpanes=0`;
 const GALLERY_DIR = "/cinema/Galleri/";
 
 // Ingen backend-endpoint lister mappens indhold dynamisk (det er statiske
@@ -177,12 +180,22 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
 
 // Feature #161 — Jans ønske: en tilbage-knap i stedet for at åbne PDF'en i
 // en helt separat browser-fane uden nogen vej tilbage til /bio. Samme
-// overlay-panel som GalleryModal (genbruger dets CSS via en fælles klasse),
-// men med et <iframe> i stedet for et grid. iOS/desktop Safari og Chrome
-// kan alle vise en PDF inde i et iframe med deres indbyggede PDF-viewer;
-// "Åbn i ny fane" står med som fallback for den sjældne browser der ikke kan.
+// overlay-panel som GalleryModal (genbruger dets CSS via en fælles klasse).
+//
+// Feature #163 — Jan: "der er en tool bar i den pdf view på side vi skal
+// ikke have nogen former for toolbars i den view" / "det er sgu noget pis"
+// at skulle vises med en pdf-klient/plugin (BUGS.md #69 dæmpede først kun
+// PDFium's egen værktøjslinje via et open-parameter-fragment — Jan ville
+// helt væk fra PDF-visning). PDF'en er derfor ikke længere selve visningen:
+// indholdet er gengivet som rigtig, oversat HTML (`public.press*`-nøglerne)
+// i stedet, og "Vis som PDF" er nu en sekundær, eksplicit fravalgt handling
+// for den der vil have originalens layout/print.
 function PressModal({ onClose }) {
   const t = useT();
+  const introParagraphs = t("public.pressIntro").split("\n\n");
+  const premiereParagraphs = t("public.pressPremiere").split("\n\n");
+  const closingParagraphs = t("public.pressClosing").split("\n\n");
+
   return (
     <div
       className="cinema-public-gallery-overlay"
@@ -207,11 +220,35 @@ function PressModal({ onClose }) {
             {t("public.pressOpenNewTab")}
           </a>
         </div>
-        <iframe
-          className="cinema-public-press-frame"
-          src={PRESS_PDF_VIEWER_SRC}
-          title={t("public.pressNews")}
-        />
+        <article className="cinema-public-press-article">
+          <header className="cinema-public-press-masthead">
+            <p className="cinema-public-press-masthead-name">Voldby Dagblad</p>
+            <p className="cinema-public-press-masthead-tagline">
+              {t("public.pressMastheadTagline")}
+            </p>
+            <div className="cinema-public-press-masthead-rule">
+              <span>{t("public.pressMastheadSince")}</span>
+              <span>{t("public.pressMastheadIssue")}</span>
+            </div>
+          </header>
+
+          <h1 className="cinema-public-press-headline">{t("public.pressHeadline")}</h1>
+          <p className="cinema-public-press-subheadline">{t("public.pressSubheadline")}</p>
+
+          <div className="cinema-public-press-body">
+            {introParagraphs.map((paragraph, index) => (
+              <p key={`intro-${index}`}>{paragraph}</p>
+            ))}
+            <h3>{t("public.pressHeading1")}</h3>
+            {premiereParagraphs.map((paragraph, index) => (
+              <p key={`premiere-${index}`}>{paragraph}</p>
+            ))}
+            <h3>{t("public.pressHeading2")}</h3>
+            {closingParagraphs.map((paragraph, index) => (
+              <p key={`closing-${index}`}>{paragraph}</p>
+            ))}
+          </div>
+        </article>
       </div>
     </div>
   );

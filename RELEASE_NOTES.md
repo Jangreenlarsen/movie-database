@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.132.0 (build 0178) — 2026-08-15
+
+- **Nyt filter på bestillingsstatus.** På ønskelisten kan du nu filtrere på om noget er bestilt (og hvor), samme udelukkelses-badges som de øvrige filtre.
+
 ## v0.131.0 (build 0177) — 2026-08-15
 
 - **Filtre kan nu udelukke, ikke kun inkludere.** Klik en gang på et filter-badge (tag, genre, format, lyd, medietype, Set, Plex) for at vise kun det; klik igen for at udelukke det i stedet — badget bliver rødt med en diagonal streg. Klik en tredje gang for at rydde det. Nyt "Plex"-filter i filter-sektionen viser kun det der er (eller ikke er) bekræftet på Plex.

@@ -589,6 +589,10 @@ def _build_find_many_filter(filters: dict) -> dict:
     # semantik som format/audio_types/media_types ovenfor, ikke
     # tags_normalized's "skal have dem alle".
     _add("genres", "$in", "genres", "genres_exclude")
+    # Feature #157 — bestillingsstatus (kun reelt sat på ønskeliste-poster,
+    # men filtret selv ved intet om det; frontend viser kun gruppen på
+    # ønskelisten). `$in`, samme "mindst én valgt" semantik som format/genres.
+    _add("order_status", "$in", "order_statuses", "order_statuses_exclude")
 
     watched = filters.get("watched")
     if watched is not None:

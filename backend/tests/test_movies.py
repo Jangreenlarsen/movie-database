@@ -129,6 +129,27 @@ async def test_filter_excludes_by_format_audio_media_type_and_genre(client):
     assert by_media_type.json()["items"] == []
 
 
+# --- bestillingsstatus-filter (feature #157) ---------------------------------
+
+
+async def test_filter_by_order_status_include_and_exclude(client):
+    await client.post(
+        "/api/movies",
+        json={"title": "Bestilt Film", "is_wishlist": True, "order_status": "Bestilt ved Laserdisken"},
+    )
+    await client.post("/api/movies", json={"title": "Ikke Bestilt", "is_wishlist": True})
+
+    by_include = await client.get(
+        "/api/movies", params={"wishlist": "true", "order_statuses": "Bestilt ved Laserdisken"}
+    )
+    assert [m["title"] for m in by_include.json()["items"]] == ["Bestilt Film"]
+
+    by_exclude = await client.get(
+        "/api/movies", params={"wishlist": "true", "order_statuses_exclude": "Bestilt ved Laserdisken"}
+    )
+    assert [m["title"] for m in by_exclude.json()["items"]] == ["Ikke Bestilt"]
+
+
 async def test_update_and_delete_movie(client):
     create_response = await client.post("/api/movies", json={"title": "Old Title", "media_type": "Fysisk", "format": "F-DVD"})
     movie_id = create_response.json()["id"]

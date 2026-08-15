@@ -154,6 +154,9 @@ export default function Library({
   // filter-panelet kun viser genrer der reelt kan matche noget.
   const [genreFilter, setGenreFilter] = useState(EMPTY_FILTER_STATE);
   const [allGenres, setAllGenres] = useState([]);
+  // Feature #157 — kun relevant (og kun vist) på ønskelisten, ligesom
+  // bestillings-status-badget på selve kortet (feature #114).
+  const [orderStatusFilter, setOrderStatusFilter] = useState(EMPTY_FILTER_STATE);
   const [watchedFilter, setWatchedFilter] = useState(null); // null | true | false
   // Feature #156 — samme tri-state som watchedFilter ovenfor, men mod
   // usePlexAvailability's id-sæt frem for et gemt felt på dokumentet.
@@ -272,6 +275,8 @@ export default function Library({
       mediaTypesExclude: mediaTypeFilter.excluded,
       genres: genreFilter.included,
       genresExclude: genreFilter.excluded,
+      orderStatuses: orderStatusFilter.included,
+      orderStatusesExclude: orderStatusFilter.excluded,
       sort: sortLevels,
       wishlist,
       watched: watchedFilter,
@@ -297,6 +302,7 @@ export default function Library({
     audioTypeFilter,
     mediaTypeFilter,
     genreFilter,
+    orderStatusFilter,
     sortLevels,
     watchedFilter,
     plexFilter,
@@ -325,6 +331,7 @@ export default function Library({
     audioTypeFilter,
     mediaTypeFilter,
     genreFilter,
+    orderStatusFilter,
     sortLevels,
     watchedFilter,
     plexFilter,
@@ -469,6 +476,8 @@ export default function Library({
     mediaTypeFilter.excluded.length +
     genreFilter.included.length +
     genreFilter.excluded.length +
+    orderStatusFilter.included.length +
+    orderStatusFilter.excluded.length +
     (watchedFilter != null ? 1 : 0) +
     (plexFilter != null ? 1 : 0) +
     (personFilter != null ? 1 : 0);
@@ -489,6 +498,7 @@ export default function Library({
     setAudioTypeFilter(EMPTY_FILTER_STATE);
     setMediaTypeFilter(EMPTY_FILTER_STATE);
     setGenreFilter(EMPTY_FILTER_STATE);
+    setOrderStatusFilter(EMPTY_FILTER_STATE);
     setWatchedFilter(null);
     setPlexFilter(null);
     setPersonFilter(null);
@@ -873,6 +883,26 @@ export default function Library({
                     negated={plexFilter === false}
                     onClick={() => setPlexFilter((prev) => cycleTriState(prev))}
                   />
+                </div>
+              </div>
+            )}
+            {/* Feature #157 — kun relevant på ønskelisten, samme gating som
+                bestillings-status-badget på selve ønske-kortet (feature #114). */}
+            {wishlist && !isGuest && attributeOptions.order_statuses.length > 0 && (
+              <div className="filter-group">
+                <span className="filter-group-label">{t("field.orderStatus")}</span>
+                <div className="chip-row">
+                  {attributeOptions.order_statuses.map((status) => (
+                    <Chip
+                      key={status}
+                      label={status}
+                      active={orderStatusFilter.included.includes(status)}
+                      negated={orderStatusFilter.excluded.includes(status)}
+                      onClick={() =>
+                        setOrderStatusFilter((prev) => cycleFilterValue(prev, status))
+                      }
+                    />
+                  ))}
                 </div>
               </div>
             )}

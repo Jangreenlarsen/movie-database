@@ -422,6 +422,8 @@ def _build_find_many_filter(filters: dict) -> dict:
     _add("audio_types", "$in", "audio_types", "audio_types_exclude")
     _add("media_type", "$in", "media_types", "media_types_exclude")
     _add("genres", "$in", "genres", "genres_exclude")
+    # Feature #157 — se den identiske note i movie_repository.py.
+    _add("order_status", "$in", "order_statuses", "order_statuses_exclude")
 
     watched = filters.get("watched")
     if watched is not None:

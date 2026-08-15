@@ -11,6 +11,31 @@ import "./CinemaPublic.css";
 import "./Cinema.css";
 import "./Login.css";
 
+// Feature #160 — Jans presse-PDF og byggeri-galleri, begge statiske filer i
+// frontend/public/cinema/ (ikke en del af databasen). `encodeURI` fordi
+// filnavnene har mellemrum/æøå, som ellers ikke er gyldige rå URL-tegn.
+const PRESS_PDF_HREF = encodeURI("/cinema/Ny biograf åbner i Voldby 2026.pdf");
+const GALLERY_DIR = "/cinema/Galleri/";
+
+// Ingen backend-endpoint lister mappens indhold dynamisk (det er statiske
+// filer i Vites public-mappe, ikke database-poster) — denne liste skal
+// opdateres manuelt når nogen tilføjer/fjerner filer i Galleri-mappen.
+const GALLERY_ITEMS = [
+  { file: "byggeri1.jpg", type: "image" },
+  { file: "byggeri2.jpg", type: "image" },
+  { file: "byggeri3.jpg", type: "image" },
+  { file: "byggeri4.jpg", type: "image" },
+  { file: "byggeri5.jpg", type: "image" },
+  { file: "byggeri5-HT.mp4", type: "video" },
+  { file: "byggeri6.jpg", type: "image" },
+  { file: "byggeri7.jpg", type: "image" },
+  { file: "byggeri8.jpg", type: "image" },
+  { file: "byggeri9.jpg", type: "image" },
+  { file: "byggeri10.jpg", type: "image" },
+  { file: "Stole.jpg", type: "image" },
+  { file: "HT test1.MOV", type: "video" },
+];
+
 // Feature #70 — public, no-login page at /bio. Read-only: no admin tools,
 // no "ønsk visning"/anmeldelses-knapper, just the showcase section + the
 // upcoming program. Deliberately a separate component from Cinema.jsx
@@ -30,6 +55,7 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
   // PublicLoginToggle, fordi knappen og panelet nu står to forskellige
   // steder i træet.
   const [loginOpen, setLoginOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const [screenings, setScreenings] = useState([]);
   const [status, setStatus] = useState("loading");
 
@@ -89,7 +115,24 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
 
       <main className="cinema-public-main">
         <section>
-          <h2 className="cinema-public-section-heading">{t("public.about")}</h2>
+          <div className="cinema-public-section-heading-row">
+            <h2 className="cinema-public-section-heading">{t("public.about")}</h2>
+            <a
+              className="cinema-public-press-btn"
+              href={PRESS_PDF_HREF}
+              target="_blank"
+              rel="noreferrer"
+            >
+              📰 {t("public.pressNews")}
+            </a>
+            <button
+              type="button"
+              className="cinema-public-gallery-btn"
+              onClick={() => setGalleryOpen(true)}
+            >
+              🖼️ {t("public.gallery")}
+            </button>
+          </div>
           <CinemaShowcase />
         </section>
 
@@ -121,6 +164,62 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
       {loginOpen && !user && (
         <PublicLoginPanel language={language} onClose={() => setLoginOpen(false)} />
       )}
+
+      {galleryOpen && <GalleryModal onClose={() => setGalleryOpen(false)} />}
+    </div>
+  );
+}
+
+// Feature #160 — byggeri-galleriet. Samme centrerede overlay-mønster som
+// PublicLoginPanel (BUGS.md #57), bare bredere til et billed-grid.
+function GalleryModal({ onClose }) {
+  const t = useT();
+  return (
+    <div
+      className="cinema-public-gallery-overlay"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div className="cinema-public-gallery-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="cinema-public-gallery-header">
+          <h2>{t("public.gallery")}</h2>
+          <button
+            type="button"
+            className="cinema-public-gallery-close"
+            onClick={onClose}
+            aria-label={t("public.galleryClose")}
+          >
+            ✕
+          </button>
+        </div>
+        <div className="cinema-public-gallery-grid">
+          {GALLERY_ITEMS.map((item) => {
+            const src = encodeURI(`${GALLERY_DIR}${item.file}`);
+            return item.type === "video" ? (
+              <video
+                key={item.file}
+                className="cinema-public-gallery-item"
+                controls
+                preload="metadata"
+              >
+                <source src={src} />
+                {t("public.galleryVideoUnsupported")}
+              </video>
+            ) : (
+              <a
+                key={item.file}
+                className="cinema-public-gallery-item"
+                href={src}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <img src={src} alt="" loading="lazy" />
+              </a>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.135.0 (build 0182) — 2026-08-15
+
+- **Nyt på den offentlige Voldby BIO-side.** To knapper ved siden af "Om Voldby BIO": "Presse Nyt" åbner en pressemeddelelse som PDF, og "Galleri" viser billeder og videoer fra byggeriet.
+
 ## v0.134.0 (build 0181) — 2026-08-15
 
 - **Ny ugentlig statistik.** Statistik-siden viser nu hvor mange film og TV-serier der er tilføjet til biblioteket de seneste 12 uger, som en søjle pr. uge.

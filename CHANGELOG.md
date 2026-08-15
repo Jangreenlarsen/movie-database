@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.135.0 build 0182] — 2026-08-15 — feature: "Presse Nyt"/"Galleri"-knapper på /bio (FEATURES.md #160)
+
+Jan: *"i public siden for voldby bio vil jeg godt have to ny knapper ved siden af teksten 'About Voldby BIO' ... en som hedder 'Presse Nyt' ... og ved siden af den helt ud til højre en der hedder 'Galleri'"*. Presse Nyt (fancy gradient-stil) åbner `frontend/public/cinema/Ny biograf åbner i Voldby 2026.pdf` i en ny fane. Galleri (ikon + tekst, skubbet til højre) åbner en ny `GalleryModal` med et grid af billeder/videoer fra `frontend/public/cinema/Galleri/` — billeder linker til fuld størrelse i ny fane, videoer får native `<video controls>`. Ingen backend-ændring; mappens indhold kan ikke listes dynamisk, så filnavnene står i en hardkodet, tydeligt kommenteret liste i `CinemaPublic.jsx` der skal opdateres manuelt ved nye filer. Berørte filer: `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Fuld backend-suite (uændret) + frontend (78) grøn.
+
 ## [0.134.0 build 0181] — 2026-08-15 — feature: ugentlig statistik over nye tilføjelser (FEATURES.md #159)
 
 Jan: *"og i statistics skal vi have ugelig stats over ny film/tv som kommer til portal"*. Nyt `weekly_additions` på `/api/movies/stats` — én bar pr. af de seneste 12 ISO-uger, dækker film+TV kombineret, ønskeliste ekskluderet. Alle 12 uger returneres altid, også med 0 tilføjelser, så tidsserien ikke har huller. Frontend: ny sektion øverst i Statistik-siden, genbruger den eksisterende `BarList`-komponent uændret. Berørte filer: `backend/app/models/movie.py`, `backend/app/services/movie_service.py`, `frontend/src/pages/Statistics.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`. Tests: `test_stats.py` udvidet (4 nye tests). Fuld backend-suite + frontend (78) grøn.

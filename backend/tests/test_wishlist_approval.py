@@ -67,3 +67,95 @@ async def test_tv_wishlist_approval_flow(client):
     approved = await client.patch(f"/api/tv-shows/{show_id}", json={"wishlist_status": "approved"})
     assert approved.json()["wishlist_status"] == "approved"
     await member.aclose()
+
+
+# Feature #165 — "afvis ønske" (modparten til godkendelse), med besked til
+# ønske-opretteren.
+
+
+async def test_nonadmin_cannot_reject_wishlist(client):
+    member = await _member(client, "wish_noreject")
+    created = await member.post("/api/movies", json={"title": "AfvisTest1", "is_wishlist": True})
+    movie_id = created.json()["id"]
+    resp = await member.post(f"/api/movies/{movie_id}/reject-wish", json={"message": "Nej tak"})
+    assert resp.status_code == 403
+    await member.aclose()
+
+
+async def test_admin_can_reject_wishlist_with_message(client):
+    member = await _member(client, "wish_reject_msg")
+    created = await member.post("/api/movies", json={"title": "AfvisTest2", "is_wishlist": True})
+    movie_id = created.json()["id"]
+
+    resp = await client.post(
+        f"/api/movies/{movie_id}/reject-wish", json={"message": "Vi har den allerede på Plex."}
+    )
+    assert resp.status_code == 204
+
+    # Ønsket er væk, ikke bare markeret afvist.
+    assert (await client.get(f"/api/movies/{movie_id}")).status_code == 404
+
+    inbox = (await member.get("/api/messages/inbox")).json()
+    assert len(inbox) == 1
+    assert "AfvisTest2" in inbox[0]["subject"]
+    assert "Vi har den allerede på Plex." in inbox[0]["body"]
+    await member.aclose()
+
+
+async def test_admin_can_reject_wishlist_without_message(client):
+    """Ingen begrundelse angivet — brugeren skal stadig have en besked, med
+    en generisk tekst i stedet for en tom/manglende besked (regel 16)."""
+    member = await _member(client, "wish_reject_nomsg")
+    created = await member.post("/api/movies", json={"title": "AfvisTest3", "is_wishlist": True})
+    movie_id = created.json()["id"]
+
+    resp = await client.post(f"/api/movies/{movie_id}/reject-wish", json={})
+    assert resp.status_code == 204
+
+    inbox = (await member.get("/api/messages/inbox")).json()
+    assert len(inbox) == 1
+    assert inbox[0]["body"]
+    await member.aclose()
+
+
+async def test_reject_requires_pending_wishlist(client):
+    member = await _member(client, "wish_reject_notpending")
+    created = await member.post("/api/movies", json={"title": "AfvisTest4", "is_wishlist": True})
+    movie_id = created.json()["id"]
+    await client.patch(f"/api/movies/{movie_id}", json={"wishlist_status": "approved"})
+
+    resp = await client.post(f"/api/movies/{movie_id}/reject-wish", json={})
+    assert resp.status_code == 409
+    # Stadig der — kun en pending wish kan afvises.
+    assert (await client.get(f"/api/movies/{movie_id}")).status_code == 200
+    await member.aclose()
+
+
+async def test_reject_wishlist_cannot_target_library_item(client):
+    created = await client.post(
+        "/api/movies", json={"title": "AfvisTest5", "media_type": "Fysisk", "format": "F-DVD"}
+    )
+    movie_id = created.json()["id"]
+    resp = await client.post(f"/api/movies/{movie_id}/reject-wish", json={})
+    assert resp.status_code == 409
+
+
+async def test_tv_wishlist_rejection_flow(client):
+    member = await _member(client, "wish_tv_reject")
+    created = await member.post("/api/tv-shows", json={"name": "TV Afvis", "is_wishlist": True})
+    show_id = created.json()["id"]
+
+    assert (
+        await member.post(f"/api/tv-shows/{show_id}/reject-wish", json={})
+    ).status_code == 403
+
+    resp = await client.post(
+        f"/api/tv-shows/{show_id}/reject-wish", json={"message": "For niche til biblioteket."}
+    )
+    assert resp.status_code == 204
+    assert (await client.get(f"/api/tv-shows/{show_id}")).status_code == 404
+
+    inbox = (await member.get("/api/messages/inbox")).json()
+    assert len(inbox) == 1
+    assert "For niche til biblioteket." in inbox[0]["body"]
+    await member.aclose()

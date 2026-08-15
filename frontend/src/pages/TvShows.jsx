@@ -318,6 +318,19 @@ export default function TvShows({
     }
   }
 
+  // Feature #165 — se den identiske note i Library.jsx.
+  async function rejectWishlist(show, event) {
+    event.stopPropagation();
+    const message = window.prompt(t("lib.rejectWishlistPrompt"));
+    if (message === null) return;
+    try {
+      await api.rejectTvShowWishlist(show.id, message);
+      refresh();
+    } catch (err) {
+      setRefreshError(err.message);
+    }
+  }
+
   function updateVisibleField(key, value) {
     setVisibleFields((prev) => {
       const next = { ...prev, [key]: value };
@@ -986,15 +999,25 @@ export default function TvShows({
                     <span className="movie-meta-item">{show.genres.join(", ")}</span>
                   )}
                 </div>
-                {/* Feature #144 — admin godkender ønsket direkte fra kortet. */}
+                {/* Feature #144/#165 — admin godkender eller afviser ønsket
+                    direkte fra kortet. */}
                 {wishlist && isAdmin && show.wishlist_status === "pending" && (
-                  <button
-                    type="button"
-                    className="btn btn-primary movie-approve-btn"
-                    onClick={(e) => approveWishlist(show, e)}
-                  >
-                    {t("lib.approveWishlist")}
-                  </button>
+                  <div className="movie-wishlist-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary movie-approve-btn"
+                      onClick={(e) => approveWishlist(show, e)}
+                    >
+                      {t("lib.approveWishlist")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn movie-reject-btn"
+                      onClick={(e) => rejectWishlist(show, e)}
+                    >
+                      {t("lib.rejectWishlist")}
+                    </button>
+                  </div>
                 )}
                 {/* Feature #114/#116 — se den identiske note i Library.jsx
                     (kun ønske-kort, skjult for gæster). */}

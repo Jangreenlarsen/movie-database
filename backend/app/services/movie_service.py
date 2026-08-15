@@ -15,6 +15,7 @@ from app.core.errors import (
     TmdbNotFoundError,
     TmdbRateLimitedError,
     TmdbUnavailableError,
+    WishlistNotPendingError,
 )
 from app.integrations import omdb_client, tmdb_client
 from app.models.movie import (
@@ -797,6 +798,29 @@ async def delete_movie(db: AsyncIOMotorDatabase, movie_id: str, deleted_by: str)
     # do the same for its own title.
     await screening_repository.delete_for_title(db, "movie", movie_id)
     await screening_request_repository.delete_for_title(db, "movie", movie_id)
+
+
+async def reject_wishlist_movie(
+    db: AsyncIOMotorDatabase, movie_id: str, admin: dict, message: str | None
+) -> None:
+    """Feature #165 — modparten til at godkende et ønske (feature #144):
+    admin må også sige nej. Fjerner ønsket helt (samme sletning som en
+    almindelig sletning, ikke en tredje wishlist_status-værdi den skal
+    filtreres/vises et sted) og giver opretteren besked hvorfor. Kun
+    reachable via en admin-only rute (`dependencies=[Depends(require_admin)]`
+    i api/movies.py) — rollen tjekkes derfor ikke igen her, i modsætning til
+    update_movie's wishlist_status-gren, som deler en generisk rute med
+    alle andre felt-opdateringer."""
+    document = await movie_repository.find_by_id(db, movie_id)
+    if document is None:
+        raise MovieNotFoundError(movie_id)
+    if not document.get("is_wishlist") or document.get("wishlist_status") != WishlistStatus.PENDING.value:
+        raise WishlistNotPendingError(movie_id)
+
+    await delete_movie(db, movie_id, admin["username"])
+    await message_service.notify_wishlist_rejected(
+        db, document, admin, document.get("title"), is_tv=False, reason=message
+    )
 
 
 async def list_deleted_movies(

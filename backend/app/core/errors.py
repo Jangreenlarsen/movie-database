@@ -131,6 +131,16 @@ class InvalidUserStatusTransitionError(Exception):
         )
 
 
+class WishlistNotPendingError(Exception):
+    """Guards approve/reject (feature #144/#165) against being pointed at an
+    item that isn't actually a pending wish — e.g. re-clicking reject on an
+    already-approved or already-removed wish. Mirrors UserNotPendingError."""
+
+    def __init__(self, item_id: str):
+        self.item_id = item_id
+        super().__init__(f"Item is not a pending wish: {item_id}")
+
+
 class UserNotFoundError(Exception):
     def __init__(self, user_id: str):
         self.user_id = user_id

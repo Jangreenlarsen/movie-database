@@ -109,6 +109,45 @@ async def notify_wishlist_moved(
         pass
 
 
+async def notify_wishlist_rejected(
+    db: AsyncIOMotorDatabase,
+    wishlist_doc: dict,
+    admin: dict,
+    title: str | None,
+    is_tv: bool,
+    reason: str | None,
+) -> None:
+    """Feature #165 — modparten til `notify_wishlist_moved`: en admin har
+    afvist (ikke godkendt) et ønske i stedet for at godkende det. Samme
+    best-effort try/except og samme "spring over hvis opretteren ikke kan
+    slås op"-mønster (CLAUDE.md regel 16) — en fejl her må aldrig vælte selve
+    afvisningen, som allerede har slettet ønsket når denne kaldes. `reason`
+    er adminens egen, valgfrie begrundelse (feature #165s "med besked til
+    user") — tom/None giver en generisk besked i stedet for ingenting."""
+    owner_username = wishlist_doc.get("registered_by")
+    if not owner_username or owner_username == admin.get("username"):
+        return
+    owner = await user_repository.find_by_username_normalized(db, owner_username.lower())
+    if owner is None:
+        return
+    kind = "serie" if is_tv else "film"
+    display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or kind
+    # "Den {kind}" (ikke en bøjet form af selve ordet) — samme knep som
+    # notify_wishlist_moved bruger, så "film" ikke skal bøjes anderledes end
+    # "serie" ("filmen" vs. "serien" ville kræve to forskellige suffikser).
+    default_line = f'Den {kind} du ønskede — "{display_title}" — er desværre ikke blevet godkendt.'
+    body = f"{default_line}\n\n{reason.strip()}" if reason and reason.strip() else default_line
+    payload = MessageCreate(
+        subject=f'Dit ønske "{display_title}" blev ikke godkendt',
+        body=body,
+        recipient_user_id=str(owner["_id"]),
+    )
+    try:
+        await send(db, payload, admin)
+    except Exception:
+        pass
+
+
 async def list_sent(db: AsyncIOMotorDatabase) -> list[Message]:
     return [_to_model(document) for document in await message_repository.list_all(db)]
 

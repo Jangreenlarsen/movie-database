@@ -26,6 +26,7 @@ from app.models.movie import (
     SUBTITLE_STANDARD_OPTIONS,
     SerialHolder,
     TmdbSyncResult,
+    WishlistRejection,
 )
 from app.models.scan import MovieCandidate
 from app.services import movie_service
@@ -234,3 +235,13 @@ async def delete_movie(
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     await movie_service.delete_movie(db, movie_id, current_user["username"])
+
+
+@router.post("/{movie_id}/reject-wish", status_code=204, dependencies=[Depends(require_admin)])
+async def reject_wish(
+    movie_id: str,
+    payload: WishlistRejection,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    await movie_service.reject_wishlist_movie(db, movie_id, current_user, payload.message)

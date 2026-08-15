@@ -101,6 +101,20 @@ class WishlistStatus(str, Enum):
     APPROVED = "approved"
 
 
+class WishlistRejection(BaseModel):
+    """Feature #165 — modparten til godkendelse: "afvis ønske". Afvisning
+    fjerner ønsket helt (samme sletning som en almindelig sletning) i stedet
+    for en tredje wishlist_status-værdi — et afvist ønske skal ikke blive
+    stående som en spøgelsespost i ønskelisten, jf. hvordan et afvist
+    sæde-hold (feature #133) heller ikke bliver stående. `message` er
+    admins valgfrie begrundelse, sendt til ønske-opretteren via den interne
+    besked-funktion (feature #100); tom/udeladt giver en generisk besked i
+    stedet. Bruges af både `api/movies.py` og `api/tv_shows.py` (importeret
+    direkte herfra, ligesom `WishlistStatus`s mønster i tv_show.py)."""
+
+    message: str | None = Field(default=None, max_length=1000)
+
+
 class AudioType(str, Enum):
     """Short labels (v0.22.0) — less horizontal space on cards/chips. The
     DTS-HD-varianterne blev omdøbt i v0.105.0 (DTS-HD-M -> DTS-HD5.1,

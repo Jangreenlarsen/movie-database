@@ -14,6 +14,7 @@ from app.core.errors import (
     TmdbRateLimitedError,
     TmdbUnavailableError,
     TvShowNotFoundError,
+    WishlistNotPendingError,
 )
 from app.integrations import omdb_client, tmdb_client
 from app.models.movie import TmdbSyncResult
@@ -600,6 +601,23 @@ async def delete_tv_show(db: AsyncIOMotorDatabase, tv_show_id: str, deleted_by: 
     # `movie_service.delete_movie` for why this is necessary.
     await screening_repository.delete_for_title(db, "tv", tv_show_id)
     await screening_request_repository.delete_for_title(db, "tv", tv_show_id)
+
+
+async def reject_wishlist_tv_show(
+    db: AsyncIOMotorDatabase, tv_show_id: str, admin: dict, message: str | None
+) -> None:
+    """Feature #165 — se den identiske `movie_service.reject_wishlist_movie`
+    for begrundelsen. Kun reachable via en admin-only rute."""
+    document = await tv_show_repository.find_by_id(db, tv_show_id)
+    if document is None:
+        raise TvShowNotFoundError(tv_show_id)
+    if not document.get("is_wishlist") or document.get("wishlist_status") != WishlistStatus.PENDING.value:
+        raise WishlistNotPendingError(tv_show_id)
+
+    await delete_tv_show(db, tv_show_id, admin["username"])
+    await message_service.notify_wishlist_rejected(
+        db, document, admin, document.get("name"), is_tv=True, reason=message
+    )
 
 
 async def list_deleted_tv_shows(db: AsyncIOMotorDatabase) -> list[DeletedTvShow]:

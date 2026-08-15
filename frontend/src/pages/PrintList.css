@@ -42,6 +42,21 @@
   background: var(--surface);
 }
 
+.print-section {
+  margin-bottom: 28px;
+}
+
+/* Feature #158 — sektionsoverskrift + "print denne liste"-knap på samme
+   linje, samme mønster som appens generelle `.page-header`. */
+.print-section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
 .print-table {
   width: 100%;
   border-collapse: collapse;
@@ -115,6 +130,16 @@
   .print-page-break {
     break-before: page;
     page-break-before: always;
+  }
+
+  /* Feature #158 — "print denne liste": kun den valgte sektion er synlig i
+     selve udskriften. `printOnly`-tilstanden sætter disse klasser på skærmen
+     med det samme (så React kun rører DOM'en én gang), men reglen herunder
+     er bevidst kun aktiv under `@media print` — ellers ville et klik på
+     "Print denne liste" synligt bortcensurere resten af skærmbilledet i det
+     øjeblik man klikker, længe før print-dialogen overhovedet er åben. */
+  .print-page.print-only-mode .print-section:not(.print-section-only) {
+    display: none;
   }
 }
 

@@ -14,6 +14,7 @@ import {
   TV_SERIAL_PREFIX,
   duplicateSerialSuffix,
   formatSerial,
+  isDigitalMediaType,
   serialPrefix,
 } from "./serialNumber";
 
@@ -91,5 +92,21 @@ describe("duplicateSerialSuffix", () => {
 
   it("er tom streng uden noget nummer (fx et dublet-fund på ønskelisten)", () => {
     expect(duplicateSerialSuffix({ serial_number: null, media_type: null }, "movie", 4)).toBe("");
+  });
+});
+
+describe("isDigitalMediaType", () => {
+  // Feature #158 — Print-sidens digital/fysisk-opdeling. En forkert
+  // klassificering her ville lægge en post på den forkerte udskrift, uden at
+  // nogen opdager det før de mangler den fysisk på hylden.
+  it("kalder kun 'Digital' digital", () => {
+    expect(isDigitalMediaType("Digital")).toBe(true);
+  });
+
+  it("behandler alt andet som fysisk, samme regel som serialPrefix", () => {
+    expect(isDigitalMediaType("Fysisk")).toBe(false);
+    expect(isDigitalMediaType(undefined)).toBe(false);
+    expect(isDigitalMediaType(null)).toBe(false);
+    expect(isDigitalMediaType("")).toBe(false);
   });
 });

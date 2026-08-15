@@ -333,6 +333,10 @@ class CollectionStats(BaseModel):
     # Feature #77 — kun film/serier tilføjet via et rigtigt stregkode-scan
     # tæller med (se MovieCreate.barcode_source's docstring); dækker film+TV.
     barcode_source_breakdown: list[NamedCount]
+    # Feature #159 — nye film+TV-serier tilføjet til biblioteket, én bar pr.
+    # af de seneste WEEKLY_ADDITIONS_WEEKS uger (altid det faste antal
+    # entries, inkl. uger med 0 — et hul i en tidsserie er misvisende).
+    weekly_additions: list[NamedCount]
 
 
 class TmdbSyncResult(BaseModel):

@@ -574,6 +574,32 @@
   padding: 5px 8px;
 }
 
+/* Feature #165 — godkend + afvis side om side i stedet for at godkend
+   alene fylder hele kortets bredde. */
+.movie-wishlist-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.movie-wishlist-actions .movie-approve-btn {
+  margin-top: 0;
+  width: auto;
+  flex: 1;
+  /* Uden denne holder knappen sig til sin tekstlige minimumsbredde og
+     skubber den anden knap delvist uden for kortet i stedet for at
+     ombryde teksten pænt (samme flexbox-fælde som lightboxens
+     navigationsknapper tidligere i dag, jf. CinemaPublic.css). */
+  min-width: 0;
+}
+
+.movie-reject-btn {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.78rem;
+  padding: 5px 8px;
+}
+
 /* Plex' egen mærkefarve — badget skal kunne genkendes som "det er Plex"
    uden at man læser teksten. */
 .movie-plex-badge {

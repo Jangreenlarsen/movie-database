@@ -100,6 +100,8 @@
   "lib.wishlistPending": "Awaiting an admin's approval",
   "lib.wishlistPendingShort": "⏳ Pending",
   "lib.approveWishlist": "Approve wish",
+  "lib.rejectWishlist": "Reject wish",
+  "lib.rejectWishlistPrompt": "Optional message to the user about why the wish isn't approved (cancel to abort):",
   "lib.nameInLibrary": "The name already exists in the library",
   "lib.nameInLibraryShort": "⚠ In library",
   "lib.notWatched": "Not watched",

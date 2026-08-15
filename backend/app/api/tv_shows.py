@@ -16,6 +16,7 @@ from app.models.movie import (
     MovieFormat,
     OrderStatus,
     TmdbSyncResult,
+    WishlistRejection,
 )
 from app.models.scan import MovieCandidate
 from app.models.tv_show import (
@@ -183,6 +184,16 @@ async def delete_tv_show(
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     await tv_show_service.delete_tv_show(db, tv_show_id, current_user["username"])
+
+
+@router.post("/{tv_show_id}/reject-wish", status_code=204, dependencies=[Depends(require_admin)])
+async def reject_wish(
+    tv_show_id: str,
+    payload: WishlistRejection,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    await tv_show_service.reject_wishlist_tv_show(db, tv_show_id, current_user, payload.message)
 
 
 @router.patch(

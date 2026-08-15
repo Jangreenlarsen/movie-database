@@ -371,6 +371,23 @@ export default function Library({
     }
   }
 
+  // Feature #165 — modparten: afvis i stedet for at godkende. Fjerner ønsket
+  // og sender opretteren en besked med adminens (valgfrie) begrundelse.
+  // `window.prompt` returnerer null ved Annuller — kun da springes handlingen
+  // helt over; en tom streng (OK uden tekst) sendes videre, backend falder
+  // selv tilbage til en generisk besked.
+  async function rejectWishlist(movie, event) {
+    event.stopPropagation();
+    const message = window.prompt(t("lib.rejectWishlistPrompt"));
+    if (message === null) return;
+    try {
+      await api.rejectMovieWishlist(movie.id, message);
+      refresh();
+    } catch (err) {
+      setRefreshError(err.message);
+    }
+  }
+
   function updateVisibleField(key, value) {
     setVisibleFields((prev) => {
       const next = { ...prev, [key]: value };
@@ -1081,15 +1098,25 @@ export default function Library({
                     <span className="movie-meta-item">{movie.genres.join(", ")}</span>
                   )}
                 </div>
-                {/* Feature #144 — admin godkender ønsket direkte fra kortet. */}
+                {/* Feature #144/#165 — admin godkender eller afviser ønsket
+                    direkte fra kortet. */}
                 {wishlist && isAdmin && movie.wishlist_status === "pending" && (
-                  <button
-                    type="button"
-                    className="btn btn-primary movie-approve-btn"
-                    onClick={(e) => approveWishlist(movie, e)}
-                  >
-                    {t("lib.approveWishlist")}
-                  </button>
+                  <div className="movie-wishlist-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary movie-approve-btn"
+                      onClick={(e) => approveWishlist(movie, e)}
+                    >
+                      {t("lib.approveWishlist")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn movie-reject-btn"
+                      onClick={(e) => rejectWishlist(movie, e)}
+                    >
+                      {t("lib.rejectWishlist")}
+                    </button>
+                  </div>
                 )}
                 {/* Feature #114 — bestillingsstatus vises kun på ønske-kort,
                     i både grid- og liste-visning (samme markup, jf. #108).

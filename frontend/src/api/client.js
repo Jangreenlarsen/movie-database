@@ -175,6 +175,8 @@ export const api = {
   updateMovie: (id, payload) =>
     request(`/movies/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteMovie: (id) => request(`/movies/${id}`, { method: "DELETE" }),
+  rejectMovieWishlist: (id, message) =>
+    request(`/movies/${id}/reject-wish`, { method: "POST", body: JSON.stringify({ message }) }),
   listDeletedMovies: ({ skip = 0, limit = 10 } = {}) =>
     request(`/movies/deleted?${new URLSearchParams({ skip, limit })}`),
   syncMoviesFromTmdb: () => request("/movies/sync-tmdb", { method: "POST" }),
@@ -384,6 +386,8 @@ export const api = {
   updateTvShow: (id, payload) =>
     request(`/tv-shows/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteTvShow: (id) => request(`/tv-shows/${id}`, { method: "DELETE" }),
+  rejectTvShowWishlist: (id, message) =>
+    request(`/tv-shows/${id}/reject-wish`, { method: "POST", body: JSON.stringify({ message }) }),
   listDeletedTvShows: () => request("/tv-shows/deleted"),
   tvAttributeOptions: () => request("/tv-shows/attribute-options"),
   listTvGenres: () => request("/tv-shows/genres"),

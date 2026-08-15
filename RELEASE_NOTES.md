@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.139.0 (build 0189) — 2026-08-15
+
+- **Ny knap: "Afvis ønske".** Ved siden af "Godkend ønske" på et afventende ønske kan en admin nu afvise det i stedet — med en valgfri begrundelse, som brugeren der ønskede det får som besked.
+
 ## v0.138.0 (build 0188) — 2026-08-15
 
 - **Sortér/Filtrér/Vis felter lukker nu hinanden.** Når du åbner et af de tre paneler i værktøjslinjen (Film og TV-serier), lukker de andre automatisk — kun ét er åbent ad gangen.

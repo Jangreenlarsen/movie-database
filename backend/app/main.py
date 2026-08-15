@@ -65,6 +65,7 @@ from app.core.errors import (
     UserNotFoundError,
     UserNotPendingError,
     UsernameTakenError,
+    WishlistNotPendingError,
 )
 from app.db import close_client, get_client, get_database
 from app.repositories import (
@@ -249,6 +250,13 @@ async def account_disabled_handler(request: Request, exc: AccountDisabledError) 
 
 @app.exception_handler(UserNotPendingError)
 async def user_not_pending_handler(request: Request, exc: UserNotPendingError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(WishlistNotPendingError)
+async def wishlist_not_pending_handler(
+    request: Request, exc: WishlistNotPendingError
+) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 

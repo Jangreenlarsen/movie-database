@@ -15,6 +15,9 @@ import "./Login.css";
 // frontend/public/cinema/ (ikke en del af databasen). `encodeURI` fordi
 // filnavnene har mellemrum/æøå, som ellers ikke er gyldige rå URL-tegn.
 const PRESS_PDF_HREF = encodeURI("/cinema/Ny biograf åbner i Voldby 2026.pdf");
+// #toolbar=0&navpanes=0 er browserens indbyggede PDF-visnings egne open-parameters
+// (ikke noget vi kan style med CSS) — skjuler dens værktøjslinje/sidepanel i modal-visningen.
+const PRESS_PDF_VIEWER_SRC = `${PRESS_PDF_HREF}#toolbar=0&navpanes=0`;
 const GALLERY_DIR = "/cinema/Galleri/";
 
 // Ingen backend-endpoint lister mappens indhold dynamisk (det er statiske
@@ -206,7 +209,7 @@ function PressModal({ onClose }) {
         </div>
         <iframe
           className="cinema-public-press-frame"
-          src={PRESS_PDF_HREF}
+          src={PRESS_PDF_VIEWER_SRC}
           title={t("public.pressNews")}
         />
       </div>

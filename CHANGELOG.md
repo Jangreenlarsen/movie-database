@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.136.1 build 0185] — 2026-08-15 — fix: Presse Nyt-visningen viste browserens PDF-værktøjslinje (BUGS.md #69)
+
+Jan: *"der er en tool bar i den pdf view på side vi skal ikke have nogen former for toolbars i den view"*. `PressModal`s `<iframe>` lod browseren falde tilbage til sin egen PDFium-værktøjslinje (side-nav/zoom/download/print) oven på PDF'en. Rettet med PDF'ens standardiserede open-parameter-fragment `#toolbar=0&navpanes=0` på iframets `src` (ny `PRESS_PDF_VIEWER_SRC`, kun brugt der — "Åbn i ny fane"-linket er uændret). Ren klient-side URL-fragment, ingen backend-ændring. Verificeret mod en rigtig lokal Microsoft Edge (Playwrights bundlede Chromium downloader PDF'er i stedet for at rendere dem inline og kunne ikke bruges til verifikationen). Berørt fil: `frontend/src/pages/CinemaPublic.jsx`. Fuld backend-suite (672) + frontend (78) grøn.
+
 ## [0.136.0 build 0184] — 2026-08-15 — feature: navigation i galleri-lightbox + tilbage-knap på Presse Nyt (FEATURES.md #161)
 
 Jan, direkte i forlængelse af #160: *"vi mangler navigation på de billeder samt en back knap sammen på presse pdf side"*. Galleri-billeder åbner nu en indbygget lightbox (i stedet for en ny fane) med "‹"/"›"-knapper der cykler mellem alle billeder (wrap-around) samt en "← Tilbage"-knap til grid-visningen; videoer er bevidst holdt uden for lightbox-navigationen. Presse Nyt åbner nu en ny `PressModal` (samme overlay-mønster som galleriet) med PDF'en i en `<iframe>` og egen "← Tilbage"-knap, plus et sekundært "Åbn i ny fane"-link. Regel 18-bug fundet og rettet undervejs: lightboxens navigationsknapper blev skubbet uden for panelet pga. flexbox' `min-width: auto`-standard på `<img>`; rettet med `min-width: 0` + `max-width: calc(100% - 110px)`. Berørte filer: `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Ingen backend-ændring. Fuld backend-suite (672) + frontend (78) grøn.

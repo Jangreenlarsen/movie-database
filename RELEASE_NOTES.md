@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.136.1 (build 0185) — 2026-08-15
+
+- **Rettet: ingen værktøjslinje i Presse Nyt-visningen mere.** PDF-visningen viste før browserens egen værktøjslinje (zoom/download/print-knapper) oven på dokumentet — den er nu skjult.
+
 ## v0.136.0 (build 0184) — 2026-08-15
 
 - **Galleriet og Presse Nyt fik navigation.** Billeder i galleriet åbner nu direkte på siden med "‹"/"›"-knapper til at bladre mellem dem, og en "← Tilbage"-knap. Presse Nyt viser nu selve PDF'en på siden i stedet for at åbne en ny fane, også med en "← Tilbage"-knap.

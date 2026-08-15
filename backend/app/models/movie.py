@@ -367,3 +367,8 @@ class DeletedMovie(BaseModel):
     format: str | None = None
     deleted_at: datetime
     deleted_by: str | None = None
+
+
+class DeletedMoviePage(BaseModel):
+    entries: list[DeletedMovie] = Field(default_factory=list)
+    total: int

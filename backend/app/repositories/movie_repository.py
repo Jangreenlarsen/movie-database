@@ -685,6 +685,10 @@ async def archive_deleted(db: AsyncIOMotorDatabase, movie_doc: dict, deleted_by:
     )
 
 
-async def list_deleted(db: AsyncIOMotorDatabase) -> list[dict]:
-    cursor = db[DELETED_COLLECTION].find().sort("deleted_at", -1)
-    return await cursor.to_list(length=1000)
+async def list_deleted(db: AsyncIOMotorDatabase, skip: int = 0, limit: int = 1000) -> list[dict]:
+    cursor = db[DELETED_COLLECTION].find().sort("deleted_at", -1).skip(skip).limit(limit)
+    return await cursor.to_list(length=limit)
+
+
+async def count_deleted(db: AsyncIOMotorDatabase) -> int:
+    return await db[DELETED_COLLECTION].count_documents({})

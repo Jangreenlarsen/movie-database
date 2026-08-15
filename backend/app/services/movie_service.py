@@ -21,6 +21,7 @@ from app.models.movie import (
     CollectionPart,
     CollectionStats,
     DeletedMovie,
+    DeletedMoviePage,
     DuplicateMatch,
     MediaType,
     Movie,
@@ -735,20 +736,26 @@ async def delete_movie(db: AsyncIOMotorDatabase, movie_id: str, deleted_by: str)
     await screening_request_repository.delete_for_title(db, "movie", movie_id)
 
 
-async def list_deleted_movies(db: AsyncIOMotorDatabase) -> list[DeletedMovie]:
-    documents = await movie_repository.list_deleted(db)
-    return [
-        DeletedMovie(
-            id=str(doc["_id"]),
-            serial_number=doc.get("serial_number"),
-            title=doc["title"],
-            year=doc.get("year"),
-            format=doc.get("format"),
-            deleted_at=doc["deleted_at"],
-            deleted_by=doc.get("deleted_by"),
-        )
-        for doc in documents
-    ]
+async def list_deleted_movies(
+    db: AsyncIOMotorDatabase, skip: int = 0, limit: int = 1000
+) -> DeletedMoviePage:
+    documents = await movie_repository.list_deleted(db, skip, limit)
+    total = await movie_repository.count_deleted(db)
+    return DeletedMoviePage(
+        entries=[
+            DeletedMovie(
+                id=str(doc["_id"]),
+                serial_number=doc.get("serial_number"),
+                title=doc["title"],
+                year=doc.get("year"),
+                format=doc.get("format"),
+                deleted_at=doc["deleted_at"],
+                deleted_by=doc.get("deleted_by"),
+            )
+            for doc in documents
+        ],
+        total=total,
+    )
 
 
 async def sync_all_from_tmdb(db: AsyncIOMotorDatabase) -> TmdbSyncResult:

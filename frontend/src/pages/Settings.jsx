@@ -1081,21 +1081,32 @@ function FeatureListSection() {
   );
 }
 
+const DELETED_MOVIES_PAGE_SIZE = 10;
+
 function DeletedMoviesSection() {
   const t = useT();
   const locale = useLocale();
   const [entries, setEntries] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
   const [status, setStatus] = useState("loading");
 
-  useEffect(() => {
+  function load(pageIndex) {
+    setStatus("loading");
     api
-      .listDeletedMovies()
+      .listDeletedMovies({ skip: pageIndex * DELETED_MOVIES_PAGE_SIZE, limit: DELETED_MOVIES_PAGE_SIZE })
       .then((data) => {
-        setEntries(data);
+        setEntries(data.entries);
+        setTotal(data.total);
+        setPage(pageIndex);
         setStatus("ready");
       })
       .catch(() => setStatus("error"));
-  }, []);
+  }
+
+  useEffect(() => load(0), []);
+
+  const totalPages = Math.max(1, Math.ceil(total / DELETED_MOVIES_PAGE_SIZE));
 
   return (
     <div className="card settings-section">
@@ -1111,7 +1122,7 @@ function DeletedMoviesSection() {
         <p className="muted">{t("deleted.none")}</p>
       )}
 
-      {status === "ready" && entries.length > 0 && (
+      {entries.length > 0 && (
         <ul className="user-list">
           {entries.map((entry) => (
             <li key={entry.id} className="user-row">
@@ -1128,6 +1139,28 @@ function DeletedMoviesSection() {
             </li>
           ))}
         </ul>
+      )}
+
+      {total > DELETED_MOVIES_PAGE_SIZE && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 12 }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => load(page - 1)}
+            disabled={page === 0 || status === "loading"}
+          >
+            {t("audit.previous")}
+          </button>
+          <span className="muted">{t("audit.page", { page: page + 1, totalPages })}</span>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => load(page + 1)}
+            disabled={page + 1 >= totalPages || status === "loading"}
+          >
+            {t("audit.next")}
+          </button>
+        </div>
       )}
     </div>
   );

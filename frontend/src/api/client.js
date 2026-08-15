@@ -156,7 +156,8 @@ export const api = {
   updateMovie: (id, payload) =>
     request(`/movies/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteMovie: (id) => request(`/movies/${id}`, { method: "DELETE" }),
-  listDeletedMovies: () => request("/movies/deleted"),
+  listDeletedMovies: ({ skip = 0, limit = 10 } = {}) =>
+    request(`/movies/deleted?${new URLSearchParams({ skip, limit })}`),
   syncMoviesFromTmdb: () => request("/movies/sync-tmdb", { method: "POST" }),
   syncTvShowsFromTmdb: () => request("/tv-shows/sync-tmdb", { method: "POST" }),
   listTags: () => request("/tags"),

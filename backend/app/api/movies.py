@@ -13,7 +13,7 @@ from app.models.movie import (
     AudioType,
     CollectionInfo,
     CollectionStats,
-    DeletedMovie,
+    DeletedMoviePage,
     DuplicateMatch,
     MediaType,
     Movie,
@@ -157,10 +157,14 @@ async def list_genres(db: AsyncIOMotorDatabase = Depends(get_database)):
 
 
 @router.get(
-    "/deleted", response_model=list[DeletedMovie], dependencies=[Depends(require_not_guest)]
+    "/deleted", response_model=DeletedMoviePage, dependencies=[Depends(require_not_guest)]
 )
-async def list_deleted_movies(db: AsyncIOMotorDatabase = Depends(get_database)):
-    return await movie_service.list_deleted_movies(db)
+async def list_deleted_movies(
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=10, ge=1, le=200),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    return await movie_service.list_deleted_movies(db, skip, limit)
 
 
 @router.post(

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.130.0 (build 0176) — 2026-08-15
+
+- **"Slettede film" i Indstillinger bladres nu i sider.** Listen viser højst 10 ad gangen med forrige/næste-knapper, i stedet for at vise alle slettede film på én lang, fyldt side.
+
 ## v0.129.0 (build 0175) — 2026-08-15
 
 - **Ny systemovervågnings-side.** Under Indstillinger → Drift kan admins nu se serverens CPU, RAM og diskforbrug samt status for de tjenester der driver appen (database, webserver, backend). To nye knapper: genstart kun app-tjenesten (hurtig, ingen adgangskode), eller genstart hele serveren (kræver din adgangskode, da det er en mere forstyrrende handling).

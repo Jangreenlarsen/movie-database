@@ -220,6 +220,21 @@ export const api = {
       body: JSON.stringify({ current_password: currentPassword }),
     }),
 
+  // Systemovervågning (feature #154). `background: true` for det periodiske
+  // auto-opdaterings-kald (feature #148 — en åben, uovervåget fane må ikke
+  // alene holde en session kunstigt i live).
+  getSystemHealth: (background) =>
+    request(
+      "/system/monitor",
+      background ? { headers: { "X-Background-Poll": "1" } } : undefined
+    ),
+  restartService: () => request("/system/monitor/restart-service", { method: "POST" }),
+  rebootServer: (currentPassword) =>
+    request("/system/monitor/reboot", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword }),
+    }),
+
   // TLS-certifikat-styring (feature #73)
   getCertStatus: () => request("/system/cert"),
   generateCsr: () => request("/system/cert/csr", { method: "POST" }),

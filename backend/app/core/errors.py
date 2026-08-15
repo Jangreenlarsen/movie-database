@@ -164,6 +164,18 @@ class InvalidBackupError(Exception):
         super().__init__(reason)
 
 
+class NotSupportedOnThisPlatformError(Exception):
+    """Feature #154 — genstart af tjeneste/server afhænger af systemd og
+    findes derfor kun i produktion (Linux), ikke under lokal udvikling
+    (Windows/macOS). CPU/RAM/disk-metrikker virker overalt (psutil er
+    cross-platform); det er kun selve genstarts-handlingerne der er
+    Linux-only."""
+
+    def __init__(self, action: str):
+        self.action = action
+        super().__init__(f"{action} er kun understøttet i produktion (Linux/systemd), ikke her.")
+
+
 class DeployScriptNotFoundError(Exception):
     def __init__(self, path: str):
         self.path = path

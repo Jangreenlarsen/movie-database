@@ -70,6 +70,13 @@ class Settings(BaseSettings):
     # så frontend kan skelne "intet nyt at hente" fra en reel fejl i stedet
     # for udelukkende at gætte ud fra om build-nummeret ændrede sig.
     deploy_status_path: str = "/opt/moviedb/.deploy-status"
+    # Feature #154 — samme trigger-fil deploy.sh selv rører til sidst; en ren
+    # "genstart nu" (uden git pull/npm build) rører den bare direkte.
+    deploy_restart_trigger_path: str = "/opt/moviedb/.deploy-restart-trigger"
+    # Feature #154 — genstart af HELE serveren (fysisk/VM), ikke kun
+    # backend-tjenesten. Nyt, separat root-ejet systemd-trigger, samme
+    # sudo-fri mønster som deploy/cert ovenfor — se DEPLOYMENT.md.
+    reboot_trigger_path: str = "/opt/moviedb/.reboot-trigger"
 
     # TLS-certifikat-styring (feature #73) — kun meningsfuldt i produktion,
     # se DEPLOYMENT.md/BUGS.md #23. `cert_live_path` er den faktisk

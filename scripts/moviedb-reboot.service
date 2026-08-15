@@ -1,0 +1,10 @@
+[Unit]
+Description=Reboot the server (triggered by the Movie database backend, feature #154)
+
+[Service]
+Type=oneshot
+# Trigger-filen fjernes FØR selve reboot startes — efter en reboot findes
+# den jo alligevel ikke længere, men det undgår at et evt. mislykket/afbrudt
+# reboot-forsøg efterlader filen og forvirrer en fremtidig kørsel.
+ExecStartPre=/usr/bin/rm -f /opt/moviedb/.reboot-trigger
+ExecStart=/usr/sbin/reboot

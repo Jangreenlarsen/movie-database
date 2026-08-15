@@ -268,3 +268,67 @@
   font-size: 0.8rem;
   margin-top: 2px;
 }
+
+/* Feature #154 — systemovervågning (CPU/RAM/disk, tjeneste-status, genstart). */
+.monitor-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.monitor-metric-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
+.monitor-metric-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  overflow: hidden;
+}
+
+.monitor-metric-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.monitor-metric-detail {
+  font-size: 0.78rem;
+  margin-top: 3px;
+}
+
+.monitor-services {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.monitor-service-badge {
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.monitor-service-badge.ok {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-color: transparent;
+}
+
+.monitor-service-badge.down {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: transparent;
+}
+
+.monitor-service-badge.unknown {
+  color: var(--text-muted);
+}

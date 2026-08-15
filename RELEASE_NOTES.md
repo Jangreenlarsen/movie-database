@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.137.0 (build 0186) — 2026-08-15
+
+- **Presse Nyt er nu en rigtig side, ikke en PDF.** Artiklen om Voldby Bios åbning vises nu direkte på siden som almindelig, læsevenlig tekst — på både dansk og engelsk. Den oprindelige PDF kan stadig ses via "Vis som PDF".
+
 ## v0.136.1 (build 0185) — 2026-08-15
 
 - **Rettet: ingen værktøjslinje i Presse Nyt-visningen mere.** PDF-visningen viste før browserens egen værktøjslinje (zoom/download/print-knapper) oven på dokumentet — den er nu skjult.

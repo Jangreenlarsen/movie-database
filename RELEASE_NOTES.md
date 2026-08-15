@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.133.0 (build 0180) — 2026-08-15
+
+- **Print-siden er nu delt op i fire lister.** Film og TV-serier vises hver i to lister — digitale og fysiske — og hver liste har sin egen "Print denne liste"-knap, så du kan printe fx kun de fysiske film for sig.
+
 ## v0.132.1 (build 0179) — 2026-08-15
 
 - **Dublet-advarslen viser nu om det er fysisk eller digitalt.** Når du opretter en film/serie der allerede findes, viser advarslen nu serienummeret med rigtigt præfiks (fx "D0042" for digital, "M0042"/"T0007" for fysisk) i stedet for et bart tal du ikke kunne bruge til noget.

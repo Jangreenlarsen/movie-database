@@ -24,6 +24,16 @@ export const DIGITAL_SERIAL_PREFIX = "D";
 const DIGITAL_MEDIA_TYPE = "Digital";
 
 /**
+ * Feature #158 — Print-sidens digital/fysisk-opdeling bruger samme
+ * "alt der ikke udtrykkeligt er Digital er fysisk"-regel som `serialPrefix`
+ * ovenfor (poster fra før medietype var påkrævet skal lande som fysiske,
+ * ikke forsvinde eller kræve en tredje "ukendt"-bunke).
+ */
+export function isDigitalMediaType(mediaType) {
+  return mediaType === DIGITAL_MEDIA_TYPE;
+}
+
+/**
  * Præfikset for én post. Medietypen vinder over ressourcen, fordi den
  * digitale serie går på tværs af film og serier.
  *

@@ -260,6 +260,31 @@
   color: var(--accent-strong);
 }
 
+/* Feature #156 — negeret filter ("må ikke have denne"): rød + en diagonal
+   streg fra øverste venstre til nederste højre hjørne, samme "forbudt"-tegn
+   som et ⃠-symbol, tegnet som en gradient-bånd frem for et separat SVG-lag. */
+.chip.chip-negated {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+  color: var(--danger);
+  position: relative;
+}
+
+.chip.chip-negated::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom right,
+    transparent calc(50% - 1px),
+    var(--danger) calc(50% - 1px),
+    var(--danger) calc(50% + 1px),
+    transparent calc(50% + 1px)
+  );
+}
+
 .chip-row {
   display: flex;
   flex-wrap: wrap;

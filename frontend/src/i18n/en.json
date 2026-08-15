@@ -95,6 +95,7 @@
   "lib.showOnCard": "Show on card",
   "lib.resetFields": "Reset shown fields",
   "lib.watched": "Watched",
+  "lib.onPlex": "On Plex",
   "lib.wishlistPending": "Awaiting an admin's approval",
   "lib.wishlistPendingShort": "⏳ Pending",
   "lib.approveWishlist": "Approve wish",

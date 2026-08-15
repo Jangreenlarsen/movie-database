@@ -10,6 +10,7 @@ import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import SubtitlesPicker from "../components/SubtitlesPicker";
 import ViewModeToggle from "../components/ViewModeToggle";
 import { useLocale, useT } from "../i18n";
+import { cycleFilterValue, cycleTriState, EMPTY_FILTER_STATE } from "../utils/filterCycle";
 import { cardPosterSize, posterSrc } from "../utils/posterUrl";
 import { formatSerial, serialPrefix } from "../utils/serialNumber";
 import "../pages/Library.css";
@@ -117,14 +118,16 @@ export default function TvShows({
   const isGuest = user.role === "guest";
   const isAdmin = user.role === "admin";
   const [query, setQuery] = useState("");
-  const [selectedTags, setSelectedTags] = useState([]);
-  const [selectedFormats, setSelectedFormats] = useState([]);
-  const [selectedAudioTypes, setSelectedAudioTypes] = useState([]);
-  const [selectedMediaTypes, setSelectedMediaTypes] = useState([]);
+  // Feature #156 — se den identiske note i Library.jsx: {included, excluded}.
+  const [tagFilter, setTagFilter] = useState(EMPTY_FILTER_STATE);
+  const [formatFilter, setFormatFilter] = useState(EMPTY_FILTER_STATE);
+  const [audioTypeFilter, setAudioTypeFilter] = useState(EMPTY_FILTER_STATE);
+  const [mediaTypeFilter, setMediaTypeFilter] = useState(EMPTY_FILTER_STATE);
   // Feature #111 — se den identiske note i Library.jsx.
-  const [selectedGenres, setSelectedGenres] = useState([]);
+  const [genreFilter, setGenreFilter] = useState(EMPTY_FILTER_STATE);
   const [allGenres, setAllGenres] = useState([]);
   const [watchedFilter, setWatchedFilter] = useState(null);
+  const [plexFilter, setPlexFilter] = useState(null);
   const [sortLevels, setSortLevels] = useState(() => initialSortLevels(user.settings));
   const [presets, setPresets] = useState(user.settings.tv_sort_presets ?? []);
   const [presetNameInput, setPresetNameInput] = useState("");
@@ -157,6 +160,8 @@ export default function TvShows({
   const [settingsError, setSettingsError] = useState(null);
   // BUGS.md #61 — se den identiske note i Library.jsx.
   const [refreshError, setRefreshError] = useState(null);
+  // Feature #156 — se den identiske note i Library.jsx.
+  const [listError, setListError] = useState(null);
   const [savedMovie, setSavedMovie] = useState(false);
   // Feature #88 — "show" er Plex' eget navn for en TV-serie-sektion.
   const plex = usePlexAvailability("show");
@@ -216,14 +221,20 @@ export default function TvShows({
   function fetchShows() {
     return api.listTvShows({
       q: query || undefined,
-      tags: selectedTags,
-      format: selectedFormats,
-      audioTypes: selectedAudioTypes,
-      mediaTypes: selectedMediaTypes,
-      genres: selectedGenres,
+      tags: tagFilter.included,
+      tagsExclude: tagFilter.excluded,
+      format: formatFilter.included,
+      formatExclude: formatFilter.excluded,
+      audioTypes: audioTypeFilter.included,
+      audioTypesExclude: audioTypeFilter.excluded,
+      mediaTypes: mediaTypeFilter.included,
+      mediaTypesExclude: mediaTypeFilter.excluded,
+      genres: genreFilter.included,
+      genresExclude: genreFilter.excluded,
       sort: sortLevels,
       wishlist,
       watched: watchedFilter,
+      plex: plexFilter,
       page,
       pageSize,
     });
@@ -236,35 +247,41 @@ export default function TvShows({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     query,
-    selectedTags,
-    selectedFormats,
-    selectedAudioTypes,
-    selectedMediaTypes,
-    selectedGenres,
+    tagFilter,
+    formatFilter,
+    audioTypeFilter,
+    mediaTypeFilter,
+    genreFilter,
     sortLevels,
     watchedFilter,
+    plexFilter,
     pageSize,
   ]);
 
   useEffect(() => {
     setStatus("loading");
+    setListError(null);
     fetchShows()
       .then((data) => {
         setShows(data.items);
         setTotal(data.total);
         setStatus("ready");
       })
-      .catch(() => setStatus("error"));
+      .catch((err) => {
+        setListError(err.message);
+        setStatus("error");
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     query,
-    selectedTags,
-    selectedFormats,
-    selectedAudioTypes,
-    selectedMediaTypes,
-    selectedGenres,
+    tagFilter,
+    formatFilter,
+    audioTypeFilter,
+    mediaTypeFilter,
+    genreFilter,
     sortLevels,
     watchedFilter,
+    plexFilter,
     page,
     pageSize,
   ]);
@@ -347,10 +364,11 @@ export default function TvShows({
     setSortLevels(preset.levels);
     persistSortLevels(preset.levels);
     setQuery(preset.query ?? "");
-    setSelectedTags(preset.tags ?? []);
-    setSelectedFormats(preset.formats ?? []);
-    setSelectedAudioTypes(preset.audio_types ?? []);
-    setSelectedMediaTypes(preset.media_types ?? []);
+    // Feature #156 — se den identiske note i Library.jsx.
+    setTagFilter({ included: preset.tags ?? [], excluded: [] });
+    setFormatFilter({ included: preset.formats ?? [], excluded: [] });
+    setAudioTypeFilter({ included: preset.audio_types ?? [], excluded: [] });
+    setMediaTypeFilter({ included: preset.media_types ?? [], excluded: [] });
     setWatchedFilter(preset.watched ?? null);
   }
 
@@ -363,10 +381,10 @@ export default function TvShows({
         name,
         levels: sortLevels,
         query: query || null,
-        tags: selectedTags,
-        formats: selectedFormats,
-        audio_types: selectedAudioTypes,
-        media_types: selectedMediaTypes,
+        tags: tagFilter.included,
+        formats: formatFilter.included,
+        audio_types: audioTypeFilter.included,
+        media_types: mediaTypeFilter.included,
         watched: watchedFilter,
       },
     ];
@@ -383,12 +401,18 @@ export default function TvShows({
 
   // Feature #86 — se Library.jsx' identiske blok.
   const activeFilterCount =
-    selectedTags.length +
-    selectedFormats.length +
-    selectedAudioTypes.length +
-    selectedMediaTypes.length +
-    selectedGenres.length +
-    (watchedFilter != null ? 1 : 0);
+    tagFilter.included.length +
+    tagFilter.excluded.length +
+    formatFilter.included.length +
+    formatFilter.excluded.length +
+    audioTypeFilter.included.length +
+    audioTypeFilter.excluded.length +
+    mediaTypeFilter.included.length +
+    mediaTypeFilter.excluded.length +
+    genreFilter.included.length +
+    genreFilter.excluded.length +
+    (watchedFilter != null ? 1 : 0) +
+    (plexFilter != null ? 1 : 0);
   const hasActiveFilters = activeFilterCount > 0;
   const sortIsDefault = sortLevelsAreDefault(sortLevels);
   const changedFieldCount = VISIBLE_FIELD_OPTIONS.filter(
@@ -401,12 +425,13 @@ export default function TvShows({
   }
 
   function resetFilters() {
-    setSelectedTags([]);
-    setSelectedFormats([]);
-    setSelectedAudioTypes([]);
-    setSelectedMediaTypes([]);
-    setSelectedGenres([]);
+    setTagFilter(EMPTY_FILTER_STATE);
+    setFormatFilter(EMPTY_FILTER_STATE);
+    setAudioTypeFilter(EMPTY_FILTER_STATE);
+    setMediaTypeFilter(EMPTY_FILTER_STATE);
+    setGenreFilter(EMPTY_FILTER_STATE);
     setWatchedFilter(null);
+    setPlexFilter(null);
   }
 
   function resetVisibleFieldsToDefault() {
@@ -670,8 +695,9 @@ export default function TvShows({
                     <Chip
                       key={tag}
                       label={tag}
-                      active={selectedTags.includes(tag)}
-                      onClick={() => setSelectedTags((prev) => toggleValue(prev, tag))}
+                      active={tagFilter.included.includes(tag)}
+                      negated={tagFilter.excluded.includes(tag)}
+                      onClick={() => setTagFilter((prev) => cycleFilterValue(prev, tag))}
                     />
                   ))}
                 </div>
@@ -686,8 +712,9 @@ export default function TvShows({
                     <Chip
                       key={genre}
                       label={genre}
-                      active={selectedGenres.includes(genre)}
-                      onClick={() => setSelectedGenres((prev) => toggleValue(prev, genre))}
+                      active={genreFilter.included.includes(genre)}
+                      negated={genreFilter.excluded.includes(genre)}
+                      onClick={() => setGenreFilter((prev) => cycleFilterValue(prev, genre))}
                     />
                   ))}
                 </div>
@@ -701,8 +728,9 @@ export default function TvShows({
                     <Chip
                       key={format}
                       label={format}
-                      active={selectedFormats.includes(format)}
-                      onClick={() => setSelectedFormats((prev) => toggleValue(prev, format))}
+                      active={formatFilter.included.includes(format)}
+                      negated={formatFilter.excluded.includes(format)}
+                      onClick={() => setFormatFilter((prev) => cycleFilterValue(prev, format))}
                     />
                   ))}
                 </div>
@@ -716,8 +744,11 @@ export default function TvShows({
                     <Chip
                       key={audioType}
                       label={audioType}
-                      active={selectedAudioTypes.includes(audioType)}
-                      onClick={() => setSelectedAudioTypes((prev) => toggleValue(prev, audioType))}
+                      active={audioTypeFilter.included.includes(audioType)}
+                      negated={audioTypeFilter.excluded.includes(audioType)}
+                      onClick={() =>
+                        setAudioTypeFilter((prev) => cycleFilterValue(prev, audioType))
+                      }
                     />
                   ))}
                 </div>
@@ -731,8 +762,11 @@ export default function TvShows({
                     <Chip
                       key={mediaType}
                       label={mediaType}
-                      active={selectedMediaTypes.includes(mediaType)}
-                      onClick={() => setSelectedMediaTypes((prev) => toggleValue(prev, mediaType))}
+                      active={mediaTypeFilter.included.includes(mediaType)}
+                      negated={mediaTypeFilter.excluded.includes(mediaType)}
+                      onClick={() =>
+                        setMediaTypeFilter((prev) => cycleFilterValue(prev, mediaType))
+                      }
                     />
                   ))}
                 </div>
@@ -744,15 +778,24 @@ export default function TvShows({
                 <Chip
                   label={t("lib.watched")}
                   active={watchedFilter === true}
-                  onClick={() => setWatchedFilter((prev) => (prev === true ? null : true))}
-                />
-                <Chip
-                  label={t("lib.notWatched")}
-                  active={watchedFilter === false}
-                  onClick={() => setWatchedFilter((prev) => (prev === false ? null : false))}
+                  negated={watchedFilter === false}
+                  onClick={() => setWatchedFilter((prev) => cycleTriState(prev))}
                 />
               </div>
             </div>
+            {plex.status !== "unconfigured" && (
+              <div className="filter-group">
+                <span className="filter-group-label">{t("field.plex")}</span>
+                <div className="chip-row">
+                  <Chip
+                    label={t("lib.onPlex")}
+                    active={plexFilter === true}
+                    negated={plexFilter === false}
+                    onClick={() => setPlexFilter((prev) => cycleTriState(prev))}
+                  />
+                </div>
+              </div>
+            )}
             {/* Feature #86 — se Library.jsx: altid synlig, deaktiveret når
                 der ikke er noget at rydde. */}
             <div className="panel-actions">
@@ -818,7 +861,7 @@ export default function TvShows({
       )}
 
       {status === "error" && (
-        <div className="banner banner-error">{t("tv.loadError")}</div>
+        <div className="banner banner-error">{listError || t("tv.loadError")}</div>
       )}
 
       {status === "ready" && shows.length === 0 && (

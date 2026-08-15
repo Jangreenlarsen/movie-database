@@ -9,6 +9,7 @@ from app.integrations.plex_client import (
     PlexShowDetails,
 )
 from app.models.movie import MediaType, MovieFormat
+from app.repositories import movie_repository
 from app.services import plex_service
 
 
@@ -308,6 +309,69 @@ async def test_diagnostics_explains_missing_configuration(client, monkeypatch):
     assert body["configured"] is False
     assert body["token_configured"] is True
     assert "server-URL" in body["error"]
+
+
+# --- Plex-filter i biblioteks-listen (feature #156) -------------------------
+
+
+async def test_get_available_ids_returns_none_when_unconfigured(db, monkeypatch):
+    monkeypatch.setattr(settings, "plex_server_url", "")
+    monkeypatch.setattr(settings, "plex_token", "")
+    assert await plex_service.get_available_ids(db, "movie") is None
+
+
+async def test_get_available_ids_returns_matched_ids(db, monkeypatch):
+    _configure(monkeypatch)
+    document = await movie_repository.insert(
+        db, {"title": "The Matrix", "year": 1999, "is_wishlist": False, "tags": [], "tags_normalized": []}
+    )
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
+
+    ids = await plex_service.get_available_ids(db, "movie")
+    assert ids == {str(document["_id"])}
+
+
+async def test_movies_plex_filter_only_shows_matched_titles(client, monkeypatch):
+    _configure(monkeypatch)
+    await client.post("/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Digital", "format": "D-1080"})
+    await client.post("/api/movies", json={"title": "Ikke På Plex", "year": 2001, "media_type": "Digital", "format": "D-1080"})
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
+
+    on_plex = await client.get("/api/movies", params={"plex": "true"})
+    assert [m["title"] for m in on_plex.json()["items"]] == ["The Matrix"]
+
+    not_on_plex = await client.get("/api/movies", params={"plex": "false"})
+    assert [m["title"] for m in not_on_plex.json()["items"]] == ["Ikke På Plex"]
+
+
+async def test_tv_shows_plex_filter_only_shows_matched_titles(client, monkeypatch):
+    _configure(monkeypatch)
+    await client.post("/api/tv-shows", json={"name": "Fargo", "year": 2014, "media_type": "Digital", "format": "D-1080"})
+    await client.post("/api/tv-shows", json={"name": "Ikke På Plex", "year": 2001, "media_type": "Digital", "format": "D-1080"})
+    _patch_library(monkeypatch, _fake_library([PlexItem("show", "7", "Fargo", 2014, None, None)]))
+
+    on_plex = await client.get("/api/tv-shows", params={"plex": "true"})
+    assert [s["name"] for s in on_plex.json()["items"]] == ["Fargo"]
+
+
+async def test_movies_plex_filter_rejected_when_plex_unconfigured(client, monkeypatch):
+    """Feature #156 — bruges filteret uden en konfigureret Plex-server, skal
+    det fejle tydeligt (409) i stedet for at vise et vilkårligt tomt/fuldt
+    resultat, der ville se ud som om filteret bare "ikke fandt noget"."""
+    monkeypatch.setattr(settings, "plex_server_url", "")
+    monkeypatch.setattr(settings, "plex_token", "")
+
+    response = await client.get("/api/movies", params={"plex": "true"})
+    assert response.status_code == 409
+    assert "ikke konfigureret" in response.json()["detail"]
+
+
+async def test_tv_shows_plex_filter_rejected_when_plex_unconfigured(client, monkeypatch):
+    monkeypatch.setattr(settings, "plex_server_url", "")
+    monkeypatch.setattr(settings, "plex_token", "")
+
+    response = await client.get("/api/tv-shows", params={"plex": "true"})
+    assert response.status_code == 409
 
 
 # --- import fra Plex (feature #90) ------------------------------------------

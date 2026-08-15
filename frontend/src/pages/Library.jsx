@@ -10,6 +10,7 @@ import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import SubtitlesPicker from "../components/SubtitlesPicker";
 import ViewModeToggle from "../components/ViewModeToggle";
 import { useLocale, useT } from "../i18n";
+import { cycleFilterValue, cycleTriState, EMPTY_FILTER_STATE } from "../utils/filterCycle";
 import { cardPosterSize, posterSrc } from "../utils/posterUrl";
 import { formatSerial, serialPrefix } from "../utils/serialNumber";
 import "./Library.css";
@@ -142,16 +143,21 @@ export default function Library({
   const isGuest = user.role === "guest";
   const isAdmin = user.role === "admin";
   const [query, setQuery] = useState("");
-  const [selectedTags, setSelectedTags] = useState([]);
-  const [selectedFormats, setSelectedFormats] = useState([]);
-  const [selectedAudioTypes, setSelectedAudioTypes] = useState([]);
-  const [selectedMediaTypes, setSelectedMediaTypes] = useState([]);
+  // Feature #156 — hvert filter er nu {included, excluded} i stedet for en
+  // flad liste: et badge cykler neutral → inkludér → ekskludér → neutral.
+  const [tagFilter, setTagFilter] = useState(EMPTY_FILTER_STATE);
+  const [formatFilter, setFormatFilter] = useState(EMPTY_FILTER_STATE);
+  const [audioTypeFilter, setAudioTypeFilter] = useState(EMPTY_FILTER_STATE);
+  const [mediaTypeFilter, setMediaTypeFilter] = useState(EMPTY_FILTER_STATE);
   // Feature #111 — genrer der rent faktisk findes i biblioteket (distinct
   // fra backend, ikke en fast enum som format/audio_types/media_type), så
   // filter-panelet kun viser genrer der reelt kan matche noget.
-  const [selectedGenres, setSelectedGenres] = useState([]);
+  const [genreFilter, setGenreFilter] = useState(EMPTY_FILTER_STATE);
   const [allGenres, setAllGenres] = useState([]);
   const [watchedFilter, setWatchedFilter] = useState(null); // null | true | false
+  // Feature #156 — samme tri-state som watchedFilter ovenfor, men mod
+  // usePlexAvailability's id-sæt frem for et gemt felt på dokumentet.
+  const [plexFilter, setPlexFilter] = useState(null); // null | true | false
   const [personFilter, setPersonFilter] = useState(null); // null | { type: "cast" | "director", name }
   const [sortLevels, setSortLevels] = useState(() => initialSortLevels(user.settings));
   const [presets, setPresets] = useState(user.settings.sort_presets ?? []);
@@ -189,6 +195,10 @@ export default function Library({
   const [settingsError, setSettingsError] = useState(null);
   // BUGS.md #61 — en fejlet genindlæsning efter gem/slet vises nu (før slugt).
   const [refreshError, setRefreshError] = useState(null);
+  // Feature #156 — Plex-filteret kan afvises (409) hvis Plex ikke er
+  // konfigureret; den specifikke besked skal vises, ikke kun "kunne ikke
+  // hente film" (CLAUDE.md regel 16).
+  const [listError, setListError] = useState(null);
   const [savedTvShow, setSavedTvShow] = useState(false);
   // Feature #88 — hele bibliotekets Plex-status i ét kald, slået op pr. kort.
   const plex = usePlexAvailability("movie");
@@ -252,14 +262,20 @@ export default function Library({
   function fetchMovies() {
     return api.listMovies({
       q: query || undefined,
-      tags: selectedTags,
-      format: selectedFormats,
-      audioTypes: selectedAudioTypes,
-      mediaTypes: selectedMediaTypes,
-      genres: selectedGenres,
+      tags: tagFilter.included,
+      tagsExclude: tagFilter.excluded,
+      format: formatFilter.included,
+      formatExclude: formatFilter.excluded,
+      audioTypes: audioTypeFilter.included,
+      audioTypesExclude: audioTypeFilter.excluded,
+      mediaTypes: mediaTypeFilter.included,
+      mediaTypesExclude: mediaTypeFilter.excluded,
+      genres: genreFilter.included,
+      genresExclude: genreFilter.excluded,
       sort: sortLevels,
       wishlist,
       watched: watchedFilter,
+      plex: plexFilter,
       cast: personFilter?.type === "cast" ? personFilter.name : undefined,
       director: personFilter?.type === "director" ? personFilter.name : undefined,
       page,
@@ -276,36 +292,42 @@ export default function Library({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     query,
-    selectedTags,
-    selectedFormats,
-    selectedAudioTypes,
-    selectedMediaTypes,
-    selectedGenres,
+    tagFilter,
+    formatFilter,
+    audioTypeFilter,
+    mediaTypeFilter,
+    genreFilter,
     sortLevels,
     watchedFilter,
+    plexFilter,
     personFilter,
     pageSize,
   ]);
 
   useEffect(() => {
     setStatus("loading");
+    setListError(null);
     fetchMovies()
       .then((data) => {
         setMovies(data.items);
         setTotal(data.total);
         setStatus("ready");
       })
-      .catch(() => setStatus("error"));
+      .catch((err) => {
+        setListError(err.message);
+        setStatus("error");
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     query,
-    selectedTags,
-    selectedFormats,
-    selectedAudioTypes,
-    selectedMediaTypes,
-    selectedGenres,
+    tagFilter,
+    formatFilter,
+    audioTypeFilter,
+    mediaTypeFilter,
+    genreFilter,
     sortLevels,
     watchedFilter,
+    plexFilter,
     personFilter,
     page,
     pageSize,
@@ -394,10 +416,13 @@ export default function Library({
     // fallbacks make applying an old, sort-only preset a no-op for the rest
     // of the filter state instead of wiping out what the user had selected.
     setQuery(preset.query ?? "");
-    setSelectedTags(preset.tags ?? []);
-    setSelectedFormats(preset.formats ?? []);
-    setSelectedAudioTypes(preset.audio_types ?? []);
-    setSelectedMediaTypes(preset.media_types ?? []);
+    // Feature #156 — presets gemmer kun den inkluderede side af hvert filter
+    // (uændret gemme-format); anvendes et gemt preset starter et evt. negeret
+    // valg fra en tidligere session altså rent, ikke bevaret.
+    setTagFilter({ included: preset.tags ?? [], excluded: [] });
+    setFormatFilter({ included: preset.formats ?? [], excluded: [] });
+    setAudioTypeFilter({ included: preset.audio_types ?? [], excluded: [] });
+    setMediaTypeFilter({ included: preset.media_types ?? [], excluded: [] });
     setWatchedFilter(preset.watched ?? null);
   }
 
@@ -410,10 +435,10 @@ export default function Library({
         name,
         levels: sortLevels,
         query: query || null,
-        tags: selectedTags,
-        formats: selectedFormats,
-        audio_types: selectedAudioTypes,
-        media_types: selectedMediaTypes,
+        tags: tagFilter.included,
+        formats: formatFilter.included,
+        audio_types: audioTypeFilter.included,
+        media_types: mediaTypeFilter.included,
         watched: watchedFilter,
       },
     ];
@@ -432,13 +457,20 @@ export default function Library({
   // om der overhovedet er valgt noget uden at man skal åbne panelet.
   // personFilter tælles med her; før stod den kun i `hasActiveFilters`, så et
   // rent person-filter fik knappen til at vise "Filtrér (0)".
+  // Feature #156 — hvert filter tæller både inkluderede og ekskluderede valg.
   const activeFilterCount =
-    selectedTags.length +
-    selectedFormats.length +
-    selectedAudioTypes.length +
-    selectedMediaTypes.length +
-    selectedGenres.length +
+    tagFilter.included.length +
+    tagFilter.excluded.length +
+    formatFilter.included.length +
+    formatFilter.excluded.length +
+    audioTypeFilter.included.length +
+    audioTypeFilter.excluded.length +
+    mediaTypeFilter.included.length +
+    mediaTypeFilter.excluded.length +
+    genreFilter.included.length +
+    genreFilter.excluded.length +
     (watchedFilter != null ? 1 : 0) +
+    (plexFilter != null ? 1 : 0) +
     (personFilter != null ? 1 : 0);
   const hasActiveFilters = activeFilterCount > 0;
   const sortIsDefault = sortLevelsAreDefault(sortLevels);
@@ -452,12 +484,13 @@ export default function Library({
   }
 
   function resetFilters() {
-    setSelectedTags([]);
-    setSelectedFormats([]);
-    setSelectedAudioTypes([]);
-    setSelectedMediaTypes([]);
-    setSelectedGenres([]);
+    setTagFilter(EMPTY_FILTER_STATE);
+    setFormatFilter(EMPTY_FILTER_STATE);
+    setAudioTypeFilter(EMPTY_FILTER_STATE);
+    setMediaTypeFilter(EMPTY_FILTER_STATE);
+    setGenreFilter(EMPTY_FILTER_STATE);
     setWatchedFilter(null);
+    setPlexFilter(null);
     setPersonFilter(null);
   }
 
@@ -738,8 +771,9 @@ export default function Library({
                     <Chip
                       key={tag}
                       label={tag}
-                      active={selectedTags.includes(tag)}
-                      onClick={() => setSelectedTags((prev) => toggleValue(prev, tag))}
+                      active={tagFilter.included.includes(tag)}
+                      negated={tagFilter.excluded.includes(tag)}
+                      onClick={() => setTagFilter((prev) => cycleFilterValue(prev, tag))}
                     />
                   ))}
                 </div>
@@ -756,8 +790,9 @@ export default function Library({
                     <Chip
                       key={genre}
                       label={genre}
-                      active={selectedGenres.includes(genre)}
-                      onClick={() => setSelectedGenres((prev) => toggleValue(prev, genre))}
+                      active={genreFilter.included.includes(genre)}
+                      negated={genreFilter.excluded.includes(genre)}
+                      onClick={() => setGenreFilter((prev) => cycleFilterValue(prev, genre))}
                     />
                   ))}
                 </div>
@@ -771,8 +806,9 @@ export default function Library({
                     <Chip
                       key={format}
                       label={format}
-                      active={selectedFormats.includes(format)}
-                      onClick={() => setSelectedFormats((prev) => toggleValue(prev, format))}
+                      active={formatFilter.included.includes(format)}
+                      negated={formatFilter.excluded.includes(format)}
+                      onClick={() => setFormatFilter((prev) => cycleFilterValue(prev, format))}
                     />
                   ))}
                 </div>
@@ -786,9 +822,10 @@ export default function Library({
                     <Chip
                       key={audioType}
                       label={audioType}
-                      active={selectedAudioTypes.includes(audioType)}
+                      active={audioTypeFilter.included.includes(audioType)}
+                      negated={audioTypeFilter.excluded.includes(audioType)}
                       onClick={() =>
-                        setSelectedAudioTypes((prev) => toggleValue(prev, audioType))
+                        setAudioTypeFilter((prev) => cycleFilterValue(prev, audioType))
                       }
                     />
                   ))}
@@ -803,9 +840,10 @@ export default function Library({
                     <Chip
                       key={mediaType}
                       label={mediaType}
-                      active={selectedMediaTypes.includes(mediaType)}
+                      active={mediaTypeFilter.included.includes(mediaType)}
+                      negated={mediaTypeFilter.excluded.includes(mediaType)}
                       onClick={() =>
-                        setSelectedMediaTypes((prev) => toggleValue(prev, mediaType))
+                        setMediaTypeFilter((prev) => cycleFilterValue(prev, mediaType))
                       }
                     />
                   ))}
@@ -818,15 +856,26 @@ export default function Library({
                 <Chip
                   label={t("lib.watched")}
                   active={watchedFilter === true}
-                  onClick={() => setWatchedFilter((prev) => (prev === true ? null : true))}
-                />
-                <Chip
-                  label={t("lib.notWatched")}
-                  active={watchedFilter === false}
-                  onClick={() => setWatchedFilter((prev) => (prev === false ? null : false))}
+                  negated={watchedFilter === false}
+                  onClick={() => setWatchedFilter((prev) => cycleTriState(prev))}
                 />
               </div>
             </div>
+            {/* Feature #156 — kun tilbudt når Plex reelt er sat op; ellers
+                ville badget bare producere en fejlbanner ved klik. */}
+            {plex.status !== "unconfigured" && (
+              <div className="filter-group">
+                <span className="filter-group-label">{t("field.plex")}</span>
+                <div className="chip-row">
+                  <Chip
+                    label={t("lib.onPlex")}
+                    active={plexFilter === true}
+                    negated={plexFilter === false}
+                    onClick={() => setPlexFilter((prev) => cycleTriState(prev))}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Feature #86 — knappen står der altid (deaktiveret når intet er
                 valgt), så den er til at få øje på og selv fortæller om der
@@ -903,7 +952,7 @@ export default function Library({
       )}
 
       {status === "error" && (
-        <div className="banner banner-error">{t("lib.loadError")}</div>
+        <div className="banner banner-error">{listError || t("lib.loadError")}</div>
       )}
 
       {status === "ready" && movies.length === 0 && (

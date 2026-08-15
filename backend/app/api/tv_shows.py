@@ -41,25 +41,38 @@ router = APIRouter(
 async def list_tv_shows(
     q: str | None = Query(default=None),
     tags: str | None = Query(default=None),
+    tags_exclude: str | None = Query(default=None),
     format: str | None = Query(default=None, alias="format"),
+    format_exclude: str | None = Query(default=None),
     audio_types: str | None = Query(default=None),
+    audio_types_exclude: str | None = Query(default=None),
     media_types: str | None = Query(default=None),
+    media_types_exclude: str | None = Query(default=None),
     sort: str | None = Query(default=None),
     wishlist: bool = Query(default=False),
     watched: bool | None = Query(default=None),
     page: int | None = Query(default=None, ge=1),
     page_size: int | None = Query(default=None, ge=1, le=500),
     genres: str | None = Query(default=None),
+    genres_exclude: str | None = Query(default=None),
+    plex: bool | None = Query(default=None),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     tag_list = tags.split(",") if tags else None
+    tag_exclude_list = tags_exclude.split(",") if tags_exclude else None
     format_list = format.split(",") if format else None
+    format_exclude_list = format_exclude.split(",") if format_exclude else None
     audio_type_list = audio_types.split(",") if audio_types else None
+    audio_type_exclude_list = audio_types_exclude.split(",") if audio_types_exclude else None
     media_type_list = media_types.split(",") if media_types else None
+    media_type_exclude_list = media_types_exclude.split(",") if media_types_exclude else None
     genre_list = genres.split(",") if genres else None
+    genre_exclude_list = genres_exclude.split(",") if genres_exclude else None
     return await tv_show_service.list_tv_shows(
         db, q, tag_list, format_list, audio_type_list, media_type_list, sort, wishlist, watched,
         page, page_size, genre_list,
+        tag_exclude_list, format_exclude_list, audio_type_exclude_list, media_type_exclude_list,
+        genre_exclude_list, plex,
     )
 
 

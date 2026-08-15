@@ -10,6 +10,7 @@ from app.core.errors import (
     DuplicateBarcodeError,
     MovieNotFoundError,
     NotAuthorizedError,
+    PlexFilterUnavailableError,
     SerialNumberConflictError,
     TmdbNotFoundError,
     TmdbRateLimitedError,
@@ -329,6 +330,22 @@ def parse_sort_param(sort: str | None) -> list[tuple[str, int]]:
     return levels
 
 
+async def _resolve_plex_id_filter(db: AsyncIOMotorDatabase, plex: bool | None) -> dict:
+    """Feature #156 — Plex-badget i filter-panelet. Lokalt import af
+    `plex_service` (i stedet for et modul-top import) fordi `plex_service`
+    selv importerer `movie_service`/`tv_show_service` (til `_create_imported`,
+    feature #90) — et top-level import her ville give et cirkulært import.
+    Returnerer `{}` når `plex` er `None` (intet Plex-filter anvendt)."""
+    if plex is None:
+        return {}
+    from app.services import plex_service
+
+    available_ids = await plex_service.get_available_ids(db, "movie")
+    if available_ids is None:
+        raise PlexFilterUnavailableError()
+    return {"id_in": list(available_ids)} if plex else {"id_nin": list(available_ids)}
+
+
 async def list_movies(
     db: AsyncIOMotorDatabase,
     q: str | None,
@@ -344,33 +361,46 @@ async def list_movies(
     page: int | None = None,
     page_size: int | None = None,
     genres: list[str] | None = None,
+    tags_exclude: list[str] | None = None,
+    formats_exclude: list[str] | None = None,
+    audio_types_exclude: list[str] | None = None,
+    media_types_exclude: list[str] | None = None,
+    genres_exclude: list[str] | None = None,
+    plex: bool | None = None,
 ) -> MoviePage:
     """`page`/`page_size` omitted (the default) fetches every match, no cap
     — used by callers that need the whole filtered set (Print-siden, Voldby
     BIO's søgning), not just the biblioteks-visningens aktuelle side
     (feature #15)."""
     normalized_tags = [tag_service.normalize(tag) for tag in (tags or []) if tag.strip()]
+    normalized_tags_exclude = [
+        tag_service.normalize(tag) for tag in (tags_exclude or []) if tag.strip()
+    ]
     sort_spec = parse_sort_param(sort)
     paginating = page is not None and page_size is not None
     skip = (page - 1) * page_size if paginating else 0
     limit = page_size if paginating else None
 
-    documents = await movie_repository.find_many(
-        db,
-        q,
-        normalized_tags or None,
-        formats or None,
-        audio_types or None,
-        media_types or None,
-        sort_spec or None,
-        is_wishlist,
-        watched,
-        cast,
-        director,
-        skip,
-        limit,
-        genres or None,
-    )
+    filters = {
+        "query": q,
+        "tags": normalized_tags or None,
+        "tags_exclude": normalized_tags_exclude or None,
+        "formats": formats or None,
+        "formats_exclude": formats_exclude or None,
+        "audio_types": audio_types or None,
+        "audio_types_exclude": audio_types_exclude or None,
+        "media_types": media_types or None,
+        "media_types_exclude": media_types_exclude or None,
+        "genres": genres or None,
+        "genres_exclude": genres_exclude or None,
+        "is_wishlist": is_wishlist,
+        "watched": watched,
+        "cast": cast,
+        "director": director,
+        **(await _resolve_plex_id_filter(db, plex)),
+    }
+
+    documents = await movie_repository.find_many(db, filters, sort_spec or None, skip, limit)
     # Feature #145 — markér ønsker hvis titlen falder sammen med en titel der
     # allerede er i biblioteket (film ELLER TV). Kun i ønske-visningen, og kun
     # ét sæt-opslag pr. side frem for ét pr. post.
@@ -384,10 +414,7 @@ async def list_movies(
     items = [_to_model(doc) for doc in documents]
 
     if paginating:
-        total = await movie_repository.count_many(
-            db, q, normalized_tags or None, formats or None, audio_types or None,
-            media_types or None, is_wishlist, watched, cast, director, genres or None,
-        )
+        total = await movie_repository.count_many(db, filters)
     else:
         total = len(items)
 

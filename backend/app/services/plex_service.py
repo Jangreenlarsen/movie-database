@@ -505,6 +505,33 @@ async def import_from_plex(
     return result
 
 
+async def get_available_ids(db: AsyncIOMotorDatabase, kind: str) -> set[str] | None:
+    """Feature #156 — id-sættet bag Plex-filter-badget i biblioteks-filteret.
+
+    `None` betyder Plex ikke er konfigureret eller kunne ikke nås — adskilt
+    fra et tomt sæt (som legitimt betyder "konfigureret, men intet matcher"),
+    så den kaldende service-funktion kan afvise filteret eksplicit i stedet
+    for at lade et Plex-udfald stille blive tolket som "biblioteket er tomt".
+    Genbruger `_match` mod hele biblioteket, samme som `get_availability_map`,
+    men returnerer kun id-mængden — den fulde `PlexAvailability` er ikke
+    nødvendig her, kun "er den med eller ej"."""
+    if not plex_client.is_configured():
+        return None
+
+    index = await _get_index()
+    if not index.result.ok:
+        return None
+
+    ids: set[str] = set()
+    for doc in await _library_docs(db, kind):
+        availability = _availability(
+            index, kind, doc.get("tmdb_id"), _doc_title(doc, kind), doc.get("year")
+        )
+        if availability is not None:
+            ids.add(str(doc["_id"]))
+    return ids
+
+
 async def get_diagnostics(db: AsyncIOMotorDatabase, force_refresh: bool = True) -> PlexDiagnostics:
     """Feature #88's fejlsøgning. Kører som standard med et friskt hent, så
     en admin der lige har rettet URL eller token ser den nye virkelighed og

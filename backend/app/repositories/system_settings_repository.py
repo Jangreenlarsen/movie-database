@@ -20,6 +20,13 @@ OVERRIDABLE_KEYS = (
     "primary_barcode_source",
 )
 
+# The only two overridable keys that aren't secrets (CLAUDE.md regel 6 —
+# already returned with their real value by GET /api/settings/system, unlike
+# the other six which are masked). Centralised here rather than duplicated
+# in system_settings_service/system_backup_service, since both need the same
+# classification of the same keys.
+PLAIN_KEYS = ("plex_server_url", "primary_barcode_source")
+
 
 async def get_overrides(db: AsyncIOMotorDatabase) -> dict:
     """Returns only the keys that currently have a custom (DB-stored)

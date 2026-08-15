@@ -28,7 +28,7 @@ _TEST_CONNECTION_CLIENTS = {
 
 # Rendered as a masked ApiKeyStatus (configured/source only) in GET responses
 # — every overridable key except the two plain, non-secret values below.
-_PLAIN_KEYS = ("plex_server_url", "primary_barcode_source")
+_PLAIN_KEYS = system_settings_repository.PLAIN_KEYS
 SECRET_KEYS = tuple(key for key in KEYS if key not in _PLAIN_KEYS)
 
 

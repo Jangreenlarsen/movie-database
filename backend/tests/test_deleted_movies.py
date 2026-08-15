@@ -12,7 +12,9 @@ async def test_deleting_a_movie_logs_it_in_the_deleted_list(client):
 
     deleted_list = await client.get("/api/movies/deleted")
     assert deleted_list.status_code == 200
-    entries = deleted_list.json()
+    body = deleted_list.json()
+    assert body["total"] == 1
+    entries = body["entries"]
     assert len(entries) == 1
     assert entries[0]["serial_number"] == serial_number
     assert entries[0]["title"] == "To Be Deleted"

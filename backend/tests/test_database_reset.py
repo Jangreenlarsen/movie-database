@@ -68,7 +68,7 @@ async def test_reset_clears_library_and_related_data(client):
 
     assert (await client.get("/api/movies")).json()["items"] == []
     assert (await client.get("/api/tv-shows")).json()["items"] == []
-    assert (await client.get("/api/movies/deleted")).json() == []
+    assert (await client.get("/api/movies/deleted")).json()["entries"] == []
     assert (await client.get("/api/tags")).json() == []
     assert (await client.get("/api/screenings")).json() == []
     assert (await client.get("/api/screening-requests")).json() == []

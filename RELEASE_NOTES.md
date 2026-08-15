@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.136.0 (build 0184) — 2026-08-15
+
+- **Galleriet og Presse Nyt fik navigation.** Billeder i galleriet åbner nu direkte på siden med "‹"/"›"-knapper til at bladre mellem dem, og en "← Tilbage"-knap. Presse Nyt viser nu selve PDF'en på siden i stedet for at åbne en ny fane, også med en "← Tilbage"-knap.
+
 ## v0.135.1 (build 0183) — 2026-08-15
 
 - **Rettet: "Presse Nyt" og Galleri-billeder virker nu ved almindeligt tryk.** De sprang tidligere tilbage til forsiden i stedet for at vise filen (kun download virkede) — skyldtes en fejl i appens offline-understøttelse, nu rettet.

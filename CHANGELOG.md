@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.136.0 build 0184] — 2026-08-15 — feature: navigation i galleri-lightbox + tilbage-knap på Presse Nyt (FEATURES.md #161)
+
+Jan, direkte i forlængelse af #160: *"vi mangler navigation på de billeder samt en back knap sammen på presse pdf side"*. Galleri-billeder åbner nu en indbygget lightbox (i stedet for en ny fane) med "‹"/"›"-knapper der cykler mellem alle billeder (wrap-around) samt en "← Tilbage"-knap til grid-visningen; videoer er bevidst holdt uden for lightbox-navigationen. Presse Nyt åbner nu en ny `PressModal` (samme overlay-mønster som galleriet) med PDF'en i en `<iframe>` og egen "← Tilbage"-knap, plus et sekundært "Åbn i ny fane"-link. Regel 18-bug fundet og rettet undervejs: lightboxens navigationsknapper blev skubbet uden for panelet pga. flexbox' `min-width: auto`-standard på `<img>`; rettet med `min-width: 0` + `max-width: calc(100% - 110px)`. Berørte filer: `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Ingen backend-ændring. Fuld backend-suite (672) + frontend (78) grøn.
+
 ## [0.135.1 build 0183] — 2026-08-15 — fix: service worker opsnappede "åbn i ny fane"-links til statiske filer (BUGS.md #68)
 
 Jan: *"når jeg trykker på et billede i galleri springer den bare tilbage til /bio siden igen ... hvis jeg downloader dem så er der ikke noget problem"*. `VitePWA`s Workbox `NavigationRoute` havde ingen denylist og fangede derfor enhver top-niveau-navigation — inkl. feature #160s "åbn i ny fane"-links til PDF/billeder/video — og svarede med det cachede `index.html` i stedet for selve filen. Download virkede (ikke "navigate"-mode), almindeligt tryk gjorde ikke. Rettet med `workbox.navigateFallbackDenylist: [/\.[^/?]+$/]` i `vite.config.js` — enhver sti med en filendelse er aldrig en SPA-rute. Verificeret direkte i den genererede `dist/sw.js`. Berørt fil: `frontend/vite.config.js`. Fuld backend-suite (uændret) + frontend (78) grøn.

@@ -280,6 +280,26 @@
   background: var(--accent-soft);
 }
 
+/* Feature #161 — tilbage-knap, delt af GalleryModal (lightbox → grid) og
+   PressModal (PDF → /bio). Tekst frem for kun en pil, efter Jans ønske om
+   en tydelig "back knap". */
+.cinema-public-gallery-back {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 14px;
+  border-radius: 999px;
+}
+
+.cinema-public-gallery-back:hover {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
 .cinema-public-gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
@@ -296,7 +316,15 @@
   border: none;
 }
 
-a.cinema-public-gallery-item img {
+/* Billed-thumbnails er knapper (åbner lightboxen), ikke længere links —
+   nulstil knap-standarderne så de fortsat ser ud som rene billed-flader. */
+.cinema-public-gallery-item-button {
+  appearance: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.cinema-public-gallery-item-button img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -305,6 +333,82 @@ a.cinema-public-gallery-item img {
 
 video.cinema-public-gallery-item {
   object-fit: contain;
+}
+
+/* Feature #161 — lightbox-underview med Forrige/Næste. Samme panel-bredde
+   som gridet; en fast højde i stedet for `aspect-ratio` giver plads til
+   både høje og brede billeder/videoer uden at panelet hopper i størrelse
+   når man navigerer mellem dem. */
+.cinema-public-gallery-lightbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.cinema-public-gallery-lightbox-media {
+  /* `min-width: 0` overstyrer flex-items' standard `min-width: auto`, som
+     ellers forhindrer et billede (et "replaced element") i at krympe under
+     sin egen intrinsiske bredde — uden den tog billedet hele rækkens
+     bredde, og Forrige/Næste-knapperne blev skubbet helt ud af synet
+     (opdaget ved rent faktisk at se lightboxen, regel 18). */
+  min-width: 0;
+  max-width: calc(100% - 110px);
+  max-height: 70vh;
+  border-radius: var(--radius-sm);
+  background: #000;
+  object-fit: contain;
+}
+
+.cinema-public-gallery-nav {
+  flex: none;
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cinema-public-gallery-nav:hover {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+/* Feature #161 — presse-PDF'en vist i et iframe i stedet for en ny fane.
+   Bredere/højere end galleri-panelet, så PDF'ens indbyggede viewer har
+   plads til at være læsbar uden konstant zoom. */
+.cinema-public-press-panel {
+  width: 1000px;
+  max-height: 95vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.cinema-public-press-newtab {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.cinema-public-press-newtab:hover {
+  color: var(--accent-strong);
+}
+
+.cinema-public-press-frame {
+  width: 100%;
+  flex: 1;
+  min-height: 70vh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fff;
 }
 
 /* Feature #120 — på de offentlige visnings-kort sidder dato/tid-badgen i

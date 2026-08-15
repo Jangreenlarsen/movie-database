@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.134.0 (build 0181) — 2026-08-15
+
+- **Ny ugentlig statistik.** Statistik-siden viser nu hvor mange film og TV-serier der er tilføjet til biblioteket de seneste 12 uger, som en søjle pr. uge.
+
 ## v0.133.0 (build 0180) — 2026-08-15
 
 - **Print-siden er nu delt op i fire lister.** Film og TV-serier vises hver i to lister — digitale og fysiske — og hver liste har sin egen "Print denne liste"-knap, så du kan printe fx kun de fysiske film for sig.

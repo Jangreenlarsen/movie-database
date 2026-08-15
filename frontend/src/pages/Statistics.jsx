@@ -116,6 +116,20 @@ export default function Statistics() {
           </div>
 
           <div className="stat-sections-grid">
+            {/* Feature #159 — placeret først: den mest "hvordan går det med
+                samlingen lige nu"-agtige af sektionerne, i modsætning til de
+                øvrige biblioteks-oversigter der ikke ændrer sig fra uge til
+                uge. */}
+            {stats.weekly_additions.length > 0 && (
+              <div className="card stat-section">
+                <h2>{t("stats.weeklyAdditions")}</h2>
+                <p className="muted" style={{ marginTop: 0 }}>
+                  {t("stats.weeklyAdditionsHint")}
+                </p>
+                <BarList items={stats.weekly_additions} />
+              </div>
+            )}
+
             {stats.genre_breakdown.length > 0 && (
               <div className="card stat-section">
                 <h2>{t("stats.genres")}</h2>

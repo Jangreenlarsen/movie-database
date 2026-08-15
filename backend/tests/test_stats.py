@@ -8,6 +8,10 @@ async def test_empty_library_has_zeroed_stats(client):
     assert data["unwatched_count"] == 0
     assert data["genre_breakdown"] == []
     assert data["decade_breakdown"] == []
+    # Feature #159 — altid de faste 12 uger, alle med count 0, ikke en tom
+    # liste: et hul i en tidsserie er misvisende.
+    assert len(data["weekly_additions"]) == 12
+    assert all(week["count"] == 0 for week in data["weekly_additions"])
 
 
 async def test_wishlist_movies_are_excluded_from_stats(client):
@@ -91,3 +95,41 @@ async def test_movies_without_year_or_runtime_do_not_break_stats(client):
     assert data["total_movies"] == 1
     assert data["total_runtime_minutes"] == 0
     assert data["decade_breakdown"] == []
+
+
+# --- ugentlig tilføjelses-oversigt (feature #159) ----------------------------
+
+
+async def test_weekly_additions_counts_a_freshly_created_movie_in_the_current_week(client):
+    await client.post("/api/movies", json={"title": "Lige Oprettet", "media_type": "Fysisk", "format": "F-DVD"})
+
+    response = await client.get("/api/movies/stats")
+    data = response.json()
+
+    weekly = data["weekly_additions"]
+    assert len(weekly) == 12
+    assert all(week["name"].startswith("Uge ") for week in weekly)
+    # Den seneste (sidste) uge i den kronologiske liste er den aktuelle uge —
+    # den film der lige blev oprettet skal tælle med dér.
+    assert weekly[-1]["count"] == 1
+
+
+async def test_weekly_additions_counts_movies_and_tv_shows_together(client):
+    """Feature #159 — "ny film/tv" dækker begge ressourcer i én tælling,
+    samme princip som barcode_source_breakdown allerede gør."""
+    await client.post("/api/movies", json={"title": "Film", "media_type": "Fysisk", "format": "F-DVD"})
+    await client.post("/api/tv-shows", json={"name": "Serie", "media_type": "Fysisk", "format": "F-DVD"})
+
+    response = await client.get("/api/movies/stats")
+    data = response.json()
+
+    assert data["weekly_additions"][-1]["count"] == 2
+
+
+async def test_weekly_additions_excludes_wishlist(client):
+    await client.post("/api/movies", json={"title": "Ønske", "is_wishlist": True})
+
+    response = await client.get("/api/movies/stats")
+    data = response.json()
+
+    assert data["weekly_additions"][-1]["count"] == 0

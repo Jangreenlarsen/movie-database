@@ -257,6 +257,8 @@
   "stats.topActors": "Most frequent actors",
   "stats.barcodeSource": "Barcode source",
   "stats.barcodeSourceHint": "Only movies/shows added via an actual barcode scan are counted — covers both movies and TV shows.",
+  "stats.weeklyAdditions": "New additions per week",
+  "stats.weeklyAdditionsHint": "Movies and TV shows added to the library over the last 12 weeks — the wishlist doesn't count.",
   "stats.empty": "The library is still empty — there is nothing to show statistics for.",
   "stats.visits.title": "Visits",
   "stats.visits.loadError": "Could not load visit statistics.",

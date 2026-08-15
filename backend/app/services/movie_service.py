@@ -1,6 +1,6 @@
 import asyncio
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
@@ -464,6 +464,26 @@ _BARCODE_SOURCE_LABELS = {
     "ean_search": "EAN-Search.org",
 }
 
+# Feature #159 — sidste kvartals tendens er nyttig at se på ét blik; alle
+# uger siden begyndelsen ville hverken være læsbart i en simpel bar-liste
+# eller særlig interessant (samme afvejning som top_directors/top_actors'
+# most_common(10) ovenfor).
+WEEKLY_ADDITIONS_WEEKS = 12
+
+
+def _iso_week_key(moment: datetime) -> tuple[int, int]:
+    iso = moment.isocalendar()
+    return (iso[0], iso[1])
+
+
+def _recent_iso_weeks(count: int) -> list[tuple[int, int]]:
+    """De seneste `count` ISO-uger (år, uge), kronologisk, sluttende med den
+    aktuelle uge. `timedelta(weeks=i)` lander altid i en anden kalenderuge
+    end nabo-i'erne, så år-skiftet omkring nytår håndteres korrekt af
+    `isocalendar()` selv — ingen særlig kant-håndtering nødvendig her."""
+    now = datetime.now(timezone.utc)
+    return [_iso_week_key(now - timedelta(weeks=i)) for i in range(count - 1, -1, -1)]
+
 
 async def get_collection_stats(db: AsyncIOMotorDatabase) -> CollectionStats:
     """Aggregated statistics over the whole library (wishlist excluded) —
@@ -485,6 +505,9 @@ async def get_collection_stats(db: AsyncIOMotorDatabase) -> CollectionStats:
     director_counter: Counter[str] = Counter()
     actor_counter: Counter[str] = Counter()
     barcode_source_counter: Counter[str] = Counter()
+    # Feature #159 — dækker film+TV, samme "begge tæller med"-princip som
+    # barcode_source_counter ovenfor.
+    weekly_counter: Counter[tuple[int, int]] = Counter()
 
     for doc in documents:
         genre_counter.update(doc.get("genres", []))
@@ -497,10 +520,14 @@ async def get_collection_stats(db: AsyncIOMotorDatabase) -> CollectionStats:
             director_counter[doc["director"]] += 1
         if doc.get("barcode_source"):
             barcode_source_counter[doc["barcode_source"]] += 1
+        if doc.get("created_at"):
+            weekly_counter[_iso_week_key(doc["created_at"])] += 1
 
     for doc in tv_documents:
         if doc.get("barcode_source"):
             barcode_source_counter[doc["barcode_source"]] += 1
+        if doc.get("created_at"):
+            weekly_counter[_iso_week_key(doc["created_at"])] += 1
 
     return CollectionStats(
         total_movies=total_movies,
@@ -528,6 +555,10 @@ async def get_collection_stats(db: AsyncIOMotorDatabase) -> CollectionStats:
         barcode_source_breakdown=[
             NamedCount(name=_BARCODE_SOURCE_LABELS.get(key, key), count=count)
             for key, count in sorted(barcode_source_counter.items(), key=lambda item: -item[1])
+        ],
+        weekly_additions=[
+            NamedCount(name=f"Uge {week}", count=weekly_counter.get((year, week), 0))
+            for year, week in _recent_iso_weeks(WEEKLY_ADDITIONS_WEEKS)
         ],
     )
 

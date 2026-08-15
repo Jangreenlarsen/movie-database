@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.134.0 build 0181] — 2026-08-15 — feature: ugentlig statistik over nye tilføjelser (FEATURES.md #159)
+
+Jan: *"og i statistics skal vi have ugelig stats over ny film/tv som kommer til portal"*. Nyt `weekly_additions` på `/api/movies/stats` — én bar pr. af de seneste 12 ISO-uger, dækker film+TV kombineret, ønskeliste ekskluderet. Alle 12 uger returneres altid, også med 0 tilføjelser, så tidsserien ikke har huller. Frontend: ny sektion øverst i Statistik-siden, genbruger den eksisterende `BarList`-komponent uændret. Berørte filer: `backend/app/models/movie.py`, `backend/app/services/movie_service.py`, `frontend/src/pages/Statistics.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`. Tests: `test_stats.py` udvidet (4 nye tests). Fuld backend-suite + frontend (78) grøn.
+
 ## [0.133.0 build 0180] — 2026-08-15 — feature: print-siden opdelt i fire sektioner (FEATURES.md #158)
 
 Jan: *"i print vil jeg godt have movies og tv series side opspiltet i to seksioner en til digital og en til fisiske versioner som man kan printe være for sig"*. De to sektioner (Film, TV-serier) er hver delt i digital/fysisk — fire i alt, ren klient-side filtrering (ny `isDigitalMediaType` i `utils/serialNumber.js`), intet nyt API-kald. Hver sektion har nu sin egen "Print denne liste"-knap ud over den globale "Print alt": et klik skjuler (kun under `@media print`) de tre andre sektioner, kalder `window.print()`, og nulstiller sig selv igen ved `afterprint`. Sideskift beregnes dynamisk ud fra hvilke sektioner reelt har indhold, og udelades ved et enkelt-sektions-print. Film-/TV-tabellerne udtrukket til egne `MoviesTable`/`ShowsTable`-komponenter for ikke at firedoble den næsten identiske kolonne-opsætning. Berørte filer: `frontend/src/pages/PrintList.jsx`, `frontend/src/pages/PrintList.css`, `frontend/src/utils/serialNumber.js`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Tests: ny `isDigitalMediaType`-blok i `serialNumber.test.js`. Ingen backend-ændring. Fuld backend-suite (669) + frontend (78) grøn.

@@ -257,6 +257,8 @@
   "stats.topActors": "Mest forekommende skuespillere",
   "stats.barcodeSource": "Stregkode-kilde",
   "stats.barcodeSourceHint": "Kun film/serier tilføjet via et rigtigt stregkode-scan tæller med — dækker film og TV-serier.",
+  "stats.weeklyAdditions": "Nye tilføjelser pr. uge",
+  "stats.weeklyAdditionsHint": "Film og TV-serier tilføjet til biblioteket de seneste 12 uger — ønskelisten tæller ikke med.",
   "stats.empty": "Biblioteket er tomt endnu — der er ikke noget at vise statistik for.",
   "stats.visits.title": "Besøg",
   "stats.visits.loadError": "Kunne ikke hente besøgsstatistik.",

@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.135.1 build 0183] — 2026-08-15 — fix: service worker opsnappede "åbn i ny fane"-links til statiske filer (BUGS.md #68)
+
+Jan: *"når jeg trykker på et billede i galleri springer den bare tilbage til /bio siden igen ... hvis jeg downloader dem så er der ikke noget problem"*. `VitePWA`s Workbox `NavigationRoute` havde ingen denylist og fangede derfor enhver top-niveau-navigation — inkl. feature #160s "åbn i ny fane"-links til PDF/billeder/video — og svarede med det cachede `index.html` i stedet for selve filen. Download virkede (ikke "navigate"-mode), almindeligt tryk gjorde ikke. Rettet med `workbox.navigateFallbackDenylist: [/\.[^/?]+$/]` i `vite.config.js` — enhver sti med en filendelse er aldrig en SPA-rute. Verificeret direkte i den genererede `dist/sw.js`. Berørt fil: `frontend/vite.config.js`. Fuld backend-suite (uændret) + frontend (78) grøn.
+
 ## [0.135.0 build 0182] — 2026-08-15 — feature: "Presse Nyt"/"Galleri"-knapper på /bio (FEATURES.md #160)
 
 Jan: *"i public siden for voldby bio vil jeg godt have to ny knapper ved siden af teksten 'About Voldby BIO' ... en som hedder 'Presse Nyt' ... og ved siden af den helt ud til højre en der hedder 'Galleri'"*. Presse Nyt (fancy gradient-stil) åbner `frontend/public/cinema/Ny biograf åbner i Voldby 2026.pdf` i en ny fane. Galleri (ikon + tekst, skubbet til højre) åbner en ny `GalleryModal` med et grid af billeder/videoer fra `frontend/public/cinema/Galleri/` — billeder linker til fuld størrelse i ny fane, videoer får native `<video controls>`. Ingen backend-ændring; mappens indhold kan ikke listes dynamisk, så filnavnene står i en hardkodet, tydeligt kommenteret liste i `CinemaPublic.jsx` der skal opdateres manuelt ved nye filer. Berørte filer: `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Fuld backend-suite (uændret) + frontend (78) grøn.

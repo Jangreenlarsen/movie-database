@@ -37,6 +37,16 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      workbox: {
+        // BUGS.md #68 — uden denne ekskludering fanger service workerens
+        // NavigationRoute (workbox' SPA-fallback) ALLE top-niveau-
+        // navigationer, ogsaa direkte "aabn i ny fane"-links til statiske
+        // filer (PDF/billeder/video i /cinema/, feature #160), og serverer
+        // index.html i stedet for selve filen -- appen sprang derfor
+        // "tilbage" til hovedsiden i stedet for at vise filen. En sti der
+        // ender paa en filendelse er per definition aldrig en SPA-rute.
+        navigateFallbackDenylist: [/\.[^/?]+$/],
+      },
       manifest: {
         name: 'Film & TV-database',
         short_name: 'Film & TV',

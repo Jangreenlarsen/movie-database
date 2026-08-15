@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.135.1 (build 0183) — 2026-08-15
+
+- **Rettet: "Presse Nyt" og Galleri-billeder virker nu ved almindeligt tryk.** De sprang tidligere tilbage til forsiden i stedet for at vise filen (kun download virkede) — skyldtes en fejl i appens offline-understøttelse, nu rettet.
+
 ## v0.135.0 (build 0182) — 2026-08-15
 
 - **Nyt på den offentlige Voldby BIO-side.** To knapper ved siden af "Om Voldby BIO": "Presse Nyt" åbner en pressemeddelelse som PDF, og "Galleri" viser billeder og videoer fra byggeriet.

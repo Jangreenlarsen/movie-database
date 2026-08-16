@@ -86,6 +86,9 @@ async def _to_screening_model(db: AsyncIOMotorDatabase, document: dict) -> Scree
         tv_show_id=document.get("tv_show_id"),
         scheduled_at=document["scheduled_at"],
         note=document.get("note"),
+        # `.get(..., False)` — screeninger oprettet før feature #170 har
+        # ikke feltet på deres dokument overhovedet, ikke bare `False`.
+        is_private=document.get("is_private", False),
         created_by=document["created_by"],
         created_at=document["created_at"],
         **display,
@@ -198,6 +201,7 @@ async def create_screening(
         "tv_show_id": payload.tv_show_id,
         "scheduled_at": payload.scheduled_at,
         "note": payload.note,
+        "is_private": payload.is_private,
         "created_by": created_by,
         "created_at": now,
     }

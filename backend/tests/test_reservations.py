@@ -420,3 +420,83 @@ async def test_list_approved_includes_holds_and_guest_reservations(client):
     ).json()
     assert [r["seat_number"] for r in still_approved] == [1]
     await guest.aclose()
+
+
+# Feature #170 — private arrangementer: gæst-rollen kan ikke booke sæder på
+# en visning admin har markeret som privat.
+
+
+async def test_admin_can_create_private_screening(client):
+    movie_id = await _create_movie(client, "Privat Film")
+    created = await client.post(
+        "/api/screenings",
+        json={"media_kind": "movie", "movie_id": movie_id, "scheduled_at": "2099-09-01T20:00:00", "is_private": True},
+    )
+    assert created.status_code == 201
+    assert created.json()["is_private"] is True
+
+
+async def test_screening_defaults_to_not_private(client):
+    movie_id = await _create_movie(client, "Almindelig Film")
+    screening_id = await _create_screening(client, movie_id)
+    resp = await client.get("/api/screenings")
+    screening = next(s for s in resp.json() if s["id"] == screening_id)
+    assert screening["is_private"] is False
+
+
+async def test_admin_can_toggle_private_via_update(client):
+    movie_id = await _create_movie(client, "Skift Privat Film")
+    screening_id = await _create_screening(client, movie_id)
+    updated = await client.patch(f"/api/screenings/{screening_id}", json={"is_private": True})
+    assert updated.json()["is_private"] is True
+    reverted = await client.patch(f"/api/screenings/{screening_id}", json={"is_private": False})
+    assert reverted.json()["is_private"] is False
+
+
+async def test_guest_cannot_reserve_seat_on_private_screening(client):
+    movie_id = await _create_movie(client, "Privat Reservation Film")
+    created = await client.post(
+        "/api/screenings",
+        json={"media_kind": "movie", "movie_id": movie_id, "scheduled_at": "2099-09-01T20:00:00", "is_private": True},
+    )
+    screening_id = created.json()["id"]
+    guest = await _member_client(client, "g_private_blocked", role="guest")
+
+    resp = await guest.post(
+        f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N1-1"]}
+    )
+    assert resp.status_code == 403
+    # Ingen delvis reservation blev alligevel oprettet.
+    assert (await client.get("/api/reservations")).json() == []
+    await guest.aclose()
+
+
+async def test_standard_user_can_still_reserve_on_private_screening(client):
+    """Kun gæst-rollen er blokeret — et almindeligt medlem af husstanden
+    (rollen 'standard') skal stadig kunne booke et privat arrangement."""
+    movie_id = await _create_movie(client, "Privat Standard Film")
+    created = await client.post(
+        "/api/screenings",
+        json={"media_kind": "movie", "movie_id": movie_id, "scheduled_at": "2099-09-01T20:00:00", "is_private": True},
+    )
+    screening_id = created.json()["id"]
+    member = await _member_client(client, "std_private_ok")  # ingen rolle = standard
+
+    resp = await member.post(
+        f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N1-1"]}
+    )
+    assert resp.status_code == 201
+    await member.aclose()
+
+
+async def test_guest_can_still_reserve_on_a_non_private_screening(client):
+    """Regression: den almindelige (ikke-private) sti er uændret."""
+    movie_id = await _create_movie(client, "Stadig Offentlig Film")
+    screening_id = await _create_screening(client, movie_id)
+    guest = await _member_client(client, "g_still_open", role="guest")
+
+    resp = await guest.post(
+        f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N1-1"]}
+    )
+    assert resp.status_code == 201
+    await guest.aclose()

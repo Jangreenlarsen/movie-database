@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.144.0 build 0197] — 2026-08-16 — feature: private arrangementer i Voldby BIO (FEATURES.md #170)
+
+Jan: *"hvis adm sætter en visning op i voldby bio så skal der være en mulighed for at sætter forvisning som en privart event som guest ikke kan booke sæde på"*. Ny `is_private` på screenings, sat/ændret via samme redigerings-formular som dato/note. Håndhævet inde i `reservation_service.reserve_seats` (kræver visningens data, ikke kun rollen) — kun gæst-rollen afvises (403), standard-brugere kan stadig booke. Frontend: sæde-knappen erstattes af en "🔒 Privat arrangement"-besked for en gæst; et badge vises for alle. Regel 18-bug fundet og rettet: `.cinema-card-media` manglede en fast bredde, så den lange blokerings-tekst klemte titel-kolonnen ned til 8px — rettet med `width: 90px`. Berørte filer: `backend/app/models/screening.py`, `backend/app/services/screening_service.py`, `backend/app/services/reservation_service.py`, `backend/app/api/reservations.py`, `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Cinema.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`. Tests: `test_reservations.py` +6. Fuld backend-suite (692) + frontend (78) grøn.
+
 ## [0.143.2 build 0196] — 2026-08-16 — feature: gæste-login-banneret står nu dobbelt så længe på skærmen (FEATURES.md #169)
 
 Jan: *"ændre tid for banner er på skræm til det dubble tid"*. "På skærm"-tiden fordoblet fra 3s til 6s (fade ind/ud uændret 1s hver) — samlet forløb nu 8s, keyframe-stop justeret til 0/12.5/87.5/100%. Berørte filer: `frontend/src/pages/CinemaPublic.css`, `frontend/src/pages/CinemaPublic.jsx` (kommentar). Ren tal-justering, ikke genverificeret i browser på Jans udtrykkelige ønske.

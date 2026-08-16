@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.140.0 build 0191] — 2026-08-16 — feature: godkendelses-besked til ønske-opretteren (FEATURES.md #166)
+
+Jan: *"ved 'Godkend ønske' skal der sendes en besked til user som har sag den på listen"*. Ny `message_service.notify_wishlist_approved` (samme mønster som `notify_wishlist_moved`), kaldt fra `update_movie`/`update_tv_show` ved den faktiske overgang pending→approved (ikke ved gentagne PATCH'er af en allerede godkendt post). Symmetrisk med #165's afvisnings-besked. Berørte filer: `backend/app/services/message_service.py`, `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`. Tests: `test_wishlist_approval.py` +3. Fuld backend-suite (686) + frontend (78) grøn.
+
 ## [0.139.1 build 0190] — 2026-08-16 — fix: "Godkend ønske"/"Afvis ønske" kunne ikke rumme deres egen tekst (BUGS.md #71)
 
 Jan: *"justere de to knapper indkøbslisten til 'Afvis ønske' og 'Godkend ønske' tekst kan ikke når så stå i knapperne"*. Ved "small" kortstørrelse delte de to knapper (feature #165) kortets bredde i to halvdele, for smalt til selv den korteste tekst. Rettet ved at stakke dem lodret i stedet for side om side — hver får nu kortets fulde bredde. Bekræftet ved "small" kortstørrelse på både desktop og mobilbredde (den oprindelige verifikation af #165 testede kun standard-kortstørrelsen). Berørt fil: `frontend/src/pages/Library.css`.

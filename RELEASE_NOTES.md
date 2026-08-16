@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.143.2 (build 0196) — 2026-08-16
+
+- **Velkomst-banneret på /bio står nu dobbelt så længe på skærmen** (6 sekunder i stedet for 3).
+
 ## v0.143.1 (build 0195) — 2026-08-16
 
 - **Rettet: velkomst-banneret på /bio.** Står nu midt på skærmen (ikke kun forneden), fylder 80% af skærmen, har ingen hvid kant-boks bag billedet — og toner nu rigtigt frem på mobil i stedet for at springe direkte frem.

@@ -25,6 +25,12 @@ const GALLERY_DIR = "/cinema/Galleri/";
 // Feature #168 — Jans ønske om et "Forplejning i BIO"-link, samme statiske
 // fil-i-public-mappe-mønster som PRESS_PDF_HREF/GALLERY_DIR ovenfor.
 const REFRESHMENTS_IMAGE_HREF = encodeURI("/cinema/Gratis popcorn.jpg");
+// Feature #169 — gæste-banneret der opfordrer til login. Timingen (Jans tal,
+// 2026-08-16: "1 sek for frem og 3sek på skærm og 1 sek for væk igen") er
+// ét samlet 5s CSS-keyframe-forløb i CinemaPublic.css (20%/80% rammer netop
+// "1s ind, 3s fast, 1s ud") frem for tre separate JS-timere — se
+// GuestLoginBanner nedenfor, som blot lytter efter `onAnimationEnd`.
+const GUEST_BANNER_IMAGE_HREF = "/cinema/login-fordelsprogram.png";
 
 // Ingen backend-endpoint lister mappens indhold dynamisk (det er statiske
 // filer i Vites public-mappe, ikke database-poster) — denne liste skal
@@ -187,7 +193,41 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
       {pressOpen && <PressModal onClose={() => setPressOpen(false)} />}
 
       {refreshmentsOpen && <RefreshmentsModal onClose={() => setRefreshmentsOpen(false)} />}
+
+      {/* Feature #169 — kun for gæster (Jans ord: "dem som ikke er logget ind
+          i portal"); en logget-ind bruger har jo allerede lavet login. */}
+      {!user && <GuestLoginBanner onOpenLogin={() => setLoginOpen(true)} />}
     </div>
+  );
+}
+
+// Feature #169 — Jan: "banne skal tone frem og bliver på skærm i 3 sek hvor
+// efter den tonner væk igen med mindre man trykker på den hvor efter man
+// bliver presenteret for login". Hele forløbet (1s ind, 3s fast, 1s ud —
+// Jans egne tal) er ét CSS-keyframe-forløb (se .cinema-public-guest-banner i
+// CinemaPublic.css) i stedet for tre separate JS-timere; komponenten lytter
+// blot efter `onAnimationEnd` for at fjerne sig selv fra DOM'en når det er
+// forbi. Et klik når som helst undervejs (banneret er interaktivt gennem
+// hele fade-forløbet, opacity blokerer ikke klik) fjerner den med det samme
+// og åbner login i stedet — samme login-panel som "Log ind"-knappen i hero'en.
+function GuestLoginBanner({ onOpenLogin }) {
+  const t = useT();
+  const [visible, setVisible] = useState(true);
+
+  if (!visible) return null;
+
+  return (
+    <button
+      type="button"
+      className="cinema-public-guest-banner"
+      onAnimationEnd={() => setVisible(false)}
+      onClick={() => {
+        setVisible(false);
+        onOpenLogin();
+      }}
+    >
+      <img src={GUEST_BANNER_IMAGE_HREF} alt={t("public.guestBannerAlt")} />
+    </button>
   );
 }
 

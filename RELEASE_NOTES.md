@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.143.0 (build 0194) — 2026-08-16
+
+- **Ny velkomst-banner på /bio for besøgende der ikke er logget ind.** Et banner om fordelsprogrammet toner frem, står på skærmen et par sekunder og toner væk igen — eller fører til login, hvis man trykker på det.
+
 ## v0.142.0 (build 0193) — 2026-08-16
 
 - **Ny knap på /bio: "Forplejning i BIO".** Viser et billede om forplejningen i biografen, ved siden af Presse Nyt og Galleri.

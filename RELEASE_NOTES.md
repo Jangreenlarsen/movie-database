@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.142.0 (build 0193) — 2026-08-16
+
+- **Ny knap på /bio: "Forplejning i BIO".** Viser et billede om forplejningen i biografen, ved siden af Presse Nyt og Galleri.
+
 ## v0.141.0 (build 0192) — 2026-08-16
 
 - **Rydder selv op efter en film er vist.** Når en fremvisning i Voldby BIO er overstået, forsvinder dens sæde-reservationer nu automatisk fra konduktørens liste, i stedet for at blive stående.

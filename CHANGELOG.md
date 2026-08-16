@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.142.0 build 0193] — 2026-08-16 — feature: "Forplejning i BIO"-link på /bio (FEATURES.md #168)
+
+Jan: *"på /bio public siden lave en link til 'forplejning i BIO' hvor du viser 'Gratis popcorn.jpg'"*. Ny tredje knap mellem Presse Nyt og Galleri, samme overlay-panel-mønster, viser billedet i et dedikeret `RefreshmentsModal`. Ny knap-stil deler udseende med Galleri men uden dens `margin-left: auto`, så kun Galleri fortsat skubbes til rækkens højre kant. Berørte filer: `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `frontend/public/cinema/Gratis popcorn.jpg`. Ingen backend-ændring. Fuld backend-suite (uændret) + frontend (78) grøn.
+
 ## [0.141.0 build 0192] — 2026-08-16 — feature: oprydning af afholdte fremvisningers sæde-reservationer (FEATURES.md #167)
 
 Jan: *"i voldby bio skal de film har køret også have slettet deres sæde resevation når en film er vist"*. En afholdt fremvisning forsvinder allerede fra programmet af sig selv, men dens sæde-reservationer blev stående for evigt i konduktørens kø. Ny `reservation_service._cleanup_past_screening_reservations`, kaldt fra `list_reservations` — appen har intet tidsstyret baggrundsjob nogen steder, så oprydningen sker i stedet som en sideeffekt af selve læsningen (samme princip som `poster_cache` bruger omvendt). Globale sæde-hold rammes aldrig. Berørte filer: `backend/app/repositories/screening_repository.py`, `backend/app/repositories/reservation_repository.py`, `backend/app/services/reservation_service.py`. Tests: `test_reservations.py` +3. Fuld backend-suite (686) + frontend (78) grøn.

@@ -22,6 +22,9 @@ import "./Login.css";
 // nogensinde ændres (samme afvejning som GALLERY_ITEMS nedenfor).
 const PRESS_PDF_HREF = encodeURI("/cinema/Ny biograf åbner i Voldby 2026.pdf");
 const GALLERY_DIR = "/cinema/Galleri/";
+// Feature #168 — Jans ønske om et "Forplejning i BIO"-link, samme statiske
+// fil-i-public-mappe-mønster som PRESS_PDF_HREF/GALLERY_DIR ovenfor.
+const REFRESHMENTS_IMAGE_HREF = encodeURI("/cinema/Gratis popcorn.jpg");
 
 // Ingen backend-endpoint lister mappens indhold dynamisk (det er statiske
 // filer i Vites public-mappe, ikke database-poster) — denne liste skal
@@ -63,6 +66,7 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
   const [loginOpen, setLoginOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [pressOpen, setPressOpen] = useState(false);
+  const [refreshmentsOpen, setRefreshmentsOpen] = useState(false);
   const [screenings, setScreenings] = useState([]);
   const [status, setStatus] = useState("loading");
 
@@ -133,6 +137,13 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
             </button>
             <button
               type="button"
+              className="cinema-public-refreshments-btn"
+              onClick={() => setRefreshmentsOpen(true)}
+            >
+              🍿 {t("public.refreshments")}
+            </button>
+            <button
+              type="button"
               className="cinema-public-gallery-btn"
               onClick={() => setGalleryOpen(true)}
             >
@@ -174,6 +185,8 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
       {galleryOpen && <GalleryModal onClose={() => setGalleryOpen(false)} />}
 
       {pressOpen && <PressModal onClose={() => setPressOpen(false)} />}
+
+      {refreshmentsOpen && <RefreshmentsModal onClose={() => setRefreshmentsOpen(false)} />}
     </div>
   );
 }
@@ -249,6 +262,43 @@ function PressModal({ onClose }) {
             ))}
           </div>
         </article>
+      </div>
+    </div>
+  );
+}
+
+// Feature #168 — "Forplejning i BIO": et enkelt billede i samme
+// overlay-panel-mønster som Presse Nyt/Galleri, ikke genbrugt af
+// GalleryModal, da Jan bad om et selvstændigt, dedikeret link.
+function RefreshmentsModal({ onClose }) {
+  const t = useT();
+  return (
+    <div
+      className="cinema-public-gallery-overlay"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        className="cinema-public-gallery-panel cinema-public-refreshments-panel"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="cinema-public-gallery-header">
+          <h2>{t("public.refreshments")}</h2>
+          <button
+            type="button"
+            className="cinema-public-gallery-close"
+            onClick={onClose}
+            aria-label={t("public.galleryClose")}
+          >
+            ✕
+          </button>
+        </div>
+        <img
+          className="cinema-public-refreshments-image"
+          src={REFRESHMENTS_IMAGE_HREF}
+          alt={t("public.refreshments")}
+        />
       </div>
     </div>
   );

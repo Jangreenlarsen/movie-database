@@ -696,12 +696,14 @@ async def update_movie(
     requested_serial = fields.pop("serial_number", None)
     requested_wishlist = fields.pop("is_wishlist", None)
     requested_media_type = fields.get("media_type")
+    requested_wishlist_status = fields.get("wishlist_status")
 
     current_doc = None
     if (
         requested_serial is not None
         or requested_wishlist is not None
         or requested_media_type is not None
+        or requested_wishlist_status is not None
     ):
         current_doc = await movie_repository.find_by_id(db, movie_id)
         if current_doc is None:
@@ -775,6 +777,18 @@ async def update_movie(
         raise MovieNotFoundError(movie_id)
     if moved_to_library:
         await message_service.notify_wishlist_moved(
+            db, current_doc, current_user, document.get("title"), is_tv=False
+        )
+    # Feature #166 — modparten til #165's afvisnings-besked: godkendes et
+    # afventende ønske, får opretteren også besked om det. `current_doc`s
+    # status er den FØR skrivningen, så et allerede-godkendt ønske (fx et
+    # dobbeltklik) ikke sender endnu en besked.
+    if (
+        requested_wishlist_status == WishlistStatus.APPROVED.value
+        and current_doc is not None
+        and current_doc.get("wishlist_status") == WishlistStatus.PENDING.value
+    ):
+        await message_service.notify_wishlist_approved(
             db, current_doc, current_user, document.get("title"), is_tv=False
         )
     return _to_model(document)

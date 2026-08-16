@@ -574,28 +574,25 @@
   padding: 5px 8px;
 }
 
-/* Feature #165 — godkend + afvis side om side i stedet for at godkend
-   alene fylder hele kortets bredde. */
+/* Feature #165, justeret efter Jans tilbagemelding 2026-08-16 ("tekst kan
+   ikke ... stå i knapperne") — side om side delte kortets bredde i to, og
+   ved "small" kortstørrelse (120px, feature #59) er en enkelt knap-halvdel
+   for smal til selv "Godkend"/"Afvis" på én linje, uanset ombrydning. Stakket
+   lodret i stedet: hver knap får kortets FULDE bredde til sin egen tekst,
+   holder på alle tre kortstørrelser og ned til mindste mobilbredde. */
 .movie-wishlist-actions {
   display: flex;
+  flex-direction: column;
   gap: 6px;
   margin-top: 8px;
 }
 
 .movie-wishlist-actions .movie-approve-btn {
   margin-top: 0;
-  width: auto;
-  flex: 1;
-  /* Uden denne holder knappen sig til sin tekstlige minimumsbredde og
-     skubber den anden knap delvist uden for kortet i stedet for at
-     ombryde teksten pænt (samme flexbox-fælde som lightboxens
-     navigationsknapper tidligere i dag, jf. CinemaPublic.css). */
-  min-width: 0;
 }
 
 .movie-reject-btn {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
   font-size: 0.78rem;
   padding: 5px 8px;
 }

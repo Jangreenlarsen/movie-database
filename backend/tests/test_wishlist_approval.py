@@ -56,6 +56,58 @@ async def test_admin_can_approve_wishlist(client):
     await member.aclose()
 
 
+# Feature #166 — godkendelse sender nu også en besked til ønske-opretteren
+# (modparten til #165s afvisnings-besked).
+
+
+async def test_approving_wishlist_notifies_the_creator(client):
+    member = await _member(client, "wish_approve_notify")
+    created = await member.post("/api/movies", json={"title": "Godkend Besked", "is_wishlist": True})
+    movie_id = created.json()["id"]
+
+    resp = await client.patch(f"/api/movies/{movie_id}", json={"wishlist_status": "approved"})
+    assert resp.status_code == 200
+
+    inbox = (await member.get("/api/messages/inbox")).json()
+    assert len(inbox) == 1
+    assert "Godkend Besked" in inbox[0]["subject"]
+    await member.aclose()
+
+
+async def test_reapproving_already_approved_wishlist_does_not_notify_again(client):
+    """Et dobbeltklik (eller en anden PATCH med samme værdi) skal ikke give
+    en ny besked hver gang — kun selve overgangen pending → approved gør."""
+    member = await _member(client, "wish_approve_idempotent")
+    created = await member.post("/api/movies", json={"title": "Godkend Igen", "is_wishlist": True})
+    movie_id = created.json()["id"]
+
+    await client.patch(f"/api/movies/{movie_id}", json={"wishlist_status": "approved"})
+    first_inbox = (await member.get("/api/messages/inbox")).json()
+    assert len(first_inbox) == 1
+    await member.post(f"/api/messages/{first_inbox[0]['id']}/read")
+
+    resp = await client.patch(f"/api/movies/{movie_id}", json={"wishlist_status": "approved"})
+    assert resp.status_code == 200
+
+    inbox = (await member.get("/api/messages/inbox")).json()
+    assert inbox == []
+    await member.aclose()
+
+
+async def test_tv_wishlist_approval_notifies_the_creator(client):
+    member = await _member(client, "wish_tv_approve_notify")
+    created = await member.post("/api/tv-shows", json={"name": "TV Godkend", "is_wishlist": True})
+    show_id = created.json()["id"]
+
+    resp = await client.patch(f"/api/tv-shows/{show_id}", json={"wishlist_status": "approved"})
+    assert resp.status_code == 200
+
+    inbox = (await member.get("/api/messages/inbox")).json()
+    assert len(inbox) == 1
+    assert "TV Godkend" in inbox[0]["subject"]
+    await member.aclose()
+
+
 async def test_tv_wishlist_approval_flow(client):
     member = await _member(client, "wish_tv")
     created = await member.post("/api/tv-shows", json={"name": "TV Ønske", "is_wishlist": True})

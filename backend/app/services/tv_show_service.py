@@ -517,12 +517,14 @@ async def update_tv_show(
     requested_serial = fields.pop("serial_number", None)
     requested_wishlist = fields.pop("is_wishlist", None)
     requested_media_type = fields.get("media_type")
+    requested_wishlist_status = fields.get("wishlist_status")
 
     current_doc = None
     if (
         requested_serial is not None
         or requested_wishlist is not None
         or requested_media_type is not None
+        or requested_wishlist_status is not None
     ):
         current_doc = await tv_show_repository.find_by_id(db, tv_show_id)
         if current_doc is None:
@@ -582,6 +584,15 @@ async def update_tv_show(
         raise TvShowNotFoundError(tv_show_id)
     if moved_to_library:
         await message_service.notify_wishlist_moved(
+            db, current_doc, current_user, document.get("name"), is_tv=True
+        )
+    # Feature #166 — se den identiske note i movie_service.update_movie.
+    if (
+        requested_wishlist_status == WishlistStatus.APPROVED.value
+        and current_doc is not None
+        and current_doc.get("wishlist_status") == WishlistStatus.PENDING.value
+    ):
+        await message_service.notify_wishlist_approved(
             db, current_doc, current_user, document.get("name"), is_tv=True
         )
     return _to_model(document)

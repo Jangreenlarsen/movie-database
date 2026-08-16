@@ -1,5 +1,21 @@
 # Release Notes
 
+## v0.142.0 (build 0193) — 2026-08-16
+
+- **Ny knap på /bio: "Forplejning i BIO".** Viser et billede om forplejningen i biografen, ved siden af Presse Nyt og Galleri.
+
+## v0.141.0 (build 0192) — 2026-08-16
+
+- **Rydder selv op efter en film er vist.** Når en fremvisning i Voldby BIO er overstået, forsvinder dens sæde-reservationer nu automatisk fra konduktørens liste, i stedet for at blive stående.
+
+## v0.140.0 (build 0191) — 2026-08-16
+
+- **Godkendte ønsker giver nu også besked.** Godkender du et ønske, får brugeren der satte det på listen nu en besked om det — ligesom ved en afvisning.
+
+## v0.139.1 (build 0190) — 2026-08-16
+
+- **Rettet: "Godkend ønske"/"Afvis ønske"-knapperne viste ikke deres tekst korrekt** ved den lille kort-størrelse. De to knapper står nu under hinanden i stedet for side om side.
+
 ## v0.139.0 (build 0189) — 2026-08-15
 
 - **Ny knap: "Afvis ønske".** Ved siden af "Godkend ønske" på et afventende ønske kan en admin nu afvise det i stedet — med en valgfri begrundelse, som brugeren der ønskede det får som besked.

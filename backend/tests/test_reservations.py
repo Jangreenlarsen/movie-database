@@ -344,6 +344,53 @@ async def test_approving_notifies_the_owner(client):
     await guest.aclose()
 
 
+async def test_past_screening_reservations_are_cleaned_up_on_list(client):
+    """Feature #167 — Jan: "de film [der] har kørt skal også have slettet
+    deres sæde reservation når en film er vist". Ingen tidsstyret job findes
+    i appen, så oprydningen sker ved næste læsning af reservations-listen."""
+    movie_id = await _create_movie(client, "Afholdt Film")
+    screening_id = await _create_screening(client, movie_id, "2020-01-01T20:00:00")
+    guest = await _member_client(client, "g_past", role="guest")
+    await guest.post(
+        f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N1-1"]}
+    )
+    assert len((await guest.get("/api/reservations/mine")).json()) == 1
+
+    assert (await client.get("/api/reservations")).json() == []
+    await guest.aclose()
+
+
+async def test_upcoming_screening_reservations_survive_the_cleanup(client):
+    movie_id = await _create_movie(client, "Kommende Film")
+    screening_id = await _create_screening(client, movie_id)  # default: far i fremtiden
+    guest = await _member_client(client, "g_upcoming", role="guest")
+    await guest.post(
+        f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N1-1"]}
+    )
+
+    reservations = (await client.get("/api/reservations")).json()
+    assert len(reservations) == 1
+    await guest.aclose()
+
+
+async def test_global_holds_survive_past_screening_cleanup(client):
+    """Et globalt hold (screening_id: None) hører ikke til nogen bestemt
+    fremvisning og må derfor aldrig rammes af oprydningen, uanset hvor mange
+    afholdte fremvisninger der findes."""
+    movie_id = await _create_movie(client, "Afholdt Film 2")
+    screening_id = await _create_screening(client, movie_id, "2020-01-01T20:00:00")
+    guest = await _member_client(client, "g_past2", role="guest")
+    await guest.post(
+        f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N1-1"]}
+    )
+    await client.post("/api/reservations/hold", json={"seat_id": "N2-2", "scope": "global"})
+
+    reservations = (await client.get("/api/reservations")).json()
+    assert len(reservations) == 1
+    assert reservations[0]["scope"] == "global"
+    await guest.aclose()
+
+
 async def test_list_approved_includes_holds_and_guest_reservations(client):
     """Feature #137 — konduktørens 'godkendte / for-reserverede'-liste henter
     ?status=approved; både en godkendt gæste-reservation og et admin-hold har

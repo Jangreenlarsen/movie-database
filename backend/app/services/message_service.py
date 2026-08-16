@@ -109,6 +109,41 @@ async def notify_wishlist_moved(
         pass
 
 
+async def notify_wishlist_approved(
+    db: AsyncIOMotorDatabase,
+    wishlist_doc: dict,
+    admin: dict,
+    title: str | None,
+    is_tv: bool,
+) -> None:
+    """Feature #166 — Jan: "ved 'Godkend ønske' skal der sendes en besked til
+    user som har sag den på listen". Modparten til `notify_wishlist_rejected`
+    (og strukturelt en tro kopi af `notify_wishlist_moved`, med en fast
+    besked frem for #165s frie admin-tekst — godkendelse har intet
+    begrundelsesfelt at give videre). Samme best-effort try/except og
+    "spring over hvis opretteren ikke kan slås op"-mønster (regel 16)."""
+    owner_username = wishlist_doc.get("registered_by")
+    if not owner_username or owner_username == admin.get("username"):
+        return
+    owner = await user_repository.find_by_username_normalized(db, owner_username.lower())
+    if owner is None:
+        return
+    kind = "serie" if is_tv else "film"
+    display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or kind
+    payload = MessageCreate(
+        subject=f'Dit ønske "{display_title}" er godkendt',
+        body=(
+            f'Den {kind} du ønskede — "{display_title}" — er nu godkendt og '
+            "står på indkøbslisten. 🎬"
+        ),
+        recipient_user_id=str(owner["_id"]),
+    )
+    try:
+        await send(db, payload, admin)
+    except Exception:
+        pass
+
+
 async def notify_wishlist_rejected(
     db: AsyncIOMotorDatabase,
     wishlist_doc: dict,

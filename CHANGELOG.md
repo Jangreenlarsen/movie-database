@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.139.1 build 0190] — 2026-08-16 — fix: "Godkend ønske"/"Afvis ønske" kunne ikke rumme deres egen tekst (BUGS.md #71)
+
+Jan: *"justere de to knapper indkøbslisten til 'Afvis ønske' og 'Godkend ønske' tekst kan ikke når så stå i knapperne"*. Ved "small" kortstørrelse delte de to knapper (feature #165) kortets bredde i to halvdele, for smalt til selv den korteste tekst. Rettet ved at stakke dem lodret i stedet for side om side — hver får nu kortets fulde bredde. Bekræftet ved "small" kortstørrelse på både desktop og mobilbredde (den oprindelige verifikation af #165 testede kun standard-kortstørrelsen). Berørt fil: `frontend/src/pages/Library.css`.
+
 ## [0.139.0 build 0189] — 2026-08-15 — feature: "Afvis ønske" med besked til opretteren (FEATURES.md #165)
 
 Jan: *"funktion 'approve wish' skal have en funktion mere at kunne 'not approve wish' med besked til user som har indstillet ønske"*. Ny `POST /api/movies|tv-shows/{id}/reject-wish` (admin-only, dedikeret rute — ikke den generiske PATCH som godkendelse bruger, da afvisning har to sideeffekter: sletning + besked). Afviser man et afventende ønske, slettes det (samme som en almindelig sletning, ikke en tredje `wishlist_status`), og ønske-opretteren får en intern besked (feature #100) med adminens valgfrie begrundelse eller en generisk standardtekst. Ny `message_service.notify_wishlist_rejected` (kopi af `notify_wishlist_moved`s mønster), ny `WishlistNotPendingError` (409 ved dobbeltklik/forkert tilstand). Frontend: ny "Afvis ønske"-knap ved siden af "Godkend ønske", `window.prompt` til begrundelsen. Regel 18-bug fundet og rettet undervejs: de to knapper manglede `min-width: 0`, samme flexbox-fælde som lightbox-knapperne tidligere i dag. Berørte filer: se FEATURES.md #165 for fuld liste. Tests: `test_wishlist_approval.py` +6. Fuld backend-suite (680) + frontend (78) grøn.

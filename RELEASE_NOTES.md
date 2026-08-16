@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.139.1 (build 0190) — 2026-08-16
+
+- **Rettet: "Godkend ønske"/"Afvis ønske"-knapperne viste ikke deres tekst korrekt** ved den lille kort-størrelse. De to knapper står nu under hinanden i stedet for side om side.
+
 ## v0.139.0 (build 0189) — 2026-08-15
 
 - **Ny knap: "Afvis ønske".** Ved siden af "Godkend ønske" på et afventende ønske kan en admin nu afvise det i stedet — med en valgfri begrundelse, som brugeren der ønskede det får som besked.

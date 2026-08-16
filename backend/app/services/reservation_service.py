@@ -263,9 +263,36 @@ async def cancel_reservation(
     await reservation_repository.delete(db, reservation_id)
 
 
+async def _cleanup_past_screening_reservations(db: AsyncIOMotorDatabase) -> None:
+    """Feature #167 — Jan: "de film [der] har kørt skal også have slettet
+    deres sæde reservation når en film er vist". En reservation for en
+    fremvisning der allerede er afholdt tjener ikke længere noget formål —
+    uden oprydning ville den blive stående for evigt i konduktørens
+    afventer/godkendt-kø (screeningen selv forsvinder fra programmet med det
+    samme, jf. `screening_repository.find_all`s `upcoming_only`, men dens
+    reservationer bliver aldrig ryddet af sig selv).
+
+    Denne app har ingen tidsstyret baggrundsjob nogen steder (ingen cron/
+    apscheduler/TTL-index) — al oprydning her sker som en sideeffekt af en
+    eksplicit handling. Kører derfor i stedet ved hver læsning af
+    konduktør-køen (`list_reservations`), samme lette "ryd op ved brug"-
+    princip som poster_cache bruger omvendt til at FYLDE i stedet for at
+    rydde. Ikke koblet på `list_my_reservations` — dens eneste kaldested i
+    frontend-koden er dødt (ubrugt siden det blev skrevet), så der er intet
+    reelt behov at dække dér. Global hold (screening_id: None) rammes
+    aldrig, ligesom delete_for_screening."""
+    screening_ids = await reservation_repository.find_distinct_screening_ids(db)
+    if not screening_ids:
+        return
+    past_ids = await screening_repository.find_past_ids(db, screening_ids)
+    if past_ids:
+        await reservation_repository.delete_for_screenings(db, past_ids)
+
+
 async def list_reservations(
     db: AsyncIOMotorDatabase, status: str | None = None, screening_id: str | None = None
 ) -> list[Reservation]:
+    await _cleanup_past_screening_reservations(db)
     documents = await reservation_repository.find_all(db, status, screening_id)
     return [await _to_model(db, document) for document in documents]
 

@@ -101,3 +101,21 @@ async def delete_for_screening(db: AsyncIOMotorDatabase, screening_id: str) -> i
     røres ikke). Returnerer antal fjernede."""
     result = await db[COLLECTION].delete_many({"screening_id": screening_id})
     return result.deleted_count
+
+
+async def find_distinct_screening_ids(db: AsyncIOMotorDatabase) -> list[str]:
+    """Feature #167 — alle distinkte screening_id'er der aktuelt har mindst
+    én reservation. Ekskluderer globale hold (screening_id: None) implicit,
+    da `distinct` ikke medtager None-værdier for et felt der forespørges
+    sådan her — men filteret er alligevel eksplicit for at gøre hensigten
+    klar (aldrig ramme globale hold)."""
+    return await db[COLLECTION].distinct("screening_id", {"screening_id": {"$ne": None}})
+
+
+async def delete_for_screenings(db: AsyncIOMotorDatabase, screening_ids: list[str]) -> int:
+    """Feature #167 — som delete_for_screening, men for flere fremvisninger
+    på én gang (den afholdte-oprydning tjekker typisk flere ad gangen)."""
+    if not screening_ids:
+        return 0
+    result = await db[COLLECTION].delete_many({"screening_id": {"$in": screening_ids}})
+    return result.deleted_count

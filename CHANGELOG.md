@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.141.0 build 0192] — 2026-08-16 — feature: oprydning af afholdte fremvisningers sæde-reservationer (FEATURES.md #167)
+
+Jan: *"i voldby bio skal de film har køret også have slettet deres sæde resevation når en film er vist"*. En afholdt fremvisning forsvinder allerede fra programmet af sig selv, men dens sæde-reservationer blev stående for evigt i konduktørens kø. Ny `reservation_service._cleanup_past_screening_reservations`, kaldt fra `list_reservations` — appen har intet tidsstyret baggrundsjob nogen steder, så oprydningen sker i stedet som en sideeffekt af selve læsningen (samme princip som `poster_cache` bruger omvendt). Globale sæde-hold rammes aldrig. Berørte filer: `backend/app/repositories/screening_repository.py`, `backend/app/repositories/reservation_repository.py`, `backend/app/services/reservation_service.py`. Tests: `test_reservations.py` +3. Fuld backend-suite (686) + frontend (78) grøn.
+
 ## [0.140.0 build 0191] — 2026-08-16 — feature: godkendelses-besked til ønske-opretteren (FEATURES.md #166)
 
 Jan: *"ved 'Godkend ønske' skal der sendes en besked til user som har sag den på listen"*. Ny `message_service.notify_wishlist_approved` (samme mønster som `notify_wishlist_moved`), kaldt fra `update_movie`/`update_tv_show` ved den faktiske overgang pending→approved (ikke ved gentagne PATCH'er af en allerede godkendt post). Symmetrisk med #165's afvisnings-besked. Berørte filer: `backend/app/services/message_service.py`, `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`. Tests: `test_wishlist_approval.py` +3. Fuld backend-suite (686) + frontend (78) grøn.

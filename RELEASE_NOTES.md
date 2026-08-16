@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.141.0 (build 0192) — 2026-08-16
+
+- **Rydder selv op efter en film er vist.** Når en fremvisning i Voldby BIO er overstået, forsvinder dens sæde-reservationer nu automatisk fra konduktørens liste, i stedet for at blive stående.
+
 ## v0.140.0 (build 0191) — 2026-08-16
 
 - **Godkendte ønsker giver nu også besked.** Godkender du et ønske, får brugeren der satte det på listen nu en besked om det — ligesom ved en afvisning.

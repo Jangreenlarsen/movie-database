@@ -38,6 +38,20 @@ async def find_all(
     return await cursor.to_list(length=500)
 
 
+async def find_past_ids(db: AsyncIOMotorDatabase, screening_ids: list[str]) -> list[str]:
+    """Feature #167 — hvilke af de givne screening-id'er er allerede afholdt
+    (scheduled_at i fortiden)? Bruges af reservation_service til at afgøre
+    hvilke sæde-reservationer der kan ryddes op, efter en fremvisning er vist."""
+    valid_ids = [ObjectId(sid) for sid in screening_ids if ObjectId.is_valid(sid)]
+    if not valid_ids:
+        return []
+    now = datetime.now(timezone.utc)
+    cursor = db[COLLECTION].find(
+        {"_id": {"$in": valid_ids}, "scheduled_at": {"$lt": now}}, {"_id": 1}
+    )
+    return [str(doc["_id"]) async for doc in cursor]
+
+
 async def update(db: AsyncIOMotorDatabase, screening_id: str, fields: dict) -> dict | None:
     if not ObjectId.is_valid(screening_id):
         return None

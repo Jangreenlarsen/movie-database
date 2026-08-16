@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.143.2 build 0196] — 2026-08-16 — feature: gæste-login-banneret står nu dobbelt så længe på skærmen (FEATURES.md #169)
+
+Jan: *"ændre tid for banner er på skræm til det dubble tid"*. "På skærm"-tiden fordoblet fra 3s til 6s (fade ind/ud uændret 1s hver) — samlet forløb nu 8s, keyframe-stop justeret til 0/12.5/87.5/100%. Berørte filer: `frontend/src/pages/CinemaPublic.css`, `frontend/src/pages/CinemaPublic.jsx` (kommentar). Ren tal-justering, ikke genverificeret i browser på Jans udtrykkelige ønske.
+
 ## [0.143.1 build 0195] — 2026-08-16 — fix: gæste-login-banneret var forkert placeret/dimensioneret og sprang i stedet for at tone på mobil (BUGS.md #72)
 
 Jan, tre tilbagemeldinger: *"den skal være midt på skærm ... baggrund skal være transperant og banne skal fylde 80 % af viewport"*, *"den er ikke ... fremme i 3 sek tjek op på det"*, *"på mobil tonner den ikke frem men kommer med det samme frem fra 0 til 100%"*. Banneret centreres nu i begge akser (`top/left: 50%` + `translate(-50%,-50%)`), har `background: transparent` (den hvide standard-knap-baggrund er væk), og er `width: 80vw`. Den mobile "springer i stedet for at tone"-fejl sporedes til en selv-tilføjet `prefers-reduced-motion`-gren (aldrig efterspurgt) som brugte en anden, springende keyframe-serie — fjernet helt, ét kodespor for alle. Timingen skiftet fra `ease` til `linear`. Verificeret empirisk med finmasket opacity-sampling (både normal og `reducedMotion: "reduce"`-emuleret): fladt `opacity: 1` fra ~1000ms til ~3800ms i begge tilfælde. Berørt fil: `frontend/src/pages/CinemaPublic.css`.

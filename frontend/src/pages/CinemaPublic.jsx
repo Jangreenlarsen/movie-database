@@ -203,13 +203,14 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
 
 // Feature #169 — Jan: "banne skal tone frem og bliver på skærm i 3 sek hvor
 // efter den tonner væk igen med mindre man trykker på den hvor efter man
-// bliver presenteret for login". Hele forløbet (1s ind, 3s fast, 1s ud —
-// Jans egne tal) er ét CSS-keyframe-forløb (se .cinema-public-guest-banner i
-// CinemaPublic.css) i stedet for tre separate JS-timere; komponenten lytter
-// blot efter `onAnimationEnd` for at fjerne sig selv fra DOM'en når det er
-// forbi. Et klik når som helst undervejs (banneret er interaktivt gennem
-// hele fade-forløbet, opacity blokerer ikke klik) fjerner den med det samme
-// og åbner login i stedet — samme login-panel som "Log ind"-knappen i hero'en.
+// bliver presenteret for login" (på-skærm-tiden sidenhen fordoblet til 6s,
+// 2026-08-16). Hele forløbet (1s ind, 6s fast, 1s ud) er ét CSS-keyframe-
+// forløb (se .cinema-public-guest-banner i CinemaPublic.css) i stedet for
+// separate JS-timere; komponenten lytter blot efter `onAnimationEnd` for at
+// fjerne sig selv fra DOM'en når det er forbi. Et klik når som helst
+// undervejs (banneret er interaktivt gennem hele fade-forløbet, opacity
+// blokerer ikke klik) fjerner den med det samme og åbner login i stedet —
+// samme login-panel som "Log ind"-knappen i hero'en.
 function GuestLoginBanner({ onOpenLogin }) {
   const t = useT();
   const [visible, setVisible] = useState(true);

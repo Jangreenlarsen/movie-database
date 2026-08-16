@@ -627,13 +627,16 @@ video.cinema-public-gallery-item {
    `max-height` + `object-fit: contain` er et lille sikkerhedsnet for lave/
    liggende viewports, hvor 80vw ellers kunne give en højde der overstiger
    selve skærmen — billedet skrumper proportionalt i stedet for at skære af.
-   Jans fade-tal (1s ind, 3s fast, 1s ud = 5s i alt) rammes af keyframe-stop
-   på 0/20/80/100%, `linear` (ikke `ease`) så der ikke er nogen tvivl om at
-   "fast"-fasen rent faktisk holder konstant opacity i præcis 3 sekunder.
-   Ingen `prefers-reduced-motion`-gren (fjernet igen — den fik banneret til
-   at springe direkte fra 0 til 100% synlighed på Jans mobil i stedet for at
-   tone, præcis det modsatte af hvad der blev bedt om; ét kodespor for alle
-   er mere pålideligt end en gren der aldrig blev efterspurgt). */
+   Fade ind/ud er stadig 1s hver (Jans oprindelige tal); "på skærm"-tiden er
+   sidenhen fordoblet fra 3s til 6s (Jans ønske 2026-08-16), så det samlede
+   forløb nu er 8s: 1s ind, 6s fast, 1s ud. Keyframe-stop på 0/12.5/87.5/100%
+   rammer netop 1s/7s af de 8s. `linear` (ikke `ease`) så der ikke er nogen
+   tvivl om at "fast"-fasen rent faktisk holder konstant opacity i præcis 6
+   sekunder. Ingen `prefers-reduced-motion`-gren (fjernet igen — den fik
+   banneret til at springe direkte fra 0 til 100% synlighed på Jans mobil i
+   stedet for at tone, præcis det modsatte af hvad der blev bedt om; ét
+   kodespor for alle er mere pålideligt end en gren der aldrig blev
+   efterspurgt). */
 .cinema-public-guest-banner {
   position: fixed;
   top: 50%;
@@ -646,7 +649,7 @@ video.cinema-public-gallery-item {
   border: none;
   background: transparent;
   cursor: pointer;
-  animation: cinemaGuestBannerFade 5s linear forwards;
+  animation: cinemaGuestBannerFade 8s linear forwards;
 }
 
 .cinema-public-guest-banner img {
@@ -660,8 +663,8 @@ video.cinema-public-gallery-item {
   0% {
     opacity: 0;
   }
-  20%,
-  80% {
+  12.5%,
+  87.5% {
     opacity: 1;
   }
   100% {

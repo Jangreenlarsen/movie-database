@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.143.1 (build 0195) — 2026-08-16
+
+- **Rettet: velkomst-banneret på /bio.** Står nu midt på skærmen (ikke kun forneden), fylder 80% af skærmen, har ingen hvid kant-boks bag billedet — og toner nu rigtigt frem på mobil i stedet for at springe direkte frem.
+
 ## v0.143.0 (build 0194) — 2026-08-16
 
 - **Ny velkomst-banner på /bio for besøgende der ikke er logget ind.** Et banner om fordelsprogrammet toner frem, står på skærmen et par sekunder og toner væk igen — eller fører til login, hvis man trykker på det.

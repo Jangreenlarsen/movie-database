@@ -40,9 +40,11 @@ async def reserve_seats(
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     # Bevidst plain get_current_user (ikke require_not_guest): en guest må
-    # reservere et sæde, præcis som de må ønske en visning (#62/#72).
+    # reservere et sæde, præcis som de må ønske en visning (#62/#72) —
+    # MEDMINDRE visningen er markeret privat (feature #170), tjekket inde i
+    # selve reserve_seats (kræver screeningens data, ikke kun rollen).
     return await reservation_service.reserve_seats(
-        db, screening_id, payload.seat_ids, current_user["username"]
+        db, screening_id, payload.seat_ids, current_user["username"], current_user["role"]
     )
 
 

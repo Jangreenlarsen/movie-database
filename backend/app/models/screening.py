@@ -73,6 +73,11 @@ class ScreeningCreate(BaseModel):
     # If set, the referenced pending request is marked "scheduled" as part
     # of the same action instead of being left dangling in the queue.
     request_id: str | None = None
+    # Feature #170 — Jan: en visning kan sættes som et privat arrangement,
+    # så gæst-rollen (feature #72) ikke kan booke sæder på den. Håndhæves i
+    # backend (reservation_service.reserve_seats), ikke kun ved at skjule
+    # sæde-knappen i UI'et.
+    is_private: bool = False
 
     @model_validator(mode="after")
     def check_reference(self) -> "ScreeningCreate":
@@ -83,6 +88,7 @@ class ScreeningCreate(BaseModel):
 class ScreeningUpdate(BaseModel):
     scheduled_at: datetime | None = None
     note: str | None = None
+    is_private: bool | None = None
 
 
 class Screening(BaseModel):
@@ -92,6 +98,7 @@ class Screening(BaseModel):
     tv_show_id: str | None = None
     scheduled_at: datetime
     note: str | None = None
+    is_private: bool = False
     created_by: str
     created_at: datetime
     # Enriched at read-time from the referenced movie/tv_show (feature

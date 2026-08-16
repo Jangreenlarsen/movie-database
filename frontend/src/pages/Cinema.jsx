@@ -27,6 +27,8 @@ export default function Cinema({ user }) {
   const t = useT();
   const locale = useLocale();
   const isAdmin = user.role === "admin";
+  // Feature #170 — private arrangementer skjuler sæde-knappen for gæster.
+  const isGuest = user.role === "guest";
   const [screenings, setScreenings] = useState([]);
   const [status, setStatus] = useState("loading");
   const [linkCopied, setLinkCopied] = useState(false);
@@ -90,6 +92,7 @@ export default function Cinema({ user }) {
                   key={screening.id}
                   screening={screening}
                   isAdmin={isAdmin}
+                  isGuest={isGuest}
                   onChanged={refresh}
                 />
               ))}
@@ -101,21 +104,29 @@ export default function Cinema({ user }) {
   );
 }
 
-function ScreeningCard({ screening, isAdmin, onChanged }) {
+function ScreeningCard({ screening, isAdmin, isGuest, onChanged }) {
   const t = useT();
   const locale = useLocale();
   const [editing, setEditing] = useState(false);
   const [scheduledAt, setScheduledAt] = useState(screening.scheduled_at.slice(0, 16));
   const [note, setNote] = useState(screening.note ?? "");
+  // Feature #170 — Jan: admin skal kunne markere en visning som et privat
+  // arrangement, som gæst-rollen ikke kan booke sæder på.
+  const [isPrivate, setIsPrivate] = useState(screening.is_private ?? false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [seatOpen, setSeatOpen] = useState(false);
+  const blockedForGuest = screening.is_private && isGuest;
 
   async function saveEdit() {
     setBusy(true);
     setError(null);
     try {
-      await api.updateScreening(screening.id, { scheduled_at: scheduledAt, note: note || null });
+      await api.updateScreening(screening.id, {
+        scheduled_at: scheduledAt,
+        note: note || null,
+        is_private: isPrivate,
+      });
       setEditing(false);
       onChanged();
     } catch (err) {
@@ -151,15 +162,29 @@ function ScreeningCard({ screening, isAdmin, onChanged }) {
             <span>{screening.media_kind === "movie" ? "🎬" : "📺"}</span>
           )}
         </div>
-        <button
-          type="button"
-          className="cinema-card-seat"
-          onClick={() => setSeatOpen(true)}
-          title={t("seat.button")}
-        >
-          <img src={SEAT_BUTTON_IMG} alt="" />
-          <span>{t("seat.button")}</span>
-        </button>
+        {blockedForGuest ? (
+          // Feature #170 — sæde-knappen skjules helt for gæster på et privat
+          // arrangement i stedet for at lade dem åbne sædekortet og først
+          // fejle ved selve reservationen; backend håndhæver det samme
+          // uafhængigt (reservation_service.reserve_seats), dette er kun UX.
+          <div
+            className="cinema-card-seat cinema-card-seat-blocked"
+            title={t("cinema.privateEventGuestBlocked")}
+          >
+            <span aria-hidden="true">🔒</span>
+            <span>{t("cinema.privateEventGuestBlocked")}</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="cinema-card-seat"
+            onClick={() => setSeatOpen(true)}
+            title={t("seat.button")}
+          >
+            <img src={SEAT_BUTTON_IMG} alt="" />
+            <span>{t("seat.button")}</span>
+          </button>
+        )}
       </div>
       {seatOpen && (
         <SeatSelectionModal
@@ -170,6 +195,11 @@ function ScreeningCard({ screening, isAdmin, onChanged }) {
       )}
       <div className="cinema-card-body">
         <div className="cinema-card-time">{formatTime(screening.scheduled_at, locale)}</div>
+        {screening.is_private && (
+          <div className="cinema-card-private-badge" title={t("cinema.privateEventHint")}>
+            🔒 {t("cinema.privateEvent")}
+          </div>
+        )}
         <h3 className="cinema-card-title">
           {screening.title ?? t("cinema.unknownTitle")}
           {screening.year ? ` (${screening.year})` : ""}
@@ -211,6 +241,14 @@ function ScreeningCard({ screening, isAdmin, onChanged }) {
               onChange={(e) => setNote(e.target.value)}
               placeholder={t("cinema.notePlaceholder")}
             />
+            <label className="cinema-private-toggle">
+              <input
+                type="checkbox"
+                checked={isPrivate}
+                onChange={(e) => setIsPrivate(e.target.checked)}
+              />
+              {t("cinema.privateEvent")}
+            </label>
             <button type="button" className="btn btn-primary" onClick={saveEdit} disabled={busy}>
               {t(busy ? "common.saving" : "common.save")}
             </button>
@@ -300,6 +338,7 @@ function RequestRow({ request, onChanged }) {
   const [scheduling, setScheduling] = useState(false);
   const [scheduledAt, setScheduledAt] = useState(suggestion);
   const [note, setNote] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -315,6 +354,7 @@ function RequestRow({ request, onChanged }) {
         scheduled_at: scheduledAt,
         note: note || null,
         request_id: request.id,
+        is_private: isPrivate,
       });
       onChanged();
     } catch (err) {
@@ -396,6 +436,14 @@ function RequestRow({ request, onChanged }) {
             onChange={(e) => setNote(e.target.value)}
             placeholder={t("cinema.notePlaceholder")}
           />
+          <label className="cinema-private-toggle">
+            <input
+              type="checkbox"
+              checked={isPrivate}
+              onChange={(e) => setIsPrivate(e.target.checked)}
+            />
+            {t("cinema.privateEvent")}
+          </label>
           <button type="button" className="btn btn-primary" onClick={schedule} disabled={!scheduledAt || busy}>
             {t(busy ? "cinema.scheduling" : "cinema.confirm")}
           </button>
@@ -416,6 +464,7 @@ function DirectAddSection({ onChanged }) {
   const [selected, setSelected] = useState(null);
   const [scheduledAt, setScheduledAt] = useState("");
   const [note, setNote] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -443,12 +492,14 @@ function DirectAddSection({ onChanged }) {
         tv_show_id: selected.media_kind === "tv" ? selected.id : null,
         scheduled_at: scheduledAt,
         note: note || null,
+        is_private: isPrivate,
       });
       setSelected(null);
       setResults([]);
       setQuery("");
       setScheduledAt("");
       setNote("");
+      setIsPrivate(false);
       onChanged();
     } catch (err) {
       setError(err.message);
@@ -499,6 +550,14 @@ function DirectAddSection({ onChanged }) {
             onChange={(e) => setNote(e.target.value)}
             placeholder={t("cinema.notePlaceholder")}
           />
+          <label className="cinema-private-toggle">
+            <input
+              type="checkbox"
+              checked={isPrivate}
+              onChange={(e) => setIsPrivate(e.target.checked)}
+            />
+            {t("cinema.privateEvent")}
+          </label>
           <button
             type="button"
             className="btn btn-primary"

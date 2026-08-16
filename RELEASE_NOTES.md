@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.144.0 (build 0197) — 2026-08-16
+
+- **Nyt: private arrangementer i Voldby BIO.** Når du planlægger eller redigerer en visning, kan du nu markere den som et privat arrangement — gæste-konti kan så ikke booke sæder til den (almindelige brugere kan stadig).
+
 ## v0.143.2 (build 0196) — 2026-08-16
 
 - **Velkomst-banneret på /bio står nu dobbelt så længe på skærmen** (6 sekunder i stedet for 3).

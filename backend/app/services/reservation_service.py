@@ -103,11 +103,22 @@ async def get_seat_map(db: AsyncIOMotorDatabase, screening_id: str, username: st
 
 
 async def reserve_seats(
-    db: AsyncIOMotorDatabase, screening_id: str, seat_ids: list[str], username: str
+    db: AsyncIOMotorDatabase, screening_id: str, seat_ids: list[str], username: str, role: str
 ) -> list[Reservation]:
     screening = await screening_repository.find_by_id(db, screening_id)
     if screening is None:
         raise ScreeningNotFoundError(screening_id)
+
+    # Feature #170 — Jan: en visning markeret som privat arrangement kan
+    # gæst-rollen ikke booke sæder på. Håndhæves her (regel 16), ikke kun
+    # ved at skjule sæde-knappen i UI'et — samme "tjek rollen mod dataen,
+    # ikke kun mod en Depends()"-mønster som enforce_guest_wishlist_only
+    # (api/deps.py), nødvendigt fordi afgørelsen kræver selve screeningens
+    # data (is_private), ikke kun kalderens rolle alene.
+    if screening.get("is_private") and role == "guest":
+        raise NotAuthorizedError(
+            "Denne visning er et privat arrangement — gæster kan ikke booke sæder her"
+        )
 
     invalid = [sid for sid in seat_ids if sid not in SEAT_IDS]
     if invalid:

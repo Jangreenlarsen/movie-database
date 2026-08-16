@@ -50,9 +50,18 @@
 }
 
 /* Feature #133 — film-ikon + seat-valg-knap i en lodret kolonne, så knappen
-   står under posteren og titlen/teksten får fuld bredde. */
+   står under posteren og titlen/teksten får fuld bredde.
+   `width: 90px` (matcher .cinema-card-poster) er nødvendig, ikke kun
+   kosmetisk — uden en fast bredde her sizer flex-kolonnen sig efter det
+   BREDESTE barns uombrudte tekst-indhold. Feature #170s blokerings-besked
+   ("Privat arrangement — ikke åben for booking") er meget længere end den
+   oprindelige "Vælg plads"/"Reservér", og uden denne linje trak dens
+   fulde, uombrudte bredde hele mediekolonnen (og dermed .cinema-card-body,
+   der deler samme flex-række) sammen til få pixels — titel/tekst blev
+   klemt til at ombryde bogstav for bogstav (fundet ved regel 18). */
 .cinema-card-media {
   flex-shrink: 0;
+  width: 90px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -112,6 +121,43 @@
   padding: 2px 9px;
   border-radius: 999px;
   margin-bottom: 6px;
+}
+
+/* Feature #170 — "privat arrangement"-mærke, sidder ved siden af tids-
+   pillen (begge inline-block, samme linje indtil kortet er for smalt).
+   Neutral (ikke --danger) — det er en administrativ tilstand, ikke en
+   fejl/advarsel. */
+.cinema-card-private-badge {
+  display: inline-block;
+  margin-left: 6px;
+  margin-bottom: 6px;
+  padding: 2px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* Sæde-knappen erstattet af en ikke-klikbar besked, når en gæst rammer et
+   privat arrangement — samme kasse som .cinema-card-seat, bare uden dens
+   hover/cursor-tilstande. */
+.cinema-card-seat-blocked {
+  cursor: default;
+}
+
+.cinema-card-seat-blocked:hover {
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: none;
+}
+
+.cinema-private-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
 }
 
 .cinema-card-title {

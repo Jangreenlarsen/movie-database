@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.145.0 (build 0198) — 2026-08-16
+
+- **Ny: admin kan nulstille en brugers adgangskode.** Der er intet e-mail-baseret "glemt adgangskode"-system i appen — i stedet kan en admin under Indstillinger → Brugere klikke "Nulstil adgangskode" for at generere en ny, midlertidig adgangskode, som så gives videre til brugeren uden om appen (telefon, chat, personligt). Login-siden gør nu også selv opmærksom på dette: "Glemt din adgangskode? ... kontakt Jan eller Lis."
+
 ## v0.144.0 (build 0197) — 2026-08-16
 
 - **Nyt: private arrangementer i Voldby BIO.** Når du planlægger eller redigerer en visning, kan du nu markere den som et privat arrangement — gæste-konti kan så ikke booke sæder til den (almindelige brugere kan stadig).

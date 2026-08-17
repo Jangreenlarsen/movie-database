@@ -210,6 +210,17 @@ class PasswordChange(BaseModel):
         return _validate_bcrypt_byte_length(value)
 
 
+class PasswordResetResult(BaseModel):
+    """Feature #171 — admin-assisteret password recovery (ingen e-mail-
+    system). Den nye adgangskode returneres i klartekst PRÆCIS denne ene
+    gang, som en almindelig HTTPS-respons til den admin der selv udløste
+    handlingen (aldrig gemt/logget nogen steder — hverken her eller i
+    audit-loggen, som kun optegner AT en nulstilling skete og for hvem)."""
+
+    username: str
+    new_password: str
+
+
 class UserRoleUpdate(BaseModel):
     role: UserRole
 

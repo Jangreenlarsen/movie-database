@@ -5,6 +5,7 @@ from app.api.deps import get_current_user, get_current_user_any_status, require_
 from app.db import get_database
 from app.models.user import (
     PasswordChange,
+    PasswordResetResult,
     User,
     UserRoleUpdate,
     UserSettingsUpdate,
@@ -91,6 +92,25 @@ async def update_user_status(
         updated.username,
     )
     return updated
+
+
+@router.post(
+    "/{user_id}/reset-password",
+    response_model=PasswordResetResult,
+    dependencies=[Depends(require_admin)],
+)
+async def reset_user_password(
+    user_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """Feature #171 — admin-assisteret password recovery (intet e-mail-
+    system). Audit-loggen optegner kun AT en nulstilling skete og for hvem
+    — aldrig selve adgangskoden (CLAUDE.md regel 6's princip anvendt på
+    adgangskoder, ikke kun API-nøgler)."""
+    username, new_password = await auth_service.admin_reset_password(db, user_id)
+    await audit_log_service.record(db, current_user["username"], "user.password_reset", username)
+    return PasswordResetResult(username=username, new_password=new_password)
 
 
 @router.delete("/{user_id}", status_code=204, dependencies=[Depends(require_admin)])

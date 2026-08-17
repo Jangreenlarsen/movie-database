@@ -2508,12 +2508,20 @@ function DeploySection() {
   );
 }
 
-function UsersSection({ currentUserId }) {
+// Exporteret til test (regel 19) — tilstands-skiftet omkring
+// adgangskode-nulstilling (feature #171) er ellers kun nået via hele
+// Settings-siden.
+export function UsersSection({ currentUserId }) {
   const t = useT();
   const [users, setUsers] = useState([]);
   const [status, setStatus] = useState("loading");
   const [updatingId, setUpdatingId] = useState(null);
   const [error, setError] = useState(null);
+  // Feature #171 — admin-assisteret adgangskode-nulstilling. Adgangskoden
+  // findes kun i denne state, aldrig gemt/logget nogen steder; forsvinder
+  // ved næste nulstilling, sideskift eller genindlæsning.
+  const [resetResult, setResetResult] = useState(null);
+  const [passwordCopied, setPasswordCopied] = useState(false);
 
   function load() {
     setStatus("loading");
@@ -2555,6 +2563,34 @@ function UsersSection({ currentUserId }) {
     }
   }
 
+  async function resetPassword(targetUser) {
+    if (!window.confirm(t("users.confirmResetPassword", { username: targetUser.username }))) {
+      return;
+    }
+    setUpdatingId(targetUser.id);
+    setError(null);
+    setPasswordCopied(false);
+    try {
+      const result = await api.resetUserPassword(targetUser.id);
+      setResetResult({ username: result.username, password: result.new_password });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  function copyResetPassword() {
+    if (!resetResult) return;
+    navigator.clipboard
+      .writeText(resetResult.password)
+      .then(() => {
+        setPasswordCopied(true);
+        setTimeout(() => setPasswordCopied(false), 2000);
+      })
+      .catch(() => {});
+  }
+
   async function deleteUser(targetUser) {
     if (!window.confirm(t("users.confirmDelete", { username: targetUser.username }))) {
       return;
@@ -2586,6 +2622,35 @@ function UsersSection({ currentUserId }) {
         <div className="banner banner-error">{t("users.loadError")}</div>
       )}
       {error && <div className="banner banner-error">{error}</div>}
+
+      {resetResult && (
+        <div className="banner banner-info" style={{ alignItems: "flex-start" }}>
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0 }}>
+              {t("users.resetPasswordResult", { username: resetResult.username })}
+            </p>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginTop: 8,
+              }}
+            >
+              <code style={{ fontSize: "1rem", userSelect: "all" }}>{resetResult.password}</code>
+              <button type="button" className="btn" onClick={copyResetPassword}>
+                {t(passwordCopied ? "users.passwordCopied" : "users.copyPassword")}
+              </button>
+            </div>
+            <p className="muted" style={{ margin: "8px 0 0" }}>
+              {t("users.resetPasswordHint")}
+            </p>
+          </div>
+          <button type="button" className="btn" onClick={() => setResetResult(null)}>
+            {t("common.close")}
+          </button>
+        </div>
+      )}
 
       {status === "ready" && (
         <ul className="user-list">
@@ -2668,6 +2733,19 @@ function UsersSection({ currentUserId }) {
                   {updatingId === u.id ? "..." : t("users.reactivate")}
                 </button>
               ) : null}
+              {/* Feature #171 — kun meningsfuldt for konti der reelt kan logge
+                  ind (aktive/deaktiverede); afventende/afviste har ingen
+                  "kontakt brugeren om den nye kode"-situation endnu. */}
+              {u.id !== currentUserId && (u.status === "active" || u.status === "disabled") && (
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={updatingId === u.id}
+                  onClick={() => resetPassword(u)}
+                >
+                  {t("users.resetPassword")}
+                </button>
+              )}
               {u.id !== currentUserId && (
                 <button
                   type="button"

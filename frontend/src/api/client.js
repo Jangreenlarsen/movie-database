@@ -105,6 +105,8 @@ export const api = {
   updateUserStatus: (userId, status) =>
     request(`/users/${userId}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
   deleteUser: (userId) => request(`/users/${userId}`, { method: "DELETE" }),
+  // Feature #171 — admin-assisteret password recovery (intet e-mail-system).
+  resetUserPassword: (userId) => request(`/users/${userId}/reset-password`, { method: "POST" }),
   listMovies: (
     {
       q,

@@ -51,11 +51,18 @@ async function request(path, options = {}) {
     // Feature #148 — 401 på et almindeligt endpoint = sessionen er udløbet;
     // nulstil til login. Undtag selve auth-/session-tjekkene, hvor en 401 er en
     // normal "ikke logget ind"-tilstand (og har egen håndtering).
+    // BUGS.md #73 — /users/me/password er undtaget af samme grund: en 401
+    // her betyder "forkert nuværende adgangskode" (en almindelig, forventet
+    // fejl `change_password` selv viser), ikke at sessionen er udløbet. Uden
+    // undtagelsen loggede et fejlslået adgangskodeskift brugeren helt ud af
+    // appen i stedet for bare at vise fejlen — opdaget da feature #172s
+    // tvungne skift-skærm blev afprøvet i browseren med en forkert kode.
     if (
       response.status === 401 &&
       onSessionExpired &&
       !path.startsWith("/auth") &&
-      path !== "/users/me"
+      path !== "/users/me" &&
+      path !== "/users/me/password"
     ) {
       onSessionExpired();
     }

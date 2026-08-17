@@ -448,6 +448,7 @@
   "account.newPassword": "Ny adgangskode",
   "account.passwordChanged": "Adgangskode ændret!",
   "account.changePassword": "Skift adgangskode",
+  "account.mustChangePassword": "Din adgangskode blev nulstillet af en administrator. Skift den til din egen for at fortsætte — det er ikke muligt at bruge appen med den midlertidige kode.",
   "cardSize.heading": "Kortstørrelse",
   "cardSize.description": "Styrer størrelsen på film-/TV-serie-kortene i Film- og TV-serie-fanen. Én fælles indstilling for begge faner.",
   "cardSize.small": "Lille",

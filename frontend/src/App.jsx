@@ -10,6 +10,7 @@ import CinemaPublic from "./pages/CinemaPublic";
 import Login from "./pages/Login";
 import MessageBanner from "./components/MessageBanner";
 import PendingApproval from "./pages/PendingApproval";
+import ForcePasswordChange from "./pages/ForcePasswordChange";
 import { api, setOnSessionExpired } from "./api/client";
 import I18nProvider from "./i18n/I18nProvider";
 import { SOURCE_LANGUAGE, readStoredLanguage, storeLanguage, useT } from "./i18n";
@@ -196,6 +197,19 @@ function App() {
     return (
       <I18nProvider language={user.settings?.language ?? SOURCE_LANGUAGE}>
         <PendingApproval user={user} onLogout={handleLogout} />
+      </I18nProvider>
+    );
+  }
+
+  // Feature #172 — en admin-nulstilling (#171) tvinger et adgangskodeskift
+  // før noget andet i appen er tilgængeligt. Kun relevant for en i øvrigt
+  // aktiv konto (statustjekket ovenfor har allerede filtreret pending/
+  // rejected/disabled fra), matcher backend's samme rækkefølge i
+  // api.deps.get_current_user.
+  if (user.must_change_password) {
+    return (
+      <I18nProvider language={user.settings?.language ?? SOURCE_LANGUAGE}>
+        <ForcePasswordChange user={user} onPasswordChanged={setUser} onLogout={handleLogout} />
       </I18nProvider>
     );
   }

@@ -35,6 +35,7 @@ def to_user_model(document: dict) -> User:
         full_name=document.get("full_name"),
         role=document.get("role", UserRole.STANDARD),
         status=document.get("status", UserStatus.ACTIVE),
+        must_change_password=document.get("must_change_password", False),
         settings=UserSettings(**merged_settings),
         created_at=document["created_at"],
     )
@@ -117,7 +118,12 @@ async def change_password(
         payload.current_password, document["password_hash"]
     ):
         raise InvalidCredentialsError()
-    await user_repository.set_password_hash(db, user_id, hash_password(payload.new_password))
+    # Feature #172 — any successful self-service change (voluntary, or the
+    # forced one after an admin reset) clears must_change_password, even if
+    # it was already False — the requirement, if any, is satisfied either way.
+    await user_repository.set_password_hash(
+        db, user_id, hash_password(payload.new_password), must_change_password=False
+    )
 
 
 # Feature #171 — admin-assisteret password recovery (ingen e-mail-system,
@@ -141,12 +147,19 @@ async def admin_reset_password(db: AsyncIOMotorDatabase, user_id: str) -> tuple[
     findes, jf. Jans ønske) og relæer den til brugeren selv, uden om appen
     (telefon, chat, personligt). Returnerer (username, ny_adgangskode) —
     adgangskoden gemmes/logges aldrig i klartekst noget sted efter dette
-    kald returnerer (heller ikke i audit-loggen, kun AT det skete)."""
+    kald returnerer (heller ikke i audit-loggen, kun AT det skete).
+
+    Feature #172 (Jans udtrykkelige krav, "det skal være udfravigeligt") —
+    sætter samtidig must_change_password, så den midlertidige kode kun kan
+    bruges til selve login'et: `api.deps.get_current_user` blokerer alt
+    andet indtil brugeren selv har sat en ny adgangskode."""
     target = await user_repository.find_by_id(db, user_id)
     if target is None:
         raise UserNotFoundError(user_id)
     new_password = _generate_temporary_password()
-    await user_repository.set_password_hash(db, user_id, hash_password(new_password))
+    await user_repository.set_password_hash(
+        db, user_id, hash_password(new_password), must_change_password=True
+    )
     return target["username"], new_password
 
 

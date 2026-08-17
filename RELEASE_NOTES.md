@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.146.0 (build 0199) — 2026-08-17
+
+- **Adgangskodeskift efter en admin-nulstilling er nu obligatorisk.** Logger du ind med en midlertidig kode udstedt af en admin, kan du ikke bruge resten af appen før du selv har sat din egen adgangskode.
+- **Rettet: en forkert nuværende adgangskode ved adgangskodeskift kunne logge dig helt ud.** Både i det almindelige "Skift adgangskode" i Indstillinger og på den nye obligatoriske skærm vises fejlen nu i stedet, uden at du bliver smidt ud af appen.
+
 ## v0.145.0 (build 0198) — 2026-08-16
 
 - **Ny: admin kan nulstille en brugers adgangskode.** Der er intet e-mail-baseret "glemt adgangskode"-system i appen — i stedet kan en admin under Indstillinger → Brugere klikke "Nulstil adgangskode" for at generere en ny, midlertidig adgangskode, som så gives videre til brugeren uden om appen (telefon, chat, personligt). Login-siden gør nu også selv opmærksom på dette: "Glemt din adgangskode? ... kontakt Jan eller Lis."

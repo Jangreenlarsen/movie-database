@@ -156,9 +156,16 @@ async def set_status(db: AsyncIOMotorDatabase, user_id: str, status: str) -> dic
     return await db[COLLECTION].find_one({"_id": ObjectId(user_id)})
 
 
-async def set_password_hash(db: AsyncIOMotorDatabase, user_id: str, password_hash: str) -> None:
+async def set_password_hash(
+    db: AsyncIOMotorDatabase, user_id: str, password_hash: str, must_change_password: bool
+) -> None:
+    # Feature #172 — caller states the flag explicitly (no default) so
+    # neither call site can silently forget it: an admin reset sets it
+    # True, a self-service change (voluntary or the forced one this
+    # triggers) clears it back to False.
     await db[COLLECTION].update_one(
-        {"_id": ObjectId(user_id)}, {"$set": {"password_hash": password_hash}}
+        {"_id": ObjectId(user_id)},
+        {"$set": {"password_hash": password_hash, "must_change_password": must_change_password}},
     )
 
 

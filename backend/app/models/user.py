@@ -242,5 +242,10 @@ class User(BaseModel):
     full_name: str | None = None
     role: UserRole
     status: UserStatus
+    # Feature #172 — sat af en admin-nulstilling (#171), ryddet igen af en
+    # vellykket adgangskodeskift (egen eller tvungen). Frontend viser en
+    # blokerende "skift adgangskode"-skærm så længe denne er sand — se
+    # api.deps.get_current_user, som håndhæver det samme i backend.
+    must_change_password: bool = False
     settings: UserSettings
     created_at: datetime

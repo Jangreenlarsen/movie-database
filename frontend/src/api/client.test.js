@@ -10,7 +10,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { api } from "./client";
+import { api, setOnSessionExpired } from "./client";
 
 function mockResponse({ ok = false, status = 400, body }) {
   return {
@@ -116,5 +116,42 @@ describe("svar uden indhold", () => {
     } });
 
     await expect(api.markMessageRead("abc")).resolves.toBeNull();
+  });
+});
+
+/**
+ * BUGS.md #73 — fundet ved regel-18-afprøvning af feature #172s tvungne
+ * adgangskodeskift: en forkert nuværende adgangskode gav (korrekt) en 401
+ * fra backend, men frontendens globale "sessionen er udløbet"-håndtering
+ * (feature #148) reagerede på den 401 uanset sti og loggede brugeren helt
+ * ud, i stedet for at lade den lokale fejlvisning i formularen klare det.
+ */
+describe("onSessionExpired udløses kun ved en reel session-udløb (BUGS.md #73)", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  it("udløses ved en 401 på et almindeligt endpoint", async () => {
+    const handler = vi.fn();
+    setOnSessionExpired(handler);
+    fetch.mockResolvedValue(mockResponse({ status: 401, body: { detail: "Not authenticated" } }));
+
+    await expect(api.health()).rejects.toThrow();
+    expect(handler).toHaveBeenCalledTimes(1);
+    setOnSessionExpired(null);
+  });
+
+  it("udløses IKKE ved en 401 fra et forkert nuværende-adgangskode-forsøg", async () => {
+    const handler = vi.fn();
+    setOnSessionExpired(handler);
+    fetch.mockResolvedValue(
+      mockResponse({ status: 401, body: { detail: "Invalid username or password" } })
+    );
+
+    await expect(api.changeMyPassword("wrong-current", "newpassword1")).rejects.toThrow(
+      "Invalid username or password"
+    );
+    expect(handler).not.toHaveBeenCalled();
+    setOnSessionExpired(null);
   });
 });

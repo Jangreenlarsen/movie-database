@@ -221,7 +221,12 @@ async def test_scheduling_from_a_real_request_still_works(client, db):
     movie = (await client.post("/api/movies", json={"title": "Probe Movie", "media_type": "Fysisk", "format": "F-DVD"})).json()
     request = (
         await client.post(
-            "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie["id"]}
+            "/api/screening-requests",
+            json={
+                "media_kind": "movie",
+                "movie_id": movie["id"],
+                "preferred_at": "2026-09-04T20:00:00",
+            },
         )
     ).json()
 
@@ -257,7 +262,8 @@ async def test_deleting_a_movie_removes_its_screenings_and_requests(client, db):
         },
     )
     await client.post(
-        "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie["id"]}
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie["id"], "preferred_at": "2026-09-04T20:00:00"},
     )
     assert await db["screenings"].count_documents({}) == 1
 
@@ -288,7 +294,8 @@ async def test_deleting_a_tv_show_removes_its_screenings_and_requests(client, db
         },
     )
     await client.post(
-        "/api/screening-requests", json={"media_kind": "tv", "tv_show_id": show["id"]}
+        "/api/screening-requests",
+        json={"media_kind": "tv", "tv_show_id": show["id"], "preferred_at": "2026-09-04T20:00:00"},
     )
     assert await db["screenings"].count_documents({}) == 1
 
@@ -344,13 +351,19 @@ async def test_a_title_can_be_requested_again_after_being_declined(client, db):
 
     first = (
         await client.post(
-            "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie["id"]}
+            "/api/screening-requests",
+            json={
+                "media_kind": "movie",
+                "movie_id": movie["id"],
+                "preferred_at": "2026-09-04T20:00:00",
+            },
         )
     ).json()
     await client.patch(f"/api/screening-requests/{first['id']}", json={"status": "declined"})
 
     second = await client.post(
-        "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie["id"]}
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie["id"], "preferred_at": "2026-09-04T20:00:00"},
     )
     assert second.status_code == 201
     assert second.json()["id"] != first["id"]

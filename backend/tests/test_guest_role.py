@@ -160,7 +160,8 @@ async def test_guest_can_request_screening(client):
     guest = await _guest_client(client)
 
     response = await guest.post(
-        "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id}
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": "2026-09-04T20:00:00"},
     )
     assert response.status_code == 201
     await guest.aclose()

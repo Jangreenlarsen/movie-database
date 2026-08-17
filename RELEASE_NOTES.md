@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.150.0 (build 0205) — 2026-08-17
+
+- **"Ønsk visning i Voldby BIO" kræver nu et tidspunkt.** Når du ønsker en film/serie vist, skal du nu angive hvornår du gerne vil se den — det var før frivilligt. Besked er stadig valgfri. "Send ønske" er deaktiveret indtil et tidspunkt er valgt.
+
 ## v0.149.0 (build 0204) — 2026-08-17
 
 - **Nye brugere får nu Guest-rollen som standard, ikke Standard.** Når nogen opretter en konto (og en admin godkender den), starter de nu med read-only-adgang i stedet for fuld adgang. En admin kan stadig opgradere dem til Standard eller Admin fra Indstillinger → Brugere, som hidtil.

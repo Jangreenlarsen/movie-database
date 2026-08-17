@@ -38,7 +38,8 @@ async def test_reset_clears_library_and_related_data(client):
     movie_for_screening = await client.post("/api/movies", json={"title": "Screening Movie", "media_type": "Fysisk", "format": "F-DVD"})
     movie_id = movie_for_screening.json()["id"]
     await client.post(
-        "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id}
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": "2026-09-04T20:00:00"},
     )
     await client.post(
         "/api/screenings",

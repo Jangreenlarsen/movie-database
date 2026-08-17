@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.149.0 (build 0204) — 2026-08-17
+
+- **Nye brugere får nu Guest-rollen som standard, ikke Standard.** Når nogen opretter en konto (og en admin godkender den), starter de nu med read-only-adgang i stedet for fuld adgang. En admin kan stadig opgradere dem til Standard eller Admin fra Indstillinger → Brugere, som hidtil.
+
 ## v0.148.1 (build 0203) — 2026-08-17
 
 - **Rettet: en admin-nulstillet adgangskode fulgte ikke en lav minimum-længde.** Satte du fx politikken til 6 tegn, fik du alligevel altid en 12-tegns kode udleveret ved et admin-reset. Den udleverede kode matcher nu præcis den længde du har sat.

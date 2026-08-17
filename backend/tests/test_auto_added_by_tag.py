@@ -58,6 +58,11 @@ async def test_added_by_tag_reflects_the_actual_creator_not_admin(client):
         await client.patch(
             f"/api/users/{register.json()['id']}/status", json={"status": "active"}
         )
+        # Feature #175 — registration now defaults to guest; this test needs
+        # a non-wishlist creation, which requires standard-or-above.
+        await client.patch(
+            f"/api/users/{register.json()['id']}/role", json={"role": "standard"}
+        )
         response = await second.post("/api/movies", json={"title": "Other User's Movie", "media_type": "Fysisk", "format": "F-DVD"})
         assert response.json()["tags"] == ["Tilføjet af otheruser"]
 

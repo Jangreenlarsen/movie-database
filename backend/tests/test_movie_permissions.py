@@ -30,9 +30,14 @@ async def test_standard_user_can_edit_serial_number_of_own_registered_movie(clie
             "/api/auth/register", json={"username": "registrant", "password": "testpassword123"}
         )
         # Feature #66 — a freshly registered user is `pending` by default and
-        # blocked until an admin approves them.
+        # blocked until an admin approves them. Feature #175 — and now
+        # defaults to guest (read-only) once approved, so this test (about
+        # the standard role specifically) promotes explicitly.
         await client.patch(
             f"/api/users/{register.json()['id']}/status", json={"status": "active"}
+        )
+        await client.patch(
+            f"/api/users/{register.json()['id']}/role", json={"role": "standard"}
         )
         create = await standard_client.post("/api/movies", json={"title": "Own Movie", "media_type": "Fysisk", "format": "F-DVD"})
         movie_id = create.json()["id"]
@@ -68,6 +73,11 @@ async def test_admin_can_edit_serial_number_of_any_movie(client):
         )
         await client.patch(
             f"/api/users/{register.json()['id']}/status", json={"status": "active"}
+        )
+        # Feature #175 — registration now defaults to guest; this user needs
+        # to actually create a (non-wishlist) library entry below.
+        await client.patch(
+            f"/api/users/{register.json()['id']}/role", json={"role": "standard"}
         )
         create = await standard_client.post(
             "/api/movies", json={"title": "Someone Else's Movie", "media_type": "Fysisk", "format": "F-DVD"}

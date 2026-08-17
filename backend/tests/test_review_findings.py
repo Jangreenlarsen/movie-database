@@ -392,6 +392,9 @@ async def test_standard_user_can_still_read_stats_and_deleted_movies(client):
     users = (await client.get("/api/users")).json()
     standard = next(u for u in users if u["username"] == "standarduser")
     await client.patch(f"/api/users/{standard['id']}/status", json={"status": "active"})
+    # Feature #175 — registration now defaults to guest, not standard; this
+    # test is specifically about the standard role, so promote explicitly.
+    await client.patch(f"/api/users/{standard['id']}/role", json={"role": "standard"})
 
     await _login(client, "standarduser")
 

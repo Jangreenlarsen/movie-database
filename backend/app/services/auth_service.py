@@ -54,11 +54,19 @@ def _normalize_username(username: str) -> str:
 async def register(db: AsyncIOMotorDatabase, payload: UserRegister) -> User:
     # Bootstrapping: the very first account ever created has no one to grant
     # it admin rights or approve it, so it grants itself both — every
-    # account after that starts as a standard, PENDING user (feature #66)
-    # and can't do anything beyond GET /api/users/me until an admin approves
-    # it. Without this special case the very first admin would start
-    # pending too, with no other admin ever able to log in and approve them
-    # — a permanent lockout (CLAUDE.md regel 16).
+    # account after that starts as a PENDING user (feature #66) and can't
+    # do anything beyond GET /api/users/me until an admin approves it.
+    # Without this special case the very first admin would start pending
+    # too, with no other admin ever able to log in and approve them — a
+    # permanent lockout (CLAUDE.md regel 16).
+    #
+    # Feature #175 (Jan: "ved nye users oprettelse skal de som default
+    # sættes som guest i portal og ikke som nu standart user") — a fresh
+    # signup now defaults to the read-only guest role (feature #72)
+    # instead of standard. An admin still reviews every pending signup
+    # (feature #66) and can promote them to standard/admin from Indstillinger
+    # → Brugere exactly as before; this only tightens the *default* they
+    # land on once approved, not the approval flow itself.
     is_first_user = await user_repository.count(db) == 0
     document = {
         "username": payload.username,
@@ -66,7 +74,7 @@ async def register(db: AsyncIOMotorDatabase, payload: UserRegister) -> User:
         # Feature #140 — trimmet/None-normaliseret af UserRegister.full_name_clean.
         "full_name": payload.full_name,
         "password_hash": hash_password(payload.password),
-        "role": UserRole.ADMIN if is_first_user else UserRole.STANDARD,
+        "role": UserRole.ADMIN if is_first_user else UserRole.GUEST,
         "status": UserStatus.ACTIVE if is_first_user else UserStatus.PENDING,
         # Feature #97 — sprogvalget fra login-boksen bliver kontoens
         # startsprog. Kopi frem for reference: DEFAULT_SETTINGS er et

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
+from app.core.config import settings
 from app.core.errors import (
     CannotTargetSelfError,
     InvalidCredentialsError,
@@ -130,15 +131,40 @@ async def change_password(
 # Jans eksplicitte ønske). Undgår tegn der let forveksles ved oplæsning/
 # aflæsning over telefon eller chat (0/O, 1/l/I) — adgangskoden skal jo
 # relæes til brugeren uden om selve appen. 12 tegn fra et ~54-tegns alfabet
-# giver rigelig entropi (langt over `PasswordChange`s min_length=8) uden at
-# være unødigt besværlig at skrive af.
+# giver rigelig entropi (langt over `PasswordChange`s standard min_length=8)
+# uden at være unødigt besværlig at skrive af.
 _TEMP_PASSWORD_ALPHABET = "".join(
     c for c in string.ascii_letters + string.digits if c not in "0O1lI"
 )
+_TEMP_PASSWORD_UPPERCASE = [c for c in _TEMP_PASSWORD_ALPHABET if c.isupper()]
+_TEMP_PASSWORD_LOWERCASE = [c for c in _TEMP_PASSWORD_ALPHABET if c.islower()]
+_TEMP_PASSWORD_DIGITS = [c for c in _TEMP_PASSWORD_ALPHABET if c.isdigit()]
 
 
-def _generate_temporary_password(length: int = 12) -> str:
-    return "".join(secrets.choice(_TEMP_PASSWORD_ALPHABET) for _ in range(length))
+def _generate_temporary_password() -> str:
+    """Feature #174 — den genererede kode skal selv overholde den
+    admin-konfigurerede politik, ikke kun de almindelige register/skift-veje
+    (CLAUDE.md regel 16 — "regler der kun gælder én gren"). Længden følger
+    politikkens minimum, aldrig kortere end den hidtidige faste 12. Et
+    påkrævet tegn-klasse (stort/lille bogstav, tal) INDSÆTTES eksplicit i
+    stedet for at stole på at 12+ tilfældige tegn statistisk sandsynligvis
+    rammer alle klasser — "sandsynligt" er ikke "garanteret"."""
+    length = max(12, settings.password_min_length)
+
+    required = []
+    if settings.password_require_uppercase:
+        required.append(secrets.choice(_TEMP_PASSWORD_UPPERCASE))
+    if settings.password_require_lowercase:
+        required.append(secrets.choice(_TEMP_PASSWORD_LOWERCASE))
+    if settings.password_require_digit:
+        required.append(secrets.choice(_TEMP_PASSWORD_DIGITS))
+
+    remaining = [secrets.choice(_TEMP_PASSWORD_ALPHABET) for _ in range(length - len(required))]
+    password_chars = required + remaining
+    # De påkrævede tegn ville ellers altid stå allerførst — bland positionen
+    # med samme kryptografisk tilfældige kilde som resten af genereringen.
+    secrets.SystemRandom().shuffle(password_chars)
+    return "".join(password_chars)
 
 
 async def admin_reset_password(db: AsyncIOMotorDatabase, user_id: str) -> tuple[str, str]:

@@ -54,3 +54,32 @@ async def apply_updates(db: AsyncIOMotorDatabase, updates: dict) -> dict:
         await db[COLLECTION].update_one({"_id": DOC_ID}, mongo_update, upsert=True)
 
     return await get_overrides(db)
+
+
+# Feature #174 — samme dokument som OVERRIDABLE_KEYS ovenfor, men egne
+# typede (int/bool) felter uden noget "" = ryd-til-.env-koncept (der er
+# intet .env at falde tilbage til for en adgangskode-politik), så de holdes
+# adskilt fra apply_updates' rent streng-baserede $set/$unset-mønster.
+PASSWORD_POLICY_KEYS = (
+    "password_min_length",
+    "password_require_uppercase",
+    "password_require_lowercase",
+    "password_require_digit",
+)
+
+
+async def get_password_policy_overrides(db: AsyncIOMotorDatabase) -> dict:
+    """Returns only the policy keys that currently have a custom (DB-stored)
+    value. A missing key means "use the code default from Settings"."""
+    doc = await db[COLLECTION].find_one({"_id": DOC_ID})
+    if doc is None:
+        return {}
+    return {key: doc[key] for key in PASSWORD_POLICY_KEYS if key in doc}
+
+
+async def apply_password_policy_update(db: AsyncIOMotorDatabase, updates: dict) -> dict:
+    """`updates` maps key -> new typed value. Always a `$set` (no "clear"
+    concept, unlike apply_updates above)."""
+    if updates:
+        await db[COLLECTION].update_one({"_id": DOC_ID}, {"$set": updates}, upsert=True)
+    return await get_password_policy_overrides(db)

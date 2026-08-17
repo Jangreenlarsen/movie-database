@@ -48,6 +48,19 @@ class Settings(BaseSettings):
     # hemmelighed — samme "vis faktisk værdi"-princip som plex_server_url.
     primary_barcode_source: str = "upcitemdb"
 
+    # Adgangskode-politik (feature #174, Jan: "vi skal have en password
+    # politik config del i setting"). Ingen .env-modstykke (giver ikke
+    # mening at sætte fra miljøvariabler) — kun her som kode-standarder, der
+    # matcher den hidtidige faste opførsel (min_length=8, ingen
+    # kompleksitetskrav), indtil en admin ændrer dem via
+    # PATCH /api/settings/password-policy. Læst dynamisk af
+    # `models.user.validate_password_policy` ved hver adgangskode-sætning
+    # (registrering, eget skift, admin-genereret midlertidig kode).
+    password_min_length: int = 8
+    password_require_uppercase: bool = False
+    password_require_lowercase: bool = False
+    password_require_digit: bool = False
+
     log_level: str = "INFO"
     cors_origins: str = "http://localhost:5173"
 

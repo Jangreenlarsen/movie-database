@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.core.config import settings
+
 # bcrypt only considers the first 72 bytes of a password — anything beyond
 # that is silently ignored, so two different long passwords sharing the same
 # first 72 bytes would hash identically. Enforce that limit explicitly
@@ -14,6 +16,28 @@ _BCRYPT_MAX_BYTES = 72
 def _validate_bcrypt_byte_length(value: str) -> str:
     if len(value.encode("utf-8")) > _BCRYPT_MAX_BYTES:
         raise ValueError(f"Adgangskode må maks fylde {_BCRYPT_MAX_BYTES} byte")
+    return value
+
+
+# Feature #174 — adgangskode-politik (Jan: "vi skal have en password politik
+# config del i setting"). Læser `settings` (den samme in-memory-singleton
+# system_settings_service.update_password_policy synkroniserer) direkte ved
+# hvert kald, i stedet for en statisk Pydantic `Field(min_length=...)` — en
+# admin-konfigureret politik skal slå igennem med det samme, ikke kun ved
+# genstart. Brugt af BÅDE UserRegister.password og PasswordChange.new_password,
+# så politikken håndhæves ens uanset hvilken af de to veje en adgangskode
+# sættes ad (CLAUDE.md regel 16 — "regler der kun gælder én gren").
+def validate_password_policy(value: str) -> str:
+    if len(value) < settings.password_min_length:
+        raise ValueError(
+            f"Adgangskode skal være mindst {settings.password_min_length} tegn"
+        )
+    if settings.password_require_uppercase and not any(c.isupper() for c in value):
+        raise ValueError("Adgangskode skal indeholde mindst ét stort bogstav")
+    if settings.password_require_lowercase and not any(c.islower() for c in value):
+        raise ValueError("Adgangskode skal indeholde mindst ét lille bogstav")
+    if settings.password_require_digit and not any(c.isdigit() for c in value):
+        raise ValueError("Adgangskode skal indeholde mindst ét tal")
     return value
 
 
@@ -153,7 +177,11 @@ class UserSettingsUpdate(BaseModel):
 
 class UserRegister(BaseModel):
     username: str = Field(min_length=3, max_length=32)
-    password: str = Field(min_length=8, max_length=128)
+    # Feature #174 — den reelle minimum-længde er nu dynamisk (læses fra
+    # settings.password_min_length af validate_password_policy nedenfor),
+    # så det statiske Field-min_length her er kun en lav bundgrænse ("ikke
+    # tom"), ikke selve politikken.
+    password: str = Field(min_length=1, max_length=128)
     # Feature #140 — fuldt navn, så en admin kan se HVEM der beder om adgang før
     # de godkendes. Håndhæves som påkrævet i selve registrerings-formularen
     # (Login.jsx + den offentlige /bio-login); modellen holder feltet valgfrit,
@@ -191,6 +219,11 @@ class UserRegister(BaseModel):
 
     @field_validator("password")
     @classmethod
+    def password_policy(cls, value: str) -> str:
+        return validate_password_policy(value)
+
+    @field_validator("password")
+    @classmethod
     def password_bcrypt_length(cls, value: str) -> str:
         return _validate_bcrypt_byte_length(value)
 
@@ -202,7 +235,14 @@ class UserLogin(BaseModel):
 
 class PasswordChange(BaseModel):
     current_password: str
-    new_password: str = Field(min_length=8, max_length=128)
+    # Feature #174 — se UserRegister.password's kommentar: den rigtige
+    # bundgrænse håndhæves dynamisk af validate_password_policy nedenfor.
+    new_password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def new_password_policy(cls, value: str) -> str:
+        return validate_password_policy(value)
 
     @field_validator("new_password")
     @classmethod

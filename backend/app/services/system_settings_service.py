@@ -5,6 +5,8 @@ from app.integrations import discogs_client, ean_search_client, omdb_client, tmd
 from app.models.settings import (
     ApiKeyStatus,
     ApiKeyTestResult,
+    PasswordPolicy,
+    PasswordPolicyUpdate,
     SystemSettingsStatus,
     SystemSettingsUpdate,
     TestableApiKey,
@@ -39,6 +41,12 @@ async def apply_overrides_on_startup(db: AsyncIOMotorDatabase) -> None:
     the .env file itself to be edited."""
     overrides = await system_settings_repository.get_overrides(db)
     for key, value in overrides.items():
+        setattr(settings, key, value)
+
+    # Feature #174 — samme "sync fra DB ved opstart" som ovenfor, for
+    # adgangskode-politikkens egne, typede felter.
+    policy_overrides = await system_settings_repository.get_password_policy_overrides(db)
+    for key, value in policy_overrides.items():
         setattr(settings, key, value)
 
 
@@ -97,3 +105,32 @@ async def test_connection(key: TestableApiKey) -> ApiKeyTestResult:
     praksis — se BUGS.md #34/#36-tråden."""
     ok, message = await _TEST_CONNECTION_CLIENTS[key].test_connection()
     return ApiKeyTestResult(ok=ok, message=message)
+
+
+def _password_policy_from_settings() -> PasswordPolicy:
+    return PasswordPolicy(
+        password_min_length=settings.password_min_length,
+        password_require_uppercase=settings.password_require_uppercase,
+        password_require_lowercase=settings.password_require_lowercase,
+        password_require_digit=settings.password_require_digit,
+    )
+
+
+async def get_password_policy(db: AsyncIOMotorDatabase) -> PasswordPolicy:
+    return _password_policy_from_settings()
+
+
+async def update_password_policy(
+    db: AsyncIOMotorDatabase, payload: PasswordPolicyUpdate
+) -> PasswordPolicy:
+    """Feature #174 (Jan: "vi skal have en password politik config del i
+    setting"). Samme "skriv til DB, så synkronisér straks ind i den
+    kørende `settings`-singleton"-mønster som `update_settings` ovenfor —
+    ellers ville ændringen først slå igennem efter en genstart, og
+    `models.user.validate_password_policy` (som læser `settings` direkte,
+    ikke databasen) ville fortsætte med at håndhæve den gamle politik."""
+    updates = payload.model_dump(exclude_unset=True)
+    await system_settings_repository.apply_password_policy_update(db, updates)
+    for key, value in updates.items():
+        setattr(settings, key, value)
+    return _password_policy_from_settings()

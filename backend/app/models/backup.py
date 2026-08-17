@@ -44,7 +44,14 @@ class SystemBackup(BaseModel):
     real value by GET /api/settings/system, so excluding the whole
     collection lost them for no privacy reason — just two settings an admin
     had to retype after a restore. `system_settings_plain` fixes that
-    narrowly, without touching the six-secret exclusion above."""
+    narrowly, without touching the six-secret exclusion above.
+
+    2026-08-17, feature #174 — the new password-policy fields (min length,
+    require upper/lowercase/digit) live in the same `system_settings`
+    document but are checked into the backup from day one via
+    `password_policy`, rather than being retroactively discovered missing
+    the way `system_settings_plain` was (regel 20 applied proactively this
+    time)."""
 
     backed_up_at: datetime
     app_version: str
@@ -71,6 +78,11 @@ class SystemBackup(BaseModel):
     # "" betyder eksplicit "ingen override" (samme konvention som
     # apply_updates), ikke "feltet blev ikke taget med".
     system_settings_plain: dict = Field(default_factory=dict)
+    # Feature #174 — adgangskode-politikkens fire felter er slet ikke
+    # hemmelige (bare tal/booleans), så de tages med råt, uden PLAIN_KEYS'
+    # "" = ingen override-nuance ovenfor: en politik har altid en reel
+    # værdi (koden har sine egne standarder), aldrig et "unset"-koncept.
+    password_policy: dict = Field(default_factory=dict)
 
 
 class SystemRestoreResult(BaseModel):
@@ -93,6 +105,10 @@ class SystemRestoreResult(BaseModel):
     poster_cache_imported: int
     # 0, 1 or 2 — how many of PLAIN_KEYS had a real (non-"") value restored.
     system_settings_plain_restored: int
+    # Feature #174 — always true once a backup is successfully restored (the
+    # policy always has all four fields; there's no partial/"unset" case to
+    # count, unlike system_settings_plain_restored above).
+    password_policy_restored: bool
 
 
 class DatabaseResetConfirm(BaseModel):

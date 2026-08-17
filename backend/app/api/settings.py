@@ -5,6 +5,8 @@ from app.api.deps import get_current_user, require_admin
 from app.db import get_database
 from app.models.settings import (
     ApiKeyTestResult,
+    PasswordPolicy,
+    PasswordPolicyUpdate,
     SerialNumberConfig,
     SerialNumberConfigUpdate,
     SystemSettingsStatus,
@@ -65,3 +67,31 @@ async def test_system_setting(key: TestableApiKey):
     FastAPI selv afviser (422) ethvert andet felt-navn end de fem der
     faktisk har et testkald bag sig."""
     return await system_settings_service.test_connection(key)
+
+
+@router.get(
+    "/password-policy", response_model=PasswordPolicy, dependencies=[Depends(require_admin)]
+)
+async def get_password_policy(db: AsyncIOMotorDatabase = Depends(get_database)):
+    return await system_settings_service.get_password_policy(db)
+
+
+@router.patch(
+    "/password-policy", response_model=PasswordPolicy, dependencies=[Depends(require_admin)]
+)
+async def update_password_policy(
+    payload: PasswordPolicyUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    result = await system_settings_service.update_password_policy(db, payload)
+    # I modsætning til /system ovenfor er politik-værdierne ikke hemmelige
+    # (CLAUDE.md regel 6 gælder ikke her) — audit-loggen kan derfor trygt
+    # vise de faktiske nye værdier, ikke kun feltnavnene.
+    changes = payload.model_dump(exclude_unset=True)
+    if changes:
+        detail = ", ".join(f"{key}={value}" for key, value in changes.items())
+        await audit_log_service.record(
+            db, current_user["username"], "password_policy.updated", detail
+        )
+    return result

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.148.0 (build 0202) — 2026-08-17
+
+- **Ny: adgangskode-politik.** Under Indstillinger → Brugere kan en admin nu sætte krav til nye adgangskoder — minimum-længde, og om de skal indeholde stort bogstav, lille bogstav og/eller tal. Gælder ved oprettelse af nye brugere, når nogen selv skifter deres adgangskode, og for den midlertidige kode ved et admin-reset.
+
 ## v0.147.1 (build 0201) — 2026-08-17
 
 - **Rettet: panelet med den nye adgangskode efter en nulstilling kunne være usynligt.** Med mange brugere kunne panelet dukke op uden for skærmen, hvis du var scrollet ned for at nulstille en brugers kode. Siden scroller nu automatisk hen til panelet.

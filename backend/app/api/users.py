@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.api.deps import get_current_user, get_current_user_any_status, require_admin
+from app.api.deps import (
+    get_current_user,
+    get_current_user_allow_password_change,
+    get_current_user_any_status,
+    require_admin,
+)
 from app.db import get_database
 from app.models.user import (
     PasswordChange,
@@ -36,7 +41,11 @@ async def update_my_settings(
 @router.post("/me/password", status_code=204)
 async def change_my_password(
     payload: PasswordChange,
-    current_user: dict = Depends(get_current_user),
+    # Feature #172 — deliberately the must-change-unaware dependency: a user
+    # forced here by an admin reset (#171) has to be able to reach this
+    # exact endpoint to clear that state, or it would be a lockout no one
+    # could resolve (CLAUDE.md regel 16).
+    current_user: dict = Depends(get_current_user_allow_password_change),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     await auth_service.change_password(db, str(current_user["_id"]), payload)

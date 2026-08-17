@@ -364,3 +364,79 @@ async def test_reset_password_is_audit_logged_without_leaking_the_password(clien
     # Regel 6-princippet anvendt på adgangskoder: selve værdien må aldrig stå
     # nogen steder i audit-loggen, kun AT en nulstilling skete.
     assert new_password not in log.text
+
+
+# Feature #172 — tvunget adgangskodeskift efter en admin-nulstilling (Jans
+# udtrykkelige krav: "det skal være udfravigeligt").
+
+
+async def test_reset_password_forces_a_change_before_anything_else_works(client):
+    second, body = await _register("mustchange172")
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "active"})
+
+    resp = await client.post(f"/api/users/{body['id']}/reset-password")
+    temp_password = resp.json()["new_password"]
+
+    # Blokeret fra almindelige endpoints, med en tydelig besked — samme
+    # mønster som pending/rejected/disabled ovenfor.
+    blocked = await second.get("/api/movies")
+    assert blocked.status_code == 403
+    assert "skifte din adgangskode" in blocked.json()["detail"]
+
+    # Men /users/me virker stadig — ellers en permanent lockout ingen,
+    # heller ikke brugeren selv, kunne rette (CLAUDE.md regel 16).
+    me = await second.get("/api/users/me")
+    assert me.status_code == 200
+    assert me.json()["must_change_password"] is True
+
+    # Selve skiftet virker på trods af blokeringen, og bruger den udstedte
+    # midlertidige kode som nuværende adgangskode.
+    changed = await second.post(
+        "/api/users/me/password",
+        json={"current_password": temp_password, "new_password": "myOwnNewPassword1"},
+    )
+    assert changed.status_code == 204
+
+    # Blokeringen er væk med det samme, uden at skulle logge ind igen.
+    unblocked = await second.get("/api/movies")
+    assert unblocked.status_code == 200
+    still_me = await second.get("/api/users/me")
+    assert still_me.json()["must_change_password"] is False
+    await second.aclose()
+
+
+async def test_fresh_login_with_the_temporary_password_reflects_must_change_password(client):
+    """En frisk login (mere realistisk end at genbruge en allerede åben
+    session — brugeren har jo typisk ikke en aktiv session efter et reset)
+    skal vise flaget med det samme."""
+    second, body = await _register("freshlogin172")
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "active"})
+    await second.aclose()
+
+    resp = await client.post(f"/api/users/{body['id']}/reset-password")
+    temp_password = resp.json()["new_password"]
+
+    fresh = ASGITransport(app=app)
+    async with AsyncClient(transport=fresh, base_url="http://test") as relogin:
+        login = await relogin.post(
+            "/api/auth/login", json={"username": "freshlogin172", "password": temp_password}
+        )
+        assert login.status_code == 200
+        assert login.json()["must_change_password"] is True
+
+
+async def test_voluntary_password_change_does_not_set_must_change_password(client):
+    """En almindelig, selvvalgt adgangskodeskift (ikke udløst af et
+    admin-reset) må aldrig efterlade brugeren som om skiftet var tvunget."""
+    second, body = await _register("voluntarychange172")
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "active"})
+
+    changed = await second.post(
+        "/api/users/me/password",
+        json={"current_password": "testpassword123", "new_password": "myChosenPassword1"},
+    )
+    assert changed.status_code == 204
+
+    me = await second.get("/api/users/me")
+    assert me.json()["must_change_password"] is False
+    await second.aclose()

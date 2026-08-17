@@ -44,6 +44,7 @@ from app.core.errors import (
     LastAdminError,
     MessageNotFoundError,
     MovieNotFoundError,
+    MustChangePasswordError,
     InvalidSeatError,
     NoCertStagedError,
     NoRecipientsError,
@@ -245,6 +246,13 @@ async def account_rejected_handler(request: Request, exc: AccountRejectedError) 
 
 @app.exception_handler(AccountDisabledError)
 async def account_disabled_handler(request: Request, exc: AccountDisabledError) -> JSONResponse:
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(MustChangePasswordError)
+async def must_change_password_handler(
+    request: Request, exc: MustChangePasswordError
+) -> JSONResponse:
     return JSONResponse(status_code=403, content={"detail": str(exc)})
 
 

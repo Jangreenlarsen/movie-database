@@ -107,6 +107,19 @@ class AccountDisabledError(Exception):
         super().__init__("Din konto er blevet deaktiveret af en administrator.")
 
 
+class MustChangePasswordError(Exception):
+    """Feature #172 — en admin-nulstilling (#171) tvinger brugeren til selv
+    at skifte adgangskoden ved næste kontakt med API'et, i stedet for at
+    kunne fortsætte for evigt på den midlertidige kode. Rejst af
+    `api.deps.get_current_user`, undtagen for det ene endpoint der skal
+    kunne rette tilstanden (se `get_current_user_allow_password_change`) —
+    uden den undtagelse ville dette være en permanent lockout (CLAUDE.md
+    regel 16)."""
+
+    def __init__(self):
+        super().__init__("Du skal skifte din adgangskode før du kan fortsætte.")
+
+
 class UserNotPendingError(Exception):
     """Guards approve/reject (feature #66) against being pointed at a user
     who isn't actually pending — e.g. re-clicking reject on an already-active

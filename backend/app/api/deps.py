@@ -5,6 +5,7 @@ from app.core.errors import (
     AccountDisabledError,
     AccountPendingError,
     AccountRejectedError,
+    MustChangePasswordError,
     NotAuthenticatedError,
     NotAuthorizedError,
 )
@@ -44,11 +45,7 @@ async def get_current_user_any_status(
     return await _resolve_user(access_token, db)
 
 
-async def get_current_user(
-    access_token: str | None = Cookie(default=None, alias=COOKIE_NAME),
-    db: AsyncIOMotorDatabase = Depends(get_database),
-) -> dict:
-    user = await _resolve_user(access_token, db)
+def _check_status(user: dict) -> None:
     status = user.get("status", UserStatus.ACTIVE.value)
     if status == UserStatus.PENDING.value:
         raise AccountPendingError()
@@ -56,6 +53,32 @@ async def get_current_user(
         raise AccountRejectedError()
     if status == UserStatus.DISABLED.value:
         raise AccountDisabledError()
+
+
+async def get_current_user_allow_password_change(
+    access_token: str | None = Cookie(default=None, alias=COOKIE_NAME),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+) -> dict:
+    """Same status gate as `get_current_user`, but does NOT also block on
+    `must_change_password` (feature #172) — used exclusively by
+    `POST /users/me/password`, so a user forced to change their password
+    after an admin reset (#171) has a way to actually do it. Without this
+    escape hatch, `must_change_password` would be a permanent lockout no
+    one — not even the affected user — could resolve (CLAUDE.md regel 16),
+    the same reasoning as `get_current_user_any_status` below."""
+    user = await _resolve_user(access_token, db)
+    _check_status(user)
+    return user
+
+
+async def get_current_user(
+    access_token: str | None = Cookie(default=None, alias=COOKIE_NAME),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+) -> dict:
+    user = await _resolve_user(access_token, db)
+    _check_status(user)
+    if user.get("must_change_password", False):
+        raise MustChangePasswordError()
     return user
 
 

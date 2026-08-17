@@ -448,6 +448,7 @@
   "account.newPassword": "New password",
   "account.passwordChanged": "Password changed!",
   "account.changePassword": "Change password",
+  "account.mustChangePassword": "Your password was reset by an administrator. Change it to one of your own to continue — the temporary code can't be used to access the app.",
   "cardSize.heading": "Card size",
   "cardSize.description": "Controls the size of the movie/TV show cards on the Movies and TV Shows tabs. One shared setting for both tabs.",
   "cardSize.small": "Small",

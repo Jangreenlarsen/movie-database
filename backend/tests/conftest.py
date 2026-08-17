@@ -44,6 +44,23 @@ def _pin_external_api_keys(monkeypatch):
     monkeypatch.setattr(settings, "plex_token", "")
 
 
+@pytest.fixture(autouse=True)
+def _pin_password_policy(monkeypatch):
+    """Feature #174 — same isolation concern as `_pin_external_api_keys`
+    above, but sharper: `settings.password_*` is read on *every* password
+    set anywhere (registration, self-change, admin-reset generation), so an
+    override left over from one test (e.g. `password_require_uppercase =
+    True`) would silently break registration — and therefore the `client`
+    fixture itself — in every test file that happens to run afterward.
+    Pinned to the code defaults (matching `Settings`' own) so a test that
+    never touches the policy behaves exactly as if the feature didn't
+    exist."""
+    monkeypatch.setattr(settings, "password_min_length", 8)
+    monkeypatch.setattr(settings, "password_require_uppercase", False)
+    monkeypatch.setattr(settings, "password_require_lowercase", False)
+    monkeypatch.setattr(settings, "password_require_digit", False)
+
+
 @pytest_asyncio.fixture
 async def db():
     test_db = AsyncMongoMockClient()["test_moviedb"]

@@ -10,7 +10,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "../api/client";
-import { UsersSection, formatUptime } from "./Settings";
+import { PasswordPolicySection, UsersSection, formatUptime } from "./Settings";
 
 /**
  * Feature #171 — admin-assisteret adgangskode-nulstilling. Det testværdige
@@ -126,6 +126,83 @@ describe("UsersSection — adgangskode-nulstilling (feature #171)", () => {
 
     await screen.findByText("Serverfejl");
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+  });
+});
+
+/**
+ * Feature #174 — adgangskode-politik. Det testværdige (regel 19): den
+ * indlæste politik skal faktisk afspejles korrekt i formularens felter
+ * (ellers kan en admin tro politikken er én ting, mens den reelt er en
+ * anden), og et gemt resultat/en fejl skal vises tydeligt, ikke sluges.
+ */
+describe("PasswordPolicySection (feature #174)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function mockPolicy(overrides = {}) {
+    vi.spyOn(api, "getPasswordPolicy").mockResolvedValue({
+      password_min_length: 8,
+      password_require_uppercase: false,
+      password_require_lowercase: false,
+      password_require_digit: false,
+      ...overrides,
+    });
+  }
+
+  it("indlæser og viser den nuværende politik", async () => {
+    mockPolicy({ password_min_length: 12, password_require_digit: true });
+    render(<PasswordPolicySection />);
+
+    expect(await screen.findByDisplayValue("12")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Kræv mindst ét tal (0-9)" })).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "Kræv mindst ét stort bogstav (A-Z)" })
+    ).not.toBeChecked();
+  });
+
+  it("gemmer ændringer og bekræfter det", async () => {
+    mockPolicy();
+    const updateSpy = vi.spyOn(api, "updatePasswordPolicy").mockResolvedValue({
+      password_min_length: 10,
+      password_require_uppercase: true,
+      password_require_lowercase: false,
+      password_require_digit: false,
+    });
+    const user = userEvent.setup();
+
+    render(<PasswordPolicySection />);
+    await screen.findByDisplayValue("8");
+
+    const minLengthInput = screen.getByLabelText("Minimum-længde (tegn)");
+    await user.clear(minLengthInput);
+    await user.type(minLengthInput, "10");
+    await user.click(screen.getByRole("checkbox", { name: "Kræv mindst ét stort bogstav (A-Z)" }));
+    await user.click(screen.getByRole("button", { name: "Gem" }));
+
+    await waitFor(() =>
+      expect(updateSpy).toHaveBeenCalledWith({
+        password_min_length: 10,
+        password_require_uppercase: true,
+        password_require_lowercase: false,
+        password_require_digit: false,
+      })
+    );
+    expect(await screen.findByText("Gemt!")).toBeInTheDocument();
+  });
+
+  it("viser backend-fejlbeskeden ved en mislykket gemning", async () => {
+    mockPolicy();
+    vi.spyOn(api, "updatePasswordPolicy").mockRejectedValue(
+      new Error("Adgangskode skal være mindst 6 tegn")
+    );
+    const user = userEvent.setup();
+
+    render(<PasswordPolicySection />);
+    await screen.findByDisplayValue("8");
+    await user.click(screen.getByRole("button", { name: "Gem" }));
+
+    expect(await screen.findByText("Adgangskode skal være mindst 6 tegn")).toBeInTheDocument();
   });
 });
 

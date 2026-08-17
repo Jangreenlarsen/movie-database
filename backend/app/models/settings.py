@@ -83,3 +83,28 @@ class SystemSettingsUpdate(BaseModel):
     plex_token: str | None = Field(default=None, max_length=500)
     plex_server_url: str | None = Field(default=None, max_length=500)
     primary_barcode_source: Literal["", "upcitemdb", "discogs", "upcdatabase", "ean_search"] | None = None
+
+
+# Feature #174 — adgangskode-politik (Jan: "vi skal have en password politik
+# config del i setting"). Egen lille model-familie i stedet for at presse
+# int/bool-felter ind i SystemSettingsUpdate's rent streng-baserede
+# "" = ryd-til-.env-mønster ovenfor, som ikke giver mening her (der er intet
+# .env-modstykke at falde tilbage til). Deler stadig samme
+# `system_settings`-dokument i MongoDB, bare via egne, typede
+# repository-funktioner.
+class PasswordPolicy(BaseModel):
+    password_min_length: int
+    password_require_uppercase: bool
+    password_require_lowercase: bool
+    password_require_digit: bool
+
+
+class PasswordPolicyUpdate(BaseModel):
+    """`None`/omitted = don't touch — i modsætning til SystemSettingsUpdate
+    findes der intet "ryd override"-koncept her, kun "sæt til denne værdi",
+    da felterne ikke har noget .env at falde tilbage til."""
+
+    password_min_length: int | None = Field(default=None, ge=6, le=64)
+    password_require_uppercase: bool | None = None
+    password_require_lowercase: bool | None = None
+    password_require_digit: bool | None = None

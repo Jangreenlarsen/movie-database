@@ -54,6 +54,7 @@ export default function Settings({ user, onSettingsChanged }) {
       {activeTab === "brugere" && isAdmin && (
         <>
           <UsersSection currentUserId={user.id} />
+          <PasswordPolicySection />
           <AuditLogSection />
         </>
       )}
@@ -182,7 +183,10 @@ function AccountSection({ user }) {
           <input
             type="password"
             autoComplete="new-password"
-            minLength={8}
+            // Feature #174 — intet klientside minLength: grænsen er nu
+            // admin-konfigurerbar, og en almindelig bruger (ikke-admin) har
+            // ingen adgang til at læse den (admin-only endpoint). Backendens
+            // field-validator håndhæver den reelle politik; se err.message.
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             required
@@ -2774,6 +2778,124 @@ export function UsersSection({ currentUserId }) {
             </li>
           ))}
         </ul>
+      )}
+    </div>
+  );
+}
+
+// Feature #174 — admin-konfigurerbar adgangskode-politik (Jan: "vi skal have
+// en password politik config del i setting"). Håndhæves reelt i backend
+// (models.user.validate_password_policy, kaldt ved registrering, eget
+// skift OG den admin-genererede midlertidige kode fra #171) — denne
+// sektion er kun UI'et til at ændre den, samme arbejdsdeling som alle
+// andre admin-only indstillinger på siden. Eksporteret til test (regel 19),
+// samme begrundelse som UsersSection ovenfor.
+export function PasswordPolicySection() {
+  const t = useT();
+  const [loadStatus, setLoadStatus] = useState("loading");
+  const [minLength, setMinLength] = useState(8);
+  const [requireUppercase, setRequireUppercase] = useState(false);
+  const [requireLowercase, setRequireLowercase] = useState(false);
+  const [requireDigit, setRequireDigit] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState(null);
+
+  function applyPolicy(data) {
+    setMinLength(data.password_min_length);
+    setRequireUppercase(data.password_require_uppercase);
+    setRequireLowercase(data.password_require_lowercase);
+    setRequireDigit(data.password_require_digit);
+  }
+
+  function load() {
+    setLoadStatus("loading");
+    api
+      .getPasswordPolicy()
+      .then((data) => {
+        applyPolicy(data);
+        setLoadStatus("ready");
+      })
+      .catch(() => setLoadStatus("error"));
+  }
+
+  useEffect(load, []);
+
+  async function submit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const updated = await api.updatePasswordPolicy({
+        password_min_length: minLength,
+        password_require_uppercase: requireUppercase,
+        password_require_lowercase: requireLowercase,
+        password_require_digit: requireDigit,
+      });
+      applyPolicy(updated);
+      setSaved(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="card settings-section">
+      <h2>{t("passwordPolicy.heading")}</h2>
+      <p className="muted">{t("passwordPolicy.description")}</p>
+
+      {loadStatus === "loading" && <p className="muted">{t("common.loading")}</p>}
+      {loadStatus === "error" && (
+        <div className="banner banner-error">{t("passwordPolicy.loadError")}</div>
+      )}
+
+      {loadStatus === "ready" && (
+        <form className="serial-config-form" onSubmit={submit}>
+          <label>
+            {t("passwordPolicy.minLength")}
+            <input
+              type="number"
+              min={6}
+              max={64}
+              value={minLength}
+              onChange={(e) => setMinLength(Number(e.target.value))}
+            />
+          </label>
+          <label className="serial-reuse-toggle">
+            <input
+              type="checkbox"
+              checked={requireUppercase}
+              onChange={(e) => setRequireUppercase(e.target.checked)}
+            />
+            {t("passwordPolicy.requireUppercase")}
+          </label>
+          <label className="serial-reuse-toggle">
+            <input
+              type="checkbox"
+              checked={requireLowercase}
+              onChange={(e) => setRequireLowercase(e.target.checked)}
+            />
+            {t("passwordPolicy.requireLowercase")}
+          </label>
+          <label className="serial-reuse-toggle">
+            <input
+              type="checkbox"
+              checked={requireDigit}
+              onChange={(e) => setRequireDigit(e.target.checked)}
+            />
+            {t("passwordPolicy.requireDigit")}
+          </label>
+
+          {error && <div className="banner banner-error">{error}</div>}
+          {saved && <div className="banner banner-info">{t("serial.saved")}</div>}
+
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            {t(saving ? "common.saving" : "common.save")}
+          </button>
+        </form>
       )}
     </div>
   );

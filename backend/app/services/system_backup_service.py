@@ -6,7 +6,7 @@ from app.core.errors import InvalidBackupError
 from app.core.mongo_json import from_json_safe, to_json_safe
 from app.core.version_info import VERSION_INFO
 from app.models.backup import DatabaseResetResult, SystemBackup, SystemRestoreResult
-from app.models.settings import SystemSettingsUpdate
+from app.models.settings import PasswordPolicyUpdate, SystemSettingsUpdate
 from app.repositories import (
     audit_log_repository,
     message_repository,
@@ -77,6 +77,11 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
     system_settings_plain = {
         key: settings_overrides.get(key, "") for key in system_settings_repository.PLAIN_KEYS
     }
+    # Feature #174 — always a complete set of all four fields (code defaults
+    # fill in anything not explicitly overridden), not a sparse dict of only
+    # the customized ones — there's no "no override" state worth preserving
+    # here the way PLAIN_KEYS' `""` sentinel does above.
+    password_policy = (await system_settings_service.get_password_policy(db)).model_dump()
 
     return SystemBackup(
         backed_up_at=datetime.now(timezone.utc),
@@ -96,6 +101,7 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
         visits=[to_json_safe(doc) for doc in visits],
         poster_cache=[to_json_safe(doc) for doc in poster_cache],
         system_settings_plain=to_json_safe(system_settings_plain),
+        password_policy=to_json_safe(password_policy),
     )
 
 
@@ -184,6 +190,11 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
     visits = [from_json_safe(doc) for doc in backup.visits]
     poster_cache = [from_json_safe(doc) for doc in backup.poster_cache]
     system_settings_plain = from_json_safe(backup.system_settings_plain)
+    # Feature #174 — `{}` for a backup taken before this field existed;
+    # PasswordPolicyUpdate(**{}) then has every field unset, so
+    # update_password_policy below is a no-op and the currently-running
+    # policy is left alone rather than erroring or resetting to code defaults.
+    password_policy = from_json_safe(backup.password_policy)
 
     await movie_repository.replace_all(db, movies)
     await tv_show_repository.replace_all(db, tv_shows)
@@ -205,6 +216,9 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
     # running app reads `settings.plex_server_url` etc., not the database).
     await system_settings_service.update_settings(db, SystemSettingsUpdate(**system_settings_plain))
     system_settings_plain_restored = sum(1 for value in system_settings_plain.values() if value)
+    await system_settings_service.update_password_policy(
+        db, PasswordPolicyUpdate(**password_policy)
+    )
 
     return SystemRestoreResult(
         movies_imported=len(movies),
@@ -222,6 +236,7 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
         visits_imported=len(visits),
         poster_cache_imported=len(poster_cache),
         system_settings_plain_restored=system_settings_plain_restored,
+        password_policy_restored=True,
     )
 
 

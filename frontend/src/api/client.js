@@ -228,6 +228,10 @@ export const api = {
   updateSystemSettings: (payload) =>
     request("/settings/system", { method: "PATCH", body: JSON.stringify(payload) }),
   testSystemSetting: (key) => request(`/settings/system/test/${key}`, { method: "POST" }),
+  // Feature #174 — adgangskode-politik (min-længde + kompleksitetskrav).
+  getPasswordPolicy: () => request("/settings/password-policy"),
+  updatePasswordPolicy: (payload) =>
+    request("/settings/password-policy", { method: "PATCH", body: JSON.stringify(payload) }),
   // Feature #100 — beskeder fra admin.
   // Feature #148 — besked-pollen (hvert 20. sek, #135) markeres som baggrund,
   // så den ikke tæller som aktivitet og holder en uovervåget session i live.

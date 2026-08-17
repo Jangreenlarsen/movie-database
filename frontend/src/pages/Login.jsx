@@ -84,7 +84,11 @@ export default function Login({ onAuthenticated, language, onLanguageChange }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete={mode === "login" ? "current-password" : "new-password"}
-              minLength={mode === "register" ? 8 : undefined}
+              // Feature #174 — intet klientside minLength her længere: den
+              // reelle grænse er nu admin-konfigurerbar, og denne side (før
+              // login) har ingen adgang til at læse den (admin-only
+              // endpoint). Backendens field-validator er den ene autoritet;
+              // dens specifikke fejlbesked vises som altid via err.message.
               required
             />
           </label>

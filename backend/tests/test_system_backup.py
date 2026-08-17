@@ -72,6 +72,15 @@ async def test_backup_includes_all_expected_collections(client, monkeypatch):
     # 2026-08-15 sync audit — the two non-secret keys ARE captured, always
     # both present ("" meaning "no override"), unlike the excluded whole.
     assert data["system_settings_plain"] == {"plex_server_url": "", "primary_barcode_source": ""}
+    # Feature #174 — den nyeste tilføjelse til samme system_settings-
+    # dokument, checket ind fra dag ét i stedet for at blive opdaget
+    # manglende bagefter (regel 20 anvendt proaktivt).
+    assert data["password_policy"] == {
+        "password_min_length": 8,
+        "password_require_uppercase": False,
+        "password_require_lowercase": False,
+        "password_require_digit": False,
+    }
 
 
 async def test_backup_never_exposes_api_keys(client, monkeypatch):
@@ -125,6 +134,31 @@ async def test_restore_reapplies_plain_settings_without_touching_secrets(client)
     assert status["tmdb_api_token"]["configured"] is True
 
 
+async def test_restore_reapplies_password_policy(client):
+    """Samme mønster som test_restore_reapplies_plain_settings_without_
+    touching_secrets ovenfor, men for feature #174's egne typede felter."""
+    await client.patch(
+        "/api/settings/password-policy",
+        json={"password_min_length": 16, "password_require_digit": True},
+    )
+    backup = (await client.get("/api/system/backup")).json()
+
+    # Changed after the backup was taken — restore should bring back the
+    # backed-up policy, exactly like plain settings above.
+    await client.patch(
+        "/api/settings/password-policy",
+        json={"password_min_length": 8, "password_require_digit": False},
+    )
+
+    response = await client.post("/api/system/restore", json=backup)
+    assert response.status_code == 200
+    assert response.json()["password_policy_restored"] is True
+
+    policy = (await client.get("/api/settings/password-policy")).json()
+    assert policy["password_min_length"] == 16
+    assert policy["password_require_digit"] is True
+
+
 async def test_backup_requires_admin(client):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as standard_client:
@@ -170,6 +204,7 @@ async def test_restore_round_trip_preserves_everything(client, monkeypatch):
     assert result["seat_reservations_imported"] == 1
     assert result["messages_imported"] == 1
     assert result["poster_cache_imported"] == 1
+    assert result["password_policy_restored"] is True
 
     # Feature #153 — det er ikke nok at tallet stemmer; selve billed-bytes
     # skal også have overlevet base64-rundturen (mongo_json's "$binary") og

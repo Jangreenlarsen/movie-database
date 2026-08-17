@@ -64,7 +64,9 @@ export default function ForcePasswordChange({ user, onPasswordChanged, onLogout 
             <input
               type="password"
               autoComplete="new-password"
-              minLength={8}
+              // Feature #174 — se AccountSection's identiske note i
+              // Settings.jsx: ingen klientside minLength, politikken er
+              // admin-konfigurerbar og ikke læsbar herfra.
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required

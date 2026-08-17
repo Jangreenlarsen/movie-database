@@ -145,11 +145,18 @@ def _generate_temporary_password() -> str:
     """Feature #174 — den genererede kode skal selv overholde den
     admin-konfigurerede politik, ikke kun de almindelige register/skift-veje
     (CLAUDE.md regel 16 — "regler der kun gælder én gren"). Længden følger
-    politikkens minimum, aldrig kortere end den hidtidige faste 12. Et
-    påkrævet tegn-klasse (stort/lille bogstav, tal) INDSÆTTES eksplicit i
-    stedet for at stole på at 12+ tilfældige tegn statistisk sandsynligvis
-    rammer alle klasser — "sandsynligt" er ikke "garanteret"."""
-    length = max(12, settings.password_min_length)
+    politikkens minimum PRÆCIST — BUGS.md #75 (Jan, testet live: satte
+    min-længden til 6, men fik stadig en 12-tegns kode udleveret til
+    kopi/paste). Første udgave brugte bevidst `max(12, ...)` for aldrig at
+    generere en svagere kode end den hidtidige faste værdi, men det var en
+    antagelse Claude selv tilføjede uden at være bedt om det — Jan vil have
+    den udleverede kode matche det han rent faktisk satte, ikke en skjult
+    egen-valgt bundgrænse. `PasswordPolicyUpdate.password_min_length`s
+    egen `ge=6`-grænse er bundgrænsen nu. Et påkrævet tegn-klasse (stort/
+    lille bogstav, tal) INDSÆTTES stadig eksplicit i stedet for at stole på
+    at nok tilfældige tegn statistisk sandsynligvis rammer alle klasser —
+    "sandsynligt" er ikke "garanteret"."""
+    length = settings.password_min_length
 
     required = []
     if settings.password_require_uppercase:

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.148.1 (build 0203) — 2026-08-17
+
+- **Rettet: en admin-nulstillet adgangskode fulgte ikke en lav minimum-længde.** Satte du fx politikken til 6 tegn, fik du alligevel altid en 12-tegns kode udleveret ved et admin-reset. Den udleverede kode matcher nu præcis den længde du har sat.
+
 ## v0.148.0 (build 0202) — 2026-08-17
 
 - **Ny: adgangskode-politik.** Under Indstillinger → Brugere kan en admin nu sætte krav til nye adgangskoder — minimum-længde, og om de skal indeholde stort bogstav, lille bogstav og/eller tal. Gælder ved oprettelse af nye brugere, når nogen selv skifter deres adgangskode, og for den midlertidige kode ved et admin-reset.

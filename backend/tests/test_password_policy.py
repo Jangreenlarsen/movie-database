@@ -193,17 +193,20 @@ async def test_admin_reset_temporary_password_satisfies_a_strict_policy(client):
     assert reset.status_code == 200
     new_password = reset.json()["new_password"]
 
-    assert len(new_password) >= 20
+    # BUGS.md #75 — den udleverede kode skal matche den konfigurerede
+    # længde PRÆCIST, ikke bare være mindst så lang.
+    assert len(new_password) == 20
     assert any(c.isupper() for c in new_password)
     assert any(c.islower() for c in new_password)
     assert any(c.isdigit() for c in new_password)
 
 
-async def test_generated_temporary_password_length_never_shrinks_below_twelve(client):
-    """A lenient policy (min_length below the historical default) must not
-    make generated temporary passwords weaker than before this feature
-    existed."""
+async def test_generated_temporary_password_matches_a_low_configured_minimum(client):
+    """BUGS.md #75 (Jan, testet live: satte min-længden til 6, men fik
+    stadig en 12-tegns kode). Ingen skjult bundgrænse længere — den
+    udleverede kode skal matche den konfigurerede politik præcist, også når
+    den er lavere end den tidligere faste værdi på 12."""
     await client.patch("/api/settings/password-policy", json={"password_min_length": 6})
 
     password = auth_service._generate_temporary_password()
-    assert len(password) == 12
+    assert len(password) == 6

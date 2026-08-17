@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import Chip from "../components/Chip";
 import { LANGUAGES, useLocale, useT } from "../i18n";
@@ -2522,6 +2522,19 @@ export function UsersSection({ currentUserId }) {
   // ved næste nulstilling, sideskift eller genindlæsning.
   const [resetResult, setResetResult] = useState(null);
   const [passwordCopied, setPasswordCopied] = useState(false);
+  // BUGS.md #74 — banneret (nedenfor) renderes øverst i sektionen, over
+  // bruger-listen. Med mange brugere er admin typisk scrollet langt ned for
+  // overhovedet at kunne se/klikke den række der udløste handlingen, så
+  // banneret dukkede op langt uden for skærmen uden nogen antydning af at
+  // noget var sket. Scrolles nu automatisk i syne, uanset hvilken handling
+  // (nulstilling, rolle, status, sletning) der udløste den.
+  const bannerRef = useRef(null);
+
+  useEffect(() => {
+    if (resetResult || error) {
+      bannerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [resetResult, error]);
 
   function load() {
     setStatus("loading");
@@ -2621,36 +2634,38 @@ export function UsersSection({ currentUserId }) {
       {status === "error" && (
         <div className="banner banner-error">{t("users.loadError")}</div>
       )}
-      {error && <div className="banner banner-error">{error}</div>}
+      <div ref={bannerRef}>
+        {error && <div className="banner banner-error">{error}</div>}
 
-      {resetResult && (
-        <div className="banner banner-info" style={{ alignItems: "flex-start" }}>
-          <div style={{ flex: 1 }}>
-            <p style={{ margin: 0 }}>
-              {t("users.resetPasswordResult", { username: resetResult.username })}
-            </p>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                marginTop: 8,
-              }}
-            >
-              <code style={{ fontSize: "1rem", userSelect: "all" }}>{resetResult.password}</code>
-              <button type="button" className="btn" onClick={copyResetPassword}>
-                {t(passwordCopied ? "users.passwordCopied" : "users.copyPassword")}
-              </button>
+        {resetResult && (
+          <div className="banner banner-info" style={{ alignItems: "flex-start" }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: 0 }}>
+                {t("users.resetPasswordResult", { username: resetResult.username })}
+              </p>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginTop: 8,
+                }}
+              >
+                <code style={{ fontSize: "1rem", userSelect: "all" }}>{resetResult.password}</code>
+                <button type="button" className="btn" onClick={copyResetPassword}>
+                  {t(passwordCopied ? "users.passwordCopied" : "users.copyPassword")}
+                </button>
+              </div>
+              <p className="muted" style={{ margin: "8px 0 0" }}>
+                {t("users.resetPasswordHint")}
+              </p>
             </div>
-            <p className="muted" style={{ margin: "8px 0 0" }}>
-              {t("users.resetPasswordHint")}
-            </p>
+            <button type="button" className="btn" onClick={() => setResetResult(null)}>
+              {t("common.close")}
+            </button>
           </div>
-          <button type="button" className="btn" onClick={() => setResetResult(null)}>
-            {t("common.close")}
-          </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {status === "ready" && (
         <ul className="user-list">

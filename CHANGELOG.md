@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.147.1 build 0201] — 2026-08-17 — fix: adgangskode-nulstillings-panelet kunne dukke op uden for skærmen (BUGS.md #74)
+
+Jan, på produktion (movie.laces.dk): *"hvor se admin det ny password efter en reset"*, efter at have nulstillet en bruger et stykke nede i en lang liste. Panelet med den nye adgangskode renderes øverst i "Brugere"-sektionen, over listen — er admin scrollet ned for at nå knappen, forbliver siden hvor den er, og panelet dukker op langt over det synlige område. Ny `bannerRef` + `useEffect` i `UsersSection` scroller nu banneret (`scrollIntoView({ behavior: "smooth", block: "start" })`) i syne hver gang `resetResult`/`error` ændrer sig — dækker dermed alle handlingers fejlbeskeder i sektionen, ikke kun nulstillingen. Berørt fil: `frontend/src/pages/Settings.jsx`. Tests: `Settings.test.jsx` +2. Set i browser (regel 18, Playwright, lille viewport for at fremtvinge scroll ned til en brugerrække langt fra toppen): bekræftede siden var scrollet ned før klikket, og at panelet automatisk var synligt øverst i viewporten bagefter, uden manuel scroll. Fuld backend-suite (uændret) + frontend (87) grøn.
+
 ## [0.147.0 build 0200] — 2026-08-17 — feature: "Privat arrangement"-mærke på den offentlige /bio-side (FEATURES.md #173)
 
 Jan: *"ved schedulering af forvisninger og privat bliver valgt så skal man kunne se det er privat også på public site for bio"*. #170 viste kun mærket på den indloggede Voldby BIO-fane; `GET /api/screenings` sendte allerede `is_private` med til alle (uindlogget inkluderet) — kun UI'et på `CinemaPublic.jsx` manglede den betingede badge, samme `.cinema-card-private-badge`/`cinema.privateEvent*`-genbrug som #170. Ingen backend-ændring. Observation gjort (ikke rettet, uden for opgaven): en eksisterende kampagnegrafik på /bio-siden overlapper i forvejen den første kortrække ved visse scroll-positioner — Jan gjort opmærksom på det. Berørt fil: `frontend/src/pages/CinemaPublic.jsx`. Fuld backend-suite (uændret) + frontend (85, uændret) grøn.

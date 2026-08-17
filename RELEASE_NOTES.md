@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.147.1 (build 0201) — 2026-08-17
+
+- **Rettet: panelet med den nye adgangskode efter en nulstilling kunne være usynligt.** Med mange brugere kunne panelet dukke op uden for skærmen, hvis du var scrollet ned for at nulstille en brugers kode. Siden scroller nu automatisk hen til panelet.
+
 ## v0.147.0 (build 0200) — 2026-08-17
 
 - **"Privat arrangement"-mærket vises nu også på den offentlige /bio-side.** Tidligere kunne man kun se det ved at være logget ind.

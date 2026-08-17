@@ -23,6 +23,10 @@ import { UsersSection, formatUptime } from "./Settings";
 describe("UsersSection — adgangskode-nulstilling (feature #171)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    // jsdom implementerer ikke scrollIntoView. BUGS.md #74 — banneret skal
+    // scrolles i syne, så den skal kunne kaldes uden at kaste i alle tests
+    // her, ikke kun det ene der selv asserter på den.
+    Element.prototype.scrollIntoView = vi.fn();
   });
 
   function mockOneActiveUser() {
@@ -85,6 +89,43 @@ describe("UsersSection — adgangskode-nulstilling (feature #171)", () => {
 
     expect(resetSpy).not.toHaveBeenCalled();
     expect(screen.queryByText(/Ny adgangskode til/)).not.toBeInTheDocument();
+  });
+
+  it("scroller resultat-banneret i syne (BUGS.md #74)", async () => {
+    // Med en lang brugerliste kan admin være scrollet langt væk fra toppen
+    // af sektionen (hvor banneret dukker op) når knappen klikkes — uden
+    // auto-scroll så det aldrig ud af skærmen, som skete for Jan på
+    // produktion.
+    mockOneActiveUser();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.spyOn(api, "resetUserPassword").mockResolvedValue({
+      username: "resetme",
+      new_password: "Ab3dEfGh9Jkm",
+    });
+    const user = userEvent.setup();
+
+    render(<UsersSection currentUserId="admin1" />);
+    const resetButton = await screen.findByRole("button", { name: "Nulstil adgangskode" });
+    await user.click(resetButton);
+
+    await screen.findByText("Ny adgangskode til resetme:");
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith(
+      expect.objectContaining({ block: "start" })
+    );
+  });
+
+  it("scroller også fejl-banneret i syne, ikke kun det vellykkede resultat", async () => {
+    mockOneActiveUser();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.spyOn(api, "resetUserPassword").mockRejectedValue(new Error("Serverfejl"));
+    const user = userEvent.setup();
+
+    render(<UsersSection currentUserId="admin1" />);
+    const resetButton = await screen.findByRole("button", { name: "Nulstil adgangskode" });
+    await user.click(resetButton);
+
+    await screen.findByText("Serverfejl");
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
   });
 });
 

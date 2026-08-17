@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.147.0 (build 0200) — 2026-08-17
+
+- **"Privat arrangement"-mærket vises nu også på den offentlige /bio-side.** Tidligere kunne man kun se det ved at være logget ind.
+
 ## v0.146.0 (build 0199) — 2026-08-17
 
 - **Adgangskodeskift efter en admin-nulstilling er nu obligatorisk.** Logger du ind med en midlertidig kode udstedt af en admin, kan du ikke bruge resten af appen før du selv har sat din egen adgangskode.

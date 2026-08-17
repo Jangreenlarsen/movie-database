@@ -661,6 +661,15 @@ function PublicScreeningCard({ screening }) {
           {formatShortDate(screening.scheduled_at, locale)} ·{" "}
           {formatTime(screening.scheduled_at, locale)}
         </div>
+        {/* Feature #170 viste allerede badget for indloggede brugere
+            (Cinema.jsx) — GET /api/screenings er ubeskyttet og sender
+            is_private med til alle, så det var kun UI'et her der manglede
+            (Jans ønske 2026-08-17). */}
+        {screening.is_private && (
+          <div className="cinema-card-private-badge" title={t("cinema.privateEventHint")}>
+            🔒 {t("cinema.privateEvent")}
+          </div>
+        )}
         <h3 className="cinema-card-title">
           {screening.title ?? t("cinema.unknownTitle")}
           {screening.year ? ` (${screening.year})` : ""}

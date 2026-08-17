@@ -44,7 +44,8 @@ async def test_create_screening_enriches_display_info(client):
 async def test_create_screening_from_request_marks_request_scheduled(client):
     movie_id = await _create_movie(client)
     request = await client.post(
-        "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id}
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": "2026-09-04T20:00:00"},
     )
     request_id = request.json()["id"]
 

@@ -290,9 +290,12 @@ export const api = {
     }),
 
   // Voldby BIO (feature #62/#63/#64)
-  // `message`/`preferredAt` er feature #85's valgfri ønske-besked og
-  // foreslåede tidspunkt. Begge udelades helt af payloaden når de er tomme,
-  // så et ønske uden besked ser præcis ud som før #85.
+  // `message` (feature #85, fortsat valgfri) udelades helt af payloaden når
+  // den er tom. `preferredAt` (feature #85, gjort påkrævet af #176) er reelt
+  // altid sat her — UI'et (ScreeningRequestButton) holder selve
+  // "Send ønske"-knappen deaktiveret indtil den er — men betingelsen står
+  // stadig som et defensivt sikkerhedsnet, ikke en antagelse om at værdien
+  // altid haves.
   requestScreening: (mediaKind, id, { message, preferredAt } = {}) =>
     request("/screening-requests", {
       method: "POST",

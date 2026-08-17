@@ -108,7 +108,8 @@ async def test_system_backup_and_restore_are_logged(client):
 async def test_decline_screening_request_is_logged(client):
     movie_id = await _create_movie(client, "Declined Movie")
     created = await client.post(
-        "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id}
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": "2026-09-04T20:00:00"},
     )
     request_id = created.json()["id"]
 

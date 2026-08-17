@@ -30,10 +30,13 @@ class ScreeningRequestCreate(BaseModel):
     media_kind: MediaKind
     movie_id: str | None = None
     tv_show_id: str | None = None
-    # Feature #85 — valgfri: udeladt payload svarer nøjagtigt til hvordan
-    # knappen opførte sig før, så en tom boks + "Send ønske" stadig virker.
+    # Feature #85 — fri tekst, fortsat valgfri.
     message: str | None = Field(default=None, max_length=500)
-    preferred_at: datetime | None = None
+    # Feature #176 (Jan: "når en guest eller standart user ønske en
+    # forvisning i bio skal man afkraves at man også deffinere en dato og
+    # tidspunkt") — ikke længere valgfri, i modsætning til `message` ovenfor.
+    # Et ønske uden et konkret forslag gav admin intet at planlægge ud fra.
+    preferred_at: datetime
 
     @model_validator(mode="after")
     def check_reference(self) -> "ScreeningRequestCreate":

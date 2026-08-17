@@ -2,6 +2,13 @@ from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 
+# Feature #176 (Jan: "når en guest eller standart user ønske en forvisning i
+# bio skal man afkraves at man også deffinere en dato og tidspunkt") —
+# preferred_at is no longer optional. Every payload below now supplies one;
+# see test_create_request_rejects_missing_preferred_at for the actual
+# regression test of the new requirement itself.
+_PREFERRED_AT = "2026-09-04T20:00:00"
+
 
 async def _create_movie(client, title="Requested Movie"):
     created = await client.post("/api/movies", json={"title": title, "media_type": "Fysisk", "format": "F-DVD"})
@@ -11,7 +18,8 @@ async def _create_movie(client, title="Requested Movie"):
 async def test_request_screening_creates_pending_request(client):
     movie_id = await _create_movie(client)
     response = await client.post(
-        "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id}
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": _PREFERRED_AT},
     )
     assert response.status_code == 201
     data = response.json()
@@ -22,16 +30,23 @@ async def test_request_screening_creates_pending_request(client):
 
 async def test_requesting_same_movie_twice_by_same_user_is_idempotent(client):
     movie_id = await _create_movie(client)
-    await client.post("/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id})
+    await client.post(
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": _PREFERRED_AT},
+    )
     response = await client.post(
-        "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id}
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": _PREFERRED_AT},
     )
     assert len(response.json()["requested_by"]) == 1
 
 
 async def test_requesting_same_movie_by_different_users_adds_both(client):
     movie_id = await _create_movie(client)
-    await client.post("/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id})
+    await client.post(
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": _PREFERRED_AT},
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as second:
@@ -41,7 +56,10 @@ async def test_requesting_same_movie_by_different_users_adds_both(client):
         await client.patch(
             f"/api/users/{register.json()['id']}/status", json={"status": "active"}
         )
-        await second.post("/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id})
+        await second.post(
+            "/api/screening-requests",
+            json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": _PREFERRED_AT},
+        )
 
     response = await client.get("/api/screening-requests")
     usernames = {r["username"] for r in response.json()[0]["requested_by"]}
@@ -49,13 +67,29 @@ async def test_requesting_same_movie_by_different_users_adds_both(client):
 
 
 async def test_create_request_rejects_missing_reference(client):
-    response = await client.post("/api/screening-requests", json={"media_kind": "movie"})
+    response = await client.post(
+        "/api/screening-requests", json={"media_kind": "movie", "preferred_at": _PREFERRED_AT}
+    )
+    assert response.status_code == 422
+
+
+async def test_create_request_rejects_missing_preferred_at(client):
+    """Feature #176 — a screening request must define a date/time; a
+    reference alone (matching the pre-#176 payload shape) is no longer
+    enough."""
+    movie_id = await _create_movie(client)
+    response = await client.post(
+        "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id}
+    )
     assert response.status_code == 422
 
 
 async def test_list_requests_requires_admin(client):
     movie_id = await _create_movie(client)
-    await client.post("/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id})
+    await client.post(
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": _PREFERRED_AT},
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as standard_client:
@@ -68,7 +102,10 @@ async def test_list_requests_requires_admin(client):
 
 async def test_mine_returns_only_current_users_pending_requests(client):
     movie_id = await _create_movie(client)
-    await client.post("/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id})
+    await client.post(
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": _PREFERRED_AT},
+    )
 
     response = await client.get("/api/screening-requests/mine")
     assert response.status_code == 200
@@ -78,7 +115,8 @@ async def test_mine_returns_only_current_users_pending_requests(client):
 async def test_decline_request_requires_admin(client):
     movie_id = await _create_movie(client)
     created = await client.post(
-        "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id}
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": _PREFERRED_AT},
     )
     request_id = created.json()["id"]
 
@@ -96,7 +134,8 @@ async def test_decline_request_requires_admin(client):
 async def test_decline_request_marks_status_declined(client):
     movie_id = await _create_movie(client)
     created = await client.post(
-        "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id}
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": _PREFERRED_AT},
     )
     request_id = created.json()["id"]
 
@@ -108,7 +147,8 @@ async def test_decline_request_marks_status_declined(client):
 
     # A declined request no longer blocks a fresh request for the same title.
     again = await client.post(
-        "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id}
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": _PREFERRED_AT},
     )
     assert again.json()["id"] != request_id
     assert again.json()["status"] == "pending"
@@ -116,7 +156,9 @@ async def test_decline_request_marks_status_declined(client):
 
 async def test_request_stores_message_and_preferred_time(client):
     """Feature #85 — begge felter hører til ønskerens egen entry, ikke til
-    anmodningen, så flere ønskere kan have hver sin besked/tidspunkt."""
+    anmodningen, så flere ønskere kan have hver sin besked/tidspunkt.
+    Feature #176 — preferred_at er ikke længere valgfri, men gemmes stadig
+    på nøjagtig samme måde."""
     movie_id = await _create_movie(client)
     response = await client.post(
         "/api/screening-requests",
@@ -133,15 +175,18 @@ async def test_request_stores_message_and_preferred_time(client):
     assert entry["preferred_at"].startswith("2026-09-04T20:00")
 
 
-async def test_request_without_message_keeps_fields_null(client):
-    """Pre-#85 payload-formen skal opføre sig præcis som før."""
+async def test_request_without_message_keeps_message_null(client):
+    """`message` alone is still optional (feature #176 only tightened
+    `preferred_at`) — omitting just the message should still behave exactly
+    as before #176."""
     movie_id = await _create_movie(client)
     response = await client.post(
-        "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id}
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": _PREFERRED_AT},
     )
     entry = response.json()["requested_by"][0]
     assert entry["message"] is None
-    assert entry["preferred_at"] is None
+    assert entry["preferred_at"].startswith("2026-09-04T20:00")
 
 
 async def test_whitespace_only_message_is_stored_as_none(client):
@@ -150,7 +195,12 @@ async def test_whitespace_only_message_is_stored_as_none(client):
     movie_id = await _create_movie(client)
     response = await client.post(
         "/api/screening-requests",
-        json={"media_kind": "movie", "movie_id": movie_id, "message": "   "},
+        json={
+            "media_kind": "movie",
+            "movie_id": movie_id,
+            "message": "   ",
+            "preferred_at": _PREFERRED_AT,
+        },
     )
     assert response.json()["requested_by"][0]["message"] is None
 
@@ -161,11 +211,21 @@ async def test_second_request_from_same_user_keeps_first_message(client):
     movie_id = await _create_movie(client)
     await client.post(
         "/api/screening-requests",
-        json={"media_kind": "movie", "movie_id": movie_id, "message": "Første ønske"},
+        json={
+            "media_kind": "movie",
+            "movie_id": movie_id,
+            "message": "Første ønske",
+            "preferred_at": _PREFERRED_AT,
+        },
     )
     response = await client.post(
         "/api/screening-requests",
-        json={"media_kind": "movie", "movie_id": movie_id, "message": "Andet forsøg"},
+        json={
+            "media_kind": "movie",
+            "movie_id": movie_id,
+            "message": "Andet forsøg",
+            "preferred_at": _PREFERRED_AT,
+        },
     )
     requested_by = response.json()["requested_by"]
     assert len(requested_by) == 1
@@ -176,7 +236,12 @@ async def test_each_requester_keeps_their_own_message(client):
     movie_id = await _create_movie(client)
     await client.post(
         "/api/screening-requests",
-        json={"media_kind": "movie", "movie_id": movie_id, "message": "Jans ønske"},
+        json={
+            "media_kind": "movie",
+            "movie_id": movie_id,
+            "message": "Jans ønske",
+            "preferred_at": "2026-09-06T18:00:00",
+        },
     )
 
     transport = ASGITransport(app=app)
@@ -198,7 +263,7 @@ async def test_each_requester_keeps_their_own_message(client):
     response = await client.get("/api/screening-requests")
     by_username = {r["username"]: r for r in response.json()[0]["requested_by"]}
     assert by_username["testuser"]["message"] == "Jans ønske"
-    assert by_username["testuser"]["preferred_at"] is None
+    assert by_username["testuser"]["preferred_at"].startswith("2026-09-06T18:00")
     assert by_username["wishuser"]["message"] == "Annas ønske"
     assert by_username["wishuser"]["preferred_at"].startswith("2026-09-05T19:30")
 
@@ -207,14 +272,19 @@ async def test_message_longer_than_500_chars_is_rejected(client):
     movie_id = await _create_movie(client)
     response = await client.post(
         "/api/screening-requests",
-        json={"media_kind": "movie", "movie_id": movie_id, "message": "x" * 501},
+        json={
+            "media_kind": "movie",
+            "movie_id": movie_id,
+            "message": "x" * 501,
+            "preferred_at": _PREFERRED_AT,
+        },
     )
     assert response.status_code == 422
 
 
 async def test_guest_can_request_with_message(client):
-    """Feature #72's undtagelse gælder også #85's felter — visnings-ønsket er
-    guest-rollens ene skrivehandling, besked inklusive."""
+    """Feature #72's undtagelse gælder også #85/#176's felter — visnings-
+    ønsket er guest-rollens ene skrivehandling, besked og tidspunkt inklusive."""
     movie_id = await _create_movie(client)
 
     transport = ASGITransport(app=app)
@@ -228,7 +298,12 @@ async def test_guest_can_request_with_message(client):
 
     response = await guest.post(
         "/api/screening-requests",
-        json={"media_kind": "movie", "movie_id": movie_id, "message": "Må jeg se den med?"},
+        json={
+            "media_kind": "movie",
+            "movie_id": movie_id,
+            "message": "Må jeg se den med?",
+            "preferred_at": _PREFERRED_AT,
+        },
     )
     assert response.status_code == 201
     assert response.json()["requested_by"][0]["message"] == "Må jeg se den med?"
@@ -237,6 +312,11 @@ async def test_guest_can_request_with_message(client):
 
 async def test_screening_requests_require_authentication(raw_client):
     response = await raw_client.post(
-        "/api/screening-requests", json={"media_kind": "movie", "movie_id": "000000000000000000000000"}
+        "/api/screening-requests",
+        json={
+            "media_kind": "movie",
+            "movie_id": "000000000000000000000000",
+            "preferred_at": _PREFERRED_AT,
+        },
     )
     assert response.status_code == 401

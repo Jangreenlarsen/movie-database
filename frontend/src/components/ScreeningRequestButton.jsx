@@ -12,11 +12,16 @@ import "./ScreeningRequestButton.css";
  * state instead of always starting from scratch.
  *
  * Feature #85: the button no longer sends immediately. It opens a small box
- * where the requester can add a free-text message and/or suggest a time —
- * both optional, so "åbn, tryk Send ønske" is still the one-decision path
- * it used to be. Once sent, the button shows back what you wrote, since a
- * request can't be edited afterwards (the backend keeps your first entry;
- * see screening_request_repository.add_requester).
+ * where the requester can add a free-text message and suggest a time. Once
+ * sent, the button shows back what you wrote, since a request can't be
+ * edited afterwards (the backend keeps your first entry; see
+ * screening_request_repository.add_requester).
+ *
+ * Feature #176 (Jan: "når en guest eller standart user ønske en forvisning
+ * i bio skal man afkraves at man også deffinere en dato og tidspunkt") —
+ * the message stays optional, but a preferred date/time is now mandatory:
+ * "Send ønske" stays disabled until one is picked, mirroring the backend's
+ * own (authoritative) requirement on `ScreeningRequestCreate.preferred_at`.
  */
 export default function ScreeningRequestButton({ mediaKind, id, username }) {
   const t = useT();
@@ -130,15 +135,6 @@ export default function ScreeningRequestButton({ mediaKind, id, username }) {
                 {t("request.preferredLabel")}
               </label>
               <DateTime24Input value={preferredAt} onChange={setPreferredAt} />
-              {preferredAt && (
-                <button
-                  type="button"
-                  className="btn screening-request-clear"
-                  onClick={() => setPreferredAt("")}
-                >
-                  {t("request.clearTime")}
-                </button>
-              )}
 
               {error && (
                 <div className="banner banner-error" style={{ marginTop: 12 }}>
@@ -160,7 +156,7 @@ export default function ScreeningRequestButton({ mediaKind, id, username }) {
                 type="button"
                 className="btn btn-primary"
                 onClick={submitRequest}
-                disabled={status === "requesting"}
+                disabled={status === "requesting" || !preferredAt}
               >
                 {t(status === "requesting" ? "request.sending" : "request.send")}
               </button>

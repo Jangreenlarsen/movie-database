@@ -16,6 +16,11 @@ async def _member(admin_client, name):
     await admin_client.patch(
         f"/api/users/{register.json()['id']}/status", json={"status": "active"}
     )
+    # Feature #175 — registration now defaults to guest (read-only), so this
+    # helper's own "standard-bruger" promise needs an explicit promotion.
+    await admin_client.patch(
+        f"/api/users/{register.json()['id']}/role", json={"role": "standard"}
+    )
     return member
 
 

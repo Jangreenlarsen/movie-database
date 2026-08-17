@@ -10,7 +10,12 @@ async def test_first_registered_user_is_admin(raw_client):
     assert response.json()["role"] == "admin"
 
 
-async def test_second_registered_user_is_standard(raw_client):
+async def test_second_registered_user_is_guest(raw_client):
+    """Feature #175 (Jan: "ved nye users oprettelse skal de som default
+    sættes som guest i portal og ikke som nu standart user") — every
+    registration except the very first (which bootstraps to admin) now
+    defaults to the read-only guest role. An admin can still promote them
+    to standard/admin from Indstillinger → Brugere after approval."""
     await raw_client.post(
         "/api/auth/register", json={"username": "first", "password": "testpassword123"}
     )
@@ -20,7 +25,7 @@ async def test_second_registered_user_is_standard(raw_client):
         response = await second_client.post(
             "/api/auth/register", json={"username": "second", "password": "testpassword123"}
         )
-        assert response.json()["role"] == "standard"
+        assert response.json()["role"] == "guest"
 
 
 async def test_admin_can_update_serial_number_config(client):
@@ -43,16 +48,19 @@ async def test_standard_user_cannot_update_serial_number_config(client):
         assert response.status_code == 403
 
 
-async def test_standard_user_can_still_read_serial_number_config(client):
+async def test_guest_user_can_still_read_serial_number_config(client):
+    """Feature #175 — a freshly-approved registration is a guest by
+    default now; this endpoint has no role requirement at all (just
+    login), so it should stay readable regardless."""
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as standard_client:
-        register = await standard_client.post(
+    async with AsyncClient(transport=transport, base_url="http://test") as guest_client:
+        register = await guest_client.post(
             "/api/auth/register", json={"username": "readonly", "password": "testpassword123"}
         )
         await client.patch(
             f"/api/users/{register.json()['id']}/status", json={"status": "active"}
         )
-        response = await standard_client.get("/api/settings/serial-number")
+        response = await guest_client.get("/api/settings/serial-number")
         assert response.status_code == 200
 
 

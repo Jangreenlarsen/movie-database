@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.149.0 build 0204] — 2026-08-17 — feature: nye brugere får som standard guest-rollen (FEATURES.md #175)
+
+Jan: *"ved nye users oprettelse skal de som default sættes som guest i portal og ikke som nu standart user"*. `auth_service.register` sætter nu `role: guest` (i stedet for `standard`) for enhver bruger undtagen den allerførste (som fortsat bootstrapper til admin). Godkendelses-flowet (feature #66) er uændret — kun standard-rollen en godkendt bruger lander på er strammet; en admin kan stadig opgradere til standard/admin fra Indstillinger → Brugere. Rammer begge registrerings-indgange (Login.jsx + den offentlige /bio) automatisk, da de deler samme backend-endpoint. Testaudit på tværs af hele backend-suiten fandt og rettede 6 tests/hjælpefunktioner der implicit antog "registrer + godkend = standard-rolle" uden en eksplicit rolle-PATCH. Berørte filer: `backend/app/services/auth_service.py`, `ARCHITECTURE.md`, samt `backend/tests/{test_roles,test_review_findings,test_serial_other_pool,test_movie_permissions,test_auto_added_by_tag,test_reservations}.py`. Verificeret i browser end-to-end (rigtig registreringsformular → guest-rolle i svaret → admin-godkendelse → "Guest (read-only)"-badge). Fuld backend-suite (712) + frontend (90) grøn.
+
 ## [0.148.1 build 0203] — 2026-08-17 — fix: admin-nulstillingskoden ignorerede en lav minimum-længde (BUGS.md #75)
 
 Jan, testet live lige efter #174: *"hvis jeg sætter en 6 karaktes politik så kommer ved nulstil af password i admin modul ikke en 6 karates password til kopi pasta"*. `_generate_temporary_password` brugte `max(12, settings.password_min_length)` — en antagelse Claude selv tilføjede, ikke noget Jan bad om. Fjernet: længden er nu præcis den konfigurerede minimum-længde, ingen skjult bundgrænse. Berørt fil: `backend/app/services/auth_service.py`. Tests: `test_password_policy.py` opdateret (1 erstattet, 1 skærpet). Fuld backend-suite (712) grøn.

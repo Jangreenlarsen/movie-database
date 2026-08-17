@@ -480,7 +480,10 @@ async def test_standard_user_can_still_reserve_on_private_screening(client):
         json={"media_kind": "movie", "movie_id": movie_id, "scheduled_at": "2099-09-01T20:00:00", "is_private": True},
     )
     screening_id = created.json()["id"]
-    member = await _member_client(client, "std_private_ok")  # ingen rolle = standard
+    # Feature #175 — registration now defaults to guest, so "standard" must
+    # be requested explicitly; the old "ingen rolle = standard" shortcut no
+    # longer holds.
+    member = await _member_client(client, "std_private_ok", role="standard")
 
     resp = await member.post(
         f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N1-1"]}

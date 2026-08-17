@@ -306,3 +306,61 @@ async def test_deletion_is_audit_logged(client):
     log = await client.get("/api/audit-log")
     actions = {(e["action"], e["detail"]) for e in log.json()["entries"]}
     assert ("user.deleted", "auditdelete") in actions
+
+
+# Feature #171 — admin-assisteret adgangskode-nulstilling (password recovery
+# uden e-mail-system).
+
+
+async def test_admin_can_reset_a_users_password(client):
+    second, body = await _register("resetme")
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "active"})
+    await second.aclose()
+
+    resp = await client.post(f"/api/users/{body['id']}/reset-password")
+    assert resp.status_code == 200
+    result = resp.json()
+    assert result["username"] == "resetme"
+    assert len(result["new_password"]) >= 8
+
+    # Den gamle adgangskode virker ikke længere; den nye gør.
+    fresh = ASGITransport(app=app)
+    async with AsyncClient(transport=fresh, base_url="http://test") as relogin:
+        old_attempt = await relogin.post(
+            "/api/auth/login", json={"username": "resetme", "password": "testpassword123"}
+        )
+        assert old_attempt.status_code == 401
+        new_attempt = await relogin.post(
+            "/api/auth/login", json={"username": "resetme", "password": result["new_password"]}
+        )
+        assert new_attempt.status_code == 200
+
+
+async def test_reset_password_requires_admin(client):
+    second, body = await _register("cannotreset")
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "active"})
+
+    resp = await second.post(f"/api/users/{body['id']}/reset-password")
+    assert resp.status_code == 403
+    await second.aclose()
+
+
+async def test_reset_password_unknown_user_returns_404(client):
+    resp = await client.post("/api/users/000000000000000000000000/reset-password")
+    assert resp.status_code == 404
+
+
+async def test_reset_password_is_audit_logged_without_leaking_the_password(client):
+    second, body = await _register("auditreset")
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "active"})
+    await second.aclose()
+
+    resp = await client.post(f"/api/users/{body['id']}/reset-password")
+    new_password = resp.json()["new_password"]
+
+    log = await client.get("/api/audit-log")
+    actions = {(e["action"], e["detail"]) for e in log.json()["entries"]}
+    assert ("user.password_reset", "auditreset") in actions
+    # Regel 6-princippet anvendt på adgangskoder: selve værdien må aldrig stå
+    # nogen steder i audit-loggen, kun AT en nulstilling skete.
+    assert new_password not in log.text

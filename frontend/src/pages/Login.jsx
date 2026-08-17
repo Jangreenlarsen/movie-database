@@ -100,6 +100,12 @@ export default function Login({ onAuthenticated, language, onLanguageChange }) {
           </button>
         </form>
 
+        {/* Feature #171 — intet e-mail-baseret "glemt adgangskode"-system
+            findes; kun en admin kan nulstille (Jan eller Lis, Jans eget
+            ønske). Vises kun ved login — ved oprettelse er der intet at
+            genskabe endnu. */}
+        {mode === "login" && <p className="auth-hint">{t("auth.passwordRecoveryHint")}</p>}
+
         <div className="auth-switch">
           {mode === "login" ? (
             <>

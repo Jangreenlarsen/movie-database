@@ -1,3 +1,5 @@
+import secrets
+import string
 from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -116,6 +118,36 @@ async def change_password(
     ):
         raise InvalidCredentialsError()
     await user_repository.set_password_hash(db, user_id, hash_password(payload.new_password))
+
+
+# Feature #171 — admin-assisteret password recovery (ingen e-mail-system,
+# Jans eksplicitte ønske). Undgår tegn der let forveksles ved oplæsning/
+# aflæsning over telefon eller chat (0/O, 1/l/I) — adgangskoden skal jo
+# relæes til brugeren uden om selve appen. 12 tegn fra et ~54-tegns alfabet
+# giver rigelig entropi (langt over `PasswordChange`s min_length=8) uden at
+# være unødigt besværlig at skrive af.
+_TEMP_PASSWORD_ALPHABET = "".join(
+    c for c in string.ascii_letters + string.digits if c not in "0O1lI"
+)
+
+
+def _generate_temporary_password(length: int = 12) -> str:
+    return "".join(secrets.choice(_TEMP_PASSWORD_ALPHABET) for _ in range(length))
+
+
+async def admin_reset_password(db: AsyncIOMotorDatabase, user_id: str) -> tuple[str, str]:
+    """Feature #171 — en admin nulstiller en anden brugers adgangskode til
+    en tilfældig, midlertidig værdi (ingen e-mail-baseret "glemt adgangskode"
+    findes, jf. Jans ønske) og relæer den til brugeren selv, uden om appen
+    (telefon, chat, personligt). Returnerer (username, ny_adgangskode) —
+    adgangskoden gemmes/logges aldrig i klartekst noget sted efter dette
+    kald returnerer (heller ikke i audit-loggen, kun AT det skete)."""
+    target = await user_repository.find_by_id(db, user_id)
+    if target is None:
+        raise UserNotFoundError(user_id)
+    new_password = _generate_temporary_password()
+    await user_repository.set_password_hash(db, user_id, hash_password(new_password))
+    return target["username"], new_password
 
 
 async def verify_current_password(db: AsyncIOMotorDatabase, user_id: str, current_password: str) -> None:

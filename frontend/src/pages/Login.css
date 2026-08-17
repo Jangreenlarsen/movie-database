@@ -47,6 +47,15 @@
   color: var(--text-muted);
 }
 
+/* Feature #171 — permanent hjælpetekst, ikke en handling, derfor lidt
+   mindre/dæmpet end .auth-switch (som indeholder en klikbar knap). */
+.auth-hint {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: -6px 0 0;
+}
+
 .auth-switch button {
   background: none;
   border: none;

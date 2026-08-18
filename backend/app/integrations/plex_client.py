@@ -558,3 +558,42 @@ async def play_on_client(
 
     logger.info("Plex: playMedia til %s lykkedes (HTTP %s)", client_identifier, response.status_code)
     return True, "Afspilning startet på Shield TV."
+
+
+async def stop_client(client_identifier: str) -> tuple[bool, str]:
+    """Sender en "stop"-kommando til én bestemt, tidligere fundet Plex-
+    klient — samme Companion-relæ som `play_on_client`, men uden nogen
+    medie-reference: stopper hvad end klienten lige nu afspiller, uafhængigt
+    af hvilken film/serie der oprindeligt startede den. Jan, opfølgning
+    2026-08-18: "Afspil på Shield TV"-knappen skal være en rigtig
+    start/stop-toggle, ikke kun starte."""
+    if not is_configured():
+        return False, "Plex er ikke konfigureret."
+
+    headers = {**_headers(), "X-Plex-Target-Client-Identifier": client_identifier}
+
+    logger.info("Plex: sender playback/stop til klient %s", client_identifier)
+
+    try:
+        async with _client() as client:
+            response = await client.get(
+                f"{_base_url()}/player/playback/stop",
+                params={"type": "video"},
+                headers=headers,
+            )
+    except httpx.HTTPError as exc:
+        logger.warning("Plex: stop til %s kunne ikke nås: %s", client_identifier, exc)
+        return False, f"Kunne ikke nå Plex-serveren: {exc}"
+
+    if response.status_code == 401:
+        logger.warning("Plex: stop afvist (HTTP 401)")
+        return False, "Plex afviste token'et (HTTP 401)."
+    if response.status_code == 404:
+        logger.warning("Plex: stop til %s gav HTTP 404 (klienten ikke fundet af PMS)", client_identifier)
+        return False, "Shield TV'et svarede ikke — er Plex-appen stadig åben på den?"
+    if response.status_code >= 400:
+        logger.warning("Plex: stop til %s gav HTTP %s", client_identifier, response.status_code)
+        return False, f"Plex afviste stop-kommandoen (HTTP {response.status_code})."
+
+    logger.info("Plex: stop til %s lykkedes (HTTP %s)", client_identifier, response.status_code)
+    return True, "Afspilning stoppet på Shield TV."

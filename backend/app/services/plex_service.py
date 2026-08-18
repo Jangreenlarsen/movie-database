@@ -310,6 +310,21 @@ async def play_on_shield(db: AsyncIOMotorDatabase, kind: str, item_id: str) -> P
     return PlexPlayResult(ok=ok, message=message)
 
 
+async def stop_shield() -> PlexPlayResult:
+    """Opfølgning på feature #178 (Jan: "Afspil på Shield TV" skal være en
+    rigtig start/stop-toggle, ikke kun starte). Stopper hvad end Shielden
+    lige nu afspiller — intet match-opslag nødvendigt (i modsætning til
+    `play_on_shield`), da en stop-kommando ikke refererer til nogen titel."""
+    if not settings.plex_shield_client_identifier:
+        return PlexPlayResult(
+            ok=False,
+            message="Shield TV er ikke konfigureret endnu — sæt dens klient-id under Indstillinger.",
+        )
+
+    ok, message = await plex_client.stop_client(settings.plex_shield_client_identifier)
+    return PlexPlayResult(ok=ok, message=message)
+
+
 def _library_as_index(docs: list[dict], kind: str) -> _Index:
     """Vores eget bibliotek pakket i *samme* index-form som Plex-indexet
     (feature #90).

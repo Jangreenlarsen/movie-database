@@ -1385,7 +1385,7 @@ export function TvShowDetailModal({
 
           {/* Feature #88/2026-08-10 — se den identiske note i Library.jsx. */}
           {show.id && show.media_type !== "Fysisk" && (
-            <>
+            <div className="plex-actions-row">
               <PlexPlayLink availability={plexAvailability} plex={plex} />
               <PlexShieldPlayButton
                 availability={plexAvailability}
@@ -1393,7 +1393,7 @@ export function TvShowDetailModal({
                 kind="show"
                 itemId={show.id}
               />
-            </>
+            </div>
           )}
 
           {!editing ? (

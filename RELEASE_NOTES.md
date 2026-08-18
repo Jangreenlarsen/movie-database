@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.153.0 (build 0210) — 2026-08-18
+
+- **"Afspil på Shield TV" er nu en rigtig start/stop-knap.** Efter du trykker "Afspil på Shield TV", skifter knappen til "Stop Shield TV" — tryk igen for at stoppe afspilningen. Knappen sidder nu side om side med "Afspil i Plex" i stedet for under den.
+
 ## v0.152.2 (build 0209) — 2026-08-18
 
 - **"Afspil på Shield TV" forsøger nu direkte afspilning fremfor transcoding.** Var video/lyd før blevet transcodet unødigt når afspilning blev startet fra portalen, beder den nu Plex-serveren forsøge direkte afspilning i stedet. Ingen garanti — er kilden reelt inkompatibel med Shieldens/receiverens evner, transcoder Plex stadig; tjek i så fald Shieldens egne Plex-app-indstillinger for video-kvalitet og lyd-passthrough.

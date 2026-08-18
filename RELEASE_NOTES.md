@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.152.1 (build 0208) — 2026-08-18
+
+- **"Hent tilgængelige klienter" viser nu tydeligere hvad Plex faktisk svarede.** Finder den ingen Shield, fortæller den nu om Plex-serveren selv rapporterer nul registrerede klienter (en Plex-/netværksbegrænsning — prøv Plex Webs egen "Afspil på andet apparat" for at bekræfte det samme) eller om noget blev fundet, men ikke kunne bruges.
+
 ## v0.152.0 (build 0207) — 2026-08-18
 
 - **Ny: afspil direkte på Nvidia Shield TV Pro fra "Vis i Plex".** Ligger en film/serie i Plex, kan du nu trykke "📺 Afspil på Shield TV" i detaljevinduet for at starte afspilningen direkte på Shielden — uden selv at skulle vælge apparatet inde i Plex. Kræver at en admin først sætter Shieldens Plex-apparat op under Indstillinger → Eksterne API-nøgler ("Hent tilgængelige klienter"), og at Plex-appen allerede er åben på Shielden (Plex kan ikke selv tænde den).

@@ -56,6 +56,11 @@ class PlexClientList(BaseModel):
     ok: bool
     error: str | None = None
     items: list[PlexClientInfo] = Field(default_factory=list)
+    # BUGS.md #76 — hvor mange entries PMS' /clients rapporterede i alt, FØR
+    # filtrering på et brugbart client-id. Lader admin se om et tomt `items`
+    # skyldes at PMS reelt rapporterer nul registrerede klienter (en Plex-/
+    # netværks-begrænsning, fx GDM/AP-isolation) eller noget i vejen.
+    raw_entry_count: int = 0
 
 
 class PlexPlayOnShieldRequest(BaseModel):

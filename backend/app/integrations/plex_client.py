@@ -436,29 +436,45 @@ def build_play_url(rating_key: str, machine_identifier: str) -> str:
     )
 
 
-async def fetch_clients() -> tuple[list[PlexClientInfo], str | None]:
+async def fetch_clients() -> tuple[list[PlexClientInfo], int, str | None]:
     """`GET /clients` — Plex-klienter PMS lige nu kan se annonceret på
     LAN'et (samme liste Plex Web selv bruger til "Afspil på andet apparat").
     Kun til admin-opsætningen (feature #178): Shield TV'et skal selv have
     Plex-appen åben/logget ind i det øjeblik dette kaldes, ellers optræder
     den slet ikke — bruges derfor kun til at *finde* dens client-id én gang,
-    ikke ved hver afspilning."""
+    ikke ved hver afspilning.
+
+    BUGS.md #76 (Jan: "der skal nok noget feedback til så man kan se at din
+    code gør det korekte") — logger nu både forespørgslen og hele PMS'
+    rå svar (regel 11), og returnerer *også* det samlede antal entries PMS
+    rapporterede, `raw_count`, uafhængigt af hvor mange der faktisk havde et
+    brugbart `machineIdentifier`. Uden det tal kan et tomt resultat aldrig
+    skelnes fra "PMS svarede korrekt og rapporterer reelt nul registrerede
+    klienter" (en Plex-/netværks-begrænsning, fx GDM/AP-isolation) versus "vi
+    fik et svar med indhold, men filtrerede det forkert" (en fejl i denne
+    funktion) — begge så identiske ud for brugeren før denne ændring."""
+    url = f"{_base_url()}/clients"
     if not is_configured():
-        return [], "Plex er ikke konfigureret."
+        return [], 0, "Plex er ikke konfigureret."
+
+    logger.info("Plex: henter klientliste (%s)", url)
 
     try:
         async with _client() as client:
-            response = await client.get(f"{_base_url()}/clients", headers=_headers())
+            response = await client.get(url, headers=_headers())
     except httpx.HTTPError as exc:
-        return [], f"Kunne ikke hente Plex-klienter: {exc}"
+        logger.warning("Plex: /clients kunne ikke nås: %s", exc)
+        return [], 0, f"Kunne ikke hente Plex-klienter: {exc}"
 
     if response.status_code != 200:
-        return [], f"Uventet svar fra Plex (HTTP {response.status_code})"
+        logger.warning("Plex: /clients gav HTTP %s", response.status_code)
+        return [], 0, f"Uventet svar fra Plex (HTTP {response.status_code})"
 
     try:
         raw = response.json().get("MediaContainer", {}).get("Server", []) or []
     except ValueError:
-        return [], "Plex svarede ikke med JSON"
+        logger.warning("Plex: /clients svarede ikke med JSON")
+        return [], 0, "Plex svarede ikke med JSON"
 
     clients = [
         PlexClientInfo(
@@ -469,7 +485,13 @@ async def fetch_clients() -> tuple[list[PlexClientInfo], str | None]:
         for entry in raw
         if entry.get("machineIdentifier")
     ]
-    return clients, None
+    logger.info(
+        "Plex: /clients svarede med %d entries i alt (%d med et brugbart client-id): %s",
+        len(raw),
+        len(clients),
+        [entry.get("name") for entry in raw],
+    )
+    return clients, len(raw), None
 
 
 async def play_on_client(
@@ -498,19 +520,28 @@ async def play_on_client(
     }
     headers = {**_headers(), "X-Plex-Target-Client-Identifier": client_identifier}
 
+    logger.info(
+        "Plex: sender playMedia (rating_key=%s) til klient %s", rating_key, client_identifier
+    )
+
     try:
         async with _client() as client:
             response = await client.get(
                 f"{_base_url()}/player/playback/playMedia", params=params, headers=headers
             )
     except httpx.HTTPError as exc:
+        logger.warning("Plex: playMedia til %s kunne ikke nås: %s", client_identifier, exc)
         return False, f"Kunne ikke nå Plex-serveren: {exc}"
 
     if response.status_code == 401:
+        logger.warning("Plex: playMedia afvist (HTTP 401)")
         return False, "Plex afviste token'et (HTTP 401)."
     if response.status_code == 404:
+        logger.warning("Plex: playMedia til %s gav HTTP 404 (klienten ikke fundet af PMS)", client_identifier)
         return False, "Shield TV'et svarede ikke — er Plex-appen åben og tændt på den?"
     if response.status_code >= 400:
+        logger.warning("Plex: playMedia til %s gav HTTP %s", client_identifier, response.status_code)
         return False, f"Plex afviste kommandoen (HTTP {response.status_code})."
 
+    logger.info("Plex: playMedia til %s lykkedes (HTTP %s)", client_identifier, response.status_code)
     return True, "Afspilning startet på Shield TV."

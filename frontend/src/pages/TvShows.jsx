@@ -1701,7 +1701,7 @@ export function TvShowDetailModal({
 
         {!editing ? (
           <div className="modal-footer">
-            {show.id && <ScreeningRequestButton mediaKind="tv" id={show.id} username={user.username} />}
+            {show.id && <ScreeningRequestButton mediaKind="tv" id={show.id} username={user.username} role={user.role} />}
             {/* Feature #101 — kun rollen afgør om der kan redigeres; alle
                 andre ser den samme læsevisning. */}
             {!isGuest && (
@@ -1722,7 +1722,7 @@ export function TvShowDetailModal({
                 {t(moving ? "detail.moving" : "detail.moveToLibrary")}
               </button>
             )}
-            {show.id && <ScreeningRequestButton mediaKind="tv" id={show.id} username={user.username} />}
+            {show.id && <ScreeningRequestButton mediaKind="tv" id={show.id} username={user.username} role={user.role} />}
             {show.id && (
               <button type="button" className="btn" onClick={cancelEditing} disabled={saving}>
                 {t("common.cancel")}

@@ -51,7 +51,8 @@ class SystemBackup(BaseModel):
     document but are checked into the backup from day one via
     `password_policy`, rather than being retroactively discovered missing
     the way `system_settings_plain` was (regel 20 applied proactively this
-    time)."""
+    time). Feature #177 adds `screening_request_policy` the same way,
+    same day, same reasoning."""
 
     backed_up_at: datetime
     app_version: str
@@ -83,6 +84,9 @@ class SystemBackup(BaseModel):
     # "" = ingen override-nuance ovenfor: en politik har altid en reel
     # værdi (koden har sine egne standarder), aldrig et "unset"-koncept.
     password_policy: dict = Field(default_factory=dict)
+    # Feature #177 — samme rå, ingen-"unset"-håndtering som password_policy
+    # ovenfor, blot det ene felt.
+    screening_request_policy: dict = Field(default_factory=dict)
 
 
 class SystemRestoreResult(BaseModel):
@@ -109,6 +113,8 @@ class SystemRestoreResult(BaseModel):
     # policy always has all four fields; there's no partial/"unset" case to
     # count, unlike system_settings_plain_restored above).
     password_policy_restored: bool
+    # Feature #177 — samme begrundelse som password_policy_restored ovenfor.
+    screening_request_policy_restored: bool
 
 
 class DatabaseResetConfirm(BaseModel):

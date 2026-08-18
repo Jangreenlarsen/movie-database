@@ -7,6 +7,8 @@ from app.models.settings import (
     ApiKeyTestResult,
     PasswordPolicy,
     PasswordPolicyUpdate,
+    ScreeningRequestPolicy,
+    ScreeningRequestPolicyUpdate,
     SerialNumberConfig,
     SerialNumberConfigUpdate,
     SystemSettingsStatus,
@@ -93,5 +95,35 @@ async def update_password_policy(
         detail = ", ".join(f"{key}={value}" for key, value in changes.items())
         await audit_log_service.record(
             db, current_user["username"], "password_policy.updated", detail
+        )
+    return result
+
+
+@router.get("/screening-request-policy", response_model=ScreeningRequestPolicy)
+async def get_screening_request_policy(db: AsyncIOMotorDatabase = Depends(get_database)):
+    """Feature #177 — bevidst IKKE admin-only (i modsætning til de øvrige
+    politik-endpoints ovenfor): en gæst-bruger skal selv kunne se om
+    tidspunkt-feltet reelt er påkrævet for dem, for at UI'et (Ønsk visning-
+    knappen) kan afspejle det rigtigt uden at gætte. Router-niveauets
+    `Depends(get_current_user)` er stadig nok — ikke en hemmelighed."""
+    return await system_settings_service.get_screening_request_policy(db)
+
+
+@router.patch(
+    "/screening-request-policy",
+    response_model=ScreeningRequestPolicy,
+    dependencies=[Depends(require_admin)],
+)
+async def update_screening_request_policy(
+    payload: ScreeningRequestPolicyUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    result = await system_settings_service.update_screening_request_policy(db, payload)
+    changes = payload.model_dump(exclude_unset=True)
+    if changes:
+        detail = ", ".join(f"{key}={value}" for key, value in changes.items())
+        await audit_log_service.record(
+            db, current_user["username"], "screening_request_policy.updated", detail
         )
     return result

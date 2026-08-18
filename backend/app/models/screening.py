@@ -32,11 +32,14 @@ class ScreeningRequestCreate(BaseModel):
     tv_show_id: str | None = None
     # Feature #85 — fri tekst, fortsat valgfri.
     message: str | None = Field(default=None, max_length=500)
-    # Feature #176 (Jan: "når en guest eller standart user ønske en
-    # forvisning i bio skal man afkraves at man også deffinere en dato og
-    # tidspunkt") — ikke længere valgfri, i modsætning til `message` ovenfor.
-    # Et ønske uden et konkret forslag gav admin intet at planlægge ud fra.
-    preferred_at: datetime
+    # Feature #176 gjorde denne påkrævet for alle; feature #177 (Jan: "vi
+    # skal kunne sætte om guest ... skal bruge dato/tid eller ikke") gjorde
+    # kravet betinget igen for guest-rollen specifikt — derfor optional her
+    # på model-niveau, med selve håndhævelsen flyttet til
+    # `screening_service._enforce_preferred_at` (som KENDER den kaldende
+    # brugers rolle, hvilket en Pydantic field-validator ikke gør). Standard/
+    # admin er fortsat altid påkrævet, uanset indstillingen.
+    preferred_at: datetime | None = None
 
     @model_validator(mode="after")
     def check_reference(self) -> "ScreeningRequestCreate":

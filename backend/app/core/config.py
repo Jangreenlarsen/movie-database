@@ -61,6 +61,14 @@ class Settings(BaseSettings):
     password_require_lowercase: bool = False
     password_require_digit: bool = False
 
+    # Feature #177 (Jan: "vi skal kunne sætte om guest ved film forvisnings
+    # ønske skal bruge dato/tid eller ikke"). Standard/admin skal ALTID angive
+    # et ønsket tidspunkt (Jans eksplicitte valg, uændret af denne
+    # indstilling) — kun guest-rollens krav er til/fra-styrbart. Default
+    # `true` matcher feature #176's lige-udgivne opførsel, indtil en admin
+    # slår den fra. Læst dynamisk af `screening_service._enforce_preferred_at`.
+    require_preferred_at_for_guests: bool = True
+
     log_level: str = "INFO"
     cors_origins: str = "http://localhost:5173"
 

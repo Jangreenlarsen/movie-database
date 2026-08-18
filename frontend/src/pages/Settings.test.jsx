@@ -10,7 +10,12 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "../api/client";
-import { PasswordPolicySection, UsersSection, formatUptime } from "./Settings";
+import {
+  PasswordPolicySection,
+  ScreeningRequestPolicySection,
+  UsersSection,
+  formatUptime,
+} from "./Settings";
 
 /**
  * Feature #171 — admin-assisteret adgangskode-nulstilling. Det testværdige
@@ -203,6 +208,66 @@ describe("PasswordPolicySection (feature #174)", () => {
     await user.click(screen.getByRole("button", { name: "Gem" }));
 
     expect(await screen.findByText("Adgangskode skal være mindst 6 tegn")).toBeInTheDocument();
+  });
+});
+
+/**
+ * Feature #177 — admin-indstilling for gæsters dato/tidspunkt-krav ved
+ * visningsønsker. Samme testværdige begrundelse som PasswordPolicySection
+ * ovenfor: den indlæste værdi skal reelt afspejles, og gem/fejl skal vises.
+ */
+describe("ScreeningRequestPolicySection (feature #177)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("indlæser og viser den nuværende politik", async () => {
+    vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({
+      require_preferred_at_for_guests: false,
+    });
+    render(<ScreeningRequestPolicySection />);
+
+    expect(
+      await screen.findByRole("checkbox", { name: "Kræv ønsket tidspunkt for gæster" })
+    ).not.toBeChecked();
+  });
+
+  it("gemmer ændringer og bekræfter det", async () => {
+    vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({
+      require_preferred_at_for_guests: true,
+    });
+    const updateSpy = vi
+      .spyOn(api, "updateScreeningRequestPolicy")
+      .mockResolvedValue({ require_preferred_at_for_guests: false });
+    const user = userEvent.setup();
+
+    render(<ScreeningRequestPolicySection />);
+    const checkbox = await screen.findByRole("checkbox", {
+      name: "Kræv ønsket tidspunkt for gæster",
+    });
+    expect(checkbox).toBeChecked();
+
+    await user.click(checkbox);
+    await user.click(screen.getByRole("button", { name: "Gem" }));
+
+    await waitFor(() =>
+      expect(updateSpy).toHaveBeenCalledWith({ require_preferred_at_for_guests: false })
+    );
+    expect(await screen.findByText("Gemt!")).toBeInTheDocument();
+  });
+
+  it("viser backend-fejlbeskeden ved en mislykket gemning", async () => {
+    vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({
+      require_preferred_at_for_guests: true,
+    });
+    vi.spyOn(api, "updateScreeningRequestPolicy").mockRejectedValue(new Error("Serverfejl"));
+    const user = userEvent.setup();
+
+    render(<ScreeningRequestPolicySection />);
+    await screen.findByRole("checkbox", { name: "Kræv ønsket tidspunkt for gæster" });
+    await user.click(screen.getByRole("button", { name: "Gem" }));
+
+    expect(await screen.findByText("Serverfejl")).toBeInTheDocument();
   });
 });
 

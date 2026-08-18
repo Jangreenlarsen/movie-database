@@ -69,3 +69,60 @@ describe("ScreeningRequestButton (feature #176)", () => {
     expect(await screen.findByRole("button", { name: "✓ Ønsket til Voldby BIO" })).toBeInTheDocument();
   });
 });
+
+describe("ScreeningRequestButton — gæste-specifik politik (feature #177)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(api, "myScreeningRequests").mockResolvedValue([]);
+  });
+
+  it('gæst med politikken slået til: "Send ønske" er stadig deaktiveret uden tidspunkt', async () => {
+    vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({
+      require_preferred_at_for_guests: true,
+    });
+    const user = userEvent.setup();
+    render(<ScreeningRequestButton mediaKind="movie" id="m1" username="testuser" role="guest" />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "🎬 Ønsk visning i Voldby BIO" })
+    );
+    await waitFor(() => expect(api.getScreeningRequestPolicy).toHaveBeenCalled());
+    expect(screen.getByRole("button", { name: "Send ønske" })).toBeDisabled();
+  });
+
+  it('gæst med politikken slået fra: "Send ønske" er aktiveret uden tidspunkt', async () => {
+    vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({
+      require_preferred_at_for_guests: false,
+    });
+    const requestSpy = vi.spyOn(api, "requestScreening").mockResolvedValue({
+      requested_by: [{ username: "testuser", message: null, preferred_at: null }],
+    });
+    const user = userEvent.setup();
+    render(<ScreeningRequestButton mediaKind="movie" id="m1" username="testuser" role="guest" />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "🎬 Ønsk visning i Voldby BIO" })
+    );
+    const sendButton = await screen.findByRole("button", { name: "Send ønske" });
+    await waitFor(() => expect(sendButton).toBeEnabled());
+
+    await user.click(sendButton);
+    await waitFor(() =>
+      expect(requestSpy).toHaveBeenCalledWith("movie", "m1", { message: "", preferredAt: "" })
+    );
+  });
+
+  it("standard-bruger er upåvirket af gæste-politikken, selv når den er slået fra", async () => {
+    vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({
+      require_preferred_at_for_guests: false,
+    });
+    const user = userEvent.setup();
+    render(<ScreeningRequestButton mediaKind="movie" id="m1" username="testuser" role="standard" />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "🎬 Ønsk visning i Voldby BIO" })
+    );
+    expect(api.getScreeningRequestPolicy).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Send ønske" })).toBeDisabled();
+  });
+});

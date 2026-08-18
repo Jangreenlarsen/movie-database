@@ -108,3 +108,17 @@ class PasswordPolicyUpdate(BaseModel):
     password_require_uppercase: bool | None = None
     password_require_lowercase: bool | None = None
     password_require_digit: bool | None = None
+
+
+# Feature #177 — kræv dato/tidspunkt for guests ved visningsønsker, til/fra
+# (Jan: "vi skal kunne sætte om guest ved film forvisnings ønske skal bruge
+# dato/tid eller ikke"). Samme lille model-familie-mønster som PasswordPolicy
+# ovenfor. Standard/admin er ikke omfattet af denne indstilling — de skal
+# altid angive et tidspunkt (Jans eksplicitte valg), håndhævet direkte i
+# screening_service, ikke via dette felt.
+class ScreeningRequestPolicy(BaseModel):
+    require_preferred_at_for_guests: bool
+
+
+class ScreeningRequestPolicyUpdate(BaseModel):
+    require_preferred_at_for_guests: bool | None = None

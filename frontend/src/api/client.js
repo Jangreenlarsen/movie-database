@@ -232,6 +232,10 @@ export const api = {
   getPasswordPolicy: () => request("/settings/password-policy"),
   updatePasswordPolicy: (payload) =>
     request("/settings/password-policy", { method: "PATCH", body: JSON.stringify(payload) }),
+  // Feature #177 — kræv dato/tidspunkt for guests ved visningsønsker, til/fra.
+  getScreeningRequestPolicy: () => request("/settings/screening-request-policy"),
+  updateScreeningRequestPolicy: (payload) =>
+    request("/settings/screening-request-policy", { method: "PATCH", body: JSON.stringify(payload) }),
   // Feature #100 — beskeder fra admin.
   // Feature #148 — besked-pollen (hvert 20. sek, #135) markeres som baggrund,
   // så den ikke tæller som aktivitet og holder en uovervåget session i live.

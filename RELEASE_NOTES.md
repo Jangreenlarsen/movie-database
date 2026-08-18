@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.151.0 (build 0206) — 2026-08-18
+
+- **Ny: admin-indstilling for gæsters tidspunkt-krav ved visningsønsker.** Under Indstillinger → Biograf kan en admin nu slå til/fra om gæster skal angive et ønsket tidspunkt for at sende et visningsønske til Voldby BIO. Standard- og admin-brugere skal fortsat altid angive et tidspunkt — indstillingen påvirker kun gæste-rollen.
+
 ## v0.150.0 (build 0205) — 2026-08-17
 
 - **"Ønsk visning i Voldby BIO" kræver nu et tidspunkt.** Når du ønsker en film/serie vist, skal du nu angive hvornår du gerne vil se den — det var før frivilligt. Besked er stadig valgfri. "Send ønske" er deaktiveret indtil et tidspunkt er valgt.

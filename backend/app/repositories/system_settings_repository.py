@@ -83,3 +83,21 @@ async def apply_password_policy_update(db: AsyncIOMotorDatabase, updates: dict) 
     if updates:
         await db[COLLECTION].update_one({"_id": DOC_ID}, {"$set": updates}, upsert=True)
     return await get_password_policy_overrides(db)
+
+
+# Feature #177 — samme dokument, samme typede $set-only-mønster som
+# PASSWORD_POLICY_KEYS ovenfor.
+SCREENING_REQUEST_POLICY_KEYS = ("require_preferred_at_for_guests",)
+
+
+async def get_screening_request_policy_overrides(db: AsyncIOMotorDatabase) -> dict:
+    doc = await db[COLLECTION].find_one({"_id": DOC_ID})
+    if doc is None:
+        return {}
+    return {key: doc[key] for key in SCREENING_REQUEST_POLICY_KEYS if key in doc}
+
+
+async def apply_screening_request_policy_update(db: AsyncIOMotorDatabase, updates: dict) -> dict:
+    if updates:
+        await db[COLLECTION].update_one({"_id": DOC_ID}, {"$set": updates}, upsert=True)
+    return await get_screening_request_policy_overrides(db)

@@ -22,8 +22,14 @@ import "./ScreeningRequestButton.css";
  * the message stays optional, but a preferred date/time is now mandatory:
  * "Send ønske" stays disabled until one is picked, mirroring the backend's
  * own (authoritative) requirement on `ScreeningRequestCreate.preferred_at`.
+ *
+ * Feature #177 (Jan: "vi skal kunne sætte om guest ... skal bruge dato/tid
+ * eller ikke") — that requirement is now admin-configurable, but ONLY for
+ * the guest role; standard/admin stay unconditionally required. Defaults to
+ * "required" while the policy is still loading, matching the backend's own
+ * default and avoiding a flash of an enabled button that then disables.
  */
-export default function ScreeningRequestButton({ mediaKind, id, username }) {
+export default function ScreeningRequestButton({ mediaKind, id, username, role }) {
   const t = useT();
   const locale = useLocale();
   const [status, setStatus] = useState("idle"); // idle | composing | requesting | requested | error
@@ -33,6 +39,9 @@ export default function ScreeningRequestButton({ mediaKind, id, username }) {
   // Hvad DENNE bruger tidligere har ønsket for titlen — vises igen ved
   // genåbning af vinduet, så et ønske ikke bare bliver til et anonymt flueben.
   const [myRequest, setMyRequest] = useState(null);
+  // Feature #177 — kun relevant for gæster; standard/admin er altid true.
+  const [requireForGuests, setRequireForGuests] = useState(true);
+  const preferredAtRequired = role !== "guest" || requireForGuests;
 
   // `requested_by` rummer alle der har ønsket titlen — vores egen entry
   // findes på brugernavn, så vi aldrig kommer til at vise en andens besked.
@@ -53,6 +62,14 @@ export default function ScreeningRequestButton({ mediaKind, id, username }) {
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mediaKind, id, username]);
+
+  useEffect(() => {
+    if (role !== "guest") return;
+    api
+      .getScreeningRequestPolicy()
+      .then((policy) => setRequireForGuests(policy.require_preferred_at_for_guests))
+      .catch(() => {});
+  }, [role]);
 
   async function submitRequest() {
     setStatus("requesting");
@@ -117,7 +134,7 @@ export default function ScreeningRequestButton({ mediaKind, id, username }) {
           <div className="modal-card screening-request-card" onClick={(e) => e.stopPropagation()}>
             <div className="screening-request-body">
               <h3>{t("request.button")}</h3>
-              <p className="muted">{t("request.hint")}</p>
+              <p className="muted">{t(preferredAtRequired ? "request.hint" : "request.hintOptional")}</p>
 
               <label className="modal-section-label" htmlFor="screening-request-message">
                 {t("request.messageLabel")}
@@ -132,7 +149,7 @@ export default function ScreeningRequestButton({ mediaKind, id, username }) {
               />
 
               <label className="modal-section-label" style={{ marginTop: 12 }}>
-                {t("request.preferredLabel")}
+                {t(preferredAtRequired ? "request.preferredLabel" : "request.preferredLabelOptional")}
               </label>
               <DateTime24Input value={preferredAt} onChange={setPreferredAt} />
 
@@ -156,7 +173,7 @@ export default function ScreeningRequestButton({ mediaKind, id, username }) {
                 type="button"
                 className="btn btn-primary"
                 onClick={submitRequest}
-                disabled={status === "requesting" || !preferredAt}
+                disabled={status === "requesting" || (preferredAtRequired && !preferredAt)}
               >
                 {t(status === "requesting" ? "request.sending" : "request.send")}
               </button>

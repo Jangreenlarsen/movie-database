@@ -7,6 +7,8 @@ from app.models.settings import (
     ApiKeyTestResult,
     PasswordPolicy,
     PasswordPolicyUpdate,
+    ScreeningRequestPolicy,
+    ScreeningRequestPolicyUpdate,
     SystemSettingsStatus,
     SystemSettingsUpdate,
     TestableApiKey,
@@ -47,6 +49,11 @@ async def apply_overrides_on_startup(db: AsyncIOMotorDatabase) -> None:
     # adgangskode-politikkens egne, typede felter.
     policy_overrides = await system_settings_repository.get_password_policy_overrides(db)
     for key, value in policy_overrides.items():
+        setattr(settings, key, value)
+
+    # Feature #177 — samme sync, for visningsønske-politikkens ene felt.
+    screening_policy_overrides = await system_settings_repository.get_screening_request_policy_overrides(db)
+    for key, value in screening_policy_overrides.items():
         setattr(settings, key, value)
 
 
@@ -134,3 +141,26 @@ async def update_password_policy(
     for key, value in updates.items():
         setattr(settings, key, value)
     return _password_policy_from_settings()
+
+
+def _screening_request_policy_from_settings() -> ScreeningRequestPolicy:
+    return ScreeningRequestPolicy(
+        require_preferred_at_for_guests=settings.require_preferred_at_for_guests
+    )
+
+
+async def get_screening_request_policy(db: AsyncIOMotorDatabase) -> ScreeningRequestPolicy:
+    return _screening_request_policy_from_settings()
+
+
+async def update_screening_request_policy(
+    db: AsyncIOMotorDatabase, payload: ScreeningRequestPolicyUpdate
+) -> ScreeningRequestPolicy:
+    """Feature #177 (Jan: "vi skal kunne sætte om guest ... skal bruge
+    dato/tid eller ikke"). Samme skriv-og-synkronisér-mønster som
+    `update_password_policy` ovenfor."""
+    updates = payload.model_dump(exclude_unset=True)
+    await system_settings_repository.apply_screening_request_policy_update(db, updates)
+    for key, value in updates.items():
+        setattr(settings, key, value)
+    return _screening_request_policy_from_settings()

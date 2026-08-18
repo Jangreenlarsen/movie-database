@@ -1890,7 +1890,7 @@ export function MovieDetailModal({
           // Feature #101 — samme fod bruges nu af alle i læsevisning; kun
           // "Redigér" er betinget af rollen.
           <div className="modal-footer">
-            {movie.id && <ScreeningRequestButton mediaKind="movie" id={movie.id} username={user.username} />}
+            {movie.id && <ScreeningRequestButton mediaKind="movie" id={movie.id} username={user.username} role={user.role} />}
             {!isGuest && (
               <button type="button" className="btn btn-primary" onClick={() => setEditing(true)}>
                 {t("detail.edit")}
@@ -1909,7 +1909,7 @@ export function MovieDetailModal({
                 {t(moving ? "detail.moving" : "detail.moveToLibrary")}
               </button>
             )}
-            {movie.id && <ScreeningRequestButton mediaKind="movie" id={movie.id} username={user.username} />}
+            {movie.id && <ScreeningRequestButton mediaKind="movie" id={movie.id} username={user.username} role={user.role} />}
             {/* Kun for en film der allerede findes: i kladde-tilstand er
                 der ingen læsevisning at fortryde tilbage til. */}
             {movie.id && (

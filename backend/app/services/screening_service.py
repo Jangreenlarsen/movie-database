@@ -3,7 +3,12 @@ from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
-from app.core.errors import ScreeningNotFoundError, ScreeningRequestNotFoundError
+from app.core.config import settings
+from app.core.errors import (
+    PreferredAtRequiredError,
+    ScreeningNotFoundError,
+    ScreeningRequestNotFoundError,
+)
 from app.models.screening import (
     Screening,
     ScreeningCreate,
@@ -95,6 +100,21 @@ async def _to_screening_model(db: AsyncIOMotorDatabase, document: dict) -> Scree
     )
 
 
+def enforce_preferred_at(role: str, preferred_at: datetime | None) -> None:
+    """Feature #176 made `preferred_at` mandatory for everyone; feature #177
+    (Jan: "vi skal kunne sætte om guest ... skal bruge dato/tid eller ikke")
+    made that conditional again, but ONLY for the guest role — standard/admin
+    remain unconditionally required, Jans explicit choice. Called from the
+    API route (not embedded in the Pydantic model — a field-validator has no
+    access to the calling user's role), same "guest-specific payload rule
+    enforced explicitly" pattern as `api.deps.enforce_guest_wishlist_only`."""
+    if preferred_at is not None:
+        return
+    if role == "guest" and not settings.require_preferred_at_for_guests:
+        return
+    raise PreferredAtRequiredError()
+
+
 async def request_screening(
     db: AsyncIOMotorDatabase,
     media_kind: str,
@@ -112,7 +132,10 @@ async def request_screening(
     note and suggested time, stored on their entry in `requested_by` rather
     than on the request itself, since several people can want the same title
     for different reasons. Both default to None, so the pre-#85 call shape
-    (and any client that omits them) behaves exactly as before."""
+    (and any client that omits them) behaves exactly as before. Feature #176/
+    #177 — whether `preferred_at` is actually allowed to be None depends on
+    the caller's role; see `enforce_preferred_at`, called from the API route
+    before this function, not repeated here."""
     now = datetime.now(timezone.utc)
     # A message of "" or "   " is the same as no message — normalised here
     # so neither the admin panel nor the API has to distinguish between the

@@ -22,6 +22,16 @@ class ScreeningNotFoundError(Exception):
         super().__init__(f"Screening not found: {screening_id}")
 
 
+class PreferredAtRequiredError(Exception):
+    """Feature #176/#177 — raised by `screening_service._enforce_preferred_at`
+    when a screening request is missing `preferred_at` and the requester's
+    role doesn't get an exemption (standard/admin: never; guest: only if
+    `settings.require_preferred_at_for_guests` is off)."""
+
+    def __init__(self):
+        super().__init__("Angiv venligst hvornår du gerne vil se den.")
+
+
 class DuplicateBarcodeError(Exception):
     def __init__(self, barcode: str):
         self.barcode = barcode

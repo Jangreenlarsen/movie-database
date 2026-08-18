@@ -320,3 +320,99 @@ async def test_screening_requests_require_authentication(raw_client):
         },
     )
     assert response.status_code == 401
+
+
+# Feature #177 (Jan: "vi skal kunne sætte om guest ... skal bruge dato/tid
+# eller ikke") — den admin-styrbare til/fra for guest-rollen specifikt.
+
+
+async def _guest_client(admin_client, username):
+    transport = ASGITransport(app=app)
+    guest = AsyncClient(transport=transport, base_url="http://test")
+    register = await guest.post(
+        "/api/auth/register", json={"username": username, "password": "testpassword123"}
+    )
+    user_id = register.json()["id"]
+    await admin_client.patch(f"/api/users/{user_id}/status", json={"status": "active"})
+    # Feature #175 gør dette redundant (guest er allerede default), men
+    # eksplicit for tydelighedens skyld.
+    await admin_client.patch(f"/api/users/{user_id}/role", json={"role": "guest"})
+    return guest
+
+
+async def test_guest_still_requires_preferred_at_by_default(client):
+    movie_id = await _create_movie(client)
+    guest = await _guest_client(client, "guestdefault177")
+
+    response = await guest.post(
+        "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id}
+    )
+    assert response.status_code == 422
+    await guest.aclose()
+
+
+async def test_guest_can_omit_preferred_at_when_policy_disabled(client):
+    await client.patch(
+        "/api/settings/screening-request-policy",
+        json={"require_preferred_at_for_guests": False},
+    )
+    movie_id = await _create_movie(client)
+    guest = await _guest_client(client, "guestexempt177")
+
+    response = await guest.post(
+        "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id}
+    )
+    assert response.status_code == 201
+    assert response.json()["requested_by"][0]["preferred_at"] is None
+    await guest.aclose()
+
+
+async def test_guest_can_still_supply_preferred_at_when_policy_disabled(client):
+    """Turning the requirement off doesn't forbid a time — it just stops
+    demanding one."""
+    await client.patch(
+        "/api/settings/screening-request-policy",
+        json={"require_preferred_at_for_guests": False},
+    )
+    movie_id = await _create_movie(client)
+    guest = await _guest_client(client, "guestoptional177")
+
+    response = await guest.post(
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": _PREFERRED_AT},
+    )
+    assert response.status_code == 201
+    assert response.json()["requested_by"][0]["preferred_at"].startswith("2026-09-04T20:00")
+    await guest.aclose()
+
+
+async def test_standard_and_admin_always_require_preferred_at_regardless_of_guest_policy(client):
+    """Jans eksplicitte valg: indstillingen styrer KUN guest-rollen —
+    standard/admin er upåvirkede, uanset dens værdi."""
+    await client.patch(
+        "/api/settings/screening-request-policy",
+        json={"require_preferred_at_for_guests": False},
+    )
+    movie_id = await _create_movie(client)
+
+    # Admin (client selv).
+    admin_response = await client.post(
+        "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id}
+    )
+    assert admin_response.status_code == 422
+
+    # Standard.
+    transport = ASGITransport(app=app)
+    standard = AsyncClient(transport=transport, base_url="http://test")
+    register = await standard.post(
+        "/api/auth/register", json={"username": "standardstillreq177", "password": "testpassword123"}
+    )
+    user_id = register.json()["id"]
+    await client.patch(f"/api/users/{user_id}/status", json={"status": "active"})
+    await client.patch(f"/api/users/{user_id}/role", json={"role": "standard"})
+
+    standard_response = await standard.post(
+        "/api/screening-requests", json={"media_kind": "movie", "movie_id": movie_id}
+    )
+    assert standard_response.status_code == 422
+    await standard.aclose()

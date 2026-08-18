@@ -54,6 +54,7 @@ from app.core.errors import (
     NotSupportedOnThisPlatformError,
     Pkcs12ImportError,
     PlexFilterUnavailableError,
+    PreferredAtRequiredError,
     ReservationNotFoundError,
     SeatTakenError,
     SerialNumberConflictError,
@@ -179,6 +180,13 @@ async def screening_request_not_found_handler(
 @app.exception_handler(ScreeningNotFoundError)
 async def screening_not_found_handler(request: Request, exc: ScreeningNotFoundError) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(PreferredAtRequiredError)
+async def preferred_at_required_handler(
+    request: Request, exc: PreferredAtRequiredError
+) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
 
 
 @app.exception_handler(DuplicateBarcodeError)

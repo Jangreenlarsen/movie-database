@@ -61,6 +61,15 @@ def _pin_password_policy(monkeypatch):
     monkeypatch.setattr(settings, "password_require_digit", False)
 
 
+@pytest.fixture(autouse=True)
+def _pin_screening_request_policy(monkeypatch):
+    """Feature #177 — same isolation concern as `_pin_password_policy`
+    above: pinned to the code default (`True`, matching feature #176's
+    just-shipped behaviour) so a test that turns it off doesn't leak into
+    every other screening-request test that runs afterward."""
+    monkeypatch.setattr(settings, "require_preferred_at_for_guests", True)
+
+
 @pytest_asyncio.fixture
 async def db():
     test_db = AsyncMongoMockClient()["test_moviedb"]

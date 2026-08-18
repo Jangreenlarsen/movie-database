@@ -97,7 +97,12 @@ export default function Settings({ user, onSettingsChanged }) {
         </>
       )}
 
-      {activeTab === "biograf" && !isGuest && <CinemaHistorySection />}
+      {activeTab === "biograf" && !isGuest && (
+        <>
+          <CinemaHistorySection />
+          {isAdmin && <ScreeningRequestPolicySection />}
+        </>
+      )}
 
       {activeTab === "backup" && isAdmin && (
         <>
@@ -2790,6 +2795,81 @@ export function UsersSection({ currentUserId }) {
 // sektion er kun UI'et til at ændre den, samme arbejdsdeling som alle
 // andre admin-only indstillinger på siden. Eksporteret til test (regel 19),
 // samme begrundelse som UsersSection ovenfor.
+// Feature #177 — admin-indstilling: kræv dato/tidspunkt for guests ved
+// visningsønsker, til/fra. Standard/admin er ikke omfattet (håndhævet
+// unconditionally i backend), så teksten her taler bevidst kun om gæster.
+export function ScreeningRequestPolicySection() {
+  const t = useT();
+  const [loadStatus, setLoadStatus] = useState("loading");
+  const [requireForGuests, setRequireForGuests] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState(null);
+
+  function load() {
+    setLoadStatus("loading");
+    api
+      .getScreeningRequestPolicy()
+      .then((data) => {
+        setRequireForGuests(data.require_preferred_at_for_guests);
+        setLoadStatus("ready");
+      })
+      .catch(() => setLoadStatus("error"));
+  }
+
+  useEffect(load, []);
+
+  async function submit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const updated = await api.updateScreeningRequestPolicy({
+        require_preferred_at_for_guests: requireForGuests,
+      });
+      setRequireForGuests(updated.require_preferred_at_for_guests);
+      setSaved(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="card settings-section">
+      <h2>{t("screeningRequestPolicy.heading")}</h2>
+      <p className="muted">{t("screeningRequestPolicy.description")}</p>
+
+      {loadStatus === "loading" && <p className="muted">{t("common.loading")}</p>}
+      {loadStatus === "error" && (
+        <div className="banner banner-error">{t("screeningRequestPolicy.loadError")}</div>
+      )}
+
+      {loadStatus === "ready" && (
+        <form className="serial-config-form" onSubmit={submit}>
+          <label className="serial-reuse-toggle">
+            <input
+              type="checkbox"
+              checked={requireForGuests}
+              onChange={(e) => setRequireForGuests(e.target.checked)}
+            />
+            {t("screeningRequestPolicy.requireForGuests")}
+          </label>
+
+          {error && <div className="banner banner-error">{error}</div>}
+          {saved && <div className="banner banner-info">{t("serial.saved")}</div>}
+
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            {t(saving ? "common.saving" : "common.save")}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 export function PasswordPolicySection() {
   const t = useT();
   const [loadStatus, setLoadStatus] = useState("loading");

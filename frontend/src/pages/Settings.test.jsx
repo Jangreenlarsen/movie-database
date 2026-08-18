@@ -330,6 +330,38 @@ describe("PlexShieldSettingsRow (feature #178)", () => {
 
     expect(await screen.findByText("Plex er ikke konfigureret.")).toBeInTheDocument();
   });
+
+  /**
+   * BUGS.md #76 (Jan: "der skal nok noget feedback til så man kan se at din
+   * code gør det korekte") — et tomt resultat skal vise HVILKET af de to
+   * meget forskellige scenarier det er, ikke bare "intet fundet" begge gange.
+   */
+  it("skelner mellem 'PMS rapporterer reelt 0' og 'PMS rapporterede noget, men det blev filtreret fra'", async () => {
+    vi.spyOn(api, "getPlexClients").mockResolvedValueOnce({
+      ok: true,
+      items: [],
+      raw_entry_count: 0,
+    });
+    const user = userEvent.setup();
+    const { rerender } = render(<PlexShieldSettingsRow currentValue={null} onSaved={() => {}} />);
+    await user.click(screen.getByRole("button", { name: "Hent tilgængelige klienter" }));
+
+    expect(
+      await screen.findByText(/rapporterede 0 registrerede klienter i alt/)
+    ).toBeInTheDocument();
+
+    vi.spyOn(api, "getPlexClients").mockResolvedValueOnce({
+      ok: true,
+      items: [],
+      raw_entry_count: 2,
+    });
+    rerender(<PlexShieldSettingsRow currentValue={null} onSaved={() => {}} />);
+    await user.click(screen.getByRole("button", { name: "Hent tilgængelige klienter" }));
+
+    expect(
+      await screen.findByText("Plex-serveren rapporterede 2 klient(er), men ingen af dem havde et brugbart client-id.")
+    ).toBeInTheDocument();
+  });
 });
 
 describe("formatUptime", () => {

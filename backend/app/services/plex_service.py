@@ -257,8 +257,9 @@ async def list_clients() -> PlexClientList:
     """Feature #178 — admin-opsætningens "Hent tilgængelige klienter", til
     at finde Shield TV'ets client-id én gang (se
     `plex_client.fetch_clients`'s docstring for hvorfor det ikke slås op ved
-    hver afspilning)."""
-    clients, error = await plex_client.fetch_clients()
+    hver afspilning). BUGS.md #76 — `raw_entry_count` føres videre uændret,
+    se `PlexClientList`'s note for hvorfor det er der."""
+    clients, raw_count, error = await plex_client.fetch_clients()
     return PlexClientList(
         ok=error is None,
         error=error,
@@ -266,6 +267,7 @@ async def list_clients() -> PlexClientList:
             PlexClientInfo(name=c.name, machine_identifier=c.machine_identifier, product=c.product)
             for c in clients
         ],
+        raw_entry_count=raw_count,
     )
 
 

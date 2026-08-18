@@ -1401,6 +1401,12 @@ export function PlexShieldSettingsRow({ currentValue, onSaved }) {
   const t = useT();
   const [clientsStatus, setClientsStatus] = useState("idle"); // idle | loading | done | error
   const [clients, setClients] = useState([]);
+  // BUGS.md #76 (Jan: "der skal nok noget feedback til så man kan se at din
+  // code gør det korekte") — hvor mange entries PMS selv rapporterede i alt,
+  // uafhængigt af hvor mange der kunne bruges. Lader Jan se om et tomt
+  // resultat er Plex' eget svar (0 i alt — bekræftet en Plex-/
+  // netværksbegrænsning) eller noget der blev filtreret forkert her.
+  const [rawEntryCount, setRawEntryCount] = useState(0);
   const [clientsError, setClientsError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -1412,6 +1418,7 @@ export function PlexShieldSettingsRow({ currentValue, onSaved }) {
       const result = await api.getPlexClients();
       if (result.ok) {
         setClients(result.items);
+        setRawEntryCount(result.raw_entry_count);
         setClientsStatus("done");
       } else {
         setClientsStatus("error");
@@ -1460,8 +1467,13 @@ export function PlexShieldSettingsRow({ currentValue, onSaved }) {
       </button>
 
       {clientsStatus === "error" && <div className="banner banner-error">{clientsError}</div>}
-      {clientsStatus === "done" && clients.length === 0 && (
+      {clientsStatus === "done" && clients.length === 0 && rawEntryCount === 0 && (
         <p className="muted">{t("plexShieldSettings.noClientsFound")}</p>
+      )}
+      {clientsStatus === "done" && clients.length === 0 && rawEntryCount > 0 && (
+        <div className="banner banner-error">
+          {t("plexShieldSettings.clientsFilteredOut", { count: rawEntryCount })}
+        </div>
       )}
       {clientsStatus === "done" && clients.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>

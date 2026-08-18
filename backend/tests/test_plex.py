@@ -1097,21 +1097,42 @@ async def test_fetch_clients_parses_server_list(monkeypatch):
     )
     monkeypatch.setattr(plex_client, "_client", lambda: fake)
 
-    clients, error = await plex_client.fetch_clients()
+    clients, raw_count, error = await plex_client.fetch_clients()
     assert error is None
     assert len(clients) == 1
     assert clients[0].name == "Shield"
     assert clients[0].machine_identifier == "shield-id"
     assert fake.calls[0]["url"].endswith("/clients")
+    # BUGS.md #76 — det samlede antal PMS rapporterede (2), ikke kun de
+    # brugbare (1), så en admin kan se om noget blev filtreret fra.
+    assert raw_count == 2
 
 
 async def test_fetch_clients_reports_when_unconfigured(monkeypatch):
     monkeypatch.setattr(settings, "plex_server_url", "")
     monkeypatch.setattr(settings, "plex_token", "")
 
-    clients, error = await plex_client.fetch_clients()
+    clients, raw_count, error = await plex_client.fetch_clients()
     assert clients == []
+    assert raw_count == 0
     assert "ikke konfigureret" in error
+
+
+async def test_fetch_clients_reports_raw_count_even_when_all_are_filtered_out(monkeypatch):
+    """BUGS.md #76 — reproducerer netop det tilfælde 'raw_entry_count' findes
+    for: PMS rapporterer entries, men ingen har et brugbart client-id."""
+    _configure(monkeypatch)
+    fake = _RecordingPlexClient(
+        lambda url, headers, params: _RecordedResponse(
+            200, {"MediaContainer": {"Server": [{"name": "Uden id"}, {"name": "Også uden id"}]}}
+        )
+    )
+    monkeypatch.setattr(plex_client, "_client", lambda: fake)
+
+    clients, raw_count, error = await plex_client.fetch_clients()
+    assert error is None
+    assert clients == []
+    assert raw_count == 2
 
 
 async def test_play_on_client_sends_the_correct_companion_command(monkeypatch):
@@ -1251,6 +1272,23 @@ async def test_clients_endpoint_admin_only(client, monkeypatch):
 
         response = await standard_client.get("/api/plex/clients")
         assert response.status_code == 403
+
+
+async def test_clients_endpoint_surfaces_the_raw_count(client, monkeypatch):
+    """BUGS.md #76 — end-to-end: en admin skal kunne se PMS' egen rapporterede
+    totalantal via API-svaret, ikke kun den filtrerede `items`-liste."""
+    _configure(monkeypatch)
+    fake = _RecordingPlexClient(
+        lambda url, headers, params: _RecordedResponse(
+            200, {"MediaContainer": {"Server": [{"name": "Uden id"}]}}
+        )
+    )
+    monkeypatch.setattr(plex_client, "_client", lambda: fake)
+
+    response = await client.get("/api/plex/clients")
+    body = response.json()
+    assert body["items"] == []
+    assert body["raw_entry_count"] == 1
 
 
 async def test_system_settings_returns_the_shield_client_identifier_plainly(client, monkeypatch):

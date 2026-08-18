@@ -92,7 +92,11 @@ async def play_on_shield(
     starte den i plex på shield der også"). **Kræver admin** (Jan, opfølgning
     2026-08-18: "afspil på shield skal være en funktion som kun er på admin
     users") — i modsætning til det eksisterende "Afspil i Plex"-link, som
-    stadig er åbent for enhver logget ind bruger."""
+    stadig er åbent for enhver logget ind bruger.
+
+    Navigerer (siden endnu en opfølgning samme dag) Shielden hen til
+    titlens side i selve Plex-appen i stedet for at starte afspilningen
+    direkte — se `plex_client.navigate_client_to_media`'s docstring."""
     return await plex_service.play_on_shield(db, payload.kind, payload.item_id)
 
 

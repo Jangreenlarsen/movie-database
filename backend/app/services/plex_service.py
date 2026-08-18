@@ -277,7 +277,15 @@ async def play_on_shield(db: AsyncIOMotorDatabase, kind: str, item_id: str) -> P
     matchnings-index som badge/afspil-link (feature #88) — den samme regel
     for hvilket Plex-element der hører til vores film/serie skal gælde
     begge veje, ellers kunne "ligger i Plex" og "kan afspilles på Shield"
-    komme til at være uenige om samme titel."""
+    komme til at være uenige om samme titel.
+
+    Jan, opfølgning 2026-08-18: en direkte playMedia-kommando transcodede
+    video/lyd, hvor direkte afspilning på Shielden ikke gør det — navigerer
+    derfor nu Shielden hen til titlens side i stedet for at starte
+    afspilningen selv (`plex_client.navigate_client_to_media`), så brugerens
+    eget tryk på Play på selve apparatet respekterer Plex-appens lokale
+    kvalitets-/lyd-indstillinger. Se den funktions docstring for hele
+    begrundelsen."""
     if not settings.plex_shield_client_identifier:
         return PlexPlayResult(
             ok=False,
@@ -302,7 +310,7 @@ async def play_on_shield(db: AsyncIOMotorDatabase, kind: str, item_id: str) -> P
     if item is None:
         return PlexPlayResult(ok=False, message="Findes ikke i Plex.")
 
-    ok, message = await plex_client.play_on_client(
+    ok, message = await plex_client.navigate_client_to_media(
         rating_key=item.rating_key,
         server_machine_identifier=machine_identifier,
         client_identifier=settings.plex_shield_client_identifier,

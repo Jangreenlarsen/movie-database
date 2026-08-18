@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.153.2 (build 0212) — 2026-08-18
+
+- **"Afspil på Shield TV" er nu "Vis på Shield TV" og starter ikke længere afspilningen selv.** Knappen hopper i stedet Shielden hen til filmens/seriens side i selve Plex-appen — du trykker selv Play på apparatet bagefter, hvilket respekterer Plex-appens egne lokale kvalitets-/lyd-indstillinger (undgår den unødige transcoding fra sidste version). "Stop Shield TV" står nu ved siden af som en selvstændig knap, ikke en toggle, og virker uanset hvordan afspilningen blev startet.
+
 ## v0.153.1 (build 0211) — 2026-08-18
 
 - **"Afspil på Shield TV" er nu kun tilgængelig for admin.** Standard-brugere og guests ser ikke længere knappen. "Afspil i Plex" er uændret og stadig åben for alle.

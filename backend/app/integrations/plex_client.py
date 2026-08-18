@@ -63,6 +63,18 @@ class PlexShowDetails:
 
 
 @dataclass
+class PlexClientInfo:
+    """Én Plex-klient PMS lige nu kan se på LAN'et (feature #178) — brugt
+    udelukkende til admin-opsætningen der finder Shield TV'ets client-id, en
+    enkelt gang. Selve afspilnings-kaldet adresserer klienten direkte via det
+    gemte id, uden at spørge `/clients` igen."""
+
+    name: str
+    machine_identifier: str
+    product: str | None = None
+
+
+@dataclass
 class PlexSectionResult:
     key: str
     title: str
@@ -422,3 +434,83 @@ def build_play_url(rating_key: str, machine_identifier: str) -> str:
         f"{_base_url()}/web/index.html#!/server/{machine_identifier}"
         f"/details?key=%2Flibrary%2Fmetadata%2F{rating_key}"
     )
+
+
+async def fetch_clients() -> tuple[list[PlexClientInfo], str | None]:
+    """`GET /clients` — Plex-klienter PMS lige nu kan se annonceret på
+    LAN'et (samme liste Plex Web selv bruger til "Afspil på andet apparat").
+    Kun til admin-opsætningen (feature #178): Shield TV'et skal selv have
+    Plex-appen åben/logget ind i det øjeblik dette kaldes, ellers optræder
+    den slet ikke — bruges derfor kun til at *finde* dens client-id én gang,
+    ikke ved hver afspilning."""
+    if not is_configured():
+        return [], "Plex er ikke konfigureret."
+
+    try:
+        async with _client() as client:
+            response = await client.get(f"{_base_url()}/clients", headers=_headers())
+    except httpx.HTTPError as exc:
+        return [], f"Kunne ikke hente Plex-klienter: {exc}"
+
+    if response.status_code != 200:
+        return [], f"Uventet svar fra Plex (HTTP {response.status_code})"
+
+    try:
+        raw = response.json().get("MediaContainer", {}).get("Server", []) or []
+    except ValueError:
+        return [], "Plex svarede ikke med JSON"
+
+    clients = [
+        PlexClientInfo(
+            name=entry.get("name") or "?",
+            machine_identifier=entry["machineIdentifier"],
+            product=entry.get("product"),
+        )
+        for entry in raw
+        if entry.get("machineIdentifier")
+    ]
+    return clients, None
+
+
+async def play_on_client(
+    rating_key: str, server_machine_identifier: str, client_identifier: str
+) -> tuple[bool, str]:
+    """Sender en "afspil nu"-kommando til én bestemt, tidligere fundet Plex-
+    klient (feature #178, Jan: "starte den i plex på shield der også") — via
+    PMS' egen Companion-relæ, samme mekanisme Plex Web/mobil-appens "Afspil
+    på andet apparat" selv bruger. **Forudsætning, ikke rettet af os**: Plex-
+    appen skal allerede køre og være logget ind på klienten — Plex kan ikke
+    selv tænde eller starte appen fra slukket/standby, kun sende en kommando
+    til en app der allerede lytter."""
+    if not is_configured():
+        return False, "Plex er ikke konfigureret."
+
+    parsed = httpx.URL(_base_url())
+    default_port = 443 if parsed.scheme == "https" else 32400
+    params = {
+        "key": f"/library/metadata/{rating_key}",
+        "offset": "0",
+        "machineIdentifier": server_machine_identifier,
+        "protocol": parsed.scheme,
+        "address": parsed.host,
+        "port": str(parsed.port or default_port),
+        "token": settings.plex_token,
+    }
+    headers = {**_headers(), "X-Plex-Target-Client-Identifier": client_identifier}
+
+    try:
+        async with _client() as client:
+            response = await client.get(
+                f"{_base_url()}/player/playback/playMedia", params=params, headers=headers
+            )
+    except httpx.HTTPError as exc:
+        return False, f"Kunne ikke nå Plex-serveren: {exc}"
+
+    if response.status_code == 401:
+        return False, "Plex afviste token'et (HTTP 401)."
+    if response.status_code == 404:
+        return False, "Shield TV'et svarede ikke — er Plex-appen åben og tændt på den?"
+    if response.status_code >= 400:
+        return False, f"Plex afviste kommandoen (HTTP {response.status_code})."
+
+    return True, "Afspilning startet på Shield TV."

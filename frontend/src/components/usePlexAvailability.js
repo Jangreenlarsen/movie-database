@@ -22,7 +22,12 @@ import { api } from "../api/client";
  * @param kind "movie" eller "show"
  */
 export function usePlexAvailability(kind) {
-  const [state, setState] = useState({ status: "loading", items: {}, error: null });
+  const [state, setState] = useState({
+    status: "loading",
+    items: {},
+    error: null,
+    shieldConfigured: false,
+  });
 
   function load(refresh = false) {
     setState((prev) => ({ ...prev, status: "loading" }));
@@ -36,11 +41,16 @@ export function usePlexAvailability(kind) {
           items: data.items ?? {},
           error: data.ok ? null : data.error,
           fetchedAt: data.fetched_at ?? null,
+          // Feature #178 — kun en boolean, følger med samme kald i stedet
+          // for et separat admin-only opslag pr. bruger.
+          shieldConfigured: data.shield_configured ?? false,
         })
       )
       // Netværks-/session-fejl mod vores egen backend. Vises i detaljevinduet
       // (CLAUDE.md regel 16), men vælter aldrig biblioteksvisningen.
-      .catch((err) => setState({ status: "error", items: {}, error: err.message }));
+      .catch((err) =>
+        setState({ status: "error", items: {}, error: err.message, shieldConfigured: false })
+      );
   }
 
   useEffect(() => {

@@ -72,9 +72,14 @@ async def test_backup_includes_all_expected_collections(client, monkeypatch):
     # system_settings must never appear anywhere in the backup — the whole
     # point of excluding it (CLAUDE.md regel 6 / FEATURES.md #61).
     assert "system_settings" not in data
-    # 2026-08-15 sync audit — the two non-secret keys ARE captured, always
-    # both present ("" meaning "no override"), unlike the excluded whole.
-    assert data["system_settings_plain"] == {"plex_server_url": "", "primary_barcode_source": ""}
+    # 2026-08-15 sync audit — the non-secret keys ARE captured, always all
+    # present ("" meaning "no override"), unlike the excluded whole.
+    # Feature #178 added plex_shield_client_identifier to the same set.
+    assert data["system_settings_plain"] == {
+        "plex_server_url": "",
+        "primary_barcode_source": "",
+        "plex_shield_client_identifier": "",
+    }
     # Feature #174 — den nyeste tilføjelse til samme system_settings-
     # dokument, checket ind fra dag ét i stedet for at blive opdaget
     # manglende bagefter (regel 20 anvendt proaktivt).
@@ -107,6 +112,7 @@ async def test_backup_includes_plain_settings_but_never_secret_ones(client):
     assert data["system_settings_plain"] == {
         "plex_server_url": "http://plex.local:32400",
         "primary_barcode_source": "",
+        "plex_shield_client_identifier": "",
     }
     assert "super-secret-token" not in response.text
     assert "tmdb_api_token" not in data["system_settings_plain"]

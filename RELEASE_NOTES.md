@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.152.0 (build 0207) — 2026-08-18
+
+- **Ny: afspil direkte på Nvidia Shield TV Pro fra "Vis i Plex".** Ligger en film/serie i Plex, kan du nu trykke "📺 Afspil på Shield TV" i detaljevinduet for at starte afspilningen direkte på Shielden — uden selv at skulle vælge apparatet inde i Plex. Kræver at en admin først sætter Shieldens Plex-apparat op under Indstillinger → Eksterne API-nøgler ("Hent tilgængelige klienter"), og at Plex-appen allerede er åben på Shielden (Plex kan ikke selv tænde den).
+
 ## v0.151.0 (build 0206) — 2026-08-18
 
 - **Ny: admin-indstilling for gæsters tidspunkt-krav ved visningsønsker.** Under Indstillinger → Biograf kan en admin nu slå til/fra om gæster skal angive et ønsket tidspunkt for at sende et visningsønske til Voldby BIO. Standard- og admin-brugere skal fortsat altid angive et tidspunkt — indstillingen påvirker kun gæste-rollen.

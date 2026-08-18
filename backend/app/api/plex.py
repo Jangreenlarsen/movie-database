@@ -5,10 +5,13 @@ from app.api.deps import get_current_user, require_admin
 from app.db import get_database
 from app.models.plex import (
     PlexAvailabilityMap,
+    PlexClientList,
     PlexDiagnostics,
     PlexImportRequest,
     PlexImportResult,
     PlexKind,
+    PlexPlayOnShieldRequest,
+    PlexPlayResult,
 )
 from app.services import audit_log_service, plex_service
 
@@ -66,3 +69,26 @@ async def get_diagnostics(db: AsyncIOMotorDatabase = Depends(get_database)):
     mange af *vores* film/serier der faktisk matchede. Henter altid friskt,
     så en netop rettet URL/token afprøves med det samme."""
     return await plex_service.get_diagnostics(db)
+
+
+@router.get("/clients", response_model=PlexClientList, dependencies=[Depends(require_admin)])
+async def get_clients():
+    """Feature #178 — admin-only: Plex-klienter der lige nu kan ses på
+    LAN'et, til at finde Shield TV'ets client-id én gang (den skal derfor
+    have Plex-appen åben/logget ind når denne knap trykkes, i modsætning til
+    selve afspilningen bagefter, som adresserer klienten direkte via det
+    gemte id)."""
+    return await plex_service.list_clients()
+
+
+@router.post("/play-on-shield", response_model=PlexPlayResult)
+async def play_on_shield(
+    payload: PlexPlayOnShieldRequest,
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """Feature #178 (Jan: "når man trykker på vis i plex så er option at
+    starte den i plex på shield der også"). Ikke admin-only, ligesom det
+    eksisterende "Afspil i Plex"-link (feature #45/#88) — bevidst tilgængelig
+    for enhver logget ind bruger (router-niveauets `get_current_user` er
+    nok), samme afgrænsning som den eksisterende afspil-knap."""
+    return await plex_service.play_on_shield(db, payload.kind, payload.item_id)

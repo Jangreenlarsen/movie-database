@@ -1379,8 +1379,108 @@ function SystemSettingsSection() {
             onSaved={load}
             testable={false}
           />
+          <PlexShieldSettingsRow
+            currentValue={statusData.plex_shield_client_identifier}
+            onSaved={load}
+          />
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * Feature #178 (Jan: "når man trykker på vis i plex så er option at starte
+ * den i plex på shield der også") — admin-opsætningen der finder og gemmer
+ * Shield TV'ets Plex client-id. Skiller sig fra `PlainSettingRow` ved at
+ * tilbyde en "Hent tilgængelige klienter"-liste i stedet for et frit
+ * tekstfelt: id'et er en uigennemskuelig GUID, ikke noget en admin realistisk
+ * kan skrive selv.
+ */
+export function PlexShieldSettingsRow({ currentValue, onSaved }) {
+  const t = useT();
+  const [clientsStatus, setClientsStatus] = useState("idle"); // idle | loading | done | error
+  const [clients, setClients] = useState([]);
+  const [clientsError, setClientsError] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+
+  async function fetchClients() {
+    setClientsStatus("loading");
+    setClientsError(null);
+    try {
+      const result = await api.getPlexClients();
+      if (result.ok) {
+        setClients(result.items);
+        setClientsStatus("done");
+      } else {
+        setClientsStatus("error");
+        setClientsError(result.error);
+      }
+    } catch (err) {
+      setClientsStatus("error");
+      setClientsError(err.message);
+    }
+  }
+
+  async function selectClient(machineIdentifier) {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await api.updateSystemSettings({ plex_shield_client_identifier: machineIdentifier });
+      onSaved();
+    } catch (err) {
+      setSaveError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="serial-config-form" style={{ marginBottom: 16 }}>
+      <strong>{t("plexShieldSettings.heading")}</strong>
+      <p className="muted">{t("plexShieldSettings.description")}</p>
+      <p className="muted">
+        {currentValue
+          ? t("plexShieldSettings.currentIdentifier", { id: currentValue })
+          : t("plexShieldSettings.selectedNone")}
+      </p>
+
+      <button
+        type="button"
+        className="btn"
+        onClick={fetchClients}
+        disabled={clientsStatus === "loading"}
+      >
+        {t(
+          clientsStatus === "loading"
+            ? "plexShieldSettings.fetchingClients"
+            : "plexShieldSettings.fetchClients"
+        )}
+      </button>
+
+      {clientsStatus === "error" && <div className="banner banner-error">{clientsError}</div>}
+      {clientsStatus === "done" && clients.length === 0 && (
+        <p className="muted">{t("plexShieldSettings.noClientsFound")}</p>
+      )}
+      {clientsStatus === "done" && clients.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+          {clients.map((c) => (
+            <button
+              key={c.machine_identifier}
+              type="button"
+              className={c.machine_identifier === currentValue ? "btn btn-primary" : "btn"}
+              onClick={() => selectClient(c.machine_identifier)}
+              disabled={saving}
+              style={{ alignSelf: "flex-start" }}
+            >
+              {c.name}
+              {c.product ? ` (${c.product})` : ""}
+            </button>
+          ))}
+        </div>
+      )}
+      {saveError && <div className="banner banner-error">{saveError}</div>}
     </div>
   );
 }

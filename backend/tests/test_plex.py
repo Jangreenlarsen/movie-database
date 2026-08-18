@@ -1,7 +1,9 @@
 import pytest
+from httpx import ASGITransport, AsyncClient
 
 from app.core.config import settings
 from app.integrations import plex_client, tmdb_client
+from app.main import app
 from app.integrations.plex_client import (
     PlexFetchResult,
     PlexItem,
@@ -222,6 +224,18 @@ async def test_availability_endpoint_maps_library_ids(client, monkeypatch):
     assert body["items"][movie_id]["available"] is True
     assert body["items"][movie_id]["matched_by"] == "title_year"
     assert "42" in body["items"][movie_id]["play_url"]
+    # Feature #178 — ingen Shield opsat i denne test, kun en boolean, aldrig
+    # selve client-id'et (endpointet er ikke admin-only, se modellens note).
+    assert body["shield_configured"] is False
+
+
+async def test_availability_endpoint_reports_shield_configured(client, monkeypatch):
+    _configure(monkeypatch)
+    monkeypatch.setattr(settings, "plex_shield_client_identifier", "shield-id")
+    _patch_library(monkeypatch, _fake_library([]))
+
+    response = await client.get("/api/plex/availability?kind=movie")
+    assert response.json()["shield_configured"] is True
 
 
 async def test_availability_badge_never_shows_on_a_physical_copy(client, monkeypatch):
@@ -1030,3 +1044,220 @@ async def test_dry_run_preview_includes_tv_shows(client, monkeypatch):
     body = (await client.post("/api/plex/import", json={"dry_run": True})).json()
     assert [item["title"] for item in body["imported"]] == ["Fargo"]
     assert body["imported"][0]["kind"] == "show"
+
+
+# --- feature #178: afspil på Shield TV ---------------------------------------
+
+
+class _RecordedResponse:
+    def __init__(self, status_code, json_data=None):
+        self.status_code = status_code
+        self._json = json_data or {}
+
+    def json(self):
+        return self._json
+
+
+class _RecordingPlexClient:
+    """Erstatning for `plex_client._client()` — undgår en ny testafhængighed
+    (respx/MockTransport) for det par lav-niveau HTTP-formaterings-tests
+    nedenfor, der er de eneste i denne fil som rent faktisk skal kunne se den
+    *nøjagtige* URL/header/param-konstruktion (regel 19: en forkert
+    Companion-kommando ville fejle stille mod Jans rigtige Shield)."""
+
+    def __init__(self, responder):
+        self._responder = responder
+        self.calls = []
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def get(self, url, headers=None, params=None):
+        self.calls.append({"url": url, "headers": headers, "params": params})
+        return self._responder(url, headers, params)
+
+
+async def test_fetch_clients_parses_server_list(monkeypatch):
+    _configure(monkeypatch)
+    fake = _RecordingPlexClient(
+        lambda url, headers, params: _RecordedResponse(
+            200,
+            {
+                "MediaContainer": {
+                    "Server": [
+                        {"name": "Shield", "machineIdentifier": "shield-id", "product": "Plex for Android (TV)"},
+                        {"name": "Uden id"},  # mangler machineIdentifier — skal springes over
+                    ]
+                }
+            },
+        )
+    )
+    monkeypatch.setattr(plex_client, "_client", lambda: fake)
+
+    clients, error = await plex_client.fetch_clients()
+    assert error is None
+    assert len(clients) == 1
+    assert clients[0].name == "Shield"
+    assert clients[0].machine_identifier == "shield-id"
+    assert fake.calls[0]["url"].endswith("/clients")
+
+
+async def test_fetch_clients_reports_when_unconfigured(monkeypatch):
+    monkeypatch.setattr(settings, "plex_server_url", "")
+    monkeypatch.setattr(settings, "plex_token", "")
+
+    clients, error = await plex_client.fetch_clients()
+    assert clients == []
+    assert "ikke konfigureret" in error
+
+
+async def test_play_on_client_sends_the_correct_companion_command(monkeypatch):
+    _configure(monkeypatch, url="http://192.168.1.50:32400", token="tok")
+    fake = _RecordingPlexClient(lambda url, headers, params: _RecordedResponse(200))
+    monkeypatch.setattr(plex_client, "_client", lambda: fake)
+
+    ok, message = await plex_client.play_on_client(
+        rating_key="42", server_machine_identifier="server-id", client_identifier="shield-id"
+    )
+
+    assert ok is True
+    call = fake.calls[0]
+    assert call["url"] == "http://192.168.1.50:32400/player/playback/playMedia"
+    assert call["headers"]["X-Plex-Target-Client-Identifier"] == "shield-id"
+    assert call["params"]["key"] == "/library/metadata/42"
+    assert call["params"]["machineIdentifier"] == "server-id"
+    assert call["params"]["address"] == "192.168.1.50"
+    assert call["params"]["port"] == "32400"
+    assert call["params"]["token"] == "tok"
+
+
+async def test_play_on_client_reports_a_readable_error_when_the_shield_is_unreachable(monkeypatch):
+    """404 er PMS' egen "klienten findes ikke lige nu"-svar — typisk fordi
+    Plex-appen ikke er åben på Shielden. En admin/gæst der trykker knappen
+    skal se hvorfor, ikke en rå HTTP-status."""
+    _configure(monkeypatch)
+    fake = _RecordingPlexClient(lambda url, headers, params: _RecordedResponse(404))
+    monkeypatch.setattr(plex_client, "_client", lambda: fake)
+
+    ok, message = await plex_client.play_on_client("42", "server-id", "shield-id")
+    assert ok is False
+    assert "Plex-appen" in message
+
+
+async def test_play_on_shield_requires_the_shield_to_be_configured_first(client, monkeypatch):
+    _configure(monkeypatch)
+    created = await client.post(
+        "/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Digital", "format": "D-1080"}
+    )
+    movie_id = created.json()["id"]
+
+    response = await client.post(
+        "/api/plex/play-on-shield", json={"kind": "movie", "item_id": movie_id}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is False
+    assert "ikke konfigureret endnu" in body["message"]
+
+
+async def test_play_on_shield_end_to_end_through_the_api(client, monkeypatch):
+    _configure(monkeypatch)
+    monkeypatch.setattr(settings, "plex_shield_client_identifier", "shield-id")
+    created = await client.post(
+        "/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Digital", "format": "D-1080"}
+    )
+    movie_id = created.json()["id"]
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
+
+    async def fake_play_on_client(rating_key, server_machine_identifier, client_identifier):
+        assert rating_key == "42"
+        assert client_identifier == "shield-id"
+        return True, "Afspilning startet på Shield TV."
+
+    monkeypatch.setattr(plex_client, "play_on_client", fake_play_on_client)
+
+    response = await client.post(
+        "/api/plex/play-on-shield", json={"kind": "movie", "item_id": movie_id}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    assert "Shield" in body["message"]
+
+
+async def test_play_on_shield_reports_when_the_title_is_not_in_plex(client, monkeypatch):
+    _configure(monkeypatch)
+    monkeypatch.setattr(settings, "plex_shield_client_identifier", "shield-id")
+    created = await client.post(
+        "/api/movies", json={"title": "Findes Ikke I Plex", "year": 2001, "media_type": "Digital", "format": "D-1080"}
+    )
+    movie_id = created.json()["id"]
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
+
+    response = await client.post(
+        "/api/plex/play-on-shield", json={"kind": "movie", "item_id": movie_id}
+    )
+    body = response.json()
+    assert body["ok"] is False
+    assert "Findes ikke i Plex" in body["message"]
+
+
+async def test_play_on_shield_works_for_tv_shows_too(client, monkeypatch):
+    """Regel 16 — "regler der kun gælder én gren": en test der kun dækker
+    film ville kunne lade TV-serie-vejen stiltiende mangle `kind`-håndtering."""
+    _configure(monkeypatch)
+    monkeypatch.setattr(settings, "plex_shield_client_identifier", "shield-id")
+    created = await client.post(
+        "/api/tv-shows", json={"name": "Fargo", "year": 2014, "media_type": "Digital", "format": "D-1080"}
+    )
+    show_id = created.json()["id"]
+    _patch_library(monkeypatch, _fake_library([PlexItem("show", "7", "Fargo", 2014, None, None)]))
+
+    async def fake_play_on_client(rating_key, server_machine_identifier, client_identifier):
+        assert rating_key == "7"
+        return True, "Afspilning startet på Shield TV."
+
+    monkeypatch.setattr(plex_client, "play_on_client", fake_play_on_client)
+
+    response = await client.post(
+        "/api/plex/play-on-shield", json={"kind": "show", "item_id": show_id}
+    )
+    assert response.json()["ok"] is True
+
+
+async def test_clients_endpoint_admin_only(client, monkeypatch):
+    """`client`-fixturen er den allerførste registrerede bruger og dermed
+    allerede admin (feature #175's bootstrap-undtagelse) — endpointet skal
+    derfor virke for den, men afvise en almindelig standard-bruger."""
+    _configure(monkeypatch)
+    fake = _RecordingPlexClient(
+        lambda url, headers, params: _RecordedResponse(200, {"MediaContainer": {"Server": []}})
+    )
+    monkeypatch.setattr(plex_client, "_client", lambda: fake)
+
+    admin_response = await client.get("/api/plex/clients")
+    assert admin_response.status_code == 200
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as standard_client:
+        register = await standard_client.post(
+            "/api/auth/register", json={"username": "notadmin178", "password": "testpassword123"}
+        )
+        await client.patch(f"/api/users/{register.json()['id']}/status", json={"status": "active"})
+        await client.patch(f"/api/users/{register.json()['id']}/role", json={"role": "standard"})
+
+        response = await standard_client.get("/api/plex/clients")
+        assert response.status_code == 403
+
+
+async def test_system_settings_returns_the_shield_client_identifier_plainly(client, monkeypatch):
+    """Ikke en hemmelighed (CLAUDE.md regel 6-undtagelsen, samme som
+    plex_server_url) — skal derfor komme med sin faktiske værdi, ikke kun
+    configured/source."""
+    monkeypatch.setattr(settings, "plex_shield_client_identifier", "shield-id")
+
+    response = await client.get("/api/settings/system")
+    assert response.json()["plex_shield_client_identifier"] == "shield-id"

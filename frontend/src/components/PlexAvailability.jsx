@@ -4,6 +4,8 @@
  * posteren og afspilnings-linjen i detaljevinduet.
  */
 
+import { useState } from "react";
+import { api } from "../api/client";
 import { useT } from "../i18n";
 
 /** Badget på selve posteren. Vises kun når elementet faktisk er i Plex. */
@@ -58,5 +60,52 @@ export function PlexPlayLink({ availability, plex }) {
     <a href={availability.play_url} target="_blank" rel="noreferrer" className="btn btn-primary">
       {t("plex.play")}
     </a>
+  );
+}
+
+/**
+ * Feature #178 (Jan: "når man trykker på vis i plex så er option at starte
+ * den i plex på shield der også") — en ekstra knap ved siden af
+ * `PlexPlayLink`, der sender en direkte afspilnings-kommando til det
+ * admin-konfigurerede Shield TV, i stedet for kun at åbne Plex Web.
+ *
+ * Kun vist når titlen faktisk er i Plex OG admin har sat Shieldens client-id
+ * op (`shieldConfigured`, en boolean der følger med det samme ikke-admin-
+ * only `/api/plex/availability`-kald `PlexPlayLink` allerede bruger — se
+ * `PlexAvailabilityMap.shield_configured`'s begrundelse i backend).
+ *
+ * **Kendt forudsætning, ikke noget denne knap kan rette**: Plex-appen skal
+ * allerede være åben/logget ind på Shielden — Plex kan ikke selv tænde eller
+ * starte appen fra slukket/standby.
+ */
+export function PlexShieldPlayButton({ availability, shieldConfigured, kind, itemId }) {
+  const t = useT();
+  const [state, setState] = useState("idle"); // idle | sending | done | error
+  const [message, setMessage] = useState(null);
+
+  if (!availability?.available || !shieldConfigured) return null;
+
+  async function play() {
+    setState("sending");
+    setMessage(null);
+    try {
+      const result = await api.playOnShield(kind, itemId);
+      setState(result.ok ? "done" : "error");
+      setMessage(result.message);
+    } catch (err) {
+      setState("error");
+      setMessage(err.message);
+    }
+  }
+
+  return (
+    <div className="plex-shield-play">
+      <button type="button" className="btn" onClick={play} disabled={state === "sending"}>
+        {t(state === "sending" ? "plex.shieldSending" : "plex.shieldPlay")}
+      </button>
+      {message && (
+        <p className={state === "error" ? "banner banner-error" : "muted"}>{message}</p>
+      )}
+    </div>
   );
 }

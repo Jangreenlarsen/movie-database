@@ -29,10 +29,13 @@ from app.models.movie import MediaType, MovieCreate, MovieFormat
 from app.models.plex import (
     PlexAvailability,
     PlexAvailabilityMap,
+    PlexClientInfo,
+    PlexClientList,
     PlexDiagnostics,
     PlexImportItem,
     PlexImportRequest,
     PlexImportResult,
+    PlexPlayResult,
     PlexSectionInfo,
     PlexUnmatchedItem,
 )
@@ -189,6 +192,10 @@ async def get_availability_map(
     db: AsyncIOMotorDatabase, kind: str, force_refresh: bool = False
 ) -> PlexAvailabilityMap:
     """Hele bibliotekets Plex-status for én ressource-type ("movie"/"show")."""
+    # Feature #178 — kun en boolean; se PlexAvailabilityMap.shield_configured
+    # for hvorfor den følger med her i stedet for et separat admin-only kald.
+    shield_configured = bool(settings.plex_shield_client_identifier)
+
     configured = plex_client.is_configured()
     if not configured:
         return PlexAvailabilityMap(
@@ -196,6 +203,7 @@ async def get_availability_map(
             ok=False,
             error="Plex er ikke konfigureret — sæt server-URL og token under Indstillinger.",
             cache_ttl_seconds=settings.plex_cache_ttl_seconds,
+            shield_configured=shield_configured,
         )
 
     index = await _get_index(force_refresh=force_refresh)
@@ -206,6 +214,7 @@ async def get_availability_map(
             error=index.result.error,
             fetched_at=_fetched_at_iso(index),
             cache_ttl_seconds=settings.plex_cache_ttl_seconds,
+            shield_configured=shield_configured,
         )
 
     items: dict[str, PlexAvailability] = {}
@@ -221,6 +230,7 @@ async def get_availability_map(
         ok=True,
         fetched_at=_fetched_at_iso(index),
         cache_ttl_seconds=settings.plex_cache_ttl_seconds,
+        shield_configured=shield_configured,
         items=items,
     )
 
@@ -235,6 +245,67 @@ async def _library_docs(db: AsyncIOMotorDatabase, kind: str) -> list[dict]:
     if kind == "movie":
         return await movie_repository.find_all_for_plex_match(db)
     return await tv_show_repository.find_all_for_plex_match(db)
+
+
+async def _find_doc(db: AsyncIOMotorDatabase, kind: str, item_id: str) -> dict | None:
+    if kind == "movie":
+        return await movie_repository.find_by_id(db, item_id)
+    return await tv_show_repository.find_by_id(db, item_id)
+
+
+async def list_clients() -> PlexClientList:
+    """Feature #178 — admin-opsætningens "Hent tilgængelige klienter", til
+    at finde Shield TV'ets client-id én gang (se
+    `plex_client.fetch_clients`'s docstring for hvorfor det ikke slås op ved
+    hver afspilning)."""
+    clients, error = await plex_client.fetch_clients()
+    return PlexClientList(
+        ok=error is None,
+        error=error,
+        items=[
+            PlexClientInfo(name=c.name, machine_identifier=c.machine_identifier, product=c.product)
+            for c in clients
+        ],
+    )
+
+
+async def play_on_shield(db: AsyncIOMotorDatabase, kind: str, item_id: str) -> PlexPlayResult:
+    """Feature #178 (Jan: "når man trykker på vis i plex så er option at
+    starte den i plex på shield der også"). Genbruger det samme
+    matchnings-index som badge/afspil-link (feature #88) — den samme regel
+    for hvilket Plex-element der hører til vores film/serie skal gælde
+    begge veje, ellers kunne "ligger i Plex" og "kan afspilles på Shield"
+    komme til at være uenige om samme titel."""
+    if not settings.plex_shield_client_identifier:
+        return PlexPlayResult(
+            ok=False,
+            message="Shield TV er ikke konfigureret endnu — sæt dens klient-id under Indstillinger.",
+        )
+
+    doc = await _find_doc(db, kind, item_id)
+    if doc is None:
+        return PlexPlayResult(ok=False, message="Ikke fundet.")
+
+    index = await _get_index()
+    if not index.result.ok:
+        return PlexPlayResult(
+            ok=False, message=index.result.error or "Plex-biblioteket kunne ikke hentes."
+        )
+
+    machine_identifier = index.result.machine_identifier
+    if not machine_identifier:
+        return PlexPlayResult(ok=False, message="Plex-serverens id kunne ikke bestemmes.")
+
+    item, _matched_by = _match(index, kind, doc.get("tmdb_id"), _doc_title(doc, kind), doc.get("year"))
+    if item is None:
+        return PlexPlayResult(ok=False, message="Findes ikke i Plex.")
+
+    ok, message = await plex_client.play_on_client(
+        rating_key=item.rating_key,
+        server_machine_identifier=machine_identifier,
+        client_identifier=settings.plex_shield_client_identifier,
+    )
+    return PlexPlayResult(ok=ok, message=message)
 
 
 def _library_as_index(docs: list[dict], kind: str) -> _Index:

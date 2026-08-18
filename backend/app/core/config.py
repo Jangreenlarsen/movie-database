@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     # ovenfor, som altid kun rapporterer configured/source.
     plex_server_url: str = ""
     plex_token: str = ""
+    # Feature #178 (Jan: "når man trykker på vis i plex så er option at
+    # starte den i plex på shield der også") — Plex' egen client-id for
+    # Nvidia Shield TV Pro'en, fundet én gang via GET /api/plex/clients og
+    # gemt her. Ikke en hemmelighed (en Plex-intern GUID, ingen adgang i sig
+    # selv) — samme "vis faktisk værdi"-princip som plex_server_url.
+    plex_shield_client_identifier: str = ""
 
     # Feature #88 — hele Plex-biblioteket hentes i ét hug og caches, i stedet
     # for ét opslag pr. film. TTL'en er afvejningen mellem "badges er friske
@@ -134,5 +140,6 @@ ENV_DEFAULT_API_KEYS: dict[str, str] = {
     "omdb_api_key": settings.omdb_api_key,
     "plex_server_url": settings.plex_server_url,
     "plex_token": settings.plex_token,
+    "plex_shield_client_identifier": settings.plex_shield_client_identifier,
     "primary_barcode_source": settings.primary_barcode_source,
 }

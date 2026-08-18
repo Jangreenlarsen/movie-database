@@ -4,7 +4,7 @@ import Chip from "../components/Chip";
 import Combobox from "../components/Combobox";
 import MovieLookupForm from "../components/MovieLookupForm";
 import Pagination from "../components/Pagination";
-import { PlexCardBadge, PlexPlayLink } from "../components/PlexAvailability";
+import { PlexCardBadge, PlexPlayLink, PlexShieldPlayButton } from "../components/PlexAvailability";
 import { usePlexAvailability } from "../components/usePlexAvailability";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import SubtitlesPicker from "../components/SubtitlesPicker";
@@ -1385,7 +1385,15 @@ export function TvShowDetailModal({
 
           {/* Feature #88/2026-08-10 — se den identiske note i Library.jsx. */}
           {show.id && show.media_type !== "Fysisk" && (
-            <PlexPlayLink availability={plexAvailability} plex={plex} />
+            <>
+              <PlexPlayLink availability={plexAvailability} plex={plex} />
+              <PlexShieldPlayButton
+                availability={plexAvailability}
+                shieldConfigured={plex.shieldConfigured}
+                kind="show"
+                itemId={show.id}
+              />
+            </>
           )}
 
           {!editing ? (

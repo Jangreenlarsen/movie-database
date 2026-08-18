@@ -609,6 +609,16 @@
   backdrop-filter: blur(4px);
 }
 
+/* Feature #178 — "Afspil på Shield TV", sidder som en ekstra, mindre
+   fremtrædende knap lige efter PlexPlayLinks primære "Afspil i Plex". */
+.plex-shield-play {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
 .movie-info {
   padding: 10px 12px 12px;
   display: flex;

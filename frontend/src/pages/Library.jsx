@@ -4,7 +4,7 @@ import Chip from "../components/Chip";
 import Combobox from "../components/Combobox";
 import MovieLookupForm from "../components/MovieLookupForm";
 import Pagination from "../components/Pagination";
-import { PlexCardBadge, PlexPlayLink } from "../components/PlexAvailability";
+import { PlexCardBadge, PlexPlayLink, PlexShieldPlayButton } from "../components/PlexAvailability";
 import { usePlexAvailability } from "../components/usePlexAvailability";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import SubtitlesPicker from "../components/SubtitlesPicker";
@@ -1583,7 +1583,15 @@ export function MovieDetailModal({
               ville bare være støj for den der udelukkende har et fysisk
               bibliotek. */}
           {movie.id && movie.media_type !== "Fysisk" && (
-            <PlexPlayLink availability={plexAvailability} plex={plex} />
+            <>
+              <PlexPlayLink availability={plexAvailability} plex={plex} />
+              <PlexShieldPlayButton
+                availability={plexAvailability}
+                shieldConfigured={plex.shieldConfigured}
+                kind="movie"
+                itemId={movie.id}
+              />
+            </>
           )}
 
           {!editing ? (

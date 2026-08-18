@@ -186,6 +186,7 @@ Begge tabeller opdateres når en feature tilføjes (jf. CLAUDE.md regel 2).
 | 175 | Nye brugere får som standard guest-rollen (ikke længere standard) | done | 0.149.0 |
 | 176 | Dato/tidspunkt er nu påkrævet ved ønske om en fremvisning i Voldby BIO | done | 0.150.0 |
 | 177 | Admin-indstilling: kræv dato/tidspunkt for guests ved visningsønsker (til/fra) | done | 0.151.0 |
+| 178 | Afspil direkte på Nvidia Shield TV Pro fra "Vis i Plex" | done | 0.152.0 |
 
 ---
 

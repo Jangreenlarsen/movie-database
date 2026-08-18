@@ -68,6 +68,9 @@ class SystemSettingsStatus(BaseModel):
     # Heller ikke en hemmelighed — hvilken stregkode-kilde der prøves først
     # (feature #77), returneres derfor også med sin faktiske værdi.
     primary_barcode_source: BarcodeSource
+    # Feature #178 — Shield TV'ets Plex client-id. Ikke en hemmelighed
+    # (samme princip som plex_server_url ovenfor).
+    plex_shield_client_identifier: str
 
 
 class SystemSettingsUpdate(BaseModel):
@@ -83,6 +86,7 @@ class SystemSettingsUpdate(BaseModel):
     plex_token: str | None = Field(default=None, max_length=500)
     plex_server_url: str | None = Field(default=None, max_length=500)
     primary_barcode_source: Literal["", "upcitemdb", "discogs", "upcdatabase", "ean_search"] | None = None
+    plex_shield_client_identifier: str | None = Field(default=None, max_length=100)
 
 
 # Feature #174 — adgangskode-politik (Jan: "vi skal have en password politik

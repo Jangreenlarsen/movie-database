@@ -214,6 +214,13 @@ export const api = {
   // `dry_run`, så det viste og det udførte ikke kan drive fra hinanden.
   importFromPlex: (payload) =>
     request("/plex/import", { method: "POST", body: JSON.stringify(payload) }),
+  // Feature #178 — Shield TV-integrationen. `getPlexClients` er admin-only
+  // (bruges kun til opsætningen, se ScreeningRequestPolicySection-mønsteret);
+  // `playOnShield` er åben for enhver logget ind bruger, samme afgrænsning
+  // som det eksisterende "Afspil i Plex"-link.
+  getPlexClients: () => request("/plex/clients"),
+  playOnShield: (kind, itemId) =>
+    request("/plex/play-on-shield", { method: "POST", body: JSON.stringify({ kind, item_id: itemId }) }),
   getSerialNumberConfig: () => request("/settings/serial-number"),
   updateSerialNumberConfig: (payload) =>
     request("/settings/serial-number", { method: "PATCH", body: JSON.stringify(payload) }),

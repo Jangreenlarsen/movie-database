@@ -35,6 +35,37 @@ class PlexAvailabilityMap(BaseModel):
     fetched_at: str | None = None
     cache_ttl_seconds: int = 0
     items: dict[str, PlexAvailability] = Field(default_factory=dict)
+    # Feature #178 — kun en boolean, aldrig selve client-id'et: dette
+    # endpoint er bevidst ikke admin-only (enhver bruger skal kunne se Plex-
+    # badges), men "Afspil på Shield"-knappen skal alligevel kunne gates
+    # korrekt uden at hver bruger skal kunne læse admin-only
+    # GET /api/settings/system for at vide om Shield overhovedet er sat op.
+    shield_configured: bool = False
+
+
+class PlexClientInfo(BaseModel):
+    """Én Plex-klient PMS lige nu kan se på LAN'et (feature #178) — kun brugt
+    til admin-opsætningen der finder Shield TV'ets client-id."""
+
+    name: str
+    machine_identifier: str
+    product: str | None = None
+
+
+class PlexClientList(BaseModel):
+    ok: bool
+    error: str | None = None
+    items: list[PlexClientInfo] = Field(default_factory=list)
+
+
+class PlexPlayOnShieldRequest(BaseModel):
+    kind: PlexKind
+    item_id: str
+
+
+class PlexPlayResult(BaseModel):
+    ok: bool
+    message: str
 
 
 class PlexSectionInfo(BaseModel):

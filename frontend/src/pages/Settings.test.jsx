@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../api/client";
 import {
   PasswordPolicySection,
+  PlexShieldSettingsRow,
   ScreeningRequestPolicySection,
   UsersSection,
   formatUptime,
@@ -268,6 +269,66 @@ describe("ScreeningRequestPolicySection (feature #177)", () => {
     await user.click(screen.getByRole("button", { name: "Gem" }));
 
     expect(await screen.findByText("Serverfejl")).toBeInTheDocument();
+  });
+});
+
+/**
+ * Feature #178 — admin-opsætningen der finder/gemmer Shield TV'ets Plex
+ * client-id. Det testværdige (regel 19): "Hent klienter" skal rent faktisk
+ * liste det backend svarer, et valg skal gemmes med det korrekte id, og en
+ * fejl (både ved hentning og ved gemning) skal vises, ikke sluges.
+ */
+describe("PlexShieldSettingsRow (feature #178)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("henter og lister tilgængelige klienter", async () => {
+    vi.spyOn(api, "getPlexClients").mockResolvedValue({
+      ok: true,
+      items: [{ name: "Shield", machine_identifier: "shield-id", product: "Plex for Android (TV)" }],
+    });
+    const user = userEvent.setup();
+
+    render(<PlexShieldSettingsRow currentValue={null} onSaved={() => {}} />);
+    await user.click(screen.getByRole("button", { name: "Hent tilgængelige klienter" }));
+
+    expect(
+      await screen.findByRole("button", { name: "Shield (Plex for Android (TV))" })
+    ).toBeInTheDocument();
+  });
+
+  it("gemmer det valgte klient-id og kalder onSaved", async () => {
+    vi.spyOn(api, "getPlexClients").mockResolvedValue({
+      ok: true,
+      items: [{ name: "Shield", machine_identifier: "shield-id", product: null }],
+    });
+    const updateSpy = vi.spyOn(api, "updateSystemSettings").mockResolvedValue({});
+    const onSaved = vi.fn();
+    const user = userEvent.setup();
+
+    render(<PlexShieldSettingsRow currentValue={null} onSaved={onSaved} />);
+    await user.click(screen.getByRole("button", { name: "Hent tilgængelige klienter" }));
+    await user.click(await screen.findByRole("button", { name: "Shield" }));
+
+    await waitFor(() =>
+      expect(updateSpy).toHaveBeenCalledWith({ plex_shield_client_identifier: "shield-id" })
+    );
+    expect(onSaved).toHaveBeenCalled();
+  });
+
+  it("viser fejlbeskeden når klient-listen ikke kan hentes", async () => {
+    vi.spyOn(api, "getPlexClients").mockResolvedValue({
+      ok: false,
+      error: "Plex er ikke konfigureret.",
+      items: [],
+    });
+    const user = userEvent.setup();
+
+    render(<PlexShieldSettingsRow currentValue={null} onSaved={() => {}} />);
+    await user.click(screen.getByRole("button", { name: "Hent tilgængelige klienter" }));
+
+    expect(await screen.findByText("Plex er ikke konfigureret.")).toBeInTheDocument();
   });
 });
 

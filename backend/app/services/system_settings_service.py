@@ -73,6 +73,7 @@ async def get_status(db: AsyncIOMotorDatabase) -> SystemSettingsStatus:
         **statuses,
         plex_server_url=settings.plex_server_url,
         primary_barcode_source=settings.primary_barcode_source,
+        plex_shield_client_identifier=settings.plex_shield_client_identifier,
     )
 
 

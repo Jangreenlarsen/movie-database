@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.153.1 build 0211] — 2026-08-18 — fix: "Afspil på Shield TV" begrænset til admin (FEATURES.md #179)
+
+Jan: *"afspil på shield skal være en funktion som kun er på admin users"*. `POST /api/plex/play-on-shield` og `POST /api/plex/stop-shield` fik begge `dependencies=[Depends(require_admin)]` (håndhævet i backend, ikke kun UI'et — CLAUDE.md regel 16's adgangskontrol-princip). `PlexShieldPlayButton` fik en ny `isAdmin`-prop og returnerer `null` for alle andre roller; `Library.jsx`/`TvShows.jsx` sender nu `isAdmin={user.role === "admin"}` ved de to kaldesteder. Det eksisterende "Afspil i Plex"-link er **uændret** — stadig åbent for enhver logget ind bruger, kun Shield-kommandoerne er nu admin-only. Berørte filer: `backend/app/api/plex.py`, `backend/tests/test_plex.py`, `frontend/src/components/PlexAvailability.jsx`, `frontend/src/components/PlexAvailability.test.jsx`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `ARCHITECTURE.md`. Tests: backend +1 (en standard-bruger afvises 403 på begge endpoints), frontend +1 (knappen skjules for en ikke-admin selvom alle andre betingelser er opfyldt). Fuld backend-suite + frontend (110) grøn.
+
 ## [0.153.0 build 0210] — 2026-08-18 — feature: "Afspil på Shield TV" som start/stop-toggle, side om side med "Afspil i Plex" (FEATURES.md #179)
 
 Jan: *"lave de 2 knapper under film/tv så de kan stå ved siden af hianden og lave dem toggle bar sådan at når man trykker på dem så ændre knap sig fra 'play start' til 'play stop'"*. Afklaret via opklarende spørgsmål: kun "Afspil på Shield TV" bliver en ægte toggle med en reel stop-kommando — "Afspil i Plex" er stadig bare et link der åbner Plex Web i en ny fane, uden nogen session vi kan sende en stop-kommando til; en falsk stop-knap dér ville vise noget appen reelt ikke kan gøre.

@@ -85,14 +85,19 @@ export function PlexPlayLink({ availability, plex }) {
  * forbliver bevidst et almindeligt link (åbner Plex Web i en ny fane) — der
  * er ingen session vi kan sende en stop-kommando til derfra, så en
  * tilsvarende toggle på den knap ville vise noget vi reelt ikke kan gøre.
+ *
+ * Opfølgning (Jan: "afspil på shield skal være en funktion som kun er på
+ * admin users") — kun admin ser knappen; `isAdmin` gates den her, og
+ * backend håndhæver det samme uafhængigt (`require_admin` på begge
+ * endpoints), så en gæt-og-kald udenom UI'et heller ikke virker.
  */
-export function PlexShieldPlayButton({ availability, shieldConfigured, kind, itemId }) {
+export function PlexShieldPlayButton({ availability, shieldConfigured, kind, itemId, isAdmin }) {
   const t = useT();
   const [phase, setPhase] = useState("idle"); // idle | starting | playing | stopping
   const [message, setMessage] = useState(null);
   const [isError, setIsError] = useState(false);
 
-  if (!availability?.available || !shieldConfigured) return null;
+  if (!isAdmin || !availability?.available || !shieldConfigured) return null;
 
   async function play() {
     setPhase("starting");

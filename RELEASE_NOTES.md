@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.153.1 (build 0211) — 2026-08-18
+
+- **"Afspil på Shield TV" er nu kun tilgængelig for admin.** Standard-brugere og guests ser ikke længere knappen. "Afspil i Plex" er uændret og stadig åben for alle.
+
 ## v0.153.0 (build 0210) — 2026-08-18
 
 - **"Afspil på Shield TV" er nu en rigtig start/stop-knap.** Efter du trykker "Afspil på Shield TV", skifter knappen til "Stop Shield TV" — tryk igen for at stoppe afspilningen. Knappen sidder nu side om side med "Afspil i Plex" i stedet for under den.

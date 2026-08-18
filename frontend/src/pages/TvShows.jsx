@@ -1392,6 +1392,7 @@ export function TvShowDetailModal({
                 shieldConfigured={plex.shieldConfigured}
                 kind="show"
                 itemId={show.id}
+                isAdmin={user.role === "admin"}
               />
             </div>
           )}

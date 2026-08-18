@@ -111,6 +111,9 @@ export const api = {
     request(`/users/${userId}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
   updateUserStatus: (userId, status) =>
     request(`/users/${userId}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+  // Feature #178-opfølgning — pr.-bruger til/fra for "Afspil i Plex"-linket.
+  updateUserPlexPlay: (userId, enabled) =>
+    request(`/users/${userId}/plex-play`, { method: "PATCH", body: JSON.stringify({ enabled }) }),
   deleteUser: (userId) => request(`/users/${userId}`, { method: "DELETE" }),
   // Feature #171 — admin-assisteret password recovery (intet e-mail-system).
   resetUserPassword: (userId) => request(`/users/${userId}/reset-password`, { method: "POST" }),

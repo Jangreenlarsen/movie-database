@@ -72,20 +72,23 @@
   color: var(--accent-strong);
 }
 
+/* Jan: "reducér whitespace omkring users acc. i settings så vi kan se flere
+   på en skærm" — stakket gap og pr.-række padding strammet op, så flere
+   brugere er synlige uden at scrolle. */
 .user-list {
   list-style: none;
   padding: 0;
-  margin: 16px 0 0;
+  margin: 12px 0 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
 }
 
 .user-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 0;
+  gap: 8px;
+  padding: 4px 0;
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
 }

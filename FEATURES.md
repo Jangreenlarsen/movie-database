@@ -188,6 +188,7 @@ Begge tabeller opdateres når en feature tilføjes (jf. CLAUDE.md regel 2).
 | 177 | Admin-indstilling: kræv dato/tidspunkt for guests ved visningsønsker (til/fra) | done | 0.151.0 |
 | 178 | Afspil direkte på Nvidia Shield TV Pro fra "Vis i Plex" | done | 0.152.0 |
 | 179 | "Afspil på Shield TV" som en rigtig start/stop-toggle, side om side med "Afspil i Plex" | done | 0.153.0 |
+| 180 | Pr.-bruger til/fra for "Afspil i Plex"-linket, styret fra Indstillinger → Brugere | done | 0.154.0 |
 
 ---
 

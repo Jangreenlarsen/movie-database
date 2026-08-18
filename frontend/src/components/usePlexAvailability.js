@@ -27,6 +27,7 @@ export function usePlexAvailability(kind) {
     items: {},
     error: null,
     shieldConfigured: false,
+    playAllowed: true,
   });
 
   function load(refresh = false) {
@@ -44,12 +45,24 @@ export function usePlexAvailability(kind) {
           // Feature #178 — kun en boolean, følger med samme kald i stedet
           // for et separat admin-only opslag pr. bruger.
           shieldConfigured: data.shield_configured ?? false,
+          // Feature #178-opfølgning — DENNE brugers egen tilladelse til
+          // "Afspil i Plex"-linket (pr.-bruger, sat af en admin). Backend
+          // har allerede udeladt `play_url` fra `items` når den er `false`
+          // (reel håndhævelse) — denne boolean bruges kun til at vise den
+          // rigtige besked/knap i stedet for den tekniske "intet link"-fejl.
+          playAllowed: data.play_allowed ?? true,
         })
       )
       // Netværks-/session-fejl mod vores egen backend. Vises i detaljevinduet
       // (CLAUDE.md regel 16), men vælter aldrig biblioteksvisningen.
       .catch((err) =>
-        setState({ status: "error", items: {}, error: err.message, shieldConfigured: false })
+        setState({
+          status: "error",
+          items: {},
+          error: err.message,
+          shieldConfigured: false,
+          playAllowed: true,
+        })
       );
   }
 

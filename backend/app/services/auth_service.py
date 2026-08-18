@@ -37,6 +37,7 @@ def to_user_model(document: dict) -> User:
         role=document.get("role", UserRole.STANDARD),
         status=document.get("status", UserStatus.ACTIVE),
         must_change_password=document.get("must_change_password", False),
+        plex_play_enabled=document.get("plex_play_enabled", True),
         settings=UserSettings(**merged_settings),
         created_at=document["created_at"],
     )
@@ -76,6 +77,7 @@ async def register(db: AsyncIOMotorDatabase, payload: UserRegister) -> User:
         "password_hash": hash_password(payload.password),
         "role": UserRole.ADMIN if is_first_user else UserRole.GUEST,
         "status": UserStatus.ACTIVE if is_first_user else UserStatus.PENDING,
+        "plex_play_enabled": True,
         # Feature #97 — sprogvalget fra login-boksen bliver kontoens
         # startsprog. Kopi frem for reference: DEFAULT_SETTINGS er et
         # modul-globalt dict, og en ændring her ville ellers ramme hver
@@ -280,6 +282,20 @@ async def update_user_status(
                 raise LastAdminError()
 
     updated = await user_repository.set_status(db, user_id, status)
+    return to_user_model(updated)
+
+
+async def update_user_plex_play(db: AsyncIOMotorDatabase, user_id: str, enabled: bool) -> User:
+    """Feature #178-opfølgning (Jan: "sæt op i users styring hvem kan se og
+    bruge vis iplex/spil i plex i detajle for film/tv") — pr.-bruger til/fra
+    for "Afspil i Plex"-linket. Ingen lockout-risiko som ved rolle/status
+    (kan ikke gøre nogen ude af stand til at logge ind eller administrere),
+    så ingen af de guards role/status-opdateringerne har."""
+    target = await user_repository.find_by_id(db, user_id)
+    if target is None:
+        raise UserNotFoundError(user_id)
+
+    updated = await user_repository.set_plex_play_enabled(db, user_id, enabled)
     return to_user_model(updated)
 
 

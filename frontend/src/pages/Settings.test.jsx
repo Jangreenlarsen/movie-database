@@ -136,6 +136,58 @@ describe("UsersSection — adgangskode-nulstilling (feature #171)", () => {
 });
 
 /**
+ * Feature #178-opfølgning (Jan: "sæt op i users styring hvem kan se og
+ * bruge vis iplex/spil i plex i detajle for film/tv"). Det testværdige
+ * (regel 19): knappen skal reelt afspejle og skifte den enkelte brugers
+ * tilstand, ikke bare vise et statisk label.
+ */
+describe("UsersSection — Plex-link pr. bruger (feature #178-opfølgning)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  function mockOneUser(plexPlayEnabled) {
+    vi.spyOn(api, "listUsers").mockResolvedValue([
+      {
+        id: "u1",
+        username: "plexuser",
+        full_name: null,
+        role: "standard",
+        status: "active",
+        plex_play_enabled: plexPlayEnabled,
+        settings: {},
+        created_at: "2026-01-01T00:00:00Z",
+      },
+    ]);
+  }
+
+  it("viser 'Til' for en bruger med adgang, og slår den fra ved klik", async () => {
+    mockOneUser(true);
+    const toggleSpy = vi.spyOn(api, "updateUserPlexPlay").mockResolvedValue({});
+    const user = userEvent.setup();
+
+    render(<UsersSection currentUserId="admin1" />);
+    const button = await screen.findByRole("button", { name: "Plex-link: Til" });
+    await user.click(button);
+
+    expect(toggleSpy).toHaveBeenCalledWith("u1", false);
+  });
+
+  it("viser 'Fra' for en bruger uden adgang, og slår den til ved klik", async () => {
+    mockOneUser(false);
+    const toggleSpy = vi.spyOn(api, "updateUserPlexPlay").mockResolvedValue({});
+    const user = userEvent.setup();
+
+    render(<UsersSection currentUserId="admin1" />);
+    const button = await screen.findByRole("button", { name: "Plex-link: Fra" });
+    await user.click(button);
+
+    expect(toggleSpy).toHaveBeenCalledWith("u1", true);
+  });
+});
+
+/**
  * Feature #174 — adgangskode-politik. Det testværdige (regel 19): den
  * indlæste politik skal faktisk afspejles korrekt i formularens felter
  * (ellers kan en admin tro politikken er én ting, mens den reelt er en

@@ -274,6 +274,14 @@ class UserStatusUpdate(BaseModel):
     status: Literal["active", "rejected", "disabled"]
 
 
+# Feature #178-opfølgning (Jan: "sæt op i users styring hvem kan se og bruge
+# vis iplex/spil i plex i detajle for film/tv") — pr.-bruger, ikke rolle-
+# baseret (Jans eksplicitte valg). Kun "Afspil i Plex"-linket (feature #45/
+# #88) er omfattet, ikke Plex-badget på selve kortet.
+class UserPlexPlayUpdate(BaseModel):
+    enabled: bool
+
+
 class User(BaseModel):
     id: str
     username: str
@@ -287,5 +295,11 @@ class User(BaseModel):
     # blokerende "skift adgangskode"-skærm så længe denne er sand — se
     # api.deps.get_current_user, som håndhæver det samme i backend.
     must_change_password: bool = False
+    # Feature #178-opfølgning — pr.-bruger til/fra for "Afspil i Plex"-linket
+    # i film-/serie-detaljevinduet. Default `true`: en helt ny restriktion på
+    # en feature alle hidtil har kunnet bruge, så eksisterende konti (uden
+    # feltet i deres dokument) skal ikke stille og roligt miste adgang — en
+    # admin slår den fra eksplicit pr. bruger, det er ikke en opt-in-liste.
+    plex_play_enabled: bool = True
     settings: UserSettings
     created_at: datetime

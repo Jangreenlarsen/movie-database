@@ -34,12 +34,22 @@ export function PlexCardBadge({ availability }) {
  * Detaljevinduets Plex-linje. Modsat feature #45's knap er der ikke noget
  * at trykke på for at få svaret — status er allerede kendt når vinduet
  * åbnes; linket er kun til at *afspille* med.
+ *
+ * Opfølgning (Jan: "sæt op i users styring hvem kan se og bruge vis iplex/
+ * spil i plex i detajle for film/tv") — pr.-bruger til/fra, ikke rolle-
+ * baseret. Er `plex.playAllowed` false (denne bruger er slået fra af en
+ * admin), vises knappen slet ikke — adskilt fra det tekniske "intet link
+ * kunne bygges"-tilfælde nedenfor, som stadig skal vise sin egen besked.
+ * Backend har allerede udeladt selve `play_url` for en bruger uden adgang
+ * (CLAUDE.md regel 16 — ikke kun en UI-bekvemmelighed), så denne boolean er
+ * kun til at vælge den rigtige visning, ikke selve håndhævelsen.
  */
 export function PlexPlayLink({ availability, plex }) {
   const t = useT();
   // `plex` mangler når vinduet genbruges til en netop scannet film, der
   // endnu ikke er en del af biblioteket (MovieLookupForm).
   if (!plex || plex.status === "unconfigured") return null;
+  if (plex.playAllowed === false) return null;
 
   if (plex.status === "error") {
     return <p className="muted">{t("plex.statusError", { message: plex.error })}</p>;
@@ -65,83 +75,96 @@ export function PlexPlayLink({ availability, plex }) {
 
 /**
  * Feature #178 (Jan: "når man trykker på vis i plex så er option at starte
- * den i plex på shield der også") — ekstra knapper ved siden af
- * `PlexPlayLink`, der styrer det admin-konfigurerede Shield TV direkte, i
- * stedet for kun at åbne Plex Web.
+ * den i plex på shield der også") — en ekstra knap ved siden af
+ * `PlexPlayLink`, der sender en direkte afspilnings-kommando til det
+ * admin-konfigurerede Shield TV, i stedet for kun at åbne Plex Web.
  *
  * Kun vist når titlen faktisk er i Plex OG admin har sat Shieldens client-id
  * op (`shieldConfigured`, en boolean der følger med det samme ikke-admin-
  * only `/api/plex/availability`-kald `PlexPlayLink` allerede bruger — se
  * `PlexAvailabilityMap.shield_configured`'s begrundelse i backend).
  *
- * **Kendt forudsætning, ikke noget disse knapper kan rette**: Plex-appen
- * skal allerede være åben/logget ind på Shielden — Plex kan ikke selv tænde
- * eller starte appen fra slukket/standby.
+ * **Kendt forudsætning, ikke noget denne knap kan rette**: Plex-appen skal
+ * allerede være åben/logget ind på Shielden — Plex kan ikke selv tænde eller
+ * starte appen fra slukket/standby.
+ *
+ * Opfølgning (Jan: "lave dem toggle bar sådan at når man trykker på dem så
+ * ændre knap sig fra 'play start' til 'play stop'") — kun DENNE knap blev en
+ * rigtig toggle: den kalder allerede Plex' egen kommando-API og kan derfor
+ * sende en ægte stop-kommando (`api.stopShield`). `PlexPlayLink` ovenfor
+ * forbliver bevidst et almindeligt link (åbner Plex Web i en ny fane) — der
+ * er ingen session vi kan sende en stop-kommando til derfra, så en
+ * tilsvarende toggle på den knap ville vise noget vi reelt ikke kan gøre.
  *
  * Opfølgning (Jan: "afspil på shield skal være en funktion som kun er på
- * admin users") — kun admin ser knapperne; `isAdmin` gates dem her, og
+ * admin users") — kun admin ser knappen; `isAdmin` gates den her, og
  * backend håndhæver det samme uafhængigt (`require_admin` på begge
  * endpoints), så en gæt-og-kald udenom UI'et heller ikke virker.
- *
- * Opfølgning (Jan, efter at "Afspil på Shield TV" transcodede video/lyd
- * hvor direkte afspilning på Shielden ikke gør det: "er det muligt så at
- * hoppe ind i plex klienten der hvor man skal til at trykke på play ... og
- * af den vej få spillet film med de local settings for klient der måtte
- * være") — "Vis på Shield TV" starter derfor IKKE længere afspilningen selv
- * (`playMedia`), den navigerer Shielden hen til titlens side
- * (`mirror/details`, samme Companion-kald Plex' eget cast-ikon bruger), så
- * brugerens eget tryk på Play på selve apparatet respekterer Plex-appens
- * lokale kvalitets-/lyd-indstillinger. Konsekvens: der er ikke længere en
- * "afspiller nu"-tilstand vi kan følge (vi ved ikke om/hvornår brugeren rent
- * faktisk trykker Play på fjernbetjeningen) — derfor to uafhængige knapper i
- * stedet for én toggle. "Stop" virker stadig uanset hvordan afspilningen
- * blev startet (Companion-stop rammer klientens aktuelle session, ikke kun
- * sessioner vi selv startede).
  */
-export function PlexShieldControls({ availability, shieldConfigured, kind, itemId, isAdmin }) {
+export function PlexShieldPlayButton({ availability, shieldConfigured, kind, itemId, isAdmin }) {
   const t = useT();
-  const [busy, setBusy] = useState(null); // null | "show" | "stop"
+  const [phase, setPhase] = useState("idle"); // idle | starting | playing | stopping
   const [message, setMessage] = useState(null);
   const [isError, setIsError] = useState(false);
 
   if (!isAdmin || !availability?.available || !shieldConfigured) return null;
 
-  async function run(action, apiCall) {
-    setBusy(action);
+  async function play() {
+    setPhase("starting");
     setMessage(null);
     setIsError(false);
     try {
-      const result = await apiCall();
+      const result = await api.playOnShield(kind, itemId);
       setMessage(result.message);
       setIsError(!result.ok);
+      setPhase(result.ok ? "playing" : "idle");
     } catch (err) {
       setMessage(err.message);
       setIsError(true);
-    } finally {
-      setBusy(null);
+      setPhase("idle");
     }
   }
 
+  async function stop() {
+    setPhase("stopping");
+    setMessage(null);
+    setIsError(false);
+    try {
+      const result = await api.stopShield();
+      setMessage(result.ok ? null : result.message);
+      setIsError(!result.ok);
+      // Fejler stoppet, antager vi den stadig spiller (giv brugeren chancen
+      // for at prøve stop igen, i stedet for at tvinge knappen tilbage til
+      // "Afspil", som ville sende endnu en playMedia-kommando).
+      setPhase(result.ok ? "idle" : "playing");
+    } catch (err) {
+      setMessage(err.message);
+      setIsError(true);
+      setPhase("playing");
+    }
+  }
+
+  const isPlaying = phase === "playing";
+  const isBusy = phase === "starting" || phase === "stopping";
+
   return (
     <div className="plex-shield-play">
-      <div className="plex-shield-buttons">
-        <button
-          type="button"
-          className="btn"
-          onClick={() => run("show", () => api.playOnShield(kind, itemId))}
-          disabled={busy !== null}
-        >
-          {t(busy === "show" ? "plex.shieldOpening" : "plex.shieldShow")}
-        </button>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => run("stop", () => api.stopShield())}
-          disabled={busy !== null}
-        >
-          {t(busy === "stop" ? "plex.shieldStopping" : "plex.shieldStop")}
-        </button>
-      </div>
+      <button
+        type="button"
+        className={isPlaying ? "btn btn-primary" : "btn"}
+        onClick={isPlaying ? stop : play}
+        disabled={isBusy}
+      >
+        {t(
+          phase === "starting"
+            ? "plex.shieldSending"
+            : phase === "stopping"
+              ? "plex.shieldStopping"
+              : isPlaying
+                ? "plex.shieldStop"
+                : "plex.shieldPlay"
+        )}
+      </button>
       {message && <p className={isError ? "banner banner-error" : "muted"}>{message}</p>}
     </div>
   );

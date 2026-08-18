@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.154.1 (build 0214) — 2026-08-19
+
+- **Er "Afspil i Plex" slået fra for en bruger, forsvinder al Plex-relateret UI i detaljekortet** — inklusive "Afspil på Shield TV", som tidligere stadig kunne ses.
+- **Bruger-listen i Indstillinger fylder endnu mindre pr. række.**
+
 ## v0.154.0 (build 0213) — 2026-08-18
 
 - **"Afspil på Shield TV" er tilbage til at starte afspilningen direkte** (den nye "hop hen til siden"-tilgang fra sidste version virkede ikke på Android TV-Plex-appen). Knappen er igen en start/stop-toggle, som før.

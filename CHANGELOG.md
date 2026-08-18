@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.154.1 build 0214] — 2026-08-19 — fix: alt Plex-UI skjult i detaljekortet ved deaktiveret bruger + strammere brugerliste (FEATURES.md #180)
+
+Jan, opfølgning i forlængelse af #180: *"hvis jeg disabler 'vis i plex' skal 'afspil i plex også disablet, alt plex under detajle kort på film/tv skal ikke være syndeligt hvis plex er disablet på user"*. `PlexShieldPlayButton` ("Afspil på Shield TV") tjekkede hidtil kun `available`/`shieldConfigured`/`isAdmin` — ikke brugerens egen `plex_play_enabled` — så en admin med sin egen adgang slået fra kunne stadig se og bruge Shield-knappen, selvom "Afspil i Plex" korrekt var skjult. Ny `playAllowed`-prop (samme boolean `PlexPlayLink` allerede brugte) lukker hullet: er den `false`, vises knappen slet ikke, uanset rolle. Scope uændret fra den oprindelige afklaring — kun detaljevinduets to Plex-kontroller er omfattet, ikke Plex-badget på selve biblioteks-kortet.
+
+**Derudover** (samme opgave, Jan: *"reducer ydelig hvidt space i user config del i settings"*): bruger-rækkerne i Indstillinger → Brugere strammet yderligere op — den globale `.btn`-knaps 9px/16px-padding var den reelle flaskehals for rækkehøjden (ikke `.user-row`s egen padding, som allerede var strammet i forrige commit), så knapper/select i en bruger-række har nu deres egen, mindre størrelse. Omkring 50 % flere brugere synlige pr. skærmhøjde.
+
+Berørte filer: `frontend/src/components/PlexAvailability.jsx`, `frontend/src/components/PlexAvailability.test.jsx`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/pages/Settings.css`. Ingen backend-ændring — `play_allowed` fandtes allerede i API-svaret fra forrige commit, kun frontend-komponenten manglede at bruge den. Tests: frontend +1 (Shield-knappen skjules for admin med `playAllowed: false`). Fuld frontend-suite (116) grøn. Set i browser (regel 18, Playwright med mocket Plex-svar): bekræftede detaljekortet er 100 % fri for Plex-relateret tekst/knapper når `play_allowed` er `false` (0 træf på "Afspil i Plex", "Afspil på Shield TV" og enhver tekst der indeholder "Plex"), og at bruger-listen nu viser 11 rækker i samme viewport-højde hvor der tidligere var 7.
+
 ## [0.154.0 build 0213] — 2026-08-18 — feature: pr.-bruger til/fra for "Afspil i Plex" + rul mirror/details tilbage (FEATURES.md #180)
 
 To ting i samme commit — begge Jan-drevne opfølgninger fra samme testrunde:

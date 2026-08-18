@@ -627,6 +627,14 @@
   align-items: flex-start;
 }
 
+/* Opfølgning — "Vis på Shield TV" og "Stop Shield TV" er nu to uafhængige
+   knapper (ikke længere én toggle), side om side. */
+.plex-shield-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .movie-info {
   padding: 10px 12px 12px;
   display: flex;

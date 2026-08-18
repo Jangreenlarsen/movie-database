@@ -4,7 +4,7 @@ import Chip from "../components/Chip";
 import Combobox from "../components/Combobox";
 import MovieLookupForm from "../components/MovieLookupForm";
 import Pagination from "../components/Pagination";
-import { PlexCardBadge, PlexPlayLink, PlexShieldPlayButton } from "../components/PlexAvailability";
+import { PlexCardBadge, PlexPlayLink, PlexShieldControls } from "../components/PlexAvailability";
 import { usePlexAvailability } from "../components/usePlexAvailability";
 import ScreeningRequestButton from "../components/ScreeningRequestButton";
 import SubtitlesPicker from "../components/SubtitlesPicker";
@@ -1585,7 +1585,7 @@ export function MovieDetailModal({
           {movie.id && movie.media_type !== "Fysisk" && (
             <div className="plex-actions-row">
               <PlexPlayLink availability={plexAvailability} plex={plex} />
-              <PlexShieldPlayButton
+              <PlexShieldControls
                 availability={plexAvailability}
                 shieldConfigured={plex.shieldConfigured}
                 kind="movie"

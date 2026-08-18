@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.154.0 (build 0213) — 2026-08-18
+
+- **"Afspil på Shield TV" er tilbage til at starte afspilningen direkte** (den nye "hop hen til siden"-tilgang fra sidste version virkede ikke på Android TV-Plex-appen). Knappen er igen en start/stop-toggle, som før.
+- **Ny: styr pr. bruger hvem der kan se og bruge "Afspil i Plex".** Under Indstillinger → Brugere er der nu en "Plex-link: Til/Fra"-knap ud for hver bruger. Alle har adgang som standard — en admin slår det fra for enkelte brugere efter behov.
+- **Bruger-listen i Indstillinger fylder nu mindre pr. række**, så flere brugere er synlige uden at scrolle.
+
 ## v0.153.2 (build 0212) — 2026-08-18
 
 - **"Afspil på Shield TV" er nu "Vis på Shield TV" og starter ikke længere afspilningen selv.** Knappen hopper i stedet Shielden hen til filmens/seriens side i selve Plex-appen — du trykker selv Play på apparatet bagefter, hvilket respekterer Plex-appens egne lokale kvalitets-/lyd-indstillinger (undgår den unødige transcoding fra sidste version). "Stop Shield TV" står nu ved siden af som en selvstændig knap, ikke en toggle, og virker uanset hvordan afspilningen blev startet.

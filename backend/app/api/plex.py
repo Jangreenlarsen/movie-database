@@ -21,23 +21,29 @@ router = APIRouter(prefix="/api/plex", tags=["plex"], dependencies=[Depends(get_
 @router.get("/availability", response_model=PlexAvailabilityMap)
 async def get_availability(
     kind: PlexKind = Query(default="movie"),
+    current_user: dict = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     """Hele bibliotekets Plex-status i ét kald (feature #88). Svarer altid
     200 — en slukket eller ukonfigureret Plex-server rapporteres via
     `ok`/`error` i kroppen, så et badge der mangler aldrig kan vælte
     biblioteksvisningen."""
-    return await plex_service.get_availability_map(db, kind)
+    return await plex_service.get_availability_map(
+        db, kind, plex_play_enabled=current_user.get("plex_play_enabled", True)
+    )
 
 
 @router.post("/refresh", response_model=PlexAvailabilityMap)
 async def refresh_availability(
     kind: PlexKind = Query(default="movie"),
+    current_user: dict = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     """Tvinger et nyt hent uden om cachen — til lige efter man har lagt en
     ny film i Plex og ikke vil vente på at TTL'en løber ud."""
-    return await plex_service.get_availability_map(db, kind, force_refresh=True)
+    return await plex_service.get_availability_map(
+        db, kind, force_refresh=True, plex_play_enabled=current_user.get("plex_play_enabled", True)
+    )
 
 
 @router.post("/import", response_model=PlexImportResult, dependencies=[Depends(require_admin)])
@@ -94,9 +100,11 @@ async def play_on_shield(
     users") — i modsætning til det eksisterende "Afspil i Plex"-link, som
     stadig er åbent for enhver logget ind bruger.
 
-    Navigerer (siden endnu en opfølgning samme dag) Shielden hen til
-    titlens side i selve Plex-appen i stedet for at starte afspilningen
-    direkte — se `plex_client.navigate_client_to_media`'s docstring."""
+    Et forsøg samme dag med `mirror/details` (navigér Shielden hen til
+    titlens side i stedet for at afspille direkte) blev rullet tilbage —
+    Android TV-Plex-klienten reagerede slet ikke på kommandoen, selvom PMS
+    tog imod den. Starter derfor stadig afspilningen direkte
+    (`plex_client.play_on_client`, `playMedia` + `directPlay`/`directStream`)."""
     return await plex_service.play_on_shield(db, payload.kind, payload.item_id)
 
 

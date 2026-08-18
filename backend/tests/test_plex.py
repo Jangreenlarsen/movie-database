@@ -1135,44 +1135,39 @@ async def test_fetch_clients_reports_raw_count_even_when_all_are_filtered_out(mo
     assert raw_count == 2
 
 
-async def test_navigate_client_to_media_sends_the_correct_companion_command(monkeypatch):
-    """Jan, opfølgning 2026-08-18 (efter at playMedia transcodede video/lyd):
-    "hoppe ind i plex klienten der hvor man skal til at trykke på play" —
-    `mirror/details`, ikke `playback/playMedia`, og ingen playMedia-specifikke
-    parametre (offset/type/directPlay/directStream) er relevante her, da
-    kaldet ikke selv starter afspilningen."""
+async def test_play_on_client_sends_the_correct_companion_command(monkeypatch):
     _configure(monkeypatch, url="http://192.168.1.50:32400", token="tok")
     fake = _RecordingPlexClient(lambda url, headers, params: _RecordedResponse(200))
     monkeypatch.setattr(plex_client, "_client", lambda: fake)
 
-    ok, message = await plex_client.navigate_client_to_media(
+    ok, message = await plex_client.play_on_client(
         rating_key="42", server_machine_identifier="server-id", client_identifier="shield-id"
     )
 
     assert ok is True
     call = fake.calls[0]
-    assert call["url"] == "http://192.168.1.50:32400/player/mirror/details"
+    assert call["url"] == "http://192.168.1.50:32400/player/playback/playMedia"
     assert call["headers"]["X-Plex-Target-Client-Identifier"] == "shield-id"
     assert call["params"]["key"] == "/library/metadata/42"
     assert call["params"]["machineIdentifier"] == "server-id"
     assert call["params"]["address"] == "192.168.1.50"
     assert call["params"]["port"] == "32400"
     assert call["params"]["token"] == "tok"
-    assert "directPlay" not in call["params"]
-    assert "directStream" not in call["params"]
+    # Jan, opfølgning 2026-08-18: undgå transcoding — se play_on_client's
+    # docstring for hvorfor dette ikke er en garanti, kun et forsøg.
+    assert call["params"]["directPlay"] == "1"
+    assert call["params"]["directStream"] == "1"
 
 
-async def test_navigate_client_to_media_reports_a_readable_error_when_the_shield_is_unreachable(
-    monkeypatch,
-):
+async def test_play_on_client_reports_a_readable_error_when_the_shield_is_unreachable(monkeypatch):
     """404 er PMS' egen "klienten findes ikke lige nu"-svar — typisk fordi
-    Plex-appen ikke er åben på Shielden. En admin der trykker knappen skal
-    se hvorfor, ikke en rå HTTP-status."""
+    Plex-appen ikke er åben på Shielden. En admin/gæst der trykker knappen
+    skal se hvorfor, ikke en rå HTTP-status."""
     _configure(monkeypatch)
     fake = _RecordingPlexClient(lambda url, headers, params: _RecordedResponse(404))
     monkeypatch.setattr(plex_client, "_client", lambda: fake)
 
-    ok, message = await plex_client.navigate_client_to_media("42", "server-id", "shield-id")
+    ok, message = await plex_client.play_on_client("42", "server-id", "shield-id")
     assert ok is False
     assert "Plex-appen" in message
 
@@ -1202,12 +1197,12 @@ async def test_play_on_shield_end_to_end_through_the_api(client, monkeypatch):
     movie_id = created.json()["id"]
     _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
 
-    async def fake_navigate(rating_key, server_machine_identifier, client_identifier):
+    async def fake_play_on_client(rating_key, server_machine_identifier, client_identifier):
         assert rating_key == "42"
         assert client_identifier == "shield-id"
-        return True, "Åbnet på Shield TV — tryk Afspil på fjernbetjeningen."
+        return True, "Afspilning startet på Shield TV."
 
-    monkeypatch.setattr(plex_client, "navigate_client_to_media", fake_navigate)
+    monkeypatch.setattr(plex_client, "play_on_client", fake_play_on_client)
 
     response = await client.post(
         "/api/plex/play-on-shield", json={"kind": "movie", "item_id": movie_id}
@@ -1246,11 +1241,11 @@ async def test_play_on_shield_works_for_tv_shows_too(client, monkeypatch):
     show_id = created.json()["id"]
     _patch_library(monkeypatch, _fake_library([PlexItem("show", "7", "Fargo", 2014, None, None)]))
 
-    async def fake_navigate(rating_key, server_machine_identifier, client_identifier):
+    async def fake_play_on_client(rating_key, server_machine_identifier, client_identifier):
         assert rating_key == "7"
-        return True, "Åbnet på Shield TV — tryk Afspil på fjernbetjeningen."
+        return True, "Afspilning startet på Shield TV."
 
-    monkeypatch.setattr(plex_client, "navigate_client_to_media", fake_navigate)
+    monkeypatch.setattr(plex_client, "play_on_client", fake_play_on_client)
 
     response = await client.post(
         "/api/plex/play-on-shield", json={"kind": "show", "item_id": show_id}

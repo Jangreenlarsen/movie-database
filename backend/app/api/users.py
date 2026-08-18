@@ -12,6 +12,7 @@ from app.models.user import (
     PasswordChange,
     PasswordResetResult,
     User,
+    UserPlexPlayUpdate,
     UserRoleUpdate,
     UserSettingsUpdate,
     UserStatusUpdate,
@@ -99,6 +100,28 @@ async def update_user_status(
         current_user["username"],
         _STATUS_AUDIT_ACTIONS.get(payload.status, "user.status_changed"),
         updated.username,
+    )
+    return updated
+
+
+@router.patch(
+    "/{user_id}/plex-play", response_model=User, dependencies=[Depends(require_admin)]
+)
+async def update_user_plex_play(
+    user_id: str,
+    payload: UserPlexPlayUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """Feature #178-opfølgning (Jan: "sæt op i users styring hvem kan se og
+    bruge vis iplex/spil i plex i detajle for film/tv") — pr.-bruger, ikke
+    rolle-baseret."""
+    updated = await auth_service.update_user_plex_play(db, user_id, payload.enabled)
+    await audit_log_service.record(
+        db,
+        current_user["username"],
+        "user.plex_play_changed",
+        f"{updated.username}: {'aktiveret' if payload.enabled else 'deaktiveret'}",
     )
     return updated
 

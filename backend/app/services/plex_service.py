@@ -189,9 +189,22 @@ def _fetched_at_iso(index: _Index) -> str:
 
 
 async def get_availability_map(
-    db: AsyncIOMotorDatabase, kind: str, force_refresh: bool = False
+    db: AsyncIOMotorDatabase,
+    kind: str,
+    force_refresh: bool = False,
+    plex_play_enabled: bool = True,
 ) -> PlexAvailabilityMap:
-    """Hele bibliotekets Plex-status for én ressource-type ("movie"/"show")."""
+    """Hele bibliotekets Plex-status for én ressource-type ("movie"/"show").
+
+    Feature #178-opfølgning (Jan: "sæt op i users styring hvem kan se og
+    bruge vis iplex/spil i plex i detajle for film/tv") — `plex_play_enabled`
+    er DENNE brugers egen tilladelse (fra `current_user["plex_play_enabled"]`
+    i API-laget). Håndhævet her, ikke kun skjult i UI'et (CLAUDE.md regel
+    16): er den `False`, udelades `play_url` fra ethvert element i svaret,
+    så den reelle Plex-URL aldrig sendes til en klient uden adgang, uanset om
+    browserens devtools/netværksfane bruges til at omgå en skjult knap.
+    `available`/`matched_by`/badge-visning er uændret — kun selve
+    afspilnings-linket er omfattet, jf. Jans afgrænsning."""
     # Feature #178 — kun en boolean; se PlexAvailabilityMap.shield_configured
     # for hvorfor den følger med her i stedet for et separat admin-only kald.
     shield_configured = bool(settings.plex_shield_client_identifier)
@@ -204,6 +217,7 @@ async def get_availability_map(
             error="Plex er ikke konfigureret — sæt server-URL og token under Indstillinger.",
             cache_ttl_seconds=settings.plex_cache_ttl_seconds,
             shield_configured=shield_configured,
+            play_allowed=plex_play_enabled,
         )
 
     index = await _get_index(force_refresh=force_refresh)
@@ -215,6 +229,7 @@ async def get_availability_map(
             fetched_at=_fetched_at_iso(index),
             cache_ttl_seconds=settings.plex_cache_ttl_seconds,
             shield_configured=shield_configured,
+            play_allowed=plex_play_enabled,
         )
 
     items: dict[str, PlexAvailability] = {}
@@ -223,6 +238,8 @@ async def get_availability_map(
             index, kind, doc.get("tmdb_id"), _doc_title(doc, kind), doc.get("year")
         )
         if availability is not None:
+            if not plex_play_enabled:
+                availability = availability.model_copy(update={"play_url": None})
             items[str(doc["_id"])] = availability
 
     return PlexAvailabilityMap(
@@ -231,6 +248,7 @@ async def get_availability_map(
         fetched_at=_fetched_at_iso(index),
         cache_ttl_seconds=settings.plex_cache_ttl_seconds,
         shield_configured=shield_configured,
+        play_allowed=plex_play_enabled,
         items=items,
     )
 
@@ -279,13 +297,14 @@ async def play_on_shield(db: AsyncIOMotorDatabase, kind: str, item_id: str) -> P
     begge veje, ellers kunne "ligger i Plex" og "kan afspilles på Shield"
     komme til at være uenige om samme titel.
 
-    Jan, opfølgning 2026-08-18: en direkte playMedia-kommando transcodede
-    video/lyd, hvor direkte afspilning på Shielden ikke gør det — navigerer
-    derfor nu Shielden hen til titlens side i stedet for at starte
-    afspilningen selv (`plex_client.navigate_client_to_media`), så brugerens
-    eget tryk på Play på selve apparatet respekterer Plex-appens lokale
-    kvalitets-/lyd-indstillinger. Se den funktions docstring for hele
-    begrundelsen."""
+    2026-08-18: et forsøg med `mirror/details` (navigér Shielden hen til
+    titlens side i stedet for at afspille) blev afprøvet for at undgå
+    unødig transcoding, men PMS tog imod kommandoen (200, vores egen
+    succes-besked) uden at Shielden reagerede overhovedet — Android TV-
+    Plex-klienten understøtter den tilsyneladende ikke. Rullet tilbage til
+    `plex_client.play_on_client` (direkte `playMedia`, bekræftet fungerende
+    på Jans udstyr), som stadig sender `directPlay=1`/`directStream=1` for
+    at bede PMS forsøge direkte afspilning."""
     if not settings.plex_shield_client_identifier:
         return PlexPlayResult(
             ok=False,
@@ -310,7 +329,7 @@ async def play_on_shield(db: AsyncIOMotorDatabase, kind: str, item_id: str) -> P
     if item is None:
         return PlexPlayResult(ok=False, message="Findes ikke i Plex.")
 
-    ok, message = await plex_client.navigate_client_to_media(
+    ok, message = await plex_client.play_on_client(
         rating_key=item.rating_key,
         server_machine_identifier=machine_identifier,
         client_identifier=settings.plex_shield_client_identifier,

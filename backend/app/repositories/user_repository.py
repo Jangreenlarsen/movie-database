@@ -156,6 +156,15 @@ async def set_status(db: AsyncIOMotorDatabase, user_id: str, status: str) -> dic
     return await db[COLLECTION].find_one({"_id": ObjectId(user_id)})
 
 
+async def set_plex_play_enabled(db: AsyncIOMotorDatabase, user_id: str, enabled: bool) -> dict | None:
+    if not ObjectId.is_valid(user_id):
+        return None
+    await db[COLLECTION].update_one(
+        {"_id": ObjectId(user_id)}, {"$set": {"plex_play_enabled": enabled}}
+    )
+    return await db[COLLECTION].find_one({"_id": ObjectId(user_id)})
+
+
 async def set_password_hash(
     db: AsyncIOMotorDatabase, user_id: str, password_hash: str, must_change_password: bool
 ) -> None:

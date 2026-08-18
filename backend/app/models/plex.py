@@ -41,6 +41,13 @@ class PlexAvailabilityMap(BaseModel):
     # korrekt uden at hver bruger skal kunne læse admin-only
     # GET /api/settings/system for at vide om Shield overhovedet er sat op.
     shield_configured: bool = False
+    # Feature #178-opfølgning (Jan: "sæt op i users styring hvem kan se og
+    # bruge vis iplex/spil i plex i detajle for film/tv") — DENNE brugers
+    # egen `plex_play_enabled`. `play_url` er allerede udeladt fra `items`
+    # når denne er `false` (reel håndhævelse), men frontend har brug for
+    # boolean'en selv for at skelne "ingen adgang" fra det sjældne tekniske
+    # "kunne ikke bygge et link"-tilfælde og vise den rigtige besked/knap.
+    play_allowed: bool = True
 
 
 class PlexClientInfo(BaseModel):

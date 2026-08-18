@@ -494,24 +494,26 @@ async def fetch_clients() -> tuple[list[PlexClientInfo], int, str | None]:
     return clients, len(raw), None
 
 
-async def navigate_client_to_media(
+async def play_on_client(
     rating_key: str, server_machine_identifier: str, client_identifier: str
 ) -> tuple[bool, str]:
-    """Sender Shielden hen til titlens detaljeside i selve Plex-appen — IKKE
-    en afspil-kommando. Jan, opfølgning 2026-08-18 (efter at en direkte
-    playMedia-kommando transcodede video/lyd, hvor direkte afspilning på
-    Shielden ikke gør det): "er det muligt så at hoppe ind i plex klienten
-    der hvor man skal til at trykke på play ... og af den vej få spillet
-    film med de local settings for klient der måtte være". `mirror/details`
-    er det samme Companion-kald Plex mobil-appens eget cast-ikon sender når
-    man peger på en TV-klient uden at trykke direkte afspil — Shielden
-    skifter til titlens side, og brugeren trykker selv Play på selve
-    apparatet. Fordelen frem for playMedia: Plex-appens EGNE lokale
-    kvalitets-/lyd-indstillinger anvendes så helt naturligt, præcis som ved
-    en afspilning startet direkte på Shielden uden om portalen — ingen
-    gætværk om hvilke Companion-parametre der reelt tvinger direkte
-    afspilning. **Samme forudsætning som før, ikke rettet af os**: Plex-
-    appen skal allerede køre og være logget ind på klienten."""
+    """Sender en "afspil nu"-kommando til én bestemt, tidligere fundet Plex-
+    klient (feature #178, Jan: "starte den i plex på shield der også") — via
+    PMS' egen Companion-relæ, samme mekanisme Plex Web/mobil-appens "Afspil
+    på andet apparat" selv bruger. **Forudsætning, ikke rettet af os**: Plex-
+    appen skal allerede køre og være logget ind på klienten — Plex kan ikke
+    selv tænde eller starte appen fra slukket/standby, kun sende en kommando
+    til en app der allerede lytter.
+
+    Jan, opfølgning 2026-08-18: afspilning startet herfra transcodede video
+    ned til HD og transcodede lyd, hvor direkte afspilning på Shielden ikke
+    gør det. `directPlay=1`/`directStream=1` (udokumenteret, men bredt brugt
+    Companion-parameter i tredjeparts Plex-automatisering, fx Home Assistant-
+    integrationer) beder PMS forsøge direkte afspilning fremfor at
+    transcode — men er **ikke en garanti**: er kilden reelt inkompatibel med
+    klientens erklærede evner (container/codec/bitrate, eller en lydkodning
+    klienten/receiveren ikke kan passe igennem), transcoder PMS stadig,
+    uanset denne parameter."""
     if not is_configured():
         return False, "Plex er ikke konfigureret."
 
@@ -519,48 +521,51 @@ async def navigate_client_to_media(
     default_port = 443 if parsed.scheme == "https" else 32400
     params = {
         "key": f"/library/metadata/{rating_key}",
+        "offset": "0",
         "machineIdentifier": server_machine_identifier,
         "protocol": parsed.scheme,
         "address": parsed.host,
         "port": str(parsed.port or default_port),
         "token": settings.plex_token,
+        "type": "video",
+        "directPlay": "1",
+        "directStream": "1",
     }
     headers = {**_headers(), "X-Plex-Target-Client-Identifier": client_identifier}
 
     logger.info(
-        "Plex: sender mirror/details (rating_key=%s) til klient %s", rating_key, client_identifier
+        "Plex: sender playMedia (rating_key=%s) til klient %s", rating_key, client_identifier
     )
 
     try:
         async with _client() as client:
             response = await client.get(
-                f"{_base_url()}/player/mirror/details", params=params, headers=headers
+                f"{_base_url()}/player/playback/playMedia", params=params, headers=headers
             )
     except httpx.HTTPError as exc:
-        logger.warning("Plex: mirror/details til %s kunne ikke nås: %s", client_identifier, exc)
+        logger.warning("Plex: playMedia til %s kunne ikke nås: %s", client_identifier, exc)
         return False, f"Kunne ikke nå Plex-serveren: {exc}"
 
     if response.status_code == 401:
-        logger.warning("Plex: mirror/details afvist (HTTP 401)")
+        logger.warning("Plex: playMedia afvist (HTTP 401)")
         return False, "Plex afviste token'et (HTTP 401)."
     if response.status_code == 404:
-        logger.warning("Plex: mirror/details til %s gav HTTP 404 (klienten ikke fundet af PMS)", client_identifier)
+        logger.warning("Plex: playMedia til %s gav HTTP 404 (klienten ikke fundet af PMS)", client_identifier)
         return False, "Shield TV'et svarede ikke — er Plex-appen åben og tændt på den?"
     if response.status_code >= 400:
-        logger.warning("Plex: mirror/details til %s gav HTTP %s", client_identifier, response.status_code)
+        logger.warning("Plex: playMedia til %s gav HTTP %s", client_identifier, response.status_code)
         return False, f"Plex afviste kommandoen (HTTP {response.status_code})."
 
-    logger.info("Plex: mirror/details til %s lykkedes (HTTP %s)", client_identifier, response.status_code)
-    return True, "Åbnet på Shield TV — tryk Afspil på fjernbetjeningen."
+    logger.info("Plex: playMedia til %s lykkedes (HTTP %s)", client_identifier, response.status_code)
+    return True, "Afspilning startet på Shield TV."
 
 
 async def stop_client(client_identifier: str) -> tuple[bool, str]:
     """Sender en "stop"-kommando til én bestemt, tidligere fundet Plex-
-    klient — samme Companion-relæ som `navigate_client_to_media`, men uden
-    nogen medie-reference: stopper hvad end klienten lige nu afspiller,
-    uafhængigt af hvordan afspilningen blev startet (via portalen eller
-    direkte på Shielden selv). Jan, opfølgning 2026-08-18: "Afspil på Shield
-    TV"-knappen skal være en rigtig
+    klient — samme Companion-relæ som `play_on_client`, men uden nogen
+    medie-reference: stopper hvad end klienten lige nu afspiller, uafhængigt
+    af hvilken film/serie der oprindeligt startede den. Jan, opfølgning
+    2026-08-18: "Afspil på Shield TV"-knappen skal være en rigtig
     start/stop-toggle, ikke kun starte."""
     if not is_configured():
         return False, "Plex er ikke konfigureret."

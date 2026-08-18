@@ -2697,6 +2697,22 @@ export function UsersSection({ currentUserId }) {
     }
   }
 
+  // Feature #178-opfølgning (Jan: "sæt op i users styring hvem kan se og
+  // bruge vis iplex/spil i plex i detajle for film/tv") — pr.-bruger, ikke
+  // rolle-baseret.
+  async function togglePlexPlay(targetUser) {
+    setUpdatingId(targetUser.id);
+    setError(null);
+    try {
+      await api.updateUserPlexPlay(targetUser.id, !targetUser.plex_play_enabled);
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
   async function resetPassword(targetUser) {
     if (!window.confirm(t("users.confirmResetPassword", { username: targetUser.username }))) {
       return;
@@ -2880,6 +2896,20 @@ export function UsersSection({ currentUserId }) {
                   onClick={() => resetPassword(u)}
                 >
                   {t("users.resetPassword")}
+                </button>
+              )}
+              {/* Feature #178-opfølgning — samme afgrænsning som nulstillings-
+                  knappen ovenfor (kun relevant for konti der reelt kan logge
+                  ind), men ikke ekskluderet for den nuværende admin selv —
+                  ingen lockout-risiko ved at slå sin egen fra. */}
+              {(u.status === "active" || u.status === "disabled") && (
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={updatingId === u.id}
+                  onClick={() => togglePlexPlay(u)}
+                >
+                  {t(u.plex_play_enabled ? "users.plexPlayEnabled" : "users.plexPlayDisabled")}
                 </button>
               )}
               {u.id !== currentUserId && (

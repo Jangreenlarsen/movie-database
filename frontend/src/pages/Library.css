@@ -609,10 +609,18 @@
   backdrop-filter: blur(4px);
 }
 
-/* Feature #178 — "Afspil på Shield TV", sidder som en ekstra, mindre
-   fremtrædende knap lige efter PlexPlayLinks primære "Afspil i Plex". */
-.plex-shield-play {
+/* Feature #178, opfølgning (Jan: "lave de 2 knapper ... så de kan stå ved
+   siden af hinanden") — "Afspil i Plex" og "Afspil på Shield TV" står nu
+   side om side i stedet for stakket. */
+.plex-actions-row {
   margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.plex-shield-play {
   display: flex;
   flex-direction: column;
   gap: 4px;

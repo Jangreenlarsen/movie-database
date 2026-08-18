@@ -92,3 +92,13 @@ async def play_on_shield(
     for enhver logget ind bruger (router-niveauets `get_current_user` er
     nok), samme afgrænsning som den eksisterende afspil-knap."""
     return await plex_service.play_on_shield(db, payload.kind, payload.item_id)
+
+
+@router.post("/stop-shield", response_model=PlexPlayResult)
+async def stop_shield():
+    """Opfølgning på feature #178 (Jan: "de 2 knapper ... toggle bar sådan at
+    når man trykker på dem så ændre knap sig fra 'play start' til 'play
+    stop'"). Ingen body — stopper hvad end Shielden lige nu afspiller,
+    uafhængigt af hvilken titel der startede den. Samme afgrænsning som
+    play-on-shield (ikke admin-only)."""
+    return await plex_service.stop_shield()

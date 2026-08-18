@@ -1303,3 +1303,53 @@ async def test_system_settings_returns_the_shield_client_identifier_plainly(clie
 
     response = await client.get("/api/settings/system")
     assert response.json()["plex_shield_client_identifier"] == "shield-id"
+
+
+# --- feature #178-opfølgning: start/stop-toggle -------------------------------
+
+
+async def test_stop_client_sends_the_correct_companion_command(monkeypatch):
+    _configure(monkeypatch, url="http://192.168.1.50:32400", token="tok")
+    fake = _RecordingPlexClient(lambda url, headers, params: _RecordedResponse(200))
+    monkeypatch.setattr(plex_client, "_client", lambda: fake)
+
+    ok, message = await plex_client.stop_client("shield-id")
+
+    assert ok is True
+    call = fake.calls[0]
+    assert call["url"] == "http://192.168.1.50:32400/player/playback/stop"
+    assert call["headers"]["X-Plex-Target-Client-Identifier"] == "shield-id"
+    assert "stoppet" in message.lower()
+
+
+async def test_stop_client_reports_a_readable_error_when_the_shield_is_unreachable(monkeypatch):
+    _configure(monkeypatch)
+    fake = _RecordingPlexClient(lambda url, headers, params: _RecordedResponse(404))
+    monkeypatch.setattr(plex_client, "_client", lambda: fake)
+
+    ok, message = await plex_client.stop_client("shield-id")
+    assert ok is False
+    assert "Plex-appen" in message
+
+
+async def test_stop_shield_requires_the_shield_to_be_configured_first(client):
+    response = await client.post("/api/plex/stop-shield")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is False
+    assert "ikke konfigureret endnu" in body["message"]
+
+
+async def test_stop_shield_end_to_end_through_the_api(client, monkeypatch):
+    monkeypatch.setattr(settings, "plex_shield_client_identifier", "shield-id")
+
+    async def fake_stop_client(client_identifier):
+        assert client_identifier == "shield-id"
+        return True, "Afspilning stoppet på Shield TV."
+
+    monkeypatch.setattr(plex_client, "stop_client", fake_stop_client)
+
+    response = await client.post("/api/plex/stop-shield")
+    body = response.json()
+    assert body["ok"] is True
+    assert "stoppet" in body["message"].lower()

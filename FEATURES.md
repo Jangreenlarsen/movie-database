@@ -187,6 +187,7 @@ Begge tabeller opdateres når en feature tilføjes (jf. CLAUDE.md regel 2).
 | 176 | Dato/tidspunkt er nu påkrævet ved ønske om en fremvisning i Voldby BIO | done | 0.150.0 |
 | 177 | Admin-indstilling: kræv dato/tidspunkt for guests ved visningsønsker (til/fra) | done | 0.151.0 |
 | 178 | Afspil direkte på Nvidia Shield TV Pro fra "Vis i Plex" | done | 0.152.0 |
+| 179 | "Afspil på Shield TV" som en rigtig start/stop-toggle, side om side med "Afspil i Plex" | done | 0.153.0 |
 
 ---
 

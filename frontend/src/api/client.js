@@ -221,6 +221,7 @@ export const api = {
   getPlexClients: () => request("/plex/clients"),
   playOnShield: (kind, itemId) =>
     request("/plex/play-on-shield", { method: "POST", body: JSON.stringify({ kind, item_id: itemId }) }),
+  stopShield: () => request("/plex/stop-shield", { method: "POST" }),
   getSerialNumberConfig: () => request("/settings/serial-number"),
   updateSerialNumberConfig: (payload) =>
     request("/settings/serial-number", { method: "PATCH", body: JSON.stringify(payload) }),

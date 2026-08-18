@@ -1583,7 +1583,7 @@ export function MovieDetailModal({
               ville bare være støj for den der udelukkende har et fysisk
               bibliotek. */}
           {movie.id && movie.media_type !== "Fysisk" && (
-            <>
+            <div className="plex-actions-row">
               <PlexPlayLink availability={plexAvailability} plex={plex} />
               <PlexShieldPlayButton
                 availability={plexAvailability}
@@ -1591,7 +1591,7 @@ export function MovieDetailModal({
                 kind="movie"
                 itemId={movie.id}
               />
-            </>
+            </div>
           )}
 
           {!editing ? (

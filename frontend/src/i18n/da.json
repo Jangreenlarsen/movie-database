@@ -167,6 +167,8 @@
   "plex.play": "▶ Afspil i Plex",
   "plex.shieldPlay": "📺 Afspil på Shield TV",
   "plex.shieldSending": "Starter...",
+  "plex.shieldStop": "⏹ Stop Shield TV",
+  "plex.shieldStopping": "Stopper...",
   "plexShieldSettings.heading": "Shield TV (Plex)",
   "plexShieldSettings.description": "Client-id for det Plex-apparat (Nvidia Shield TV Pro) \"Afspil på Shield TV\"-knappen sender direkte afspilnings-kommandoer til. Plex-appen skal være åben/logget ind på apparatet i det øjeblik du henter listen nedenfor — Plex kan ikke selv tænde den.",
   "plexShieldSettings.fetchClients": "Hent tilgængelige klienter",

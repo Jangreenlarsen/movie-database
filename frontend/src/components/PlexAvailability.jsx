@@ -77,35 +77,80 @@ export function PlexPlayLink({ availability, plex }) {
  * **Kendt forudsætning, ikke noget denne knap kan rette**: Plex-appen skal
  * allerede være åben/logget ind på Shielden — Plex kan ikke selv tænde eller
  * starte appen fra slukket/standby.
+ *
+ * Opfølgning (Jan: "lave dem toggle bar sådan at når man trykker på dem så
+ * ændre knap sig fra 'play start' til 'play stop'") — kun DENNE knap blev en
+ * rigtig toggle: den kalder allerede Plex' egen kommando-API og kan derfor
+ * sende en ægte stop-kommando (`api.stopShield`). `PlexPlayLink` ovenfor
+ * forbliver bevidst et almindeligt link (åbner Plex Web i en ny fane) — der
+ * er ingen session vi kan sende en stop-kommando til derfra, så en
+ * tilsvarende toggle på den knap ville vise noget vi reelt ikke kan gøre.
  */
 export function PlexShieldPlayButton({ availability, shieldConfigured, kind, itemId }) {
   const t = useT();
-  const [state, setState] = useState("idle"); // idle | sending | done | error
+  const [phase, setPhase] = useState("idle"); // idle | starting | playing | stopping
   const [message, setMessage] = useState(null);
+  const [isError, setIsError] = useState(false);
 
   if (!availability?.available || !shieldConfigured) return null;
 
   async function play() {
-    setState("sending");
+    setPhase("starting");
     setMessage(null);
+    setIsError(false);
     try {
       const result = await api.playOnShield(kind, itemId);
-      setState(result.ok ? "done" : "error");
       setMessage(result.message);
+      setIsError(!result.ok);
+      setPhase(result.ok ? "playing" : "idle");
     } catch (err) {
-      setState("error");
       setMessage(err.message);
+      setIsError(true);
+      setPhase("idle");
     }
   }
 
+  async function stop() {
+    setPhase("stopping");
+    setMessage(null);
+    setIsError(false);
+    try {
+      const result = await api.stopShield();
+      setMessage(result.ok ? null : result.message);
+      setIsError(!result.ok);
+      // Fejler stoppet, antager vi den stadig spiller (giv brugeren chancen
+      // for at prøve stop igen, i stedet for at tvinge knappen tilbage til
+      // "Afspil", som ville sende endnu en playMedia-kommando).
+      setPhase(result.ok ? "idle" : "playing");
+    } catch (err) {
+      setMessage(err.message);
+      setIsError(true);
+      setPhase("playing");
+    }
+  }
+
+  const isPlaying = phase === "playing";
+  const isBusy = phase === "starting" || phase === "stopping";
+
   return (
     <div className="plex-shield-play">
-      <button type="button" className="btn" onClick={play} disabled={state === "sending"}>
-        {t(state === "sending" ? "plex.shieldSending" : "plex.shieldPlay")}
+      <button
+        type="button"
+        className={isPlaying ? "btn btn-primary" : "btn"}
+        onClick={isPlaying ? stop : play}
+        disabled={isBusy}
+      >
+        {t(
+          phase === "starting"
+            ? "plex.shieldSending"
+            : phase === "stopping"
+              ? "plex.shieldStopping"
+              : isPlaying
+                ? "plex.shieldStop"
+                : "plex.shieldPlay"
+        )}
       </button>
-      {message && (
-        <p className={state === "error" ? "banner banner-error" : "muted"}>{message}</p>
-      )}
+      {message && <p className={isError ? "banner banner-error" : "muted"}>{message}</p>}
     </div>
   );
 }

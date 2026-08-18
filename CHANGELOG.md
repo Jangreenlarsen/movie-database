@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.152.2 build 0209] — 2026-08-18 — fix: undgå unødig transcoding ved afspilning på Shield TV (feature #178)
+
+Jan, efter at Shield-afspilningen (BUGS.md #76) endelig virkede (Broadcast Forwarding var slukket på Cisco WLC'en): *"det fungere men se ud til at hvis jeg starter fra portal afspilning så transcoder den til HD og transcode også lyd, kan vi sætter den til at den aldrig skal transcode video eller audio"*. `plex_client.play_on_client`s `playMedia`-kommando manglede `directPlay=1`/`directStream=1` — udokumenteret, men bredt observeret Companion-parameter (samme som flere tredjeparts Plex-automatiseringer, fx Home Assistant-integrationer, bruger) der beder PMS forsøge direkte afspilning i stedet for at transcode. **Ærlig begrænsning, kommunikeret til Jan**: dette er *ikke* en garanti — Plex' offentlige API har ingen dokumenteret "transcod aldrig"-kontakt, og er kilden reelt inkompatibel med klientens erklærede evner (container/codec/bitrate for video, eller en lydkodning Shielden/receiveren ikke kan passe igennem via HDMI), transcoder PMS stadig uanset parameteren — i så fald er den reelle fix formentlig Shieldens egne Plex-app-indstillinger (Video → afspilningskvalitet sat til "Original"/ubegrænset, Lyd → "Enable Audio Passthrough"), ikke noget denne kommando kan overstyre. Berørte filer: `backend/app/integrations/plex_client.py`, `backend/tests/test_plex.py`. Tests: `test_play_on_client_sends_the_correct_companion_command` udvidet med de to nye parametre. Fuld backend-suite grøn.
+
 ## [0.152.1 build 0208] — 2026-08-18 — fix: synlig diagnostik for Plex-klient-søgning (BUGS.md #76)
 
 Jan, efter at have bekræftet at hverken portalen eller Plex Web selv kan se Shielden via Plex' egen "Afspil på andet apparat": *"ok hvis din code er korekt skal der nok noget feedback til så man kan se at din code gør det korekte"*. Ren observérbarhed, ikke en rettelse af selve BUGS.md #76's rodårsag (som stadig er en Plex-/netværksbegrænsning uden for appens kontrol, se bug-entryen).

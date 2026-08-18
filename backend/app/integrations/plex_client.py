@@ -503,7 +503,17 @@ async def play_on_client(
     på andet apparat" selv bruger. **Forudsætning, ikke rettet af os**: Plex-
     appen skal allerede køre og være logget ind på klienten — Plex kan ikke
     selv tænde eller starte appen fra slukket/standby, kun sende en kommando
-    til en app der allerede lytter."""
+    til en app der allerede lytter.
+
+    Jan, opfølgning 2026-08-18: afspilning startet herfra transcodede video
+    ned til HD og transcodede lyd, hvor direkte afspilning på Shielden ikke
+    gør det. `directPlay=1`/`directStream=1` (udokumenteret, men bredt brugt
+    Companion-parameter i tredjeparts Plex-automatisering, fx Home Assistant-
+    integrationer) beder PMS forsøge direkte afspilning fremfor at
+    transcode — men er **ikke en garanti**: er kilden reelt inkompatibel med
+    klientens erklærede evner (container/codec/bitrate, eller en lydkodning
+    klienten/receiveren ikke kan passe igennem), transcoder PMS stadig,
+    uanset denne parameter."""
     if not is_configured():
         return False, "Plex er ikke konfigureret."
 
@@ -517,6 +527,9 @@ async def play_on_client(
         "address": parsed.host,
         "port": str(parsed.port or default_port),
         "token": settings.plex_token,
+        "type": "video",
+        "directPlay": "1",
+        "directStream": "1",
     }
     headers = {**_headers(), "X-Plex-Target-Client-Identifier": client_identifier}
 

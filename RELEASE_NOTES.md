@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.152.2 (build 0209) — 2026-08-18
+
+- **"Afspil på Shield TV" forsøger nu direkte afspilning fremfor transcoding.** Var video/lyd før blevet transcodet unødigt når afspilning blev startet fra portalen, beder den nu Plex-serveren forsøge direkte afspilning i stedet. Ingen garanti — er kilden reelt inkompatibel med Shieldens/receiverens evner, transcoder Plex stadig; tjek i så fald Shieldens egne Plex-app-indstillinger for video-kvalitet og lyd-passthrough.
+
 ## v0.152.1 (build 0208) — 2026-08-18
 
 - **"Hent tilgængelige klienter" viser nu tydeligere hvad Plex faktisk svarede.** Finder den ingen Shield, fortæller den nu om Plex-serveren selv rapporterer nul registrerede klienter (en Plex-/netværksbegrænsning — prøv Plex Webs egen "Afspil på andet apparat" for at bekræfte det samme) eller om noget blev fundet, men ikke kunne bruges.

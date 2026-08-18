@@ -1153,6 +1153,10 @@ async def test_play_on_client_sends_the_correct_companion_command(monkeypatch):
     assert call["params"]["address"] == "192.168.1.50"
     assert call["params"]["port"] == "32400"
     assert call["params"]["token"] == "tok"
+    # Jan, opfølgning 2026-08-18: undgå transcoding — se play_on_client's
+    # docstring for hvorfor dette ikke er en garanti, kun et forsøg.
+    assert call["params"]["directPlay"] == "1"
+    assert call["params"]["directStream"] == "1"
 
 
 async def test_play_on_client_reports_a_readable_error_when_the_shield_is_unreachable(monkeypatch):

@@ -1353,3 +1353,30 @@ async def test_stop_shield_end_to_end_through_the_api(client, monkeypatch):
     body = response.json()
     assert body["ok"] is True
     assert "stoppet" in body["message"].lower()
+
+
+async def test_play_on_shield_and_stop_shield_require_admin(client, monkeypatch):
+    """Jan, opfølgning 2026-08-18: "afspil på shield skal være en funktion
+    som kun er på admin users" — i modsætning til det eksisterende "Afspil i
+    Plex"-link, som stadig er åbent for enhver logget ind bruger."""
+    _configure(monkeypatch)
+    created = await client.post(
+        "/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Digital", "format": "D-1080"}
+    )
+    movie_id = created.json()["id"]
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as standard_client:
+        register = await standard_client.post(
+            "/api/auth/register", json={"username": "notadmin179", "password": "testpassword123"}
+        )
+        await client.patch(f"/api/users/{register.json()['id']}/status", json={"status": "active"})
+        await client.patch(f"/api/users/{register.json()['id']}/role", json={"role": "standard"})
+
+        play_response = await standard_client.post(
+            "/api/plex/play-on-shield", json={"kind": "movie", "item_id": movie_id}
+        )
+        assert play_response.status_code == 403
+
+        stop_response = await standard_client.post("/api/plex/stop-shield")
+        assert stop_response.status_code == 403

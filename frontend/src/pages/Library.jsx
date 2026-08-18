@@ -1590,6 +1590,7 @@ export function MovieDetailModal({
                 shieldConfigured={plex.shieldConfigured}
                 kind="movie"
                 itemId={movie.id}
+                isAdmin={user.role === "admin"}
               />
             </div>
           )}

@@ -30,6 +30,7 @@ describe("PlexShieldPlayButton (feature #178)", () => {
         shieldConfigured={true}
         kind="movie"
         itemId="m1"
+        isAdmin={true}
       />
     );
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
@@ -42,6 +43,25 @@ describe("PlexShieldPlayButton (feature #178)", () => {
         shieldConfigured={false}
         kind="movie"
         itemId="m1"
+        isAdmin={true}
+      />
+    );
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  /**
+   * Jan, opfølgning 2026-08-18: "afspil på shield skal være en funktion som
+   * kun er på admin users". Selvom alt andet er opfyldt (titlen er i Plex,
+   * Shield er konfigureret), skal en ikke-admin slet ikke se knappen.
+   */
+  it("vises ikke for en ikke-admin, selvom titlen er i Plex og Shield er konfigureret", () => {
+    render(
+      <PlexShieldPlayButton
+        availability={AVAILABLE}
+        shieldConfigured={true}
+        kind="movie"
+        itemId="m1"
+        isAdmin={false}
       />
     );
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
@@ -59,6 +79,7 @@ describe("PlexShieldPlayButton (feature #178)", () => {
         shieldConfigured={true}
         kind="show"
         itemId="s1"
+        isAdmin={true}
       />
     );
 
@@ -82,6 +103,7 @@ describe("PlexShieldPlayButton (feature #178)", () => {
         shieldConfigured={true}
         kind="movie"
         itemId="m1"
+        isAdmin={true}
       />
     );
 
@@ -109,6 +131,7 @@ describe("PlexShieldPlayButton (feature #178)", () => {
         shieldConfigured={true}
         kind="movie"
         itemId="m1"
+        isAdmin={true}
       />
     );
 
@@ -139,6 +162,7 @@ describe("PlexShieldPlayButton (feature #178)", () => {
         shieldConfigured={true}
         kind="movie"
         itemId="m1"
+        isAdmin={true}
       />
     );
 
@@ -172,6 +196,7 @@ describe("PlexShieldPlayButton (feature #178)", () => {
         shieldConfigured={true}
         kind="movie"
         itemId="m1"
+        isAdmin={true}
       />
     );
 

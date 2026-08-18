@@ -81,24 +81,28 @@ async def get_clients():
     return await plex_service.list_clients()
 
 
-@router.post("/play-on-shield", response_model=PlexPlayResult)
+@router.post(
+    "/play-on-shield", response_model=PlexPlayResult, dependencies=[Depends(require_admin)]
+)
 async def play_on_shield(
     payload: PlexPlayOnShieldRequest,
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     """Feature #178 (Jan: "når man trykker på vis i plex så er option at
-    starte den i plex på shield der også"). Ikke admin-only, ligesom det
-    eksisterende "Afspil i Plex"-link (feature #45/#88) — bevidst tilgængelig
-    for enhver logget ind bruger (router-niveauets `get_current_user` er
-    nok), samme afgrænsning som den eksisterende afspil-knap."""
+    starte den i plex på shield der også"). **Kræver admin** (Jan, opfølgning
+    2026-08-18: "afspil på shield skal være en funktion som kun er på admin
+    users") — i modsætning til det eksisterende "Afspil i Plex"-link, som
+    stadig er åbent for enhver logget ind bruger."""
     return await plex_service.play_on_shield(db, payload.kind, payload.item_id)
 
 
-@router.post("/stop-shield", response_model=PlexPlayResult)
+@router.post(
+    "/stop-shield", response_model=PlexPlayResult, dependencies=[Depends(require_admin)]
+)
 async def stop_shield():
     """Opfølgning på feature #178 (Jan: "de 2 knapper ... toggle bar sådan at
     når man trykker på dem så ændre knap sig fra 'play start' til 'play
     stop'"). Ingen body — stopper hvad end Shielden lige nu afspiller,
-    uafhængigt af hvilken titel der startede den. Samme afgrænsning som
-    play-on-shield (ikke admin-only)."""
+    uafhængigt af hvilken titel der startede den. **Kræver admin**, samme
+    afgrænsning som play-on-shield."""
     return await plex_service.stop_shield()

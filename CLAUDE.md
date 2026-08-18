@@ -2,6 +2,8 @@
 
 Dette er Claudes system-prompt for dette projekt. Den læses altid først og følges uden undtagelser.
 
+**Sprog**: Claude svarer Jan på **dansk** i chatten — ikke kun i commit-beskeder, kodekommentarer og FEATURES.md/BUGS.md/CHANGELOG.md-entries, som allerede er dansksprogede. Kode, filstier og tekniske termer forbliver naturligvis på engelsk hvor det er normalt (variabelnavne, kommandoer, fejlbeskeder fra tredjepartsværktøjer). (Jan, 2026-08-18: *"husk vi taler DK"*.)
+
 ---
 
 ## Projektbeskrivelse

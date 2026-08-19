@@ -1157,6 +1157,8 @@ async def test_play_on_client_sends_the_correct_companion_command(monkeypatch):
     # docstring for hvorfor dette ikke er en garanti, kun et forsøg.
     assert call["params"]["directPlay"] == "1"
     assert call["params"]["directStream"] == "1"
+    # 2026-08-19 — Plex' Companion-spec kræver commandID på alle kommandoer.
+    assert call["params"]["commandID"]
 
 
 async def test_play_on_client_reports_a_readable_error_when_the_shield_is_unreachable(monkeypatch):
@@ -1319,6 +1321,7 @@ async def test_stop_client_sends_the_correct_companion_command(monkeypatch):
     call = fake.calls[0]
     assert call["url"] == "http://192.168.1.50:32400/player/playback/stop"
     assert call["headers"]["X-Plex-Target-Client-Identifier"] == "shield-id"
+    assert call["params"]["commandID"]
     assert "stoppet" in message.lower()
 
 
@@ -1380,3 +1383,93 @@ async def test_play_on_shield_and_stop_shield_require_admin(client, monkeypatch)
 
         stop_response = await standard_client.post("/api/plex/stop-shield")
         assert stop_response.status_code == 403
+
+        show_response = await standard_client.post(
+            "/api/plex/show-on-shield", json={"kind": "movie", "item_id": movie_id}
+        )
+        assert show_response.status_code == 403
+
+
+def test_command_ids_are_unique_across_calls(monkeypatch):
+    """Plex' Companion-spec: commandID skal være fortløbende, ikke genbrugt
+    — to hurtigt-efter-hinanden-kommandoer må aldrig dele samme id."""
+    first = plex_client._next_command_id()
+    second = plex_client._next_command_id()
+    assert first != second
+
+
+# --- 2026-08-19: genindført test-knap "Vis på Shield TV" (mirror/details) ---
+
+
+async def test_navigate_client_to_media_sends_the_correct_companion_command(monkeypatch):
+    """Genindført efter research bekræftede hvorfor den oprindeligt fejlede
+    (navigation/mirror er en valgfri Companion-kategori) — Jan: "lave igen
+    en knap mere til 'vis i plex' sådan vi kan teste på den funktion igen"."""
+    _configure(monkeypatch, url="http://192.168.1.50:32400", token="tok")
+    fake = _RecordingPlexClient(lambda url, headers, params: _RecordedResponse(200))
+    monkeypatch.setattr(plex_client, "_client", lambda: fake)
+
+    ok, message = await plex_client.navigate_client_to_media(
+        rating_key="42", server_machine_identifier="server-id", client_identifier="shield-id"
+    )
+
+    assert ok is True
+    call = fake.calls[0]
+    assert call["url"] == "http://192.168.1.50:32400/player/mirror/details"
+    assert call["headers"]["X-Plex-Target-Client-Identifier"] == "shield-id"
+    assert call["params"]["key"] == "/library/metadata/42"
+    assert call["params"]["machineIdentifier"] == "server-id"
+    assert call["params"]["commandID"]
+    assert "directPlay" not in call["params"]
+    assert "directStream" not in call["params"]
+
+
+async def test_navigate_client_to_media_reports_a_readable_error_when_the_shield_is_unreachable(
+    monkeypatch,
+):
+    _configure(monkeypatch)
+    fake = _RecordingPlexClient(lambda url, headers, params: _RecordedResponse(404))
+    monkeypatch.setattr(plex_client, "_client", lambda: fake)
+
+    ok, message = await plex_client.navigate_client_to_media("42", "server-id", "shield-id")
+    assert ok is False
+    assert "Plex-appen" in message
+
+
+async def test_show_on_shield_requires_the_shield_to_be_configured_first(client, monkeypatch):
+    _configure(monkeypatch)
+    created = await client.post(
+        "/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Digital", "format": "D-1080"}
+    )
+    movie_id = created.json()["id"]
+
+    response = await client.post(
+        "/api/plex/show-on-shield", json={"kind": "movie", "item_id": movie_id}
+    )
+    assert response.status_code == 200
+    assert response.json()["ok"] is False
+    assert "ikke konfigureret endnu" in response.json()["message"]
+
+
+async def test_show_on_shield_end_to_end_through_the_api(client, monkeypatch):
+    _configure(monkeypatch)
+    monkeypatch.setattr(settings, "plex_shield_client_identifier", "shield-id")
+    created = await client.post(
+        "/api/movies", json={"title": "The Matrix", "year": 1999, "media_type": "Digital", "format": "D-1080"}
+    )
+    movie_id = created.json()["id"]
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
+
+    async def fake_navigate(rating_key, server_machine_identifier, client_identifier):
+        assert rating_key == "42"
+        assert client_identifier == "shield-id"
+        return True, "Sendt til Shield TV (mirror/details) — tjek om skærmen skiftede."
+
+    monkeypatch.setattr(plex_client, "navigate_client_to_media", fake_navigate)
+
+    response = await client.post(
+        "/api/plex/show-on-shield", json={"kind": "movie", "item_id": movie_id}
+    )
+    body = response.json()
+    assert body["ok"] is True
+    assert "Shield" in body["message"]

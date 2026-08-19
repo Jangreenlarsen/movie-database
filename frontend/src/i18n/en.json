@@ -169,6 +169,8 @@
   "plex.shieldSending": "Starting...",
   "plex.shieldStop": "⏹ Stop Shield TV",
   "plex.shieldStopping": "Stopping...",
+  "plex.shieldShow": "🧪 Show on Shield TV (test)",
+  "plex.shieldShowing": "Sending...",
   "plexShieldSettings.heading": "Shield TV (Plex)",
   "plexShieldSettings.description": "Client id for the Plex device (Nvidia Shield TV Pro) the \"Play on Shield TV\" button sends playback commands to directly. The Plex app must be open/signed in on the device the moment you fetch the list below — Plex can't turn it on itself.",
   "plexShieldSettings.fetchClients": "Fetch available clients",

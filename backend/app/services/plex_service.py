@@ -289,22 +289,16 @@ async def list_clients() -> PlexClientList:
     )
 
 
-async def play_on_shield(db: AsyncIOMotorDatabase, kind: str, item_id: str) -> PlexPlayResult:
-    """Feature #178 (Jan: "når man trykker på vis i plex så er option at
-    starte den i plex på shield der også"). Genbruger det samme
-    matchnings-index som badge/afspil-link (feature #88) — den samme regel
-    for hvilket Plex-element der hører til vores film/serie skal gælde
-    begge veje, ellers kunne "ligger i Plex" og "kan afspilles på Shield"
-    komme til at være uenige om samme titel.
-
-    2026-08-18: et forsøg med `mirror/details` (navigér Shielden hen til
-    titlens side i stedet for at afspille) blev afprøvet for at undgå
-    unødig transcoding, men PMS tog imod kommandoen (200, vores egen
-    succes-besked) uden at Shielden reagerede overhovedet — Android TV-
-    Plex-klienten understøtter den tilsyneladende ikke. Rullet tilbage til
-    `plex_client.play_on_client` (direkte `playMedia`, bekræftet fungerende
-    på Jans udstyr), som stadig sender `directPlay=1`/`directStream=1` for
-    at bede PMS forsøge direkte afspilning."""
+async def _resolve_for_shield(
+    db: AsyncIOMotorDatabase, kind: str, item_id: str
+) -> tuple[str, str] | PlexPlayResult:
+    """Fælles opslag for `play_on_shield`/`show_on_shield`: bekræfter Shield
+    er konfigureret, dokumentet findes, og det kan matches i Plex. Genbruger
+    det samme matchnings-index som badge/afspil-link (feature #88) — den
+    samme regel for hvilket Plex-element der hører til vores film/serie skal
+    gælde alle tre veje, ellers kunne "ligger i Plex" og "kan afspilles/vises
+    på Shield" komme til at være uenige om samme titel. Returnerer enten
+    `(rating_key, machine_identifier)` eller et færdigt fejlsvar."""
     if not settings.plex_shield_client_identifier:
         return PlexPlayResult(
             ok=False,
@@ -329,8 +323,44 @@ async def play_on_shield(db: AsyncIOMotorDatabase, kind: str, item_id: str) -> P
     if item is None:
         return PlexPlayResult(ok=False, message="Findes ikke i Plex.")
 
+    return item.rating_key, machine_identifier
+
+
+async def play_on_shield(db: AsyncIOMotorDatabase, kind: str, item_id: str) -> PlexPlayResult:
+    """Feature #178 (Jan: "når man trykker på vis i plex så er option at
+    starte den i plex på shield der også"). Direkte `playMedia` (`plex_client.
+    play_on_client`) — bekræftet fungerende på Jans udstyr, sender
+    `directPlay=1`/`directStream=1` for at bede PMS forsøge direkte
+    afspilning. Se `show_on_shield` for den alternative, valgfri
+    `mirror/details`-vej (kun til test, se dens docstring)."""
+    resolved = await _resolve_for_shield(db, kind, item_id)
+    if isinstance(resolved, PlexPlayResult):
+        return resolved
+    rating_key, machine_identifier = resolved
+
     ok, message = await plex_client.play_on_client(
-        rating_key=item.rating_key,
+        rating_key=rating_key,
+        server_machine_identifier=machine_identifier,
+        client_identifier=settings.plex_shield_client_identifier,
+    )
+    return PlexPlayResult(ok=ok, message=message)
+
+
+async def show_on_shield(db: AsyncIOMotorDatabase, kind: str, item_id: str) -> PlexPlayResult:
+    """2026-08-19 (Jan, efter research bekræftede hvorfor `mirror/details`
+    ikke virkede: "lave igen en knap mere til 'vis i plex' sådan vi kan
+    teste på den funktion igen ... jeg se på om der skulle være
+    opdateringer til plex klient") — genindfører `mirror/details`
+    (`plex_client.navigate_client_to_media`) som en SEPARAT, valgfri
+    test-knap ved siden af `play_on_shield`, ikke en erstatning for den.
+    Se `navigate_client_to_media`s docstring for hele baggrunden."""
+    resolved = await _resolve_for_shield(db, kind, item_id)
+    if isinstance(resolved, PlexPlayResult):
+        return resolved
+    rating_key, machine_identifier = resolved
+
+    ok, message = await plex_client.navigate_client_to_media(
+        rating_key=rating_key,
         server_machine_identifier=machine_identifier,
         client_identifier=settings.plex_shield_client_identifier,
     )

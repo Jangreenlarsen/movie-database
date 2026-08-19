@@ -104,8 +104,31 @@ async def play_on_shield(
     titlens side i stedet for at afspille direkte) blev rullet tilbage —
     Android TV-Plex-klienten reagerede slet ikke på kommandoen, selvom PMS
     tog imod den. Starter derfor stadig afspilningen direkte
-    (`plex_client.play_on_client`, `playMedia` + `directPlay`/`directStream`)."""
+    (`plex_client.play_on_client`, `playMedia` + `directPlay`/`directStream`).
+    Se `/show-on-shield` nedenfor for en separat, genindført test-knap til
+    netop `mirror/details`."""
     return await plex_service.play_on_shield(db, payload.kind, payload.item_id)
+
+
+@router.post(
+    "/show-on-shield", response_model=PlexPlayResult, dependencies=[Depends(require_admin)]
+)
+async def show_on_shield(
+    payload: PlexPlayOnShieldRequest,
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """2026-08-19 (Jan: "lave igen en knap mere til 'vis i plex' sådan vi
+    kan teste på den funktion igen sammen med de andre, jeg se på om der
+    skulle være opdateringer til plex klient") — genindfører `mirror/details`
+    (navigér Shielden hen til titlens side, uden at starte afspilningen) som
+    en separat, tydeligt mærket test-knap ved siden af `/play-on-shield`,
+    ikke en erstatning for den. Research bekræftede hvorfor den fejlede
+    første gang: `navigation`/`mirror` er en VALGFRI Companion-kategori
+    ("Players MAY choose to not implement navigation"), i modsætning til
+    `playback` (obligatorisk) som `/play-on-shield` bruger. Se
+    `plex_client.navigate_client_to_media`s docstring for hele baggrunden.
+    **Kræver admin**, samme afgrænsning som ovenfor."""
+    return await plex_service.show_on_shield(db, payload.kind, payload.item_id)
 
 
 @router.post(

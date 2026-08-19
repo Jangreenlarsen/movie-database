@@ -189,6 +189,7 @@ Begge tabeller opdateres når en feature tilføjes (jf. CLAUDE.md regel 2).
 | 178 | Afspil direkte på Nvidia Shield TV Pro fra "Vis i Plex" | done | 0.152.0 |
 | 179 | "Afspil på Shield TV" som en rigtig start/stop-toggle, side om side med "Afspil i Plex" | done | 0.153.0 |
 | 180 | Pr.-bruger til/fra for "Afspil i Plex"-linket, styret fra Indstillinger → Brugere | done | 0.154.0 |
+| 181 | Automatisk periodisk scan af Plex for nye film/serier (admin til/fra + konfigurerbart interval) | done | 0.155.0 |
 
 ---
 

@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../api/client";
 import {
   PasswordPolicySection,
+  PlexAutoImportSection,
   PlexShieldSettingsRow,
   ScreeningRequestPolicySection,
   UsersSection,
@@ -321,6 +322,86 @@ describe("ScreeningRequestPolicySection (feature #177)", () => {
     await user.click(screen.getByRole("button", { name: "Gem" }));
 
     expect(await screen.findByText("Serverfejl")).toBeInTheDocument();
+  });
+});
+
+/**
+ * Feature #181 — automatisk periodisk scan af Plex for nye film/serier.
+ * Samme testværdige begrundelse som ScreeningRequestPolicySection ovenfor:
+ * den indlæste politik (til/fra + interval) skal reelt afspejles, en
+ * gemning skal sende de rigtige felter, og en fejl skal vises — ikke
+ * sluges.
+ */
+describe("PlexAutoImportSection (feature #181)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("indlæser og viser den nuværende politik", async () => {
+    vi.spyOn(api, "getPlexAutoImportPolicy").mockResolvedValue({
+      plex_auto_import_enabled: true,
+      plex_auto_import_interval_minutes: 360,
+    });
+    render(<PlexAutoImportSection />);
+
+    expect(
+      await screen.findByRole("checkbox", { name: "Kør automatisk scan" })
+    ).toBeChecked();
+    expect(screen.getByLabelText(/Interval \(minutter\)/)).toHaveValue(360);
+    expect(screen.getByText("≈ hver 6. time")).toBeInTheDocument();
+  });
+
+  it("gemmer ændringer og bekræfter det", async () => {
+    vi.spyOn(api, "getPlexAutoImportPolicy").mockResolvedValue({
+      plex_auto_import_enabled: false,
+      plex_auto_import_interval_minutes: 360,
+    });
+    const updateSpy = vi.spyOn(api, "updatePlexAutoImportPolicy").mockResolvedValue({
+      plex_auto_import_enabled: true,
+      plex_auto_import_interval_minutes: 120,
+    });
+    const user = userEvent.setup();
+
+    render(<PlexAutoImportSection />);
+    const checkbox = await screen.findByRole("checkbox", { name: "Kør automatisk scan" });
+    expect(checkbox).not.toBeChecked();
+
+    await user.click(checkbox);
+    const intervalInput = screen.getByLabelText(/Interval \(minutter\)/);
+    await user.clear(intervalInput);
+    await user.type(intervalInput, "120");
+    await user.click(screen.getByRole("button", { name: "Gem" }));
+
+    await waitFor(() =>
+      expect(updateSpy).toHaveBeenCalledWith({
+        plex_auto_import_enabled: true,
+        plex_auto_import_interval_minutes: 120,
+      })
+    );
+    expect(await screen.findByText("Gemt!")).toBeInTheDocument();
+    expect(screen.getByText("≈ hver 2. time")).toBeInTheDocument();
+  });
+
+  it("viser backend-fejlbeskeden ved en mislykket gemning", async () => {
+    vi.spyOn(api, "getPlexAutoImportPolicy").mockResolvedValue({
+      plex_auto_import_enabled: false,
+      plex_auto_import_interval_minutes: 360,
+    });
+    vi.spyOn(api, "updatePlexAutoImportPolicy").mockRejectedValue(new Error("Serverfejl"));
+    const user = userEvent.setup();
+
+    render(<PlexAutoImportSection />);
+    await screen.findByRole("checkbox", { name: "Kør automatisk scan" });
+    await user.click(screen.getByRole("button", { name: "Gem" }));
+
+    expect(await screen.findByText("Serverfejl")).toBeInTheDocument();
+  });
+
+  it("viser en fejl hvis politikken ikke kan hentes", async () => {
+    vi.spyOn(api, "getPlexAutoImportPolicy").mockRejectedValue(new Error("net error"));
+    render(<PlexAutoImportSection />);
+
+    expect(await screen.findByText("Kunne ikke hente indstillingen.")).toBeInTheDocument();
   });
 });
 

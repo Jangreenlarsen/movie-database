@@ -126,3 +126,22 @@ class ScreeningRequestPolicy(BaseModel):
 
 class ScreeningRequestPolicyUpdate(BaseModel):
     require_preferred_at_for_guests: bool | None = None
+
+
+# Feature #181 — automatisk periodisk scan af Plex for nye film/serier
+# (Jan: "jeg tro tilgengæld at vi skal have en automatisk scan af plex
+# media server for ny film og tv serie, i dag er det en manual funktion").
+# Samme lille model-familie-mønster som PasswordPolicy/ScreeningRequestPolicy
+# ovenfor. Den eksisterende manuelle "Importér fra Plex"-knap (feature #90)
+# forbliver uændret ved siden af — denne styrer kun baggrunds-loopet.
+class PlexAutoImportPolicy(BaseModel):
+    plex_auto_import_enabled: bool
+    plex_auto_import_interval_minutes: int
+
+
+class PlexAutoImportPolicyUpdate(BaseModel):
+    plex_auto_import_enabled: bool | None = None
+    # 15 min til 7 dage — sanity-grænser, ikke en nøje afstemt værdi; formålet
+    # er blot at forhindre en tastefejl (0 eller et enormt tal) i at give en
+    # meningsløs løkke.
+    plex_auto_import_interval_minutes: int | None = Field(default=None, ge=15, le=10080)

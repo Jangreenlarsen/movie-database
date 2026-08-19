@@ -23,6 +23,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
 from app.core.errors import TmdbNotFoundError, TmdbRateLimitedError, TmdbUnavailableError
+from app.db import get_database
 from app.integrations import plex_client, tmdb_client
 from app.integrations.plex_client import PlexFetchResult, PlexItem
 from app.models.movie import MediaType, MovieCreate, MovieFormat
@@ -41,7 +42,7 @@ from app.models.plex import (
 )
 from app.models.tv_show import TvShowCreate
 from app.repositories import movie_repository, tv_show_repository
-from app.services import movie_service, tv_show_service
+from app.services import audit_log_service, movie_service, tv_show_service
 
 logger = logging.getLogger("moviedb")
 
@@ -648,6 +649,78 @@ async def import_from_plex(
         " (afbrudt af rate-limit)" if result.stopped_early else "",
     )
     return result
+
+
+# Feature #181 (Jan: "jeg tro tilgengæld at vi skal have en automatisk scan
+# af plex media server for ny film og tv serie, i dag er det en manual
+# funktion"). Syntetisk aktør-navn til automatisk-oprettede poster og
+# audit-log-entries — samme "gemmes kun som ren tekst, ingen FK"-princip som
+# `registered_by`/`owner` allerede bruger (se models/backup.py's note).
+_AUTO_IMPORT_ACTOR = "plex-auto-sync"
+
+
+async def _run_one_auto_import_cycle(db: AsyncIOMotorDatabase) -> None:
+    """Selve arbejdet for ÉN scan — udtrukket fra `run_auto_import_loop`
+    nedenfor, så det kan testes isoleret uden `asyncio.sleep`/den uendelige
+    løkke. Antager kaldstedet allerede har tjekket
+    `settings.plex_auto_import_enabled`.
+
+    Fejl her må ALDRIG vælte hele appen — samme best-effort-filosofi som
+    resten af Plex-integrationen (se modulets docstring): fanges bredt og
+    logges, uden at kaste videre."""
+    try:
+        result = await import_from_plex(
+            db,
+            PlexImportRequest(dry_run=False, include_movies=True, include_shows=True),
+            _AUTO_IMPORT_ACTOR,
+        )
+    except Exception:
+        logger.exception("Plex auto-import: uventet fejl under baggrunds-scan")
+        return
+
+    if not result.ok:
+        logger.warning("Plex auto-import: scan fejlede (%s)", result.error)
+        return
+
+    # Kun logget når der reelt skete noget — ellers ville audit-loggen
+    # druknes i "0 oprettet"-entries ved hver eneste interval, hele tiden.
+    if result.imported:
+        await audit_log_service.record(
+            db,
+            _AUTO_IMPORT_ACTOR,
+            "plex.imported",
+            f"Automatisk scan: {len(result.imported)} oprettet, "
+            f"{result.already_present} fandtes i forvejen",
+        )
+
+
+async def run_auto_import_loop() -> None:
+    """Baggrunds-task startet én gang fra `main.py`s lifespan og kørt i hele
+    appens levetid. Genbruger `import_from_plex` uændret — den eksisterende
+    manuelle "Importér fra Plex"-knap (feature #90) forbliver urørt ved
+    siden af, denne styrer kun om/hvor tit den samme handling også sker af
+    sig selv.
+
+    Intervallet og til/fra-kontakten (`settings.plex_auto_import_*`) læses
+    friskt hver iteration i stedet for én gang ved opstart — samme
+    "settings er en levende singleton"-princip som resten af appen, så en
+    admin-ændring via `PATCH /api/settings/plex-auto-import` slår igennem
+    uden genstart. Bevidst intet scan lige ved opstart: en admin der
+    aktiverer funktionen kan allerede trykke den eksisterende manuelle knap
+    for en øjeblikkelig scan, og et automatisk scan ved hver app-genstart
+    ville betyde flere unødvendige Plex-kald pr. dag hver gang serveren
+    genstartes (fx ved en deploy). `asyncio.CancelledError` (ved
+    app-nedlukning) fanges bevidst IKKE og får lov at forplante sig
+    normalt."""
+    db = get_database()
+    while True:
+        interval_minutes = max(settings.plex_auto_import_interval_minutes, 1)
+        await asyncio.sleep(interval_minutes * 60)
+
+        if not settings.plex_auto_import_enabled:
+            continue
+
+        await _run_one_auto_import_cycle(db)
 
 
 async def get_available_ids(db: AsyncIOMotorDatabase, kind: str) -> set[str] | None:

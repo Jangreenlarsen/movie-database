@@ -117,6 +117,7 @@ export default function Settings({ user, onSettingsChanged }) {
           <SystemSettingsSection />
           <PlexDiagnosticsSection />
           <PlexImportSection />
+          <PlexAutoImportSection />
         </>
       )}
 
@@ -2940,6 +2941,104 @@ export function UsersSection({ currentUserId }) {
 // Feature #177 — admin-indstilling: kræv dato/tidspunkt for guests ved
 // visningsønsker, til/fra. Standard/admin er ikke omfattet (håndhævet
 // unconditionally i backend), så teksten her taler bevidst kun om gæster.
+// Feature #181 (Jan: "jeg tro tilgengæld at vi skal have en automatisk
+// scan af plex media server for ny film og tv serie, i dag er det en
+// manual funktion"). Samme lille sektions-mønster som
+// ScreeningRequestPolicySection nedenfor, men med et ekstra numerisk felt
+// for intervallet. Den eksisterende manuelle "Importér fra Plex"-knap
+// (PlexImportSection ovenfor) forbliver urørt ved siden af.
+export function PlexAutoImportSection() {
+  const t = useT();
+  const [loadStatus, setLoadStatus] = useState("loading");
+  const [enabled, setEnabled] = useState(false);
+  const [intervalMinutes, setIntervalMinutes] = useState(360);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState(null);
+
+  function load() {
+    setLoadStatus("loading");
+    api
+      .getPlexAutoImportPolicy()
+      .then((data) => {
+        setEnabled(data.plex_auto_import_enabled);
+        setIntervalMinutes(data.plex_auto_import_interval_minutes);
+        setLoadStatus("ready");
+      })
+      .catch(() => setLoadStatus("error"));
+  }
+
+  useEffect(load, []);
+
+  async function submit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const updated = await api.updatePlexAutoImportPolicy({
+        plex_auto_import_enabled: enabled,
+        plex_auto_import_interval_minutes: intervalMinutes,
+      });
+      setEnabled(updated.plex_auto_import_enabled);
+      setIntervalMinutes(updated.plex_auto_import_interval_minutes);
+      setSaved(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="card settings-section">
+      <h2>{t("plexAutoImport.heading")}</h2>
+      <p className="muted">{t("plexAutoImport.description")}</p>
+
+      {loadStatus === "loading" && <p className="muted">{t("common.loading")}</p>}
+      {loadStatus === "error" && (
+        <div className="banner banner-error">{t("plexAutoImport.loadError")}</div>
+      )}
+
+      {loadStatus === "ready" && (
+        <form className="serial-config-form" onSubmit={submit}>
+          <label className="serial-reuse-toggle">
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(e) => setEnabled(e.target.checked)}
+            />
+            {t("plexAutoImport.enabled")}
+          </label>
+
+          <label>
+            {t("plexAutoImport.intervalLabel")}{" "}
+            <span className="muted">
+              {t("plexAutoImport.intervalHint", {
+                hours: (intervalMinutes / 60).toFixed(1).replace(/\.0$/, ""),
+              })}
+            </span>
+            <input
+              type="number"
+              min={15}
+              max={10080}
+              value={intervalMinutes}
+              onChange={(e) => setIntervalMinutes(Number(e.target.value))}
+            />
+          </label>
+
+          {error && <div className="banner banner-error">{error}</div>}
+          {saved && <div className="banner banner-info">{t("serial.saved")}</div>}
+
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            {t(saving ? "common.saving" : "common.save")}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 export function ScreeningRequestPolicySection() {
   const t = useT();
   const [loadStatus, setLoadStatus] = useState("loading");

@@ -164,7 +164,7 @@
   "plex.statusError": "Could not load Plex status: {message}",
   "plex.notFound": "Not found in Plex.",
   "plex.noLink": "▶ Available in Plex (could not build a playback link).",
-  "plex.play": "▶ Play in Plex",
+  "plex.play": "▶ Play in Plex Locally",
   "plex.shieldPlay": "📺 Play on Shield TV",
   "plex.shieldSending": "Starting...",
   "plex.shieldStop": "⏹ Stop Shield TV",

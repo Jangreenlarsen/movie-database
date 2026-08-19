@@ -164,7 +164,7 @@
   "plex.statusError": "Plex-status kunne ikke hentes: {message}",
   "plex.notFound": "Ikke fundet i Plex.",
   "plex.noLink": "▶ Ligger i Plex (kunne ikke bygge afspilnings-link).",
-  "plex.play": "▶ Afspil i Plex",
+  "plex.play": "▶ Afspil i Plex lokalt",
   "plex.shieldPlay": "📺 Afspil på Shield TV",
   "plex.shieldSending": "Starter...",
   "plex.shieldStop": "⏹ Stop Shield TV",

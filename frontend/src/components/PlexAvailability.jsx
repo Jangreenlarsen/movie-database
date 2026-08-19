@@ -35,6 +35,12 @@ export function PlexCardBadge({ availability }) {
  * at trykke på for at få svaret — status er allerede kendt når vinduet
  * åbnes; linket er kun til at *afspille* med.
  *
+ * 2026-08-19 — teksten præciseret til "Afspil i Plex lokalt" (Jan), for at
+ * skelne tydeligt fra "Afspil på Shield TV" ved siden af: denne knap åbner
+ * Plex Web i en ny fane på DENNE enhed, ikke på Shielden. Beholder sin
+ * oprindelige orange `btn-primary`-farve — kun de to Shield-knapper i
+ * `PlexShieldPlayButton` nedenfor blev ændret til grøn.
+ *
  * Opfølgning (Jan: "sæt op i users styring hvem kan se og bruge vis iplex/
  * spil i plex i detajle for film/tv") — pr.-bruger til/fra, ikke rolle-
  * baseret. Er `plex.playAllowed` false (denne bruger er slået fra af en
@@ -118,6 +124,11 @@ export function PlexPlayLink({ availability, plex }) {
  * en kendt "afspiller nu"-tilstand (vi ved ikke om/hvornår brugeren rent
  * faktisk trykker Play på selve apparatet), så den har sin egen simple
  * busy/besked-tilstand i stedet for at dele toggle'ens `phase`.
+ *
+ * 2026-08-19 — begge Shield-knapper (afspil/stop-toggle'en og "Vis")
+ * skiftet fra appens almindelige grå `btn` til den nye grønne `btn-success`
+ * (Jan: "sat farven Grøn på knapperne i de to andre plex funktioner"), for
+ * visuelt at skille dem fra `PlexPlayLink`s orange `btn-primary` ovenfor.
  */
 export function PlexShieldPlayButton({
   availability,
@@ -198,7 +209,7 @@ export function PlexShieldPlayButton({
       <div className="plex-shield-buttons">
         <button
           type="button"
-          className={isPlaying ? "btn btn-primary" : "btn"}
+          className="btn btn-success"
           onClick={isPlaying ? stop : play}
           disabled={isBusy}
         >
@@ -212,7 +223,7 @@ export function PlexShieldPlayButton({
                   : "plex.shieldPlay"
           )}
         </button>
-        <button type="button" className="btn" onClick={show} disabled={showBusy}>
+        <button type="button" className="btn btn-success" onClick={show} disabled={showBusy}>
           {t(showBusy ? "plex.shieldShowing" : "plex.shieldShow")}
         </button>
       </div>

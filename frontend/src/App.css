@@ -204,6 +204,16 @@
   box-shadow: var(--shadow-sm);
 }
 
+.btn-success {
+  background: var(--success);
+  border-color: var(--success);
+  color: var(--success-contrast);
+}
+
+.btn-success:hover {
+  box-shadow: var(--shadow-sm);
+}
+
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;

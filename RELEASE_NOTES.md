@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.154.3 (build 0216) — 2026-08-19
+
+- **"Afspil i Plex" hedder nu "Afspil i Plex lokalt"**, for tydeligt at skelne fra Shield-knapperne.
+- **De to Shield-knapper er nu grønne** i stedet for grå, så de skiller sig visuelt ud fra det lokale afspilningslink.
+
 ## v0.154.2 (build 0215) — 2026-08-19
 
 - **Ny testknap: "🧪 Vis på Shield TV (test)"** ved siden af de to eksisterende Shield-knapper. Den forsøger at hoppe Shielden hen til titlens side i stedet for at afspille direkte — virkede ikke ved sidste forsøg (Android TV-appen understøtter det tilsyneladende ikke endnu), men er nu en selvstændig knap, så den nemt kan afprøves igen hvis en Shield-app-opdatering ændrer det.

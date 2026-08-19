@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.154.3 build 0216] — 2026-08-19 — fix: "Afspil i Plex lokalt" + grøn farve på Shield-knapperne (FEATURES.md #178/#179)
+
+Jan: *"ændre '▶ Afspil i Plex' til '▶ Afspil i Plex lokalt' og sat farven Grøn på knapperne i de to andre plex funktioner"*. Præciserer teksten på det oprindelige Plex Web-link (åbner på DENNE enhed, ikke Shielden), og giver de to Shield-knapper (afspil/stop-toggle'en + den nye "Vis"-testknap) en visuelt tydelig grøn farve, adskilt fra linkets oprindelige orange.
+
+Ny `--success`/`--success-contrast`/`--success-soft`-tokensæt i `index.css` (samme tema-bevidste mønster som det eksisterende `--danger`-sæt — lys/mørk-variant, samt `:root`/`[data-theme]`-varianterne), og en ny `.btn-success`-klasse i `App.css` (mirrorer `.btn-primary`s opbygning). `PlexPlayLink` beholder sin oprindelige `btn-primary`; begge knapper i `PlexShieldPlayButton` skiftet til `btn-success`.
+
+Berørte filer: `frontend/src/index.css`, `frontend/src/App.css`, `frontend/src/components/PlexAvailability.jsx`, `frontend/src/components/PlexAvailability.test.jsx`, `frontend/src/i18n/da.json`/`en.json`. Ingen backend-ændring. Tests: 1 eksisterende frontend-test opdateret til den nye tekst. Fuld frontend-suite (118) grøn. Set i browser (regel 18, Playwright med mocket Plex-svar, computed-style-sammenligning af de tre knappers baggrundsfarve): bekræftede "Afspil i Plex lokalt" forbliver orange (`rgb(242, 169, 59)`), og begge Shield-knapper deler samme, tydeligt anderledes grønne farve (`rgb(74, 222, 128)`).
+
 ## [0.154.2 build 0215] — 2026-08-19 — feature: genindfør "Vis på Shield TV" som separat test-knap + commandID på alle Companion-kald (FEATURES.md #178/#179)
 
 Jan bad om at undersøge hvordan andre løser Plex-klient-fjernstyring — research i Plex' egen Companion-protokolspecifikation (plexinc/plex-media-player-wiki) gav en autoritativ forklaring på hvorfor `mirror/details`-forsøget fra 2026-08-18 fejlede: klient-funktioner er inddelt i `timeline`/`playback` (**obligatorisk** for enhver Plex-klient) og `navigation`/`mirror` (**valgfrit** — "Players MAY choose to not implement navigation"). Android TV-Plex-appen har tilsyneladende aldrig implementeret navigation-delen; PMS' 200-svar var kun en bekræftelse på at kommandoen blev *modtaget og videresendt*, ikke at klienten *handlede* på den.

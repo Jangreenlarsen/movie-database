@@ -45,7 +45,7 @@ describe("PlexPlayLink — pr.-bruger adgang (feature #178-opfølgning)", () => 
         plex={{ status: "ready", playAllowed: true }}
       />
     );
-    expect(screen.getByRole("link", { name: "▶ Afspil i Plex" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "▶ Afspil i Plex lokalt" })).toBeInTheDocument();
   });
 
   it("skelner stadig det tekniske 'intet link'-tilfælde fra manglende tilladelse", () => {

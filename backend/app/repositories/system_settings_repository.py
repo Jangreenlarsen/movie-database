@@ -106,7 +106,11 @@ async def apply_screening_request_policy_update(db: AsyncIOMotorDatabase, update
 
 # Feature #181 — samme dokument, samme typede $set-only-mønster som
 # PASSWORD_POLICY_KEYS/SCREENING_REQUEST_POLICY_KEYS ovenfor.
-PLEX_AUTO_IMPORT_KEYS = ("plex_auto_import_enabled", "plex_auto_import_interval_minutes")
+PLEX_AUTO_IMPORT_KEYS = (
+    "plex_auto_import_enabled",
+    "plex_auto_import_interval_minutes",
+    "plex_import_tag",
+)
 
 
 async def get_plex_auto_import_overrides(db: AsyncIOMotorDatabase) -> dict:

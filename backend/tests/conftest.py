@@ -70,6 +70,19 @@ def _pin_screening_request_policy(monkeypatch):
     monkeypatch.setattr(settings, "require_preferred_at_for_guests", True)
 
 
+@pytest.fixture(autouse=True)
+def _pin_plex_auto_import_policy(monkeypatch):
+    """Feature #181/#182 — same isolation concern as `_pin_password_policy`
+    above. `plex_import_tag` in particular is now mutated by `import_from_plex`
+    itself (not just the PATCH endpoint) whenever a non-dry-run import runs
+    with a real (non-auto-scan) actor — without this pin, any test in
+    `test_plex.py` that imports with a custom tag would leak that tag into
+    every test running afterward, in any file, for the rest of the process."""
+    monkeypatch.setattr(settings, "plex_auto_import_enabled", False)
+    monkeypatch.setattr(settings, "plex_auto_import_interval_minutes", 360)
+    monkeypatch.setattr(settings, "plex_import_tag", "Plex-import")
+
+
 @pytest_asyncio.fixture
 async def db():
     test_db = AsyncMongoMockClient()["test_moviedb"]

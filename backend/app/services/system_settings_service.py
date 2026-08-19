@@ -178,6 +178,7 @@ def _plex_auto_import_policy_from_settings() -> PlexAutoImportPolicy:
     return PlexAutoImportPolicy(
         plex_auto_import_enabled=settings.plex_auto_import_enabled,
         plex_auto_import_interval_minutes=settings.plex_auto_import_interval_minutes,
+        plex_import_tag=settings.plex_import_tag,
     )
 
 

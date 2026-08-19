@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.156.0 (build 0218) — 2026-08-19
+
+- **"Importér fra Plex" og "Automatisk Plex-scan" er flyttet** fra Eksterne API-nøgler til Indstillinger → Bibliotek, ved siden af de andre biblioteks-vedligeholdelsesværktøjer.
+- **Auto-scannet bruger nu samme tag som den manuelle import.** Sæt tagget under "Importér fra Plex" (fx ved din næste rigtige import), så bruger den automatiske scan fremover det samme — i stedet for altid at falde tilbage til "Plex-import".
+
 ## v0.155.0 (build 0217) — 2026-08-19
 
 - **Plex kan nu scanne sig selv automatisk for nye film/serier**, i stedet for kun manuelt. Slås til under Indstillinger → Eksterne API-nøgler → "Automatisk Plex-scan", med et selvvalgt interval (standard hver 6. time). Den eksisterende manuelle "Importér fra Plex"-knap virker stadig som før, ved siden af.

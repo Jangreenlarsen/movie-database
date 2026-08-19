@@ -13,6 +13,7 @@ import { api } from "../api/client";
 import {
   PasswordPolicySection,
   PlexAutoImportSection,
+  PlexImportSection,
   PlexShieldSettingsRow,
   ScreeningRequestPolicySection,
   UsersSection,
@@ -322,6 +323,43 @@ describe("ScreeningRequestPolicySection (feature #177)", () => {
     await user.click(screen.getByRole("button", { name: "Gem" }));
 
     expect(await screen.findByText("Serverfejl")).toBeInTheDocument();
+  });
+});
+
+/**
+ * Feature #182 — "Importér fra Plex"s tag-felt er den delte definition som
+ * den automatiske scan (feature #181) også bruger (Jan: "søger for at tag
+ * på importerede i auto-scan plex er det tag som er difineret under
+ * 'importer fra plex'"). Det testværdige (regel 19): feltet skal indlæse
+ * den faktisk gemte værdi ved åbning, ikke altid nulstille til den
+ * hårdkodede "Plex-import"-default, og skal falde tilbage til defaulten
+ * hvis indlæsningen fejler i stedet for at crashe eller vise tomt.
+ */
+describe("PlexImportSection tag-indlæsning (feature #182)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("indlæser det faktisk gemte tag i stedet for hardkodet default", async () => {
+    vi.spyOn(api, "getPlexAutoImportPolicy").mockResolvedValue({
+      plex_auto_import_enabled: false,
+      plex_auto_import_interval_minutes: 360,
+      plex_import_tag: "Fra-Plex-server",
+    });
+
+    render(<PlexImportSection />);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/Tag på importerede/)).toHaveValue("Fra-Plex-server")
+    );
+  });
+
+  it("falder tilbage til standard-tagget hvis indlæsningen fejler", async () => {
+    vi.spyOn(api, "getPlexAutoImportPolicy").mockRejectedValue(new Error("net error"));
+
+    render(<PlexImportSection />);
+
+    expect(await screen.findByLabelText(/Tag på importerede/)).toHaveValue("Plex-import");
   });
 });
 

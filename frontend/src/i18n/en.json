@@ -682,7 +682,7 @@
   "plexImport.includeMovies": "Movies",
   "plexImport.includeShows": "TV shows",
   "plexImport.tagLabel": "Tag on imported items",
-  "plexImport.tagHint": "Applied to everything created, so you can filter the result in the library afterwards. Empty field = no tag.",
+  "plexImport.tagHint": "Applied to everything created, so you can filter the result in the library afterwards. Empty field = no tag. Also used by the automatic Plex scan below.",
   "plexImport.preview": "Show what would be imported",
   "plexImport.previewing": "Checking...",
   "plexImport.run": "Import {count} now",

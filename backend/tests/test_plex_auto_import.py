@@ -8,6 +8,8 @@ interval, samt en til/fra-kontakt ved siden af den eksisterende manuelle
 from app.core.config import settings
 from app.integrations import plex_client
 from app.integrations.plex_client import PlexFetchResult, PlexItem, PlexSectionResult
+from app.models.plex import PlexImportRequest
+from app.repositories import system_settings_repository
 from app.services import plex_service
 
 
@@ -49,6 +51,7 @@ async def test_default_policy_is_disabled_with_a_six_hour_interval(client):
     body = response.json()
     assert body["plex_auto_import_enabled"] is False
     assert body["plex_auto_import_interval_minutes"] == 360
+    assert body["plex_import_tag"] == "Plex-import"
 
 
 async def test_get_and_patch_require_admin(client, monkeypatch):
@@ -176,3 +179,92 @@ async def test_one_cycle_never_raises_on_unexpected_errors(db, monkeypatch):
 
     # Skal ikke kaste videre.
     await plex_service._run_one_auto_import_cycle(db)
+
+
+# --- feature #182: delt tag mellem manuel import og auto-scan ---------------
+#
+# Jan: "søger for at tag på importerede i auto-scan plex er det tag som er
+# difineret under 'importer fra plex'". `_configure`/`_fake_library` m.fl.
+# genbruges fra ovenfor.
+
+
+async def _import_one_movie(db, monkeypatch, tag, dry_run, registered_by="jan"):
+    """Fælles opsætning for et enkelt-element-import — genbruges af flere af
+    testene nedenfor med forskellige `tag`/`dry_run`/`registered_by`."""
+    _configure(monkeypatch)
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
+
+    async def fake_resolve_tmdb_id(kind, title, year):
+        return 603
+
+    monkeypatch.setattr(plex_service, "_resolve_tmdb_id", fake_resolve_tmdb_id)
+
+    async def fake_create_imported(db, item, tmdb_id, tags, registered_by):
+        return "D-1080"
+
+    monkeypatch.setattr(plex_service, "_create_imported", fake_create_imported)
+
+    return await plex_service.import_from_plex(
+        db,
+        PlexImportRequest(dry_run=dry_run, include_movies=True, include_shows=False, tag=tag),
+        registered_by,
+    )
+
+
+async def test_a_real_manual_import_persists_its_tag_as_the_shared_definition(client, db, monkeypatch):
+    result = await _import_one_movie(db, monkeypatch, tag="Fra-Plex-server", dry_run=False)
+    assert result.ok is True
+    assert settings.plex_import_tag == "Fra-Plex-server"
+
+    # Overlever også en "frisk" læsning fra Mongo, ikke kun in-process settings.
+    overrides = await system_settings_repository.get_plex_auto_import_overrides(db)
+    assert overrides["plex_import_tag"] == "Fra-Plex-server"
+
+    response = await client.get("/api/settings/plex-auto-import")
+    assert response.json()["plex_import_tag"] == "Fra-Plex-server"
+
+
+async def test_a_preview_does_not_persist_its_tag(db, monkeypatch):
+    """En forhåndsvisning (`dry_run: true`) opretter intet — den skal derfor
+    heller ikke ændre den delte definition, kun en rigtig import gør."""
+    await _import_one_movie(db, monkeypatch, tag="Kun-en-preview", dry_run=True)
+    assert settings.plex_import_tag == "Plex-import"
+
+
+async def test_auto_scan_itself_does_not_overwrite_the_shared_definition(db, monkeypatch):
+    """Auto-scan-loopet importerer også med `dry_run: false`, men er ikke en
+    admin der aktivt definerer et nyt tag — kun en rigtig, admin-udført
+    import (anden `registered_by` end auto-scan-aktøren) må skrive den
+    delte definition."""
+    await _import_one_movie(
+        db, monkeypatch, tag="Plex-import", dry_run=False, registered_by=plex_service._AUTO_IMPORT_ACTOR
+    )
+    overrides = await system_settings_repository.get_plex_auto_import_overrides(db)
+    assert "plex_import_tag" not in overrides
+
+
+async def test_auto_scan_cycle_uses_the_shared_tag(db, monkeypatch):
+    """`_run_one_auto_import_cycle` bygger selv sin `PlexImportRequest` —
+    den skal bruge den delte `settings.plex_import_tag`, ikke modellens egen
+    hårdkodede default, så en admin der har sat et andet tag under "Importér
+    fra Plex" også får det på auto-scannede poster."""
+    monkeypatch.setattr(settings, "plex_import_tag", "Mit-eget-tag")
+    _configure(monkeypatch)
+    _patch_library(monkeypatch, _fake_library([PlexItem("movie", "42", "The Matrix", 1999, None, None)]))
+
+    async def fake_resolve_tmdb_id(kind, title, year):
+        return 603
+
+    monkeypatch.setattr(plex_service, "_resolve_tmdb_id", fake_resolve_tmdb_id)
+
+    seen_tags = []
+
+    async def fake_create_imported(db, item, tmdb_id, tags, registered_by):
+        seen_tags.append(tags)
+        return "D-1080"
+
+    monkeypatch.setattr(plex_service, "_create_imported", fake_create_imported)
+
+    await plex_service._run_one_auto_import_cycle(db)
+
+    assert seen_tags == [["Mit-eget-tag"]]

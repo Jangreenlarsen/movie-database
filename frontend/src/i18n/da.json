@@ -682,7 +682,7 @@
   "plexImport.includeMovies": "Film",
   "plexImport.includeShows": "TV-serier",
   "plexImport.tagLabel": "Tag på importerede",
-  "plexImport.tagHint": "Sættes på alt der oprettes, så du kan filtrere resultatet frem i biblioteket bagefter. Tomt felt = intet tag.",
+  "plexImport.tagHint": "Sættes på alt der oprettes, så du kan filtrere resultatet frem i biblioteket bagefter. Tomt felt = intet tag. Bruges også af den automatiske Plex-scan nedenfor.",
   "plexImport.preview": "Vis hvad der ville blive importeret",
   "plexImport.previewing": "Undersøger...",
   "plexImport.run": "Importér {count} nu",

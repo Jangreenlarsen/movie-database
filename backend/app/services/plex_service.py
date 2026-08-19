@@ -41,7 +41,7 @@ from app.models.plex import (
     PlexUnmatchedItem,
 )
 from app.models.tv_show import TvShowCreate
-from app.repositories import movie_repository, tv_show_repository
+from app.repositories import movie_repository, system_settings_repository, tv_show_repository
 from app.services import audit_log_service, movie_service, tv_show_service
 
 logger = logging.getLogger("moviedb")
@@ -648,6 +648,18 @@ async def import_from_plex(
         len(result.failed),
         " (afbrudt af rate-limit)" if result.stopped_early else "",
     )
+
+    # Jan: "søger for at tag på importerede i auto-scan plex er det tag som
+    # er difineret under 'importer fra plex'". En rigtig (ikke dry-run) import
+    # udført af en admin — ikke auto-scan-loopet selv, se `_AUTO_IMPORT_ACTOR`
+    # nedenfor — opdaterer den delte definition, så det næste auto-scan
+    # bruger samme tag uden at admin skal indstille det to steder.
+    if not request.dry_run and registered_by != _AUTO_IMPORT_ACTOR:
+        await system_settings_repository.apply_plex_auto_import_update(
+            db, {"plex_import_tag": request.tag}
+        )
+        settings.plex_import_tag = request.tag
+
     return result
 
 
@@ -671,7 +683,12 @@ async def _run_one_auto_import_cycle(db: AsyncIOMotorDatabase) -> None:
     try:
         result = await import_from_plex(
             db,
-            PlexImportRequest(dry_run=False, include_movies=True, include_shows=True),
+            PlexImportRequest(
+                dry_run=False,
+                include_movies=True,
+                include_shows=True,
+                tag=settings.plex_import_tag,
+            ),
             _AUTO_IMPORT_ACTOR,
         )
     except Exception:

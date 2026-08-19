@@ -94,6 +94,8 @@ export default function Settings({ user, onSettingsChanged }) {
               syncFn={api.syncTvShowsFromTmdb}
             />
           )}
+          {isAdmin && <PlexImportSection />}
+          {isAdmin && <PlexAutoImportSection />}
         </>
       )}
 
@@ -116,8 +118,6 @@ export default function Settings({ user, onSettingsChanged }) {
         <>
           <SystemSettingsSection />
           <PlexDiagnosticsSection />
-          <PlexImportSection />
-          <PlexAutoImportSection />
         </>
       )}
 
@@ -1677,7 +1677,7 @@ function PlexDiagnosticsSection() {
  * Begge trin rammer samme endpoint med forskellig `dry_run`, så det viste og
  * det udførte ikke kan drive fra hinanden.
  */
-function PlexImportSection() {
+export function PlexImportSection() {
   const t = useT();
   const [includeMovies, setIncludeMovies] = useState(true);
   const [includeShows, setIncludeShows] = useState(true);
@@ -1685,6 +1685,18 @@ function PlexImportSection() {
   const [status, setStatus] = useState("idle"); // idle | previewing | preview | importing | done | error
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+
+  // Jan: "søger for at tag på importerede i auto-scan plex er det tag som
+  // er difineret under 'importer fra plex'" — denne sektion definerer det
+  // delte tag, så indlæs den faktisk gældende værdi i stedet for altid at
+  // starte forfra på "Plex-import". Fejler indlæsningen, beholdes den
+  // hårdkodede default — samme fallback som feltet altid har haft.
+  useEffect(() => {
+    api
+      .getPlexAutoImportPolicy()
+      .then((policy) => setTag(policy.plex_import_tag))
+      .catch(() => {});
+  }, []);
 
   function call(dryRun) {
     setStatus(dryRun ? "previewing" : "importing");

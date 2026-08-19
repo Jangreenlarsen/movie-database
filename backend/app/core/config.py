@@ -90,6 +90,14 @@ class Settings(BaseSettings):
     # iteration af `plex_service.run_auto_import_loop`, så en ændring slår
     # igennem med det samme, uden genstart.
     plex_auto_import_interval_minutes: int = 360
+    # Delt mellem den manuelle "Importér fra Plex"-knap og auto-scan-loopet
+    # ovenfor (Jan: "søger for at tag på importerede i auto-scan plex er det
+    # tag som er difineret under 'importer fra plex'") — én fælles
+    # definition i stedet for to steder der kan drifte fra hinanden. Sat via
+    # `import_from_plex` selv (se plex_service.py) hver gang en admin (ikke
+    # auto-scan-aktøren) kører en rigtig, ikke-dry-run import — bliver
+    # dermed "den seneste faktisk brugte tag", som auto-scan derefter læser.
+    plex_import_tag: str = "Plex-import"
 
     log_level: str = "INFO"
     cors_origins: str = "http://localhost:5173"

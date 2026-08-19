@@ -137,6 +137,8 @@ class ScreeningRequestPolicyUpdate(BaseModel):
 class PlexAutoImportPolicy(BaseModel):
     plex_auto_import_enabled: bool
     plex_auto_import_interval_minutes: int
+    # Delt med den manuelle "Importér fra Plex"-knap — se config.pys note.
+    plex_import_tag: str
 
 
 class PlexAutoImportPolicyUpdate(BaseModel):
@@ -145,3 +147,4 @@ class PlexAutoImportPolicyUpdate(BaseModel):
     # er blot at forhindre en tastefejl (0 eller et enormt tal) i at give en
     # meningsløs løkke.
     plex_auto_import_interval_minutes: int | None = Field(default=None, ge=15, le=10080)
+    plex_import_tag: str | None = Field(default=None, max_length=60)

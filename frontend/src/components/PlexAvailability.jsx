@@ -100,14 +100,31 @@ export function PlexPlayLink({ availability, plex }) {
  * admin users") — kun admin ser knappen; `isAdmin` gates den her, og
  * backend håndhæver det samme uafhængigt (`require_admin` på begge
  * endpoints), så en gæt-og-kald udenom UI'et heller ikke virker.
+ *
+ * Opfølgning (Jan: "hvis jeg disabler 'vis i plex' skal 'afspil i plex også
+ * disablet, alt plex under detajle kort på film/tv skal ikke være
+ * syndeligt hvis plex er disablet på user") — Shield-kommandoerne krævede
+ * hidtil kun `available` (som stadig er sand for en bruger uden adgang;
+ * backend udelader kun selve `play_url`, ikke tilstedeværelsen), så en
+ * admin med sin egen `plex_play_enabled` slået fra kunne stadig se denne
+ * knap. `playAllowed` lukker det hul — samme boolean `PlexPlayLink` bruger.
  */
-export function PlexShieldPlayButton({ availability, shieldConfigured, kind, itemId, isAdmin }) {
+export function PlexShieldPlayButton({
+  availability,
+  shieldConfigured,
+  kind,
+  itemId,
+  isAdmin,
+  playAllowed,
+}) {
   const t = useT();
   const [phase, setPhase] = useState("idle"); // idle | starting | playing | stopping
   const [message, setMessage] = useState(null);
   const [isError, setIsError] = useState(false);
 
-  if (!isAdmin || !availability?.available || !shieldConfigured) return null;
+  if (!isAdmin || playAllowed === false || !availability?.available || !shieldConfigured) {
+    return null;
+  }
 
   async function play() {
     setPhase("starting");

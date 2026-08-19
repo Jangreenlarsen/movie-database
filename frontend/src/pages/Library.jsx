@@ -1591,6 +1591,7 @@ export function MovieDetailModal({
                 kind="movie"
                 itemId={movie.id}
                 isAdmin={user.role === "admin"}
+                playAllowed={plex.playAllowed}
               />
             </div>
           )}

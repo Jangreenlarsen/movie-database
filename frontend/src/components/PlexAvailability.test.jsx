@@ -110,6 +110,27 @@ describe("PlexShieldPlayButton (feature #178)", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
+  /**
+   * Jan, opfølgning 2026-08-19: "hvis jeg disabler 'vis i plex' skal
+   * 'afspil i plex også disablet, alt plex under detajle kort på film/tv
+   * skal ikke være syndeligt hvis plex er disablet på user". En admin hvis
+   * EGEN plex_play_enabled er slået fra skal heller ikke se Shield-knappen,
+   * selvom de er admin og alt andet er opfyldt.
+   */
+  it("vises ikke når playAllowed er false, selvom brugeren er admin og alt andet er opfyldt", () => {
+    render(
+      <PlexShieldPlayButton
+        availability={AVAILABLE}
+        shieldConfigured={true}
+        kind="movie"
+        itemId="m1"
+        isAdmin={true}
+        playAllowed={false}
+      />
+    );
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
   it("sender kind/id, viser succes-beskeden og skifter knappen til 'Stop'", async () => {
     const playSpy = vi
       .spyOn(api, "playOnShield")

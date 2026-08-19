@@ -1393,6 +1393,7 @@ export function TvShowDetailModal({
                 kind="show"
                 itemId={show.id}
                 isAdmin={user.role === "admin"}
+                playAllowed={plex.playAllowed}
               />
             </div>
           )}

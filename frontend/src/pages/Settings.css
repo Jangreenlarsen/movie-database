@@ -73,22 +73,24 @@
 }
 
 /* Jan: "reducér whitespace omkring users acc. i settings så vi kan se flere
-   på en skærm" — stakket gap og pr.-række padding strammet op, så flere
-   brugere er synlige uden at scrolle. */
+   på en skærm", uddybet: "reducer yderligere hvidt space i user config del
+   i settings" — stakket gap, pr.-række padding OG selve knap-/select-
+   størrelsen (den globale .btn's 9px/16px-padding var den reelle
+   flaskehals for rækkehøjden, ikke .user-row's egen padding) strammet op. */
 .user-list {
   list-style: none;
   padding: 0;
-  margin: 12px 0 0;
+  margin: 10px 0 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
 }
 
 .user-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 0;
+  gap: 6px;
+  padding: 2px 0;
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
 }
@@ -99,9 +101,22 @@
   font-weight: 600;
 }
 
+/* Knapper/select i en brugerrække er rent administrative kontroller, ikke
+   primære call-to-actions — mindre end appens almindelige .btn-størrelse er
+   fint her, og det er netop denne størrelse der afgør rækkehøjden. */
+.user-row .btn,
+.user-row select {
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+
+.user-row .role-badge {
+  margin-right: 2px;
+}
+
 @media (max-width: 640px) {
   .user-row {
-    gap: 8px;
+    gap: 6px;
   }
 }
 

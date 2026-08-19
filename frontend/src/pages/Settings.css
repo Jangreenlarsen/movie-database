@@ -267,6 +267,38 @@
   gap: 4px;
 }
 
+/* Feature #183 — AVM 70-diagnostikkens løbende hændelses-log. Fast højde +
+   lodret scroll, så en session der kører i timevis ikke presser resten af
+   siden ud af syne. Monospace, da rå protokol-linjer (`.anthem-log-raw`)
+   er tættere på maskinoutput end almindelig UI-tekst. */
+.anthem-log {
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+  max-height: 320px;
+  overflow-y: auto;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.anthem-log-time {
+  color: var(--text-muted);
+}
+
+.anthem-log-type {
+  font-weight: 600;
+}
+
+.anthem-log-raw {
+  color: var(--text-muted);
+}
+
 /* Feature #100 — én sendt besked i afsender-oversigten. Egen række frem for
    .user-row, da indholdet er flere linjer og ikke en enkelt navnelinje. */
 .message-sent-row {

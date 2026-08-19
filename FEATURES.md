@@ -191,6 +191,7 @@ Begge tabeller opdateres når en feature tilføjes (jf. CLAUDE.md regel 2).
 | 180 | Pr.-bruger til/fra for "Afspil i Plex"-linket, styret fra Indstillinger → Brugere | done | 0.154.0 |
 | 181 | Automatisk periodisk scan af Plex for nye film/serier (admin til/fra + konfigurerbart interval) | done | 0.155.0 |
 | 182 | Flyt Plex-import/auto-scan til Indstillinger → Bibliotek + delt tag mellem manuel import og auto-scan | done | 0.156.0 |
+| 183 | AVM 70-diagnostikmodul (Indstillinger → Drift): live input/volumen/audio-mode/audio-format via SSE + log-optagelse til fil | done | 0.157.0 |
 
 ---
 

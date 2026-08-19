@@ -71,6 +71,9 @@ class SystemSettingsStatus(BaseModel):
     # Feature #178 — Shield TV'ets Plex client-id. Ikke en hemmelighed
     # (samme princip som plex_server_url ovenfor).
     plex_shield_client_identifier: str
+    # Feature #183 — Anthem AVM 70's IP/port. Heller ikke en hemmelighed.
+    anthem_host: str
+    anthem_port: int
 
 
 class SystemSettingsUpdate(BaseModel):
@@ -87,6 +90,8 @@ class SystemSettingsUpdate(BaseModel):
     plex_server_url: str | None = Field(default=None, max_length=500)
     primary_barcode_source: Literal["", "upcitemdb", "discogs", "upcdatabase", "ean_search"] | None = None
     plex_shield_client_identifier: str | None = Field(default=None, max_length=100)
+    anthem_host: str | None = Field(default=None, max_length=255)
+    anthem_port: int | None = Field(default=None, ge=1, le=65535)
 
 
 # Feature #174 — adgangskode-politik (Jan: "vi skal have en password politik

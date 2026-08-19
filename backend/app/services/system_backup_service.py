@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.config import settings
 from app.core.errors import InvalidBackupError
 from app.core.mongo_json import from_json_safe, to_json_safe
 from app.core.version_info import VERSION_INFO
@@ -75,12 +76,20 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
     visits = await db[visit_repository.COLLECTION].find({}).to_list(length=None)
     poster_cache = await poster_cache_repository.find_all_raw(db)
     settings_overrides = await system_settings_repository.get_overrides(db)
-    # Always both PLAIN_KEYS, "" for "no override configured" — a full
-    # wholesale-replace snapshot of just these two fields, same convention
-    # `apply_updates` already uses for "clear this key".
+    # Always all PLAIN_KEYS, "" for "no override configured" — a full
+    # wholesale-replace snapshot of these fields, same convention
+    # `apply_updates` already uses for "clear this key". `anthem_port`
+    # (feature #183) is the first non-string PLAIN_KEYS entry — "" isn't a
+    # valid int, and would fail `SystemSettingsUpdate` validation on restore
+    # (BUGS.md-style int/string mismatch, caught before it shipped). Snapshotted
+    # as its actual effective value instead — functionally identical to "no
+    # override" for a field where an empty value isn't meaningful anyway.
     system_settings_plain = {
-        key: settings_overrides.get(key, "") for key in system_settings_repository.PLAIN_KEYS
+        key: settings_overrides.get(key, "")
+        for key in system_settings_repository.PLAIN_KEYS
+        if key != "anthem_port"
     }
+    system_settings_plain["anthem_port"] = settings_overrides.get("anthem_port", settings.anthem_port)
     # Feature #174 — always a complete set of all four fields (code defaults
     # fill in anything not explicitly overridden), not a sparse dict of only
     # the customized ones — there's no "no override" state worth preserving

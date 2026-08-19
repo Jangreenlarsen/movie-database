@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "../api/client";
 import {
+  AnthemDiagnosticsSection,
   PasswordPolicySection,
   PlexAutoImportSection,
   PlexImportSection,
@@ -557,5 +558,164 @@ describe("formatUptime", () => {
     expect(formatUptime(86400)).toBe("1d 0t");
     expect(formatUptime(90000)).toBe("1d 1t");
     expect(formatUptime(200000)).toBe("2d 7t");
+  });
+});
+
+/**
+ * Feature #183 — AVM 70-diagnostik. Det testværdige (regel 19, "tilstands-
+ * skift i et vindue"): en modtaget snapshot skal rent faktisk opdatere det
+ * viste panel, en fejlet forbindelse skal vise backendens SPECIFIKKE
+ * fejlbesked (ikke en generisk — regel 16), og optag/download-knappen skal
+ * rent faktisk udløse en fil-download med de akkumulerede hændelser.
+ *
+ * `api.openAnthemDiagnosticsStream` mockes til at returnere et
+ * Response-lignende objekt hvis `.body.getReader()` giver de rå SSE-bytes
+ * tilbage chunk for chunk — samme kontrakt komponenten selv læser mod.
+ */
+describe("AnthemDiagnosticsSection (feature #183)", () => {
+  // `hangAfter: true` lader forbindelsen "forblive åben" efter de angivne
+  // chunks — samme virkelighed som den rigtige strøm (holdt i live af
+  // heartbeats), i modsætning til `done: true` som ville simulere at
+  // serveren lukker forbindelsen (og komponenten derfor forlader "live").
+  function fakeStreamResponse(chunks, { ok = true, detail, hangAfter = false } = {}) {
+    let i = 0;
+    const encoder = new TextEncoder();
+    return {
+      ok,
+      json: async () => ({ detail }),
+      body: {
+        getReader: () => ({
+          read: async () => {
+            if (i >= chunks.length) {
+              if (hangAfter) return new Promise(() => {});
+              return { done: true, value: undefined };
+            }
+            const value = encoder.encode(chunks[i]);
+            i += 1;
+            return { done: false, value };
+          },
+        }),
+      },
+    };
+  }
+
+  const snapshotEvent = {
+    type: "snapshot",
+    timestamp: "2026-08-19T20:00:00+00:00",
+    raw: null,
+    power: true,
+    input_name: "Plex",
+    input_number: 3,
+    volume: 42,
+    mute: false,
+    audio_listening_mode_text: "Dolby Atmos",
+    audio_input_format_text: "Dolby TrueHD",
+    audio_input_channels_text: "7.1-channel",
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("viser det modtagne snapshot i live-panelet", async () => {
+    vi.spyOn(api, "openAnthemDiagnosticsStream").mockResolvedValue(
+      fakeStreamResponse([`data: ${JSON.stringify(snapshotEvent)}\n\n`])
+    );
+    const user = userEvent.setup();
+
+    render(<AnthemDiagnosticsSection />);
+    await user.click(screen.getByRole("button", { name: "▶ Start overvågning" }));
+
+    expect(await screen.findByText("Plex (3)")).toBeInTheDocument();
+    expect(screen.getByText("42")).toBeInTheDocument();
+    expect(screen.getByText("Dolby Atmos")).toBeInTheDocument();
+    expect(screen.getByText("Dolby TrueHD")).toBeInTheDocument();
+  });
+
+  it("viser backendens specifikke fejlbesked ved en mislykket forbindelse", async () => {
+    vi.spyOn(api, "openAnthemDiagnosticsStream").mockResolvedValue(
+      fakeStreamResponse([], {
+        ok: false,
+        detail: "Anthem er ikke konfigureret — sæt IP/port under Indstillinger → Eksterne API-nøgler.",
+      })
+    );
+    const user = userEvent.setup();
+
+    render(<AnthemDiagnosticsSection />);
+    await user.click(screen.getByRole("button", { name: "▶ Start overvågning" }));
+
+    expect(
+      await screen.findByText(
+        "Anthem er ikke konfigureret — sæt IP/port under Indstillinger → Eksterne API-nøgler."
+      )
+    ).toBeInTheDocument();
+  });
+
+  // En manuelt styret strøm — testen skal kunne skubbe events ind ÉT AD
+  // GANGEN, med kontrol over hvornår, for pålideligt at kunne teste "kun
+  // events der ankommer EFTER optagelse er startet, tælles med" uden at
+  // gætte på timing mellem `start()`s læse-loop og et knap-klik.
+  function makeControllableStream() {
+    const encoder = new TextEncoder();
+    const queue = [];
+    const waiters = [];
+
+    function push(event) {
+      const chunk = { done: false, value: encoder.encode(`data: ${JSON.stringify(event)}\n\n`) };
+      if (waiters.length > 0) waiters.shift()(chunk);
+      else queue.push(chunk);
+    }
+
+    function read() {
+      return new Promise((resolve) => {
+        if (queue.length > 0) resolve(queue.shift());
+        else waiters.push(resolve);
+      });
+    }
+
+    return {
+      response: { ok: true, json: async () => ({}), body: { getReader: () => ({ read }) } },
+      push,
+    };
+  }
+
+  it("optager kun hændelser der ankommer EFTER optagelse er startet, og udløser en download", async () => {
+    const { response, push } = makeControllableStream();
+    vi.spyOn(api, "openAnthemDiagnosticsStream").mockResolvedValue(response);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const createUrlSpy = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:fake");
+    const revokeUrlSpy = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    const user = userEvent.setup();
+
+    render(<AnthemDiagnosticsSection />);
+    await user.click(screen.getByRole("button", { name: "▶ Start overvågning" }));
+
+    const recordButton = await screen.findByRole("button", { name: "● Start log-optagelse" });
+    await waitFor(() => expect(recordButton).toBeEnabled());
+
+    // Sendt FØR optagelse starter — skal IKKE tælles med i optagelsen.
+    push(snapshotEvent);
+    await screen.findByText("42");
+
+    await user.click(recordButton);
+
+    // Sendt EFTER optagelse er startet — skal tælles med.
+    const secondEvent = { ...snapshotEvent, type: "update", raw: "Z1VOL55", volume: 55 };
+    push(secondEvent);
+    await screen.findByText("55");
+
+    expect(
+      await screen.findByRole("button", { name: "⬇ Download log (1 hændelser)" })
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "⬇ Download log (1 hændelser)" }));
+
+    expect(createUrlSpy).toHaveBeenCalled();
+    const [blobArg] = createUrlSpy.mock.calls[0];
+    const downloaded = JSON.parse(await blobArg.text());
+    expect(downloaded).toHaveLength(1);
+    expect(downloaded[0].raw).toBe("Z1VOL55");
+    expect(clickSpy).toHaveBeenCalled();
+    expect(revokeUrlSpy).toHaveBeenCalledWith("blob:fake");
   });
 });

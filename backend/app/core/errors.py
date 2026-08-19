@@ -297,6 +297,28 @@ class PlexFilterUnavailableError(Exception):
         super().__init__("Plex er ikke konfigureret eller kan ikke nås — kan ikke filtrere på Plex.")
 
 
+class AnthemNotConfiguredError(Exception):
+    """Feature #183 — AVM 70-diagnostikken kræver `anthem_host` sat under
+    Indstillinger → Eksterne API-nøgler, samme "ikke konfigureret"-mønster
+    som Plex-importen."""
+
+    def __init__(self):
+        super().__init__(
+            "Anthem er ikke konfigureret — sæt IP/port under Indstillinger → Eksterne API-nøgler."
+        )
+
+
+class AnthemSessionBusyError(Exception):
+    """Feature #183 — AVM 70 accepterer kun én netværksklient ad gangen; et
+    andet forsøg på at åbne en diagnostik-stream mens én allerede kører
+    skal afvises pænt i stedet for stille at kæmpe om forbindelsen."""
+
+    def __init__(self):
+        super().__init__(
+            "Der kører allerede en diagnostik-session (fra denne eller en anden fane)."
+        )
+
+
 class SeatTakenError(Exception):
     """Feature #133 — sædet er allerede reserveret/optaget for denne
     fremvisning (eller blokeret af et globalt admin-hold). Oversættes til en

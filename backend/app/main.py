@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.api import (
     analytics,
+    anthem,
     attributes,
     audit_log,
     auth,
@@ -33,6 +34,8 @@ from app.core.config import settings
 from app.core.security import create_access_token, decode_access_token
 from app.core.errors import (
     AccountDisabledError,
+    AnthemNotConfiguredError,
+    AnthemSessionBusyError,
     AccountPendingError,
     AccountRejectedError,
     CannotTargetSelfError,
@@ -382,6 +385,20 @@ async def seat_taken_handler(request: Request, exc: SeatTakenError) -> JSONRespo
     return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
+@app.exception_handler(AnthemNotConfiguredError)
+async def anthem_not_configured_handler(
+    request: Request, exc: AnthemNotConfiguredError
+) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(AnthemSessionBusyError)
+async def anthem_session_busy_handler(
+    request: Request, exc: AnthemSessionBusyError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
 app.include_router(health.router)
 app.include_router(analytics.router)
 app.include_router(audit_log.router)
@@ -402,3 +419,4 @@ app.include_router(reservations.router)
 app.include_router(messages.router)
 app.include_router(posters.router)
 app.include_router(monitor.router)
+app.include_router(anthem.router)

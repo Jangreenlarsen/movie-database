@@ -83,6 +83,20 @@ def _pin_plex_auto_import_policy(monkeypatch):
     monkeypatch.setattr(settings, "plex_import_tag", "Plex-import")
 
 
+@pytest.fixture(autouse=True)
+def _reset_anthem_session_state(monkeypatch):
+    """Feature #183 — `anthem_service._session_active` is a plain module
+    global (see its own docstring for why it's a bool, not an
+    `asyncio.Lock`), so without this pin a test that leaves a diagnostic
+    "session" active (e.g. by raising before reaching the generator's
+    `finally`) would permanently lock every later test out with a 409,
+    across the whole file and beyond — same isolation concern as
+    `_pin_plex_auto_import_policy` above."""
+    from app.services import anthem_service
+
+    monkeypatch.setattr(anthem_service, "_session_active", False)
+
+
 @pytest_asyncio.fixture
 async def db():
     test_db = AsyncMongoMockClient()["test_moviedb"]

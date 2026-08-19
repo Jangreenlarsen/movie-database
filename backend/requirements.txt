@@ -8,3 +8,4 @@ bcrypt>=4.1
 pyjwt>=2.8
 cryptography>=42.0
 psutil>=6.0
+anthemav>=1.4

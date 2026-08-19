@@ -99,6 +99,15 @@ class Settings(BaseSettings):
     # dermed "den seneste faktisk brugte tag", som auto-scan derefter læser.
     plex_import_tag: str = "Plex-import"
 
+    # Feature #183 (Jan: "lave en undersøgelse af hvad mulighed vi har for
+    # at remote kontrollere AVM70"). Anthem AVM 70-lydprocessoren i Voldby
+    # BIO, styret via `anthemav`-biblioteket (rå TCP, port 14999). Ikke en
+    # hemmelighed — bare en LAN-adresse, samme "vis faktisk værdi"-princip
+    # som plex_server_url ovenfor. Sat via SystemSettingsSection, ikke
+    # diagnostik-siden selv (samme sted som Plex-server-URL'en).
+    anthem_host: str = ""
+    anthem_port: int = 14999
+
     log_level: str = "INFO"
     cors_origins: str = "http://localhost:5173"
 
@@ -166,4 +175,10 @@ ENV_DEFAULT_API_KEYS: dict[str, str] = {
     "plex_token": settings.plex_token,
     "plex_shield_client_identifier": settings.plex_shield_client_identifier,
     "primary_barcode_source": settings.primary_barcode_source,
+    "anthem_host": settings.anthem_host,
+    # anthem_port er bevidst UDELADT her: denne dict bruges kun til at
+    # falde tilbage til .env-værdien når en admin rydder en override tilbage
+    # til tom streng (se system_settings_service.update_settings) — det
+    # sammenligner `value != ""`, som for et int-felt aldrig er sandt, så
+    # grenen der læser herfra kan aldrig rammes for anthem_port alligevel.
 }

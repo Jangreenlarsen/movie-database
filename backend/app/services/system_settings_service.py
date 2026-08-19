@@ -81,14 +81,20 @@ async def get_status(db: AsyncIOMotorDatabase) -> SystemSettingsStatus:
         plex_server_url=settings.plex_server_url,
         primary_barcode_source=settings.primary_barcode_source,
         plex_shield_client_identifier=settings.plex_shield_client_identifier,
+        anthem_host=settings.anthem_host,
+        anthem_port=settings.anthem_port,
     )
 
 
 async def update_settings(
     db: AsyncIOMotorDatabase, payload: SystemSettingsUpdate
 ) -> SystemSettingsStatus:
+    # Feature #183 — `anthem_port` er den første ikke-streng-nøgle i denne
+    # generiske opdatering (alle andre er hidtil altid strenge). `.strip()`
+    # ville kaste på et int, så det springes eksplicit over for alt der ikke
+    # er en streng, i stedet for at antage typen som før.
     updates = {
-        key: value.strip()
+        key: value.strip() if isinstance(value, str) else value
         for key, value in payload.model_dump(exclude_unset=True).items()
         if value is not None
     }

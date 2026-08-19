@@ -102,3 +102,21 @@ async def apply_screening_request_policy_update(db: AsyncIOMotorDatabase, update
     if updates:
         await db[COLLECTION].update_one({"_id": DOC_ID}, {"$set": updates}, upsert=True)
     return await get_screening_request_policy_overrides(db)
+
+
+# Feature #181 — samme dokument, samme typede $set-only-mønster som
+# PASSWORD_POLICY_KEYS/SCREENING_REQUEST_POLICY_KEYS ovenfor.
+PLEX_AUTO_IMPORT_KEYS = ("plex_auto_import_enabled", "plex_auto_import_interval_minutes")
+
+
+async def get_plex_auto_import_overrides(db: AsyncIOMotorDatabase) -> dict:
+    doc = await db[COLLECTION].find_one({"_id": DOC_ID})
+    if doc is None:
+        return {}
+    return {key: doc[key] for key in PLEX_AUTO_IMPORT_KEYS if key in doc}
+
+
+async def apply_plex_auto_import_update(db: AsyncIOMotorDatabase, updates: dict) -> dict:
+    if updates:
+        await db[COLLECTION].update_one({"_id": DOC_ID}, {"$set": updates}, upsert=True)
+    return await get_plex_auto_import_overrides(db)

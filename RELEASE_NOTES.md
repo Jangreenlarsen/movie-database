@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.155.0 (build 0217) — 2026-08-19
+
+- **Plex kan nu scanne sig selv automatisk for nye film/serier**, i stedet for kun manuelt. Slås til under Indstillinger → Eksterne API-nøgler → "Automatisk Plex-scan", med et selvvalgt interval (standard hver 6. time). Den eksisterende manuelle "Importér fra Plex"-knap virker stadig som før, ved siden af.
+
 ## v0.154.3 (build 0216) — 2026-08-19
 
 - **"Afspil i Plex" hedder nu "Afspil i Plex lokalt"**, for tydeligt at skelne fra Shield-knapperne.

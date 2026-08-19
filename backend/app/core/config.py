@@ -75,6 +75,22 @@ class Settings(BaseSettings):
     # slår den fra. Læst dynamisk af `screening_service._enforce_preferred_at`.
     require_preferred_at_for_guests: bool = True
 
+    # Feature #181 (Jan: "jeg tro tilgengæld at vi skal have en automatisk
+    # scan af plex media server for ny film og tv serie, i dag er det en
+    # manual funktion"). Ingen .env-modstykke, samme mønster som
+    # adgangskode-politikken — kun sat via PATCH /api/settings/plex-auto-import.
+    # Default `false`: en helt ny automatiseret handling der selv opretter
+    # poster i biblioteket skal ikke stille og roligt begynde at køre uden
+    # en admins eksplicitte tilvalg (i modsætning til fx feature #180, som
+    # var en indskrænkning af noget der allerede kørte for alle).
+    plex_auto_import_enabled: bool = False
+    # Minutter mellem hver scan når slået til. 360 (6 timer) er Jans egen
+    # anbefaling ved opklarende spørgsmål — fanger nye film/serier samme dag
+    # uden at belaste Plex-serveren unødigt ofte. Læst dynamisk hver
+    # iteration af `plex_service.run_auto_import_loop`, så en ændring slår
+    # igennem med det samme, uden genstart.
+    plex_auto_import_interval_minutes: int = 360
+
     log_level: str = "INFO"
     cors_origins: str = "http://localhost:5173"
 

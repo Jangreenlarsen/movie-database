@@ -7,6 +7,8 @@ from app.models.settings import (
     ApiKeyTestResult,
     PasswordPolicy,
     PasswordPolicyUpdate,
+    PlexAutoImportPolicy,
+    PlexAutoImportPolicyUpdate,
     ScreeningRequestPolicy,
     ScreeningRequestPolicyUpdate,
     SystemSettingsStatus,
@@ -54,6 +56,11 @@ async def apply_overrides_on_startup(db: AsyncIOMotorDatabase) -> None:
     # Feature #177 — samme sync, for visningsønske-politikkens ene felt.
     screening_policy_overrides = await system_settings_repository.get_screening_request_policy_overrides(db)
     for key, value in screening_policy_overrides.items():
+        setattr(settings, key, value)
+
+    # Feature #181 — samme sync, for auto-import-politikkens to felter.
+    auto_import_overrides = await system_settings_repository.get_plex_auto_import_overrides(db)
+    for key, value in auto_import_overrides.items():
         setattr(settings, key, value)
 
 
@@ -165,3 +172,29 @@ async def update_screening_request_policy(
     for key, value in updates.items():
         setattr(settings, key, value)
     return _screening_request_policy_from_settings()
+
+
+def _plex_auto_import_policy_from_settings() -> PlexAutoImportPolicy:
+    return PlexAutoImportPolicy(
+        plex_auto_import_enabled=settings.plex_auto_import_enabled,
+        plex_auto_import_interval_minutes=settings.plex_auto_import_interval_minutes,
+    )
+
+
+async def get_plex_auto_import_policy(db: AsyncIOMotorDatabase) -> PlexAutoImportPolicy:
+    return _plex_auto_import_policy_from_settings()
+
+
+async def update_plex_auto_import_policy(
+    db: AsyncIOMotorDatabase, payload: PlexAutoImportPolicyUpdate
+) -> PlexAutoImportPolicy:
+    """Feature #181 (Jan: "jeg tro tilgengæld at vi skal have en automatisk
+    scan af plex media server for ny film og tv serie"). Samme
+    skriv-og-synkronisér-mønster som `update_screening_request_policy`
+    ovenfor — `plex_service.run_auto_import_loop` læser `settings` direkte
+    ved hver iteration, så en ændring her slår igennem uden genstart."""
+    updates = payload.model_dump(exclude_unset=True)
+    await system_settings_repository.apply_plex_auto_import_update(db, updates)
+    for key, value in updates.items():
+        setattr(settings, key, value)
+    return _plex_auto_import_policy_from_settings()

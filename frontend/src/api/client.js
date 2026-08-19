@@ -252,6 +252,11 @@ export const api = {
   getScreeningRequestPolicy: () => request("/settings/screening-request-policy"),
   updateScreeningRequestPolicy: (payload) =>
     request("/settings/screening-request-policy", { method: "PATCH", body: JSON.stringify(payload) }),
+  // Feature #181 — automatisk periodisk scan af Plex for nye film/serier,
+  // ved siden af den eksisterende manuelle "Importér fra Plex"-knap.
+  getPlexAutoImportPolicy: () => request("/settings/plex-auto-import"),
+  updatePlexAutoImportPolicy: (payload) =>
+    request("/settings/plex-auto-import", { method: "PATCH", body: JSON.stringify(payload) }),
   // Feature #100 — beskeder fra admin.
   // Feature #148 — besked-pollen (hvert 20. sek, #135) markeres som baggrund,
   // så den ikke tæller som aktivitet og holder en uovervåget session i live.

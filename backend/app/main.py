@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -83,7 +84,7 @@ from app.repositories import (
     user_repository,
     visit_repository,
 )
-from app.services import system_settings_service
+from app.services import plex_service, system_settings_service
 
 logging.basicConfig(level=settings.log_level)
 logger = logging.getLogger("moviedb")
@@ -113,7 +114,17 @@ async def lifespan(app: FastAPI):
     await reservation_repository.ensure_indexes(db)
     await poster_cache_repository.ensure_indexes(db)
     logger.info("MongoDB client initialized (%s)", settings.mongo_db_name)
+
+    # Feature #181 (Jan: "vi skal have en automatisk scan af plex media
+    # server for ny film og tv serie"). Én baggrunds-task for hele appens
+    # levetid — annulleres eksplicit ved nedlukning, ellers ville en
+    # ventende `asyncio.sleep` (op til `plex_auto_import_interval_minutes`
+    # lang) forsinke en ren shutdown.
+    auto_import_task = asyncio.create_task(plex_service.run_auto_import_loop())
+
     yield
+
+    auto_import_task.cancel()
     await close_client()
 
 

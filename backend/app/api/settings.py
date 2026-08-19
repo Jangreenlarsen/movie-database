@@ -7,6 +7,8 @@ from app.models.settings import (
     ApiKeyTestResult,
     PasswordPolicy,
     PasswordPolicyUpdate,
+    PlexAutoImportPolicy,
+    PlexAutoImportPolicyUpdate,
     ScreeningRequestPolicy,
     ScreeningRequestPolicyUpdate,
     SerialNumberConfig,
@@ -125,5 +127,34 @@ async def update_screening_request_policy(
         detail = ", ".join(f"{key}={value}" for key, value in changes.items())
         await audit_log_service.record(
             db, current_user["username"], "screening_request_policy.updated", detail
+        )
+    return result
+
+
+@router.get(
+    "/plex-auto-import", response_model=PlexAutoImportPolicy, dependencies=[Depends(require_admin)]
+)
+async def get_plex_auto_import_policy(db: AsyncIOMotorDatabase = Depends(get_database)):
+    """Feature #181 (Jan: "vi skal have en automatisk scan af plex media
+    server for ny film og tv serie, i dag er det en manual funktion")."""
+    return await system_settings_service.get_plex_auto_import_policy(db)
+
+
+@router.patch(
+    "/plex-auto-import",
+    response_model=PlexAutoImportPolicy,
+    dependencies=[Depends(require_admin)],
+)
+async def update_plex_auto_import_policy(
+    payload: PlexAutoImportPolicyUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    result = await system_settings_service.update_plex_auto_import_policy(db, payload)
+    changes = payload.model_dump(exclude_unset=True)
+    if changes:
+        detail = ", ".join(f"{key}={value}" for key, value in changes.items())
+        await audit_log_service.record(
+            db, current_user["username"], "plex_auto_import_policy.updated", detail
         )
     return result

@@ -13,6 +13,7 @@ fejlbesked, aldrig til en exception der vælter biblioteksvisningen — samme
 filosofi som UPC/Discogs-opslagene (MOVIE_API_REFERENCE.md).
 """
 
+import itertools
 import logging
 import re
 from collections import Counter
@@ -23,6 +24,21 @@ import httpx
 from app.core.config import settings
 
 logger = logging.getLogger("moviedb")
+
+# Plex' egen Companion-protokolspecifikation (plexinc/plex-media-player wiki,
+# "Remote control API"): "All commands to the player MUST have a commandID=X
+# parameter." Research 2026-08-19 bekræftede vores playback/stop-kommandoer
+# manglede den — virkede tilsyneladende alligevel (både PMS og Shieldens app
+# er mere lempelige end spec'en kræver), men er nu rettet for at følge
+# protokollen korrekt. Ét modul-globalt, fortløbende tælleværk er tilstrækkeligt
+# her: vi fører ingen vedvarende klient-abonnement/timeline-polling (kun
+# enkeltstående fire-and-forget-kommandoer), så der er intet duplikat-/
+# rækkefølge-tilstand at holde synkroniseret på tværs af kald.
+_command_id_counter = itertools.count(1)
+
+
+def _next_command_id() -> str:
+    return str(next(_command_id_counter))
 
 # Plex svarer normalt inden for få hundrede ms på LAN, men `/all` på en stor
 # sektion (>5000 elementer) kan tage flere sekunder. Rundhåndet, fordi
@@ -513,7 +529,13 @@ async def play_on_client(
     transcode — men er **ikke en garanti**: er kilden reelt inkompatibel med
     klientens erklærede evner (container/codec/bitrate, eller en lydkodning
     klienten/receiveren ikke kan passe igennem), transcoder PMS stadig,
-    uanset denne parameter."""
+    uanset denne parameter — ingen af de to er i øvrigt dokumenteret i selve
+    Companion-spec'en (kun `key/offset/machineIdentifier/address/port/
+    protocol/token/containerKey/mediaIndex` er det).
+
+    2026-08-19 — `commandID` tilføjet efter research i Plex' egen spec
+    ("All commands to the player MUST have a commandID=X parameter"), som
+    vi hidtil manglede."""
     if not is_configured():
         return False, "Plex er ikke konfigureret."
 
@@ -530,6 +552,7 @@ async def play_on_client(
         "type": "video",
         "directPlay": "1",
         "directStream": "1",
+        "commandID": _next_command_id(),
     }
     headers = {**_headers(), "X-Plex-Target-Client-Identifier": client_identifier}
 
@@ -566,7 +589,9 @@ async def stop_client(client_identifier: str) -> tuple[bool, str]:
     medie-reference: stopper hvad end klienten lige nu afspiller, uafhængigt
     af hvilken film/serie der oprindeligt startede den. Jan, opfølgning
     2026-08-18: "Afspil på Shield TV"-knappen skal være en rigtig
-    start/stop-toggle, ikke kun starte."""
+    start/stop-toggle, ikke kun starte.
+
+    2026-08-19 — `commandID` tilføjet, se `play_on_client`s docstring."""
     if not is_configured():
         return False, "Plex er ikke konfigureret."
 
@@ -578,7 +603,7 @@ async def stop_client(client_identifier: str) -> tuple[bool, str]:
         async with _client() as client:
             response = await client.get(
                 f"{_base_url()}/player/playback/stop",
-                params={"type": "video"},
+                params={"type": "video", "commandID": _next_command_id()},
                 headers=headers,
             )
     except httpx.HTTPError as exc:
@@ -597,3 +622,72 @@ async def stop_client(client_identifier: str) -> tuple[bool, str]:
 
     logger.info("Plex: stop til %s lykkedes (HTTP %s)", client_identifier, response.status_code)
     return True, "Afspilning stoppet på Shield TV."
+
+
+async def navigate_client_to_media(
+    rating_key: str, server_machine_identifier: str, client_identifier: str
+) -> tuple[bool, str]:
+    """Sender Shielden hen til titlens detaljeside i selve Plex-appen — IKKE
+    en afspil-kommando. `mirror/details` er det samme Companion-kald Plex
+    mobil-appens eget cast-ikon sender når man peger på en TV-klient uden at
+    trykke direkte afspil.
+
+    2026-08-18 — dette blev afprøvet som DEN primære Shield-mekanisme (for
+    at lade brugerens eget tryk på Play respektere Plex-appens lokale
+    kvalitets-/lyd-indstillinger, og dermed undgå `play_on_client`s
+    transcoding-problem), men blev rullet tilbage: PMS tog imod kommandoen
+    (200, vores egen succes-besked), uden at Shielden reagerede overhovedet.
+
+    2026-08-19 — research i Plex' egen Companion-spec (plexinc/
+    plex-media-player wiki) bekræftede hvorfor: klient-funktioner er
+    inddelt i `timeline`/`playback` (OBLIGATORISK for enhver Plex-klient) og
+    `navigation`/`mirror` (VALGFRIT — "Players MAY choose to not implement
+    navigation"). `mirror/details` hører til den valgfrie kategori;
+    `playback/playMedia` (som `play_on_client` bruger) hører til den
+    obligatoriske. Android TV-Plex-appen har tilsyneladende aldrig
+    implementeret navigation-delen. Genindført som en separat, tydeligt
+    mærket "test"-knap (Jan: "lave igen en knap mere til 'vis i plex' sådan
+    vi kan teste på den funktion igen ... jeg se på om der skulle være
+    opdateringer til plex klient") — ikke den primære vej, men en måde at
+    afprøve om en fremtidig Shield-app-opdatering tilføjer understøttelsen."""
+    if not is_configured():
+        return False, "Plex er ikke konfigureret."
+
+    parsed = httpx.URL(_base_url())
+    default_port = 443 if parsed.scheme == "https" else 32400
+    params = {
+        "key": f"/library/metadata/{rating_key}",
+        "machineIdentifier": server_machine_identifier,
+        "protocol": parsed.scheme,
+        "address": parsed.host,
+        "port": str(parsed.port or default_port),
+        "token": settings.plex_token,
+        "commandID": _next_command_id(),
+    }
+    headers = {**_headers(), "X-Plex-Target-Client-Identifier": client_identifier}
+
+    logger.info(
+        "Plex: sender mirror/details (rating_key=%s) til klient %s", rating_key, client_identifier
+    )
+
+    try:
+        async with _client() as client:
+            response = await client.get(
+                f"{_base_url()}/player/mirror/details", params=params, headers=headers
+            )
+    except httpx.HTTPError as exc:
+        logger.warning("Plex: mirror/details til %s kunne ikke nås: %s", client_identifier, exc)
+        return False, f"Kunne ikke nå Plex-serveren: {exc}"
+
+    if response.status_code == 401:
+        logger.warning("Plex: mirror/details afvist (HTTP 401)")
+        return False, "Plex afviste token'et (HTTP 401)."
+    if response.status_code == 404:
+        logger.warning("Plex: mirror/details til %s gav HTTP 404 (klienten ikke fundet af PMS)", client_identifier)
+        return False, "Shield TV'et svarede ikke — er Plex-appen åben og tændt på den?"
+    if response.status_code >= 400:
+        logger.warning("Plex: mirror/details til %s gav HTTP %s", client_identifier, response.status_code)
+        return False, f"Plex afviste kommandoen (HTTP {response.status_code})."
+
+    logger.info("Plex: mirror/details til %s lykkedes (HTTP %s)", client_identifier, response.status_code)
+    return True, "Sendt til Shield TV (mirror/details) — tjek om skærmen skiftede."

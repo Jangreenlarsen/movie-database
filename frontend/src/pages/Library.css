@@ -627,6 +627,15 @@
   align-items: flex-start;
 }
 
+/* 2026-08-19 — "Afspil/Stop på Shield TV" (toggle) og den genindførte
+   "Vis på Shield TV (test)"-knap står side om side inden for samme
+   plex-shield-play-blok. */
+.plex-shield-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .movie-info {
   padding: 10px 12px 12px;
   display: flex;

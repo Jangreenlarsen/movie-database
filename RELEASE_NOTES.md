@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.154.2 (build 0215) — 2026-08-19
+
+- **Ny testknap: "🧪 Vis på Shield TV (test)"** ved siden af de to eksisterende Shield-knapper. Den forsøger at hoppe Shielden hen til titlens side i stedet for at afspille direkte — virkede ikke ved sidste forsøg (Android TV-appen understøtter det tilsyneladende ikke endnu), men er nu en selvstændig knap, så den nemt kan afprøves igen hvis en Shield-app-opdatering ændrer det.
+
 ## v0.154.1 (build 0214) — 2026-08-19
 
 - **Er "Afspil i Plex" slået fra for en bruger, forsvinder al Plex-relateret UI i detaljekortet** — inklusive "Afspil på Shield TV", som tidligere stadig kunne ses.

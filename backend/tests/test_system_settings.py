@@ -186,6 +186,42 @@ async def test_clearing_primary_barcode_source_reverts_to_default(client, monkey
     assert settings.primary_barcode_source == "upcitemdb"
 
 
+# Feature #183 — Anthem AVM 70's IP/port. Ikke en hemmelighed, samme
+# "faktiske værdi"-princip som plex_server_url/primary_barcode_source
+# ovenfor. anthem_port er derudover den første int-værdi blandt disse
+# "plain"-felter (resten er alle strenge) — testet eksplicit for at fange
+# regressioner i den generiske opdaterings-logik (BUGS.md-agtig .strip()-på-int
+# risiko, rettet i update_settings som en del af denne feature).
+
+
+async def test_anthem_settings_default_to_empty_host_and_the_standard_port(client):
+    response = await client.get("/api/settings/system")
+    assert response.json()["anthem_host"] == ""
+    assert response.json()["anthem_port"] == 14999
+
+
+async def test_anthem_host_and_port_are_returned_with_their_actual_values(client):
+    response = await client.patch(
+        "/api/settings/system", json={"anthem_host": "192.168.1.60", "anthem_port": 14999}
+    )
+    assert response.status_code == 200
+    assert response.json()["anthem_host"] == "192.168.1.60"
+    assert response.json()["anthem_port"] == 14999
+    assert settings.anthem_host == "192.168.1.60"
+    assert settings.anthem_port == 14999
+
+    get_response = await client.get("/api/settings/system")
+    assert get_response.json()["anthem_host"] == "192.168.1.60"
+
+
+async def test_anthem_port_rejects_out_of_range_values(client):
+    too_low = await client.patch("/api/settings/system", json={"anthem_port": 0})
+    assert too_low.status_code == 422
+
+    too_high = await client.patch("/api/settings/system", json={"anthem_port": 70000})
+    assert too_high.status_code == 422
+
+
 # Feature #75 — "Test forbindelse".
 
 

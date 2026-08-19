@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.157.0 (build 0219) — 2026-08-19
+
+- **Ny: AVM 70-diagnostik under Indstillinger → Drift.** Live overvågning af Anthem-processorens input, volumen, mute, audio-mode og indkommende lydformat, mens du fx starter en film — til at bygge erfaring med, hvordan udstyret reagerer, før den rigtige automation bygges. En "optag"-knap gemmer alle hændelser fra en session som en downloadbar fil. Kræver at Anthem-enhedens IP sættes under Indstillinger → Eksterne API-nøgler først.
+
 ## v0.156.0 (build 0218) — 2026-08-19
 
 - **"Importér fra Plex" og "Automatisk Plex-scan" er flyttet** fra Eksterne API-nøgler til Indstillinger → Bibliotek, ved siden af de andre biblioteks-vedligeholdelsesværktøjer.

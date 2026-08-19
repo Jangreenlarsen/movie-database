@@ -75,10 +75,15 @@ async def test_backup_includes_all_expected_collections(client, monkeypatch):
     # 2026-08-15 sync audit — the non-secret keys ARE captured, always all
     # present ("" meaning "no override"), unlike the excluded whole.
     # Feature #178 added plex_shield_client_identifier to the same set.
+    # Feature #183 added anthem_host/anthem_port — anthem_port is always its
+    # actual effective value (never ""), since an int has no meaningful
+    # "cleared" empty-string sentinel the way the string fields do.
     assert data["system_settings_plain"] == {
         "plex_server_url": "",
         "primary_barcode_source": "",
         "plex_shield_client_identifier": "",
+        "anthem_host": "",
+        "anthem_port": 14999,
     }
     # Feature #174 — den nyeste tilføjelse til samme system_settings-
     # dokument, checket ind fra dag ét i stedet for at blive opdaget
@@ -113,6 +118,8 @@ async def test_backup_includes_plain_settings_but_never_secret_ones(client):
         "plex_server_url": "http://plex.local:32400",
         "primary_barcode_source": "",
         "plex_shield_client_identifier": "",
+        "anthem_host": "",
+        "anthem_port": 14999,
     }
     assert "super-secret-token" not in response.text
     assert "tmdb_api_token" not in data["system_settings_plain"]
@@ -132,7 +139,10 @@ async def test_restore_reapplies_plain_settings_without_touching_secrets(client)
     response = await client.post("/api/system/restore", json=backup)
     assert response.status_code == 200
     result = response.json()
-    assert result["system_settings_plain_restored"] == 1
+    # 2: plex_server_url (customized) + anthem_port (feature #183 — always
+    # truthy, since its code default 14999 counts as "present" even when
+    # never customized; see the snapshot comment in system_backup_service).
+    assert result["system_settings_plain_restored"] == 2
 
     status = (await client.get("/api/settings/system")).json()
     assert status["plex_server_url"] == "http://plex.local:32400"

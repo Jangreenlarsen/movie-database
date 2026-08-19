@@ -288,6 +288,18 @@ export const api = {
       "/system/monitor",
       background ? { headers: { "X-Background-Poll": "1" } } : undefined
     ),
+
+  // Feature #183 — AVM 70-diagnostik. Ikke via `request()`: den funktion
+  // afslutter altid med `response.json()`, hvilket for en SSE-strøm ville
+  // vente på at HELE (uendelige) strømmen lukker, før noget som helst
+  // returneres. En almindelig `EventSource` er heller ikke brugt — den
+  // eksponerer ikke statuskode/JSON-body ved en fejlet forbindelse (fx en
+  // 400/409 FØR selve strømmen starter), så den specifikke fejlbesked
+  // (CLAUDE.md regel 16) ville gå tabt. I stedet: en rå `fetch`, samme
+  // `credentials: "include"` som `request()` selv bruger — kaldstedet læser
+  // `response.body`s reader selv, linje for linje.
+  openAnthemDiagnosticsStream: (signal) =>
+    fetch(`${API_BASE}/anthem/diagnostics/stream`, { credentials: "include", signal }),
   restartService: () => request("/system/monitor/restart-service", { method: "POST" }),
   rebootServer: (currentPassword) =>
     request("/system/monitor/reboot", {

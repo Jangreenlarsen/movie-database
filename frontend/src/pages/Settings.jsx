@@ -126,6 +126,7 @@ export default function Settings({ user, onSettingsChanged }) {
           <MonitorSection />
           <DeploySection />
           <TlsCertSection />
+          <AnthemDiagnosticsSection />
         </>
       )}
     </section>
@@ -1382,6 +1383,20 @@ function SystemSettingsSection() {
           />
           <PlexShieldSettingsRow
             currentValue={statusData.plex_shield_client_identifier}
+            onSaved={load}
+          />
+          <PlainSettingRow
+            label={t("sys.anthemHost")}
+            field="anthem_host"
+            hint={t("sys.anthemHostHint")}
+            currentValue={statusData.anthem_host}
+            onSaved={load}
+          />
+          <PlainSettingRow
+            label={t("sys.anthemPort")}
+            field="anthem_port"
+            hint={t("sys.anthemPortHint")}
+            currentValue={statusData.anthem_port}
             onSaved={load}
           />
         </>
@@ -3229,6 +3244,216 @@ export function PasswordPolicySection() {
             {t(saving ? "common.saving" : "common.save")}
           </button>
         </form>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Feature #183 (Jan: "lave en dianostik modul i portal under settings som
+ * vi kan bruge til at få erfaring med ... skal vi have en funktion som
+ * læser alle relavante sætting ud og det er input, vol,
+ * audio_listening_mode, audio_input_format og en status live updatering på
+ * update_callback"). Ren overvågning — sætter intet på AVM'en; det er
+ * `anthem_service`/`api/anthem.py`'s job at skrive events, denne
+ * komponent læser dem kun.
+ *
+ * Rå `fetch` + manuel linje-for-linje SSE-læsning i stedet for en almindelig
+ * `EventSource` — se `api.openAnthemDiagnosticsStream`s kommentar for
+ * hvorfor (kort: EventSource skjuler den specifikke 400/409-fejlbesked ved
+ * en mislykket forbindelse, hvilket CLAUDE.md regel 16 kræver at vi viser).
+ */
+export function AnthemDiagnosticsSection() {
+  const t = useT();
+  const [streamStatus, setStreamStatus] = useState("idle"); // idle | connecting | live | error
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [currentState, setCurrentState] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [recording, setRecording] = useState(false);
+  const [recordedCount, setRecordedCount] = useState(0);
+
+  const abortControllerRef = useRef(null);
+  const recordingRef = useRef(false);
+  const recordedEventsRef = useRef([]);
+
+  // Loft på den viste log — en session der kører i timevis (fx hele en
+  // filmaften) må ikke stille og roligt vokse DOM'en/hukommelsen ubegrænset.
+  // Selve OPTAGELSEN (recordedEventsRef) beholder alt — det er den man
+  // downloader og skal bruge bagefter, kun den løbende visning beskæres.
+  const MAX_DISPLAYED_EVENTS = 300;
+
+  function pushEvent(event) {
+    setEvents((prev) => {
+      const next = [...prev, event];
+      return next.length > MAX_DISPLAYED_EVENTS ? next.slice(-MAX_DISPLAYED_EVENTS) : next;
+    });
+    if (recordingRef.current) {
+      recordedEventsRef.current.push(event);
+      setRecordedCount(recordedEventsRef.current.length);
+    }
+  }
+
+  async function start() {
+    setStreamStatus("connecting");
+    setErrorMessage(null);
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    try {
+      const response = await api.openAnthemDiagnosticsStream(controller.signal);
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        setErrorMessage(body?.detail ?? t("anthemDiag.genericError"));
+        setStreamStatus("error");
+        return;
+      }
+
+      setStreamStatus("live");
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const chunks = buffer.split("\n\n");
+        buffer = chunks.pop() ?? "";
+        for (const chunk of chunks) {
+          if (!chunk.startsWith("data: ")) continue; // heartbeat-kommentarlinjer springes over
+          const event = JSON.parse(chunk.slice(6));
+          if (event.type === "error") {
+            setErrorMessage(event.message);
+            setStreamStatus("error");
+          } else {
+            setCurrentState(event);
+          }
+          pushEvent(event);
+        }
+      }
+      // Strømmen sluttede uden en eksplicit fejl (fx serveren lukkede den) —
+      // vis den ikke fortsat som "live".
+      setStreamStatus((current) => (current === "live" ? "idle" : current));
+    } catch (err) {
+      if (err.name === "AbortError") return; // brugeren trykkede selv Stop
+      setErrorMessage(err.message);
+      setStreamStatus("error");
+    }
+  }
+
+  function stop() {
+    abortControllerRef.current?.abort();
+    setStreamStatus("idle");
+  }
+
+  function toggleRecording() {
+    if (recordingRef.current) {
+      recordingRef.current = false;
+      setRecording(false);
+      return;
+    }
+    recordedEventsRef.current = [];
+    setRecordedCount(0);
+    recordingRef.current = true;
+    setRecording(true);
+  }
+
+  function download() {
+    const blob = new Blob([JSON.stringify(recordedEventsRef.current, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `anthem-diagnostik-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  useEffect(() => {
+    return () => abortControllerRef.current?.abort();
+  }, []);
+
+  const live = streamStatus === "live";
+
+  return (
+    <div className="card settings-section">
+      <h2>{t("anthemDiag.heading")}</h2>
+      <p className="muted">{t("anthemDiag.description")}</p>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={live ? stop : start}
+          disabled={streamStatus === "connecting"}
+        >
+          {t(
+            streamStatus === "connecting"
+              ? "anthemDiag.connecting"
+              : live
+                ? "anthemDiag.stop"
+                : "anthemDiag.start"
+          )}
+        </button>
+        <button type="button" className="btn" onClick={toggleRecording} disabled={!live}>
+          {t(recording ? "anthemDiag.stopRecording" : "anthemDiag.startRecording")}
+        </button>
+        {recordedCount > 0 && (
+          <button type="button" className="btn" onClick={download}>
+            {t("anthemDiag.download", { count: recordedCount })}
+          </button>
+        )}
+      </div>
+
+      {streamStatus === "error" && errorMessage && (
+        <div className="banner banner-error" style={{ marginBottom: 12 }}>
+          {errorMessage}
+        </div>
+      )}
+
+      {currentState && (
+        <div className="plex-diagnostics">
+          <dl className="plex-diag-grid">
+            <dt>{t("anthemDiag.fieldPower")}</dt>
+            <dd>{t(currentState.power ? "anthemDiag.on" : "anthemDiag.off")}</dd>
+            <dt>{t("anthemDiag.fieldInput")}</dt>
+            <dd>
+              {currentState.input_name} ({currentState.input_number})
+            </dd>
+            <dt>{t("anthemDiag.fieldVolume")}</dt>
+            <dd>{currentState.volume}</dd>
+            <dt>{t("anthemDiag.fieldMute")}</dt>
+            <dd>{t(currentState.mute ? "anthemDiag.on" : "anthemDiag.off")}</dd>
+            <dt>{t("anthemDiag.fieldAudioMode")}</dt>
+            <dd>{currentState.audio_listening_mode_text}</dd>
+            <dt>{t("anthemDiag.fieldAudioFormat")}</dt>
+            <dd>{currentState.audio_input_format_text}</dd>
+            <dt>{t("anthemDiag.fieldAudioChannels")}</dt>
+            <dd>{currentState.audio_input_channels_text}</dd>
+          </dl>
+        </div>
+      )}
+
+      <h3 style={{ fontSize: "0.95rem", margin: "16px 0 4px" }}>{t("anthemDiag.eventLogHeading")}</h3>
+      {events.length === 0 ? (
+        <p className="muted">{t("anthemDiag.noEvents")}</p>
+      ) : (
+        <ul className="anthem-log">
+          {events
+            .slice()
+            .reverse()
+            .map((event, i) => (
+              <li key={i}>
+                <span className="anthem-log-time">
+                  {new Date(event.timestamp).toLocaleTimeString()}
+                </span>{" "}
+                <span className="anthem-log-type">{event.type}</span>{" "}
+                {event.raw && <span className="anthem-log-raw">{event.raw}</span>}
+                {event.type === "error" && event.message}
+              </li>
+            ))}
+        </ul>
       )}
     </div>
   );

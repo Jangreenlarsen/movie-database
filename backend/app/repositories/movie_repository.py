@@ -7,6 +7,7 @@ from pymongo import ReturnDocument
 
 from app.models.movie import MediaType, subtitles_from_free_text
 from app.repositories import digital_serial_repository
+from app.repositories.sort_title import strip_leading_article
 from app.repositories.text_search import build_text_query, drop_legacy_text_index
 
 COLLECTION = "movies"
@@ -40,6 +41,11 @@ logger = logging.getLogger("moviedb")
 # test_serial_series_sort_order_depends_on_label_ordering låser den fast.
 SORT_FIELDS = {
     "title": [("title", "user")],
+    # Feature #184 — samme sortering, men på `sort_title` (title uden en
+    # foranstillet "The") i stedet for den rå titel. Eget valg i stedet for
+    # en til/fra-kontakt på "title" selv, samme "to varianter af samme
+    # sortering" mønster som serial_number/serial_number_physical ovenfor.
+    "title_no_article": [("sort_title", "user")],
     "year": [("year", "user")],
     # Standard-valget: alle D-numre først, derefter de fysiske (Jans krav
     # 2026-08-08).
@@ -192,12 +198,30 @@ async def _migrate_watched_at_to_date(db: AsyncIOMotorDatabase) -> None:
         await collection.update_one({"_id": doc["_id"]}, {"$set": {"watched_at": parsed}})
 
 
+async def _migrate_sort_title(db: AsyncIOMotorDatabase) -> None:
+    """Feature #184 — backfylder `sort_title` (title uden en foranstillet
+    "The") på dokumenter oprettet før feltet fandtes. Uden denne migration
+    ville alle eksisterende film mangle feltet, og Mongo sorterer et
+    manglende felt som `null` — hvilket ville klumpe hele det eksisterende
+    bibliotek sammen i den ene ende af en "Titel (uden 'The')"-sortering,
+    adskilt fra alt nyoprettet. Idempotent: rører kun dokumenter uden
+    feltet allerede."""
+    collection = db[COLLECTION]
+    cursor = collection.find({"sort_title": {"$exists": False}}, {"title": 1})
+    async for doc in cursor:
+        title = doc.get("title") or ""
+        await collection.update_one(
+            {"_id": doc["_id"]}, {"$set": {"sort_title": strip_leading_article(title)}}
+        )
+
+
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     collection = db[COLLECTION]
     await _migrate_audio_type_labels(db)
     await _migrate_format_labels(db)
     await _migrate_subtitles_to_list(db)
     await _migrate_watched_at_to_date(db)
+    await _migrate_sort_title(db)
     # BUGS.md #48 — søgningen går ikke længere gennem `$text`; det gamle
     # text-index ryddes op så det ikke koster skrivetid uden at blive brugt.
     await drop_legacy_text_index(collection)

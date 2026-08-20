@@ -739,6 +739,8 @@
   "sort.serialDigitalFirst": "Serienummer (D først)",
   "sort.serialMoviesFirst": "Serienummer (M først)",
   "sort.serialShowsFirst": "Serienummer (T først)",
+  "sort.titleNoArticle": "Titel (uden \"The\")",
+  "sort.nameNoArticle": "Navn (uden \"The\")",
   "settings.tab.messages": "Beskeder",
   "messages.heading": "Send besked",
   "messages.description": "Send en besked til alle brugere eller til én enkelt. Modtagerne ser den som en banner øverst i appen, indtil de lukker den — og du kan se hvem der har gjort det.",

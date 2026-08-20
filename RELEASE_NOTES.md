@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.158.0 (build 0220) — 2026-08-20
+
+- **Ny sorteringsmulighed: "Titel (uden \"The\")" / "Navn (uden \"The\")".** Under Sortér i både Film- og TV-bibliotek kan du nu vælge en sortering der springer en foranstillet "The" over, så fx "The Wire" sorteres som "Wire" i stedet for at ligge under "T". Den almindelige "Titel"/"Navn"-sortering findes stadig ved siden af.
+
 ## v0.157.0 (build 0219) — 2026-08-19
 
 - **Ny: AVM 70-diagnostik under Indstillinger → Drift.** Live overvågning af Anthem-processorens input, volumen, mute, audio-mode og indkommende lydformat, mens du fx starter en film — til at bygge erfaring med, hvordan udstyret reagerer, før den rigtige automation bygges. En "optag"-knap gemmer alle hændelser fra en session som en downloadbar fil. Kræver at Anthem-enhedens IP sættes under Indstillinger → Eksterne API-nøgler først.

@@ -37,6 +37,7 @@ from app.repositories import (
     screening_request_repository,
     tv_show_repository,
 )
+from app.repositories.sort_title import strip_leading_article
 from app.services import message_service, tag_service
 
 
@@ -269,6 +270,8 @@ async def create_tv_show(
         **show_fields,
         "tags": canonical_tags,
         "tags_normalized": [tag_service.normalize(tag) for tag in canonical_tags],
+        # Feature #184 — sorterings-nøgle der ignorerer en foranstillet "The".
+        "sort_name": strip_leading_article(show_fields["name"]),
         "format": payload.format.value if payload.format else None,
         "audio_types": [audio_type.value for audio_type in payload.audio_types],
         "media_type": payload.media_type.value if payload.media_type else None,
@@ -509,6 +512,10 @@ async def update_tv_show(
         canonical_tags = await tag_service.resolve_tags(db, fields["tags"])
         fields["tags"] = canonical_tags
         fields["tags_normalized"] = [tag_service.normalize(tag) for tag in canonical_tags]
+
+    # Feature #184 — holder sort_name ved lige når navnet redigeres direkte.
+    if "name" in fields:
+        fields["sort_name"] = strip_leading_article(fields["name"])
 
     # Feature #123 — samme normalisering som create/movie_service.
     if "subtitles" in fields:
@@ -800,6 +807,7 @@ async def sync_all_from_tmdb(db: AsyncIOMotorDatabase) -> TmdbSyncResult:
             "number_of_episodes": details["number_of_episodes"],
             "imdb_url": details["imdb_url"],
             "seasons": _merge_seasons(document.get("seasons", []), details["seasons"]),
+            "sort_name": strip_leading_article(details["name"]),
             "updated_at": datetime.now(timezone.utc),
         }
         await tv_show_repository.update(db, str(document["_id"]), fields)

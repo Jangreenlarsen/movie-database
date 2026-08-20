@@ -24,6 +24,8 @@ const SORT_OPTIONS = [
   { value: "serial_number_physical", labelKey: "sort.serialShowsFirst" },
   { value: "created_at", labelKey: "field.added" },
   { value: "name", labelKey: "field.name" },
+  // Feature #184 — se den identiske note i Library.jsx.
+  { value: "name_no_article", labelKey: "sort.nameNoArticle" },
   { value: "year", labelKey: "field.year" },
   { value: "rating", labelKey: "field.rating" },
   { value: "personal_rating", labelKey: "field.personalRating" },

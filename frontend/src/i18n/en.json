@@ -739,6 +739,8 @@
   "sort.serialDigitalFirst": "Serial number (D first)",
   "sort.serialMoviesFirst": "Serial number (M first)",
   "sort.serialShowsFirst": "Serial number (T first)",
+  "sort.titleNoArticle": "Title (ignoring \"The\")",
+  "sort.nameNoArticle": "Name (ignoring \"The\")",
   "settings.tab.messages": "Messages",
   "messages.heading": "Send message",
   "messages.description": "Send a message to all users or to a single one. Recipients see it as a banner at the top of the app until they close it — and you can see who has.",

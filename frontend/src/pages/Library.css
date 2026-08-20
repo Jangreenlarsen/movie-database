@@ -520,6 +520,17 @@
   cursor: pointer;
 }
 
+/* BUGS.md #78 (Jan: "afkrydsnings som i film/tv kort detajle i venstre
+   hjørne er for lille skal være større") — ingen checkbox i appen havde
+   nogensinde en eksplicit størrelse, så alle stod på browserens ustylede
+   ~13px standard. Delt af film-set-status, TV-serie-set-status,
+   sæson-ejerskab og episode-set-status, som alle bruger denne klasse. */
+.watched-toggle input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+
 /* Feature #88 — "Set" og "Plex" deler nederste højre hjørne. En stak i
    stedet for to absolut placerede badges, så et nyt badge aldrig lander
    oven i et eksisterende, uanset hvilke der er slået til. */

@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.159.0 (build 0221) — 2026-08-20
+
+- **Afkrydsningsfelter i film-/TV-detaljevinduet er større** og lettere at ramme.
+- **Dato-feltet i "Ønsk visning i Voldby BIO" er ikke længere usynligt** i mørkt tema — teksten har nu klar kontrast, uanset enhedens egen lyst/mørkt-indstilling.
+- **Ny: klik på et kort under "Anmodninger" i Voldby BIO-fanen** for at se filmens/seriens detaljer — spilletid, genrer, rating og plot.
+
 ## v0.158.0 (build 0220) — 2026-08-20
 
 - **Ny sorteringsmulighed: "Titel (uden \"The\")" / "Navn (uden \"The\")".** Under Sortér i både Film- og TV-bibliotek kan du nu vælge en sortering der springer en foranstillet "The" over, så fx "The Wire" sorteres som "Wire" i stedet for at ligge under "T". Den almindelige "Titel"/"Navn"-sortering findes stadig ved siden af.

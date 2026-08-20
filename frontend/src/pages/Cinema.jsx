@@ -6,6 +6,11 @@ import SeatSelectionModal from "../components/SeatSelectionModal";
 import { formatDateHeading, formatShortDate, formatTime, groupByDate } from "../utils/cinemaFormat";
 import { posterSrc } from "../utils/posterUrl";
 import { useLocale, useT } from "../i18n";
+// Feature #185 — RequestDetailModal genbruger .modal-backdrop/.modal-card/
+// .modal-footer, defineret i Library.css (samme grund til TvShows.jsx også
+// importerer den) — uden denne import ville modalen stå ustylet ved en kold
+// navigation direkte til /cinema, uden at Library.jsx nogensinde er indlæst.
+import "./Library.css";
 import "./Cinema.css";
 
 // Feature #133/#134 — lille biografstole-ikon på seat-valg-knappen. (Det
@@ -331,7 +336,7 @@ function earliestUpcomingSuggestion(requestedBy) {
   return upcoming.length > 0 ? upcoming[0].slice(0, 16) : "";
 }
 
-function RequestRow({ request, onChanged }) {
+export function RequestRow({ request, onChanged }) {
   const t = useT();
   const locale = useLocale();
   const suggestion = earliestUpcomingSuggestion(request.requested_by);
@@ -341,6 +346,9 @@ function RequestRow({ request, onChanged }) {
   const [isPrivate, setIsPrivate] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  // Feature #185 (Jan: "i voldby bio kort vil det være fint hvis man kan
+  // trykke på de film der er under Anmodninger så man kan se detajler")
+  const [showDetail, setShowDetail] = useState(false);
 
   async function schedule() {
     if (!scheduledAt) return;
@@ -377,7 +385,11 @@ function RequestRow({ request, onChanged }) {
 
   return (
     <div className="cinema-request-row">
-      <div className="cinema-request-poster">
+      <div
+        className="cinema-request-poster cinema-request-clickable"
+        onClick={() => setShowDetail(true)}
+        title={t("cinema.viewDetails")}
+      >
         {request.poster_url ? (
           <img src={posterSrc(request.poster_url, "w185")} alt={request.title ?? ""} />
         ) : (
@@ -385,7 +397,11 @@ function RequestRow({ request, onChanged }) {
         )}
       </div>
       <div className="cinema-request-info">
-        <strong>
+        <strong
+          className="cinema-request-clickable"
+          onClick={() => setShowDetail(true)}
+          title={t("cinema.viewDetails")}
+        >
           {request.title ?? t("cinema.unknown")} {request.year ? `(${request.year})` : ""}
         </strong>
         <div className="muted">
@@ -453,6 +469,95 @@ function RequestRow({ request, onChanged }) {
         </div>
       )}
       {error && <div className="banner banner-error" style={{ marginTop: 8 }}>{error}</div>}
+
+      {showDetail && (
+        <RequestDetailModal
+          mediaKind={request.media_kind}
+          id={request.media_kind === "movie" ? request.movie_id : request.tv_show_id}
+          onClose={() => setShowDetail(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Feature #185 — let, read-only visning af det en anmodning peger på (poster,
+ * spilletid, genrer, rating, plot). Anmodningen selv har kun titel/år/poster
+ * (øjebliksbillede taget ved anmodningstidspunktet); resten hentes friskt via
+ * `movie_id`/`tv_show_id`. Bevidst IKKE en genbrug af Library.jsx/TvShows.jsx's
+ * fulde `MovieDetailModal`/`TvShowDetailModal` — de kræver tags/ejere/
+ * lokationer/attribut-lister til redigering, som slet ikke er relevante her;
+ * dette er kun "se hvad det er", ikke en redigerings-genvej.
+ */
+export function RequestDetailModal({ mediaKind, id, onClose }) {
+  const t = useT();
+  const [item, setItem] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetcher = mediaKind === "movie" ? api.getMovie(id) : api.getTvShow(id);
+    fetcher.then(setItem).catch((err) => setError(err.message));
+  }, [mediaKind, id]);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-card cinema-request-detail-card" onClick={(e) => e.stopPropagation()}>
+        {error && <div className="banner banner-error">{error}</div>}
+        {!item && !error && <p className="muted">{t("common.loading")}</p>}
+        {item && (
+          <div className="cinema-request-detail-body">
+            {item.poster_url ? (
+              <img
+                src={posterSrc(item.poster_url, "w342")}
+                alt=""
+                className="cinema-request-detail-poster"
+              />
+            ) : (
+              <div className="cinema-request-detail-poster cinema-request-detail-poster-fallback">
+                {mediaKind === "movie" ? "🎬" : "📺"}
+              </div>
+            )}
+            <div className="cinema-request-detail-info">
+              <h3>
+                {(item.title ?? item.name) ?? t("cinema.unknown")} {item.year ? `(${item.year})` : ""}
+              </h3>
+              <dl className="cinema-request-detail-grid">
+                {mediaKind === "movie" && item.runtime != null && (
+                  <>
+                    <dt>{t("field.runtime")}</dt>
+                    <dd>{t("lib.minutes", { minutes: item.runtime })}</dd>
+                  </>
+                )}
+                {mediaKind === "tv" && item.number_of_seasons != null && (
+                  <>
+                    <dt>{t("field.numberOfSeasons")}</dt>
+                    <dd>{item.number_of_seasons}</dd>
+                  </>
+                )}
+                {item.genres?.length > 0 && (
+                  <>
+                    <dt>{t("field.genres")}</dt>
+                    <dd>{item.genres.join(", ")}</dd>
+                  </>
+                )}
+                {item.rating != null && (
+                  <>
+                    <dt>{t("field.rating")}</dt>
+                    <dd>{item.rating.toFixed(1)}</dd>
+                  </>
+                )}
+              </dl>
+              {item.overview && <p className="muted">{item.overview}</p>}
+            </div>
+          </div>
+        )}
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose}>
+            {t("common.close")}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

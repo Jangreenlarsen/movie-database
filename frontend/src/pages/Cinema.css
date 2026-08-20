@@ -262,6 +262,71 @@
   min-width: 160px;
 }
 
+/* Feature #185 — poster + titel i en anmodnings-række åbner en detalje-
+   visning (spilletid m.m.), samme "kortet selv er klikbart"-mønster som
+   biblioteks-kortene. */
+.cinema-request-clickable {
+  cursor: pointer;
+}
+
+.cinema-request-info strong.cinema-request-clickable {
+  display: inline-block;
+}
+
+.cinema-request-detail-card {
+  max-width: 520px;
+}
+
+.cinema-request-detail-body {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.cinema-request-detail-poster {
+  flex-shrink: 0;
+  width: 140px;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
+.cinema-request-detail-poster-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  background: var(--accent-soft);
+}
+
+.cinema-request-detail-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cinema-request-detail-info h3 {
+  margin-top: 0;
+}
+
+.cinema-request-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 0 0 10px;
+}
+
+.cinema-request-detail-grid dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.cinema-request-detail-grid dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+}
+
 /* Feature #85 — én linje pr. ønsker der skrev en besked og/eller foreslog
    et tidspunkt. Vises under "Ønsket af:"-linjen i anmodnings-rækken. */
 .cinema-request-wish {

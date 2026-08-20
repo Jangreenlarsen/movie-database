@@ -25,6 +25,11 @@ const SORT_OPTIONS = [
   { value: "serial_number_physical", labelKey: "sort.serialMoviesFirst" },
   { value: "created_at", labelKey: "field.added" },
   { value: "title", labelKey: "field.title" },
+  // Feature #184 — Jan: "i sortering skal det være muligt at ignorerer 'the'
+  // i starten af titel navn". Eget valg, samme mønster som
+  // serial_number/serial_number_physical ovenfor, i stedet for en til/fra-
+  // kontakt på "title" selv.
+  { value: "title_no_article", labelKey: "sort.titleNoArticle" },
   { value: "year", labelKey: "field.year" },
   { value: "rating", labelKey: "field.rating" },
   { value: "personal_rating", labelKey: "field.personalRating" },

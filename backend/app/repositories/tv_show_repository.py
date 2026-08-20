@@ -7,6 +7,7 @@ from pymongo import ReturnDocument
 
 from app.models.movie import MediaType, subtitles_from_free_text
 from app.repositories import digital_serial_repository
+from app.repositories.sort_title import strip_leading_article
 from app.repositories.text_search import build_text_query, drop_legacy_text_index
 
 COLLECTION = "tv_shows"
@@ -41,6 +42,8 @@ logger = logging.getLogger("moviedb")
 # test_serial_series_sort_order_depends_on_label_ordering låser den fast.
 SORT_FIELDS = {
     "name": [("name", "user")],
+    # Feature #184 — se den identiske note i movie_repository.py.
+    "name_no_article": [("sort_name", "user")],
     "year": [("year", "user")],
     # Standard-valget: alle D-numre først, derefter de fysiske (Jans krav
     # 2026-08-08).
@@ -152,12 +155,25 @@ async def _migrate_watched_at_to_date(db: AsyncIOMotorDatabase) -> None:
         await collection.update_one({"_id": doc["_id"]}, {"$set": {"watched_at": parsed}})
 
 
+async def _migrate_sort_name(db: AsyncIOMotorDatabase) -> None:
+    """Feature #184 — se den identiske `_migrate_sort_title` i
+    movie_repository.py."""
+    collection = db[COLLECTION]
+    cursor = collection.find({"sort_name": {"$exists": False}}, {"name": 1})
+    async for doc in cursor:
+        name = doc.get("name") or ""
+        await collection.update_one(
+            {"_id": doc["_id"]}, {"$set": {"sort_name": strip_leading_article(name)}}
+        )
+
+
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     collection = db[COLLECTION]
     await _migrate_format_labels(db)
     await _migrate_audio_type_labels(db)
     await _migrate_subtitles_to_list(db)
     await _migrate_watched_at_to_date(db)
+    await _migrate_sort_name(db)
     # BUGS.md #48 — se movie_repository: søgningen bruger ikke længere
     # `$text`, så det gamle index ryddes op i stedet for at ligge og koste
     # skrivetid.

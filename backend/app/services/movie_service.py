@@ -45,6 +45,7 @@ from app.repositories import (
     screening_request_repository,
     tv_show_repository,
 )
+from app.repositories.sort_title import strip_leading_article
 from app.services import message_service, tag_service
 
 
@@ -244,6 +245,8 @@ async def create_movie(
         **movie_fields,
         "tags": canonical_tags,
         "tags_normalized": [tag_service.normalize(tag) for tag in canonical_tags],
+        # Feature #184 — sorterings-nøgle der ignorerer en foranstillet "The".
+        "sort_title": strip_leading_article(movie_fields["title"]),
         "format": payload.format.value if payload.format else None,
         "audio_types": [audio_type.value for audio_type in payload.audio_types],
         "media_type": payload.media_type.value if payload.media_type else None,
@@ -688,6 +691,10 @@ async def update_movie(
         fields["tags"] = canonical_tags
         fields["tags_normalized"] = [tag_service.normalize(tag) for tag in canonical_tags]
 
+    # Feature #184 — holder sort_title ved lige når titlen redigeres direkte.
+    if "title" in fields:
+        fields["sort_title"] = strip_leading_article(fields["title"])
+
     # Feature #123 — trim/drop-tomme, så en opdatering gemmer samme rene
     # liste-form som oprettelsen (coerce er en no-op på en allerede-ren liste).
     if "subtitles" in fields:
@@ -922,6 +929,7 @@ async def sync_all_from_tmdb(db: AsyncIOMotorDatabase) -> TmdbSyncResult:
             "trailer_url": details["trailer_url"],
             "collection_id": details["collection_id"],
             "collection_name": details["collection_name"],
+            "sort_title": strip_leading_article(details["title"]),
             "updated_at": datetime.now(timezone.utc),
         }
         await movie_repository.update(db, str(document["_id"]), fields)

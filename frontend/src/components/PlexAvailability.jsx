@@ -115,20 +115,17 @@ export function PlexPlayLink({ availability, plex }) {
  * admin med sin egen `plex_play_enabled` slået fra kunne stadig se denne
  * knap. `playAllowed` lukker det hul — samme boolean `PlexPlayLink` bruger.
  *
- * 2026-08-19 — genindført en tredje, SEPARAT test-knap, "Vis på Shield TV
- * (test)" (Jan, efter research bekræftede hvorfor det oprindelige
- * `mirror/details`-forsøg fejlede — se backend for hele baggrunden: "lave
- * igen en knap mere til 'vis i plex' sådan vi kan teste på den funktion
- * igen sammen med de andre, jeg se på om der skulle være opdateringer til
- * plex klient"). Bevidst UDENFOR afspil/stop-toggle'en: den starter ikke
- * en kendt "afspiller nu"-tilstand (vi ved ikke om/hvornår brugeren rent
- * faktisk trykker Play på selve apparatet), så den har sin egen simple
- * busy/besked-tilstand i stedet for at dele toggle'ens `phase`.
+ * 2026-08-19 — skiftet fra appens almindelige grå `btn` til den grønne
+ * `btn-success` (Jan: "sat farven Grøn på knapperne i de to andre plex
+ * funktioner"), for visuelt at skille den fra `PlexPlayLink`s orange
+ * `btn-primary` ovenfor.
  *
- * 2026-08-19 — begge Shield-knapper (afspil/stop-toggle'en og "Vis")
- * skiftet fra appens almindelige grå `btn` til den nye grønne `btn-success`
- * (Jan: "sat farven Grøn på knapperne i de to andre plex funktioner"), for
- * visuelt at skille dem fra `PlexPlayLink`s orange `btn-primary` ovenfor.
+ * 2026-08-20 (Jan: "i film kort skal vi have fjenet 'vis på shield
+ * TV(test)' knappen") — den separate `mirror/details`-testknap er fjernet
+ * igen. Backend-endpointet (`POST /api/plex/show-on-shield`,
+ * `navigate_client_to_media`) er bevidst IKKE rørt — kan stadig afprøves
+ * direkte hvis en fremtidig Shield-app-opdatering skulle ændre noget,
+ * uden at UI'et skal bygges om for at gøre det.
  */
 export function PlexShieldPlayButton({
   availability,
@@ -142,9 +139,6 @@ export function PlexShieldPlayButton({
   const [phase, setPhase] = useState("idle"); // idle | starting | playing | stopping
   const [message, setMessage] = useState(null);
   const [isError, setIsError] = useState(false);
-  const [showBusy, setShowBusy] = useState(false);
-  const [showMessage, setShowMessage] = useState(null);
-  const [showIsError, setShowIsError] = useState(false);
 
   if (!isAdmin || playAllowed === false || !availability?.available || !shieldConfigured) {
     return null;
@@ -185,22 +179,6 @@ export function PlexShieldPlayButton({
     }
   }
 
-  async function show() {
-    setShowBusy(true);
-    setShowMessage(null);
-    setShowIsError(false);
-    try {
-      const result = await api.showOnShield(kind, itemId);
-      setShowMessage(result.message);
-      setShowIsError(!result.ok);
-    } catch (err) {
-      setShowMessage(err.message);
-      setShowIsError(true);
-    } finally {
-      setShowBusy(false);
-    }
-  }
-
   const isPlaying = phase === "playing";
   const isBusy = phase === "starting" || phase === "stopping";
 
@@ -223,14 +201,8 @@ export function PlexShieldPlayButton({
                   : "plex.shieldPlay"
           )}
         </button>
-        <button type="button" className="btn btn-success" onClick={show} disabled={showBusy}>
-          {t(showBusy ? "plex.shieldShowing" : "plex.shieldShow")}
-        </button>
       </div>
       {message && <p className={isError ? "banner banner-error" : "muted"}>{message}</p>}
-      {showMessage && (
-        <p className={showIsError ? "banner banner-error" : "muted"}>{showMessage}</p>
-      )}
     </div>
   );
 }

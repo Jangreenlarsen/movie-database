@@ -28,9 +28,10 @@ async def create_request(
     current_user: dict = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
-    # Feature #176/#177 — role-dependent, so enforced here rather than in the
-    # Pydantic model itself (see screening_service.enforce_preferred_at).
-    screening_service.enforce_preferred_at(current_user.get("role"), payload.preferred_at)
+    # Feature #176/#177/#186 — policy-dependent, so enforced here rather
+    # than in the Pydantic model itself (see
+    # screening_service.enforce_preferred_at).
+    screening_service.enforce_preferred_at(payload.preferred_at)
     return await screening_service.request_screening(
         db,
         payload.media_kind,

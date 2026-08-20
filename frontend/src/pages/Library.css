@@ -521,14 +521,55 @@
 }
 
 /* BUGS.md #78 (Jan: "afkrydsnings som i film/tv kort detajle i venstre
-   hjørne er for lille skal være større") — ingen checkbox i appen havde
-   nogensinde en eksplicit størrelse, så alle stod på browserens ustylede
-   ~13px standard. Delt af film-set-status, TV-serie-set-status,
-   sæson-ejerskab og episode-set-status, som alle bruger denne klasse. */
+   hjørne er for lille skal være større", derefter opfølgning: "x skal være
+   i størrelse med boks også, og boks farve rød"). `accent-color` alene
+   (første forsøg) skalerer flueben inkonsistent på tværs af browsere og
+   giver ingen kontrol over selve boksens farve i UNCHECKED-tilstand — derfor
+   en fuldt selvtegnet boks (`appearance: none`) i stedet: fast 20×20px boks
+   i `--danger` (appens etablerede røde token, allerede tema-bevidst
+   lys/mørk), med et flueben tegnet som et roteret hjørne af boksens egen
+   ramme (klassisk CSS-teknik) — skalerer garanteret præcis med boksen, i
+   stedet for at være afhængig af browserens/OS'ens egen fluebens-grafik.
+   Delt af film-set-status, TV-serie-set-status, sæson-ejerskab og
+   episode-set-status, som alle bruger denne klasse. */
 .watched-toggle input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  /* box-sizing/padding skal sættes eksplicit — ellers arves den globale
+     `input, select, textarea { padding: 8px 12px }` (index.css) også af
+     checkboxen, som med content-box gør den bredere end høj i stedet for
+     en ren 20×20 firkant. */
+  box-sizing: border-box;
+  padding: 0;
   width: 20px;
   height: 20px;
-  accent-color: var(--accent);
+  flex-shrink: 0;
+  margin: 0;
+  border: 2px solid var(--danger);
+  border-radius: 4px;
+  background: var(--surface);
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.watched-toggle input[type="checkbox"]:checked {
+  background: var(--danger);
+}
+
+.watched-toggle input[type="checkbox"]:checked::after {
+  /* Fast hvid uanset tema (ikke --surface, som er næsten sort i mørkt tema
+     og ville drukne i den røde boks) — samme konvention som et flueben i en
+     udfyldt, farvet boks normalt tegnes, uanset appens eget lys/mørkt-valg. */
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 /* Feature #88 — "Set" og "Plex" deler nederste højre hjørne. En stak i
@@ -638,9 +679,6 @@
   align-items: flex-start;
 }
 
-/* 2026-08-19 — "Afspil/Stop på Shield TV" (toggle) og den genindførte
-   "Vis på Shield TV (test)"-knap står side om side inden for samme
-   plex-shield-play-blok. */
 .plex-shield-buttons {
   display: flex;
   flex-wrap: wrap;

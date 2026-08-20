@@ -24,12 +24,14 @@ import "./ScreeningRequestButton.css";
  * own (authoritative) requirement on `ScreeningRequestCreate.preferred_at`.
  *
  * Feature #177 (Jan: "vi skal kunne sætte om guest ... skal bruge dato/tid
- * eller ikke") — that requirement is now admin-configurable, but ONLY for
- * the guest role; standard/admin stay unconditionally required. Defaults to
- * "required" while the policy is still loading, matching the backend's own
- * default and avoiding a flash of an enabled button that then disables.
+ * eller ikke") gjorde kravet admin-konfigurerbart, oprindeligt kun for
+ * gæste-rollen. Feature #186 (Jan, 2026-08-20: "angivning af dato/tid for
+ * forvisning skal gælde for alle roller og ikke kun guest") fjernede den
+ * rolle-særbehandling — politikken gælder nu alle roller ens. Defaults til
+ * "required" mens politikken stadig hentes, matcher backendens egen
+ * default og undgår et glimt af en aktiveret knap der straks deaktiveres.
  */
-export default function ScreeningRequestButton({ mediaKind, id, username, role }) {
+export default function ScreeningRequestButton({ mediaKind, id, username }) {
   const t = useT();
   const locale = useLocale();
   const [status, setStatus] = useState("idle"); // idle | composing | requesting | requested | error
@@ -39,9 +41,7 @@ export default function ScreeningRequestButton({ mediaKind, id, username, role }
   // Hvad DENNE bruger tidligere har ønsket for titlen — vises igen ved
   // genåbning af vinduet, så et ønske ikke bare bliver til et anonymt flueben.
   const [myRequest, setMyRequest] = useState(null);
-  // Feature #177 — kun relevant for gæster; standard/admin er altid true.
-  const [requireForGuests, setRequireForGuests] = useState(true);
-  const preferredAtRequired = role !== "guest" || requireForGuests;
+  const [preferredAtRequired, setPreferredAtRequired] = useState(true);
 
   // `requested_by` rummer alle der har ønsket titlen — vores egen entry
   // findes på brugernavn, så vi aldrig kommer til at vise en andens besked.
@@ -64,12 +64,11 @@ export default function ScreeningRequestButton({ mediaKind, id, username, role }
   }, [mediaKind, id, username]);
 
   useEffect(() => {
-    if (role !== "guest") return;
     api
       .getScreeningRequestPolicy()
-      .then((policy) => setRequireForGuests(policy.require_preferred_at_for_guests))
+      .then((policy) => setPreferredAtRequired(policy.require_preferred_at))
       .catch(() => {});
-  }, [role]);
+  }, []);
 
   async function submitRequest() {
     setStatus("requesting");

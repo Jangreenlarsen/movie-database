@@ -100,17 +100,19 @@ async def _to_screening_model(db: AsyncIOMotorDatabase, document: dict) -> Scree
     )
 
 
-def enforce_preferred_at(role: str, preferred_at: datetime | None) -> None:
+def enforce_preferred_at(preferred_at: datetime | None) -> None:
     """Feature #176 made `preferred_at` mandatory for everyone; feature #177
-    (Jan: "vi skal kunne sætte om guest ... skal bruge dato/tid eller ikke")
-    made that conditional again, but ONLY for the guest role — standard/admin
-    remain unconditionally required, Jans explicit choice. Called from the
-    API route (not embedded in the Pydantic model — a field-validator has no
-    access to the calling user's role), same "guest-specific payload rule
-    enforced explicitly" pattern as `api.deps.enforce_guest_wishlist_only`."""
+    made that conditional again, but only for the guest role; feature #186
+    (Jan, 2026-08-20: "angivning af dato/tid for forvisning skal gælde for
+    alle roller og ikke kun guest") dropped the role-distinction entirely —
+    the policy now applies the same way to every role, so this no longer
+    needs the caller's role at all. Called from the API route (not embedded
+    in the Pydantic model — simpler to keep the same explicit-call shape as
+    before the role check was removed, rather than move it into a
+    field-validator now that it needs no request context)."""
     if preferred_at is not None:
         return
-    if role == "guest" and not settings.require_preferred_at_for_guests:
+    if not settings.require_preferred_at:
         return
     raise PreferredAtRequiredError()
 
@@ -132,10 +134,10 @@ async def request_screening(
     note and suggested time, stored on their entry in `requested_by` rather
     than on the request itself, since several people can want the same title
     for different reasons. Both default to None, so the pre-#85 call shape
-    (and any client that omits them) behaves exactly as before. Feature #176/
-    #177 — whether `preferred_at` is actually allowed to be None depends on
-    the caller's role; see `enforce_preferred_at`, called from the API route
-    before this function, not repeated here."""
+    (and any client that omits them) behaves exactly as before. Feature
+    #176/#177/#186 — whether `preferred_at` is actually allowed to be None
+    depends on the current policy; see `enforce_preferred_at`, called from
+    the API route before this function, not repeated here."""
     now = datetime.now(timezone.utc)
     # A message of "" or "   " is the same as no message — normalised here
     # so neither the admin panel nor the API has to distinguish between the

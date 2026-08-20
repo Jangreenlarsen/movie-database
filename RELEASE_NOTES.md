@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.160.0 (build 0222) — 2026-08-20
+
+- **"Kræv ønsket tidspunkt" ved visningsønsker i Voldby BIO gælder nu alle** — admin, standard og gæst. Tidligere var standard/admin altid tvunget til at angive en dato, uanset indstillingen; nu følger alle den samme, admin-styrbare politik (Indstillinger → Biograf → "Visningsønsker").
+- **Afkrydsningsfeltet i film-/TV-detaljevinduet er nu rødt** og fluebenet fylder hele boksen.
+- **Testknappen "Vis på Shield TV (test)" er fjernet** fra filmkortet. Den almindelige "Afspil på Shield TV"-knap er uændret.
+
 ## v0.159.0 (build 0221) — 2026-08-20
 
 - **Afkrydsningsfelter i film-/TV-detaljevinduet er større** og lettere at ramme.

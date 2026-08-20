@@ -3069,7 +3069,7 @@ export function PlexAutoImportSection() {
 export function ScreeningRequestPolicySection() {
   const t = useT();
   const [loadStatus, setLoadStatus] = useState("loading");
-  const [requireForGuests, setRequireForGuests] = useState(true);
+  const [requirePreferredAt, setRequirePreferredAt] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
@@ -3079,7 +3079,7 @@ export function ScreeningRequestPolicySection() {
     api
       .getScreeningRequestPolicy()
       .then((data) => {
-        setRequireForGuests(data.require_preferred_at_for_guests);
+        setRequirePreferredAt(data.require_preferred_at);
         setLoadStatus("ready");
       })
       .catch(() => setLoadStatus("error"));
@@ -3094,9 +3094,9 @@ export function ScreeningRequestPolicySection() {
     setSaved(false);
     try {
       const updated = await api.updateScreeningRequestPolicy({
-        require_preferred_at_for_guests: requireForGuests,
+        require_preferred_at: requirePreferredAt,
       });
-      setRequireForGuests(updated.require_preferred_at_for_guests);
+      setRequirePreferredAt(updated.require_preferred_at);
       setSaved(true);
     } catch (err) {
       setError(err.message);
@@ -3120,10 +3120,10 @@ export function ScreeningRequestPolicySection() {
           <label className="serial-reuse-toggle">
             <input
               type="checkbox"
-              checked={requireForGuests}
-              onChange={(e) => setRequireForGuests(e.target.checked)}
+              checked={requirePreferredAt}
+              onChange={(e) => setRequirePreferredAt(e.target.checked)}
             />
-            {t("screeningRequestPolicy.requireForGuests")}
+            {t("screeningRequestPolicy.requirePreferredAt")}
           </label>
 
           {error && <div className="banner banner-error">{error}</div>}

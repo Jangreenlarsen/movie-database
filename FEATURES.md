@@ -194,6 +194,7 @@ Begge tabeller opdateres når en feature tilføjes (jf. CLAUDE.md regel 2).
 | 183 | AVM 70-diagnostikmodul (Indstillinger → Drift): live input/volumen/audio-mode/audio-format via SSE + log-optagelse til fil | done | 0.157.0 |
 | 184 | Sortering: nyt valg "Titel/Navn (uden 'The')" der ignorerer en foranstillet artikel | done | 0.158.0 |
 | 185 | Klikbare kort under "Anmodninger" i Voldby BIO-fanen, viser filmens/seriens detaljer (spilletid m.m.) | done | 0.159.0 |
+| 186 | Krav om dato/tid ved visningsønske gælder nu alle roller (ikke kun gæster) — admin-styrbar til/fra | done | 0.160.0 |
 
 ---
 

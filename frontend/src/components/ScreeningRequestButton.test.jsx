@@ -27,6 +27,7 @@ describe("ScreeningRequestButton (feature #176)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(api, "myScreeningRequests").mockResolvedValue([]);
+    vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({ require_preferred_at: true });
   });
 
   it('"Send ønske" er deaktiveret indtil et tidspunkt er valgt, aktiveres derefter', async () => {
@@ -70,18 +71,26 @@ describe("ScreeningRequestButton (feature #176)", () => {
   });
 });
 
-describe("ScreeningRequestButton — gæste-specifik politik (feature #177)", () => {
+/**
+ * Feature #177 gjorde kravet admin-styrbart, oprindeligt kun for gæster.
+ * Feature #186 (Jan, 2026-08-20: "angivning af dato/tid for forvisning skal
+ * gælde for alle roller og ikke kun guest") fjernede rolle-særbehandlingen
+ * — politikken hentes og gælder nu ens uanset rolle, så disse tests kører
+ * bevidst uden nogen `role`-prop overhovedet (komponenten tager ikke
+ * længere imod én).
+ */
+describe("ScreeningRequestButton — politik gælder alle roller (feature #177/#186)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(api, "myScreeningRequests").mockResolvedValue([]);
   });
 
-  it('gæst med politikken slået til: "Send ønske" er stadig deaktiveret uden tidspunkt', async () => {
+  it('politikken slået til: "Send ønske" er deaktiveret uden tidspunkt', async () => {
     vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({
-      require_preferred_at_for_guests: true,
+      require_preferred_at: true,
     });
     const user = userEvent.setup();
-    render(<ScreeningRequestButton mediaKind="movie" id="m1" username="testuser" role="guest" />);
+    render(<ScreeningRequestButton mediaKind="movie" id="m1" username="testuser" />);
 
     await user.click(
       await screen.findByRole("button", { name: "🎬 Ønsk visning i Voldby BIO" })
@@ -90,15 +99,15 @@ describe("ScreeningRequestButton — gæste-specifik politik (feature #177)", ()
     expect(screen.getByRole("button", { name: "Send ønske" })).toBeDisabled();
   });
 
-  it('gæst med politikken slået fra: "Send ønske" er aktiveret uden tidspunkt', async () => {
+  it('politikken slået fra: "Send ønske" er aktiveret uden tidspunkt', async () => {
     vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({
-      require_preferred_at_for_guests: false,
+      require_preferred_at: false,
     });
     const requestSpy = vi.spyOn(api, "requestScreening").mockResolvedValue({
       requested_by: [{ username: "testuser", message: null, preferred_at: null }],
     });
     const user = userEvent.setup();
-    render(<ScreeningRequestButton mediaKind="movie" id="m1" username="testuser" role="guest" />);
+    render(<ScreeningRequestButton mediaKind="movie" id="m1" username="testuser" />);
 
     await user.click(
       await screen.findByRole("button", { name: "🎬 Ønsk visning i Voldby BIO" })
@@ -112,17 +121,21 @@ describe("ScreeningRequestButton — gæste-specifik politik (feature #177)", ()
     );
   });
 
-  it("standard-bruger er upåvirket af gæste-politikken, selv når den er slået fra", async () => {
+  it("politikken hentes og respekteres uanset hvilken rolle brugeren har (ingen guest-særbehandling længere)", async () => {
+    // Feature #186's kerne-regressionstest: før fjernede komponenten
+    // guest-særbehandlingen ved slet ikke at kalde politik-endpointet for
+    // andre roller end guest, og standard/admin var altid ufravigeligt
+    // krævet. Nu kaldes endpointet altid, og resultatet respekteres altid.
     vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({
-      require_preferred_at_for_guests: false,
+      require_preferred_at: false,
     });
     const user = userEvent.setup();
-    render(<ScreeningRequestButton mediaKind="movie" id="m1" username="testuser" role="standard" />);
+    render(<ScreeningRequestButton mediaKind="movie" id="m1" username="testuser" />);
 
     await user.click(
       await screen.findByRole("button", { name: "🎬 Ønsk visning i Voldby BIO" })
     );
-    expect(api.getScreeningRequestPolicy).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Send ønske" })).toBeDisabled();
+    await waitFor(() => expect(api.getScreeningRequestPolicy).toHaveBeenCalled());
+    expect(await screen.findByRole("button", { name: "Send ønske" })).toBeEnabled();
   });
 });

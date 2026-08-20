@@ -268,38 +268,39 @@ describe("PasswordPolicySection (feature #174)", () => {
 });
 
 /**
- * Feature #177 — admin-indstilling for gæsters dato/tidspunkt-krav ved
- * visningsønsker. Samme testværdige begrundelse som PasswordPolicySection
- * ovenfor: den indlæste værdi skal reelt afspejles, og gem/fejl skal vises.
+ * Feature #177/#186 — admin-indstilling for dato/tidspunkt-krav ved
+ * visningsønsker, gælder alle roller ens siden #186. Samme testværdige
+ * begrundelse som PasswordPolicySection ovenfor: den indlæste værdi skal
+ * reelt afspejles, og gem/fejl skal vises.
  */
-describe("ScreeningRequestPolicySection (feature #177)", () => {
+describe("ScreeningRequestPolicySection (feature #177/#186)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
   it("indlæser og viser den nuværende politik", async () => {
     vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({
-      require_preferred_at_for_guests: false,
+      require_preferred_at: false,
     });
     render(<ScreeningRequestPolicySection />);
 
     expect(
-      await screen.findByRole("checkbox", { name: "Kræv ønsket tidspunkt for gæster" })
+      await screen.findByRole("checkbox", { name: "Kræv ønsket tidspunkt" })
     ).not.toBeChecked();
   });
 
   it("gemmer ændringer og bekræfter det", async () => {
     vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({
-      require_preferred_at_for_guests: true,
+      require_preferred_at: true,
     });
     const updateSpy = vi
       .spyOn(api, "updateScreeningRequestPolicy")
-      .mockResolvedValue({ require_preferred_at_for_guests: false });
+      .mockResolvedValue({ require_preferred_at: false });
     const user = userEvent.setup();
 
     render(<ScreeningRequestPolicySection />);
     const checkbox = await screen.findByRole("checkbox", {
-      name: "Kræv ønsket tidspunkt for gæster",
+      name: "Kræv ønsket tidspunkt",
     });
     expect(checkbox).toBeChecked();
 
@@ -307,20 +308,20 @@ describe("ScreeningRequestPolicySection (feature #177)", () => {
     await user.click(screen.getByRole("button", { name: "Gem" }));
 
     await waitFor(() =>
-      expect(updateSpy).toHaveBeenCalledWith({ require_preferred_at_for_guests: false })
+      expect(updateSpy).toHaveBeenCalledWith({ require_preferred_at: false })
     );
     expect(await screen.findByText("Gemt!")).toBeInTheDocument();
   });
 
   it("viser backend-fejlbeskeden ved en mislykket gemning", async () => {
     vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({
-      require_preferred_at_for_guests: true,
+      require_preferred_at: true,
     });
     vi.spyOn(api, "updateScreeningRequestPolicy").mockRejectedValue(new Error("Serverfejl"));
     const user = userEvent.setup();
 
     render(<ScreeningRequestPolicySection />);
-    await screen.findByRole("checkbox", { name: "Kræv ønsket tidspunkt for gæster" });
+    await screen.findByRole("checkbox", { name: "Kræv ønsket tidspunkt" });
     await user.click(screen.getByRole("button", { name: "Gem" }));
 
     expect(await screen.findByText("Serverfejl")).toBeInTheDocument();

@@ -95,8 +95,10 @@ async def apply_password_policy_update(db: AsyncIOMotorDatabase, updates: dict) 
 
 
 # Feature #177 — samme dokument, samme typede $set-only-mønster som
-# PASSWORD_POLICY_KEYS ovenfor.
-SCREENING_REQUEST_POLICY_KEYS = ("require_preferred_at_for_guests",)
+# PASSWORD_POLICY_KEYS ovenfor. Feature #186 omdøbte det ene felt fra
+# require_preferred_at_for_guests til require_preferred_at (se
+# _migrate_screening_request_policy_field_rename nedenfor).
+SCREENING_REQUEST_POLICY_KEYS = ("require_preferred_at",)
 
 
 async def get_screening_request_policy_overrides(db: AsyncIOMotorDatabase) -> dict:
@@ -110,6 +112,25 @@ async def apply_screening_request_policy_update(db: AsyncIOMotorDatabase, update
     if updates:
         await db[COLLECTION].update_one({"_id": DOC_ID}, {"$set": updates}, upsert=True)
     return await get_screening_request_policy_overrides(db)
+
+
+async def migrate_screening_request_policy_field_rename(db: AsyncIOMotorDatabase) -> None:
+    """Feature #186 (Jan: "angivning af dato/tid for forvisning skal gælde
+    for alle roller og ikke kun guest") — `require_preferred_at_for_guests`
+    omdøbt til `require_preferred_at`, da feltet nu gælder alle roller, ikke
+    kun gæster. Bærer en eksisterende admin-sat override under det GAMLE
+    feltnavn videre til det nye, så den ikke stille forsvinder tilbage til
+    kode-defaulten. Idempotent: no-op når det gamle felt er væk."""
+    doc = await db[COLLECTION].find_one({"_id": DOC_ID}, {"require_preferred_at_for_guests": 1})
+    if doc is None or "require_preferred_at_for_guests" not in doc:
+        return
+    await db[COLLECTION].update_one(
+        {"_id": DOC_ID},
+        {
+            "$set": {"require_preferred_at": doc["require_preferred_at_for_guests"]},
+            "$unset": {"require_preferred_at_for_guests": ""},
+        },
+    )
 
 
 # Feature #181 — samme dokument, samme typede $set-only-mønster som

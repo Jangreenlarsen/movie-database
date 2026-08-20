@@ -178,6 +178,25 @@ async def test_restore_reapplies_password_policy(client):
     assert policy["password_require_digit"] is True
 
 
+async def test_restore_ignores_the_pre_186_screening_policy_field_name_without_crashing(client):
+    """Feature #186 renamed require_preferred_at_for_guests to
+    require_preferred_at. A backup taken before the rename still has the old
+    key inside its screening_request_policy dict — `SystemBackup.
+    screening_request_policy` is a permissive `dict` (not the typed model),
+    so it parses fine either way; the old key is then silently ignored by
+    `ScreeningRequestPolicyUpdate` (Pydantic's default `extra="ignore"`),
+    same graceful no-op as any other field missing from an older backup."""
+    backup = (await client.get("/api/system/backup")).json()
+    backup["screening_request_policy"] = {"require_preferred_at_for_guests": False}
+
+    response = await client.post("/api/system/restore", json=backup)
+    assert response.status_code == 200
+    assert response.json()["screening_request_policy_restored"] is True
+
+    policy = (await client.get("/api/settings/screening-request-policy")).json()
+    assert policy["require_preferred_at"] is True
+
+
 async def test_backup_requires_admin(client):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as standard_client:

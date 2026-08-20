@@ -119,18 +119,20 @@ class PasswordPolicyUpdate(BaseModel):
     password_require_digit: bool | None = None
 
 
-# Feature #177 — kræv dato/tidspunkt for guests ved visningsønsker, til/fra
-# (Jan: "vi skal kunne sætte om guest ved film forvisnings ønske skal bruge
-# dato/tid eller ikke"). Samme lille model-familie-mønster som PasswordPolicy
-# ovenfor. Standard/admin er ikke omfattet af denne indstilling — de skal
-# altid angive et tidspunkt (Jans eksplicitte valg), håndhævet direkte i
-# screening_service, ikke via dette felt.
+# Feature #177 — kræv dato/tidspunkt ved visningsønsker, til/fra (Jan: "vi
+# skal kunne sætte om guest ved film forvisnings ønske skal bruge dato/tid
+# eller ikke"). Samme lille model-familie-mønster som PasswordPolicy
+# ovenfor. Feature #186 (Jan, 2026-08-20: "angivning af dato/tid for
+# forvisning skal gælde for alle roller og ikke kun guest") udvidede den
+# fra kun gæster til alle roller — omdøbt fra
+# require_preferred_at_for_guests, håndhæves nu ens for alle i
+# screening_service uden nogen rolle-særbehandling.
 class ScreeningRequestPolicy(BaseModel):
-    require_preferred_at_for_guests: bool
+    require_preferred_at: bool
 
 
 class ScreeningRequestPolicyUpdate(BaseModel):
-    require_preferred_at_for_guests: bool | None = None
+    require_preferred_at: bool | None = None
 
 
 # Feature #181 — automatisk periodisk scan af Plex for nye film/serier

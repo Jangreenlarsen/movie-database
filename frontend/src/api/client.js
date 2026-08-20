@@ -225,11 +225,6 @@ export const api = {
   playOnShield: (kind, itemId) =>
     request("/plex/play-on-shield", { method: "POST", body: JSON.stringify({ kind, item_id: itemId }) }),
   stopShield: () => request("/plex/stop-shield", { method: "POST" }),
-  // 2026-08-19 — genindført test-knap ("Vis på Shield TV", mirror/details)
-  // ved siden af playOnShield, ikke en erstatning for den. Se
-  // plex_client.navigate_client_to_media's docstring i backend.
-  showOnShield: (kind, itemId) =>
-    request("/plex/show-on-shield", { method: "POST", body: JSON.stringify({ kind, item_id: itemId }) }),
   getSerialNumberConfig: () => request("/settings/serial-number"),
   updateSerialNumberConfig: (payload) =>
     request("/settings/serial-number", { method: "PATCH", body: JSON.stringify(payload) }),

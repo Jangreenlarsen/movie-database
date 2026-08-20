@@ -23,10 +23,10 @@ class ScreeningNotFoundError(Exception):
 
 
 class PreferredAtRequiredError(Exception):
-    """Feature #176/#177 — raised by `screening_service._enforce_preferred_at`
-    when a screening request is missing `preferred_at` and the requester's
-    role doesn't get an exemption (standard/admin: never; guest: only if
-    `settings.require_preferred_at_for_guests` is off)."""
+    """Feature #176/#177/#186 — raised by `screening_service.enforce_preferred_at`
+    when a screening request is missing `preferred_at` and
+    `settings.require_preferred_at` is on (the default). Applies the same
+    way to every role since feature #186."""
 
     def __init__(self):
         super().__init__("Angiv venligst hvornår du gerne vil se den.")

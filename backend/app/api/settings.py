@@ -103,10 +103,10 @@ async def update_password_policy(
 
 @router.get("/screening-request-policy", response_model=ScreeningRequestPolicy)
 async def get_screening_request_policy(db: AsyncIOMotorDatabase = Depends(get_database)):
-    """Feature #177 — bevidst IKKE admin-only (i modsætning til de øvrige
-    politik-endpoints ovenfor): en gæst-bruger skal selv kunne se om
-    tidspunkt-feltet reelt er påkrævet for dem, for at UI'et (Ønsk visning-
-    knappen) kan afspejle det rigtigt uden at gætte. Router-niveauets
+    """Feature #177/#186 — bevidst IKKE admin-only (i modsætning til de
+    øvrige politik-endpoints ovenfor): enhver bruger skal selv kunne se om
+    tidspunkt-feltet reelt er påkrævet, for at UI'et (Ønsk visning-knappen)
+    kan afspejle det rigtigt uden at gætte. Router-niveauets
     `Depends(get_current_user)` er stadig nok — ikke en hemmelighed."""
     return await system_settings_service.get_screening_request_policy(db)
 

@@ -58,9 +58,19 @@
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
     --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.45);
     --shadow-lg: 0 24px 48px rgba(0, 0, 0, 0.55);
+    color-scheme: dark;
   }
 }
 
+/* BUGS.md #77 (Jan: "kan ikke se at det er dato man skal indtaste i dato
+   felt ... fordi teskt farve er den samme som baggrund") — `color-scheme`
+   (unlike our own --text/--surface tokens) tells the browser which palette
+   to paint NATIVE form-control chrome/text with (e.g. an <input type="date">'s
+   internal text), and it follows the OS/browser's own prefers-color-scheme
+   independently of `data-theme` unless pinned here. Without this, choosing
+   the app's dark theme while the OS/browser itself prefers light left native
+   date-input text rendered in light-mode colors on top of our dark
+   `background: var(--surface)` — same-color-as-background, invisible. */
 :root[data-theme="dark"] {
   --bg: #0b0c10;
   --surface: #16171d;
@@ -78,6 +88,7 @@
   --success: #4ade80;
   --success-contrast: #0a2412;
   --success-soft: rgba(74, 222, 128, 0.16);
+  color-scheme: dark;
 }
 
 :root[data-theme="light"] {
@@ -92,6 +103,7 @@
   --accent-contrast: #ffffff;
   --accent-soft: rgba(180, 83, 9, 0.1);
   --accent-soft-strong: rgba(180, 83, 9, 0.18);
+  color-scheme: light;
 }
 
 /* Feature #110 — papir er altid lyst, uanset skærmens tema. Uden dette ville

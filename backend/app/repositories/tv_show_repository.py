@@ -331,7 +331,7 @@ async def find_all_for_plex_match(db: AsyncIOMotorDatabase) -> list[dict]:
     titel-feltet, som her hedder `name`."""
     cursor = db[COLLECTION].find(
         {"media_type": {"$ne": MediaType.PHYSICAL.value}},
-        {"_id": 1, "tmdb_id": 1, "name": 1, "year": 1},
+        {"_id": 1, "tmdb_id": 1, "name": 1, "year": 1, "is_wishlist": 1},
     )
     return await cursor.to_list(length=None)
 

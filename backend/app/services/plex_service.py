@@ -823,7 +823,14 @@ async def get_diagnostics(db: AsyncIOMotorDatabase, force_refresh: bool = True) 
     base.ok = True
 
     for kind in ("movie", "show"):
-        docs = await _library_docs(db, kind)
+        # BUGS.md #84 — ønskelisten er bevidst MED i `_library_docs` (den
+        # deles med biblioteks-badgen, hvor "ønsket titel ligger allerede i
+        # Plex" er nyttig info, se `find_all_for_plex_match`s docstring). Men
+        # her, hvor formålet er at finde titel-/år-uoverensstemmelser for
+        # titler man RENT FAKTISK EJER, er en ønsket-men-endnu-ikke-anskaffet
+        # titel ikke en fejl at rapportere — den er per definition ikke i
+        # Plex endnu, og oversvømmede "Ikke fundet i Plex"-listen med støj.
+        docs = [doc for doc in await _library_docs(db, kind) if not doc.get("is_wishlist")]
         matched = 0
         unmatched: list[PlexUnmatchedItem] = []
         for doc in docs:

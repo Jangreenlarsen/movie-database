@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.161.3 build 0227] — 2026-08-21 — fix: Plex-diagnostikken viste ønskeliste-titler som "Ikke fundet i Plex" (BUGS.md #84)
+
+**BUGS.md #84.** Jan: *"når der plex scannes så kommer der fejl på film den ikke kan se i plex, det er alle de film som er på ønskelisten så de skal heller ikke kunne findes der"*. `plex_service.get_diagnostics` genbrugte samme dokumentliste (`_library_docs`) som bibliotekskortets "ligger allerede i Plex"-badge — der er ønskelisten bevidst med (nyttigt at se om en ønsket titel allerede findes). I diagnostik-scanningen, hvis formål er at finde titel-/år-uoverensstemmelser for titler man RENT FAKTISK EJER, gav samme inklusion derimod støj: en ønsket-men-endnu-ikke-anskaffet titel er per definition ikke i Plex, og er derfor ikke en reel mismatch-kandidat.
+
+`get_diagnostics` filtrerer nu ønskeliste-poster fra før match-tjekket køres — både fra optællingen og fra "Ikke fundet i Plex"-listen. Badge-visningen og import-dublet-tjekket er uændrede, da de fortsat skal se ønskelisten.
+
+Berørte filer: `backend/app/services/plex_service.py`, `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/tests/test_plex.py`. Tests: backend +1 (808 i alt). Fuld backend-suite (808) grøn.
+
 ## [0.161.2 build 0226] — 2026-08-21 — fix: sletning af de øverste numre i en serie blev ikke straks genkendt som ledige (BUGS.md #83)
 
 **BUGS.md #83.** Jan: *"vi har i M# serie 1,2,3,4,5,6 tæller er nu på 7 ... sletter vi nr 5,6 og de bliver fri men tæller bliver på 7 så når vi registrere en ny film få den nr 7 og så finder portal ud af af nr 5,6 er fri til de næste film"*. Feature #131s `gaps()`-funktion (delt af M#/T#/D#-serierne) beregnede "ledige numre" som huller i `[min(taget), max(taget)]` — slettede man de øverste numre i serien, faldt `max(taget)`, og de nyligt frigjorte numre lå nu UDENFOR det tjekkede interval i stedet for inden i det som et hul. De blev derfor hverken vist som ledige eller fundet af genbrugs-logikken; den næste post fik i stedet et helt nyt, højere nummer fra tælleren. Først når en SENERE post fik et endnu højere nummer, voksede `max(taget)` igen og trak de gamle numre "ind i" intervallet — den forsinkede, forvirrende rækkefølge Jan observerede. Tælleren selv var aldrig forkert; det var definitionen af "ledig" der ikke dækkede numre over det aktuelt højeste i brug, men under det tælleren allerede havde uddelt.

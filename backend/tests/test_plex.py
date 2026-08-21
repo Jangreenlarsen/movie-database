@@ -315,6 +315,29 @@ async def test_diagnostics_reports_match_breakdown(client, monkeypatch):
     assert [item["title"] for item in body["unmatched_movies"]] == ["Ikke I Plex"]
 
 
+async def test_diagnostics_excludes_wishlist_titles_from_unmatched(client, monkeypatch):
+    """BUGS.md #84 (Jan: "det er alle de film som er på ønskelisten så de
+    skal heller ikke kunne findes der") — en ønsket-men-endnu-ikke-anskaffet
+    titel er per definition ikke i Plex, og skal derfor ikke optræde i
+    "Ikke fundet i Plex"-listen, som kun handler om titler man RENT FAKTISK
+    ejer men som Plex-scanningen ikke kunne matche."""
+    _configure(monkeypatch)
+    await client.post(
+        "/api/movies",
+        json={"title": "Ejet Film", "year": 2020, "media_type": "Digital", "format": "D-1080"},
+    )
+    await client.post(
+        "/api/movies", json={"title": "Ønsket Film", "year": 2021, "is_wishlist": True}
+    )
+    _patch_library(monkeypatch, _fake_library([]))
+
+    response = await client.get("/api/plex/diagnostics")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["library_movie_count"] == 1
+    assert [item["title"] for item in body["unmatched_movies"]] == ["Ejet Film"]
+
+
 async def test_diagnostics_explains_missing_configuration(client, monkeypatch):
     monkeypatch.setattr(settings, "plex_server_url", "")
     monkeypatch.setattr(settings, "plex_token", "tok")

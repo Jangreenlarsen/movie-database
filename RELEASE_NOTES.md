@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.161.3 (build 0227) — 2026-08-21
+
+- **Rettet: Plex-scanningens "Ikke fundet i Plex"-liste viste ønskeliste-titler.** En film på ønskelisten er per definition ikke anskaffet endnu, og optræder derfor ikke længere i listen over titler der burde matche Plex men ikke gør.
+
 ## v0.161.2 (build 0226) — 2026-08-21
 
 - **Rettet: sletning af de øverste serienumre i M#/T#/D#-serien blev ikke straks vist som ledige.** Slettede du fx de to sidste film i rækken, dukkede deres numre først op som "ledige" (og kunne genbruges) efter at en helt anden film senere fik et endnu højere nummer. Nu vises og genbruges de med det samme.

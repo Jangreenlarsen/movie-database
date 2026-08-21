@@ -1,5 +1,17 @@
 # Release Notes
 
+## v0.161.4 (build 0228) — 2026-08-21
+
+- **Rettet: AVM 70-diagnostikkens "Start overvågning" blev aldrig "live".** De ægte rodårsager var to bugs i selve Anthem-integrationen (forbindelsen blev aldrig reelt oprettet, og et par felter blev læst forkert) — ikke den offentlige proxy, som var en tidligere, ufuldstændig teori. Bør nu enten vise live-data fra AVM70'en, eller en tydelig fejlbesked hvis enheden ikke kan nås.
+
+## v0.161.3 (build 0227) — 2026-08-21
+
+- **Rettet: Plex-scanningens "Ikke fundet i Plex"-liste viste ønskeliste-titler.** En film på ønskelisten er per definition ikke anskaffet endnu, og optræder derfor ikke længere i listen over titler der burde matche Plex men ikke gør.
+
+## v0.161.2 (build 0226) — 2026-08-21
+
+- **Rettet: sletning af de øverste serienumre i M#/T#/D#-serien blev ikke straks vist som ledige.** Slettede du fx de to sidste film i rækken, dukkede deres numre først op som "ledige" (og kunne genbruges) efter at en helt anden film senere fik et endnu højere nummer. Nu vises og genbruges de med det samme.
+
 ## v0.161.1 (build 0225) — 2026-08-21
 
 - **Rettet: AVM 70-diagnostikkens "Start overvågning" virkede ikke udefra (via movie.laces.dk).** Årsagen var en mellemliggende nginx-proxy der bufrede den løbende strøm væk, så knappen aldrig reelt kunne blive "live". Bør nu virke korrekt uanset om appen tilgås internt eller udefra.

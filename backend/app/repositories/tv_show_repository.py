@@ -233,7 +233,10 @@ async def free_serial_numbers(db: AsyncIOMotorDatabase) -> list[int]:
         number = doc.get("serial_number")
         if isinstance(number, int):
             taken.add(number)
-    return digital_serial_repository.gaps(taken)
+    config = await _ensure_serial_config(db)
+    return digital_serial_repository.gaps(
+        taken, config.get("next_value", 1), config.get("increment", 1)
+    )
 
 
 async def _next_from_counter(db: AsyncIOMotorDatabase) -> int:
@@ -328,7 +331,7 @@ async def find_all_for_plex_match(db: AsyncIOMotorDatabase) -> list[dict]:
     titel-feltet, som her hedder `name`."""
     cursor = db[COLLECTION].find(
         {"media_type": {"$ne": MediaType.PHYSICAL.value}},
-        {"_id": 1, "tmdb_id": 1, "name": 1, "year": 1},
+        {"_id": 1, "tmdb_id": 1, "name": 1, "year": 1, "is_wishlist": 1},
     )
     return await cursor.to_list(length=None)
 

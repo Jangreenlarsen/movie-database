@@ -120,6 +120,33 @@ async def test_barcode_collision_still_raises_duplicate_barcode(client):
     assert dup.status_code == 409
 
 
+async def test_freed_trailing_numbers_are_recognized_immediately(client):
+    """BUGS.md #83 (Jan: "vi har i M# serie 1,2,3,4,5,6 ... sletter vi nr 5,6
+    og de bliver fri men tæller bliver på 7 så når vi registrere en ny film
+    få den nr 7"). Sletter man de ØVERSTE numre i serien (ikke et hul midt i),
+    skal de vises som ledige med det samme — ikke først efter at en senere
+    post tilfældigvis får et endnu højere nummer og dermed trækker dem "ind i"
+    det brugte interval igen."""
+    a = await _create(client, "A")
+    b = await _create(client, "B")
+    c = await _create(client, "C")
+    d = await _create(client, "D")
+    e = await _create(client, "E")
+    f = await _create(client, "F")
+    assert [x["serial_number"] for x in (a, b, c, d, e, f)] == [1, 2, 3, 4, 5, 6]
+
+    await client.delete(f"/api/movies/{e['id']}")
+    await client.delete(f"/api/movies/{f['id']}")
+
+    # Ledige-numre-oversigten skal vise #5,#6 med det samme — FØR noget som
+    # helst andet får et nyt, højere nummer.
+    assert (await _config(client))["free_numbers"]["physical_movies"] == [5, 6]
+
+    await client.patch("/api/settings/serial-number", json={"reuse_freed": True})
+    g = await _create(client, "G")
+    assert g["serial_number"] == 5
+
+
 async def test_physical_movie_and_tv_series_have_independent_free_numbers(client):
     await client.patch("/api/settings/serial-number", json={"reuse_freed": True})
     ma = await _create(client, "MovA")

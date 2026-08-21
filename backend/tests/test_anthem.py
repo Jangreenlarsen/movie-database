@@ -17,16 +17,28 @@ from app.integrations import anthem_client
 from app.services import anthem_service
 
 
+class _FakeZone:
+    """BUGS.md #82: den ægte `anthemav.AVR`-klasse holder kun `mute`,
+    `input_number` og `input_name` på `protocol.zones[1]` — IKKE som en
+    genvej direkte på `protocol`. Denne fake mangled tidligere det, hvilket
+    lod en `AttributeError` i `anthem_client.snapshot` (læste fejlagtigt
+    `protocol.input_name` i stedet for `protocol.zones[1].input_name`) gå
+    helt uopdaget gennem testsuiten."""
+
+    def __init__(self):
+        self.input_name = "Plex"
+        self.input_number = 3
+        self.mute = False
+
+
 class _FakeProtocol:
     def __init__(self):
         self.power = True
-        self.input_name = "Plex"
-        self.input_number = 3
         self.volume = 42
-        self.mute = False
         self.audio_listening_mode_text = "Dolby Atmos"
         self.audio_input_format_text = "Dolby Atmos"
         self.audio_input_channels_text = "7.1-channel"
+        self.zones = {1: _FakeZone()}
 
 
 class _FakeConnection:

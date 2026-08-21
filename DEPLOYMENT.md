@@ -18,6 +18,8 @@ Produktion kører **native** på en dedikeret Debian-server — ikke Docker Comp
 
 Siden 2026-08-09 er appen desuden nået fra det åbne internet via `movie.laces.dk`, gennem en **separat nginx-reverse-proxy-VM** (ikke Caddy, ikke beskrevet ovenfor) der terminerer TLS (Let's Encrypt) og videresender til `10.1.130.10:443` over et privat netværkssegment — proxyen fungerer samtidig som NAT-gateway for appserverens segment, da dettes egen router-SVI bevidst er fjernet. Fuld arkitektur, netværkstopologi og genetablerings-trin står i `movie-laces-dk-runbook.md` i repo-roden (**bevidst git-ignoreret** — indeholder adgangsoplysninger til den infrastruktur og må aldrig committes, se BUGS.md #66). Konsultér den fil direkte, ikke denne, ved arbejde på proxy-laget.
 
+**Vigtigt for enhver langvarig/streaming-respons (SSE, chunked)**: denne nginx-VM's `location /`-blok manglede oprindeligt `proxy_http_version 1.1;`, hvilket fik nginx til at tale HTTP/1.0 med Caddy og reelt buffere hele svaret til forbindelsen lukkede — for en uendelig strøm (fx AVM70-diagnostikken, BUGS.md #82) betød det at intet nogensinde nåede klienten. Rettet 2026-08-21 (`proxy_http_version 1.1;` + `proxy_buffering off;` tilføjet). En hvilken som helst FREMTIDIG SSE-/streaming-endpoint arves automatisk af rettelsen, da den ikke er sti-specifik — men vær opmærksom på at et fremtidigt genetableret proxy-VM (se runbook'ens afsnit 7) skal have samme to linjer med, hvis genetableringstrinene deri ikke allerede er opdateret til at inkludere dem.
+
 ## Komponenter
 
 | Komponent | Hvordan | Port/binding |

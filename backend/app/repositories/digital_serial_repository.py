@@ -80,16 +80,30 @@ async def set_reuse_enabled(db: AsyncIOMotorDatabase, enabled: bool) -> None:
     )
 
 
-def gaps(taken: set[int]) -> list[int]:
-    """De frigjorte numre = huller i det faktisk brugte interval
-    [min..max]. Selv-korrigerende: udregnes ud fra hvad der reelt er tildelt
-    lige nu, så en sletning eller et ønskeliste-flyt (der rydder nummeret)
-    automatisk dukker op som et hul uden nogen separat "frigivelses"-bogføring.
-    Tal under det laveste brugte tælles bevidst ikke med, så en flyttet
-    start-værdi (fx start på 100) ikke pludselig udpeger 1-99 som ledige."""
+def gaps(taken: set[int], next_value: int = 1, increment: int = 1) -> list[int]:
+    """De frigjorte numre = huller i det faktisk brugte interval.
+
+    BUGS.md #83: øvre grænse er IKKE `max(taken)` alene, men det højeste af
+    `max(taken)` og det sidste nummer tælleren reelt har uddelt
+    (`next_value - increment`). Sletter man de øverste numre i serien (fx
+    1-6 → slet 5,6), falder `max(taken)` til 4, men tælleren står stadig på
+    7 — uden denne udvidelse ville 5,6 slet ikke blive genkendt som ledige
+    FØR endnu en post et sted fik et højere nummer end 6 og dermed
+    tilfældigvis trak dem "ind i" intervallet igen (Jans observerede
+    symptom: 5,6 dukkede først op som ledige, efter den næste film fik
+    #7 i stedet for at genbruge #5). Tælleren rører vi bevidst IKKE ved
+    sletning — `next_value` er den eneste kilde til "højeste nogensinde
+    uddelte nummer", og skal blive ved med at stige monotont for at forblive
+    kollisionsfri; det er selve DENNE funktions definition af "ledig" der
+    var for snæver, ikke tælleren der var forkert.
+
+    Tal under det laveste brugte tælles bevidst stadig ikke med, så en
+    flyttet start-værdi (fx start på 100) ikke pludselig udpeger 1-99 som
+    ledige."""
     if not taken:
         return []
-    return [n for n in range(min(taken), max(taken) + 1) if n not in taken]
+    highest_ever_assigned = max(max(taken), next_value - increment)
+    return [n for n in range(min(taken), highest_ever_assigned + 1) if n not in taken]
 
 
 async def _taken_digital_numbers(db: AsyncIOMotorDatabase) -> set[int]:
@@ -150,7 +164,9 @@ async def next_other_serial_number(db: AsyncIOMotorDatabase) -> int:
 
 async def free_serial_numbers(db: AsyncIOMotorDatabase) -> list[int]:
     """De ledige (frigjorte) D#-numre, laveste først."""
-    return gaps(await _taken_digital_numbers(db))
+    config = await _ensure_config(db)
+    taken = await _taken_digital_numbers(db)
+    return gaps(taken, config.get("next_value", 1), config.get("increment", 1))
 
 
 async def _next_from_counter(db: AsyncIOMotorDatabase) -> int:

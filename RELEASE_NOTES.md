@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.160.1 (build 0223) — 2026-08-21
+
+- **"Afspil på Shield TV" er nu to separate knapper** ("Afspil"/"Stop") i stedet for én der prøver at gætte om Shielden lige nu spiller. Stop virker altid, uanset om Afspil er trykket først.
+- **Hurtigere billedindlæsning ved browsing** — den lille pause der kunne opstå når en helt ny række filmplakater skulle vises for første gang, er væk. Plakater du ikke har set før hentes nu lige så hurtigt som resten, og caches i baggrunden til næste gang.
+
 ## v0.160.0 (build 0222) — 2026-08-20
 
 - **"Kræv ønsket tidspunkt" ved visningsønsker i Voldby BIO gælder nu alle** — admin, standard og gæst. Tidligere var standard/admin altid tvunget til at angive en dato, uanset indstillingen; nu følger alle den samme, admin-styrbare politik (Indstillinger → Biograf → "Visningsønsker").

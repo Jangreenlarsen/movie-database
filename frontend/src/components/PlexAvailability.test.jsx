@@ -1,12 +1,14 @@
 /**
  * Feature #178 (Jan: "når man trykker på vis i plex så er option at starte
- * den i plex på shield der også"), opfølgning (Jan: "lave dem toggle bar
- * sådan at når man trykker på dem så ændre knap sig fra 'play start' til
- * 'play stop'"). Det testværdige (regel 19, "tilstands-skift i et vindue"):
- * knappen skal kun vises når titlen rent faktisk er i Plex OG en Shield er
- * konfigureret, resultatet af et klik (succes/fejl) skal faktisk vises, og
- * selve toggle-overgangen (start → stop → start) skal reelt fungere, ikke
- * kun se rigtig ud efter det første klik.
+ * den i plex på shield der også"). BUGS.md #79 (Jan, 2026-08-20: "det se ud
+ * for mig at det rent faktisk er to spederate komandoer som bliver sendt,
+ * hvis det er tilfældet så skal vi have to knapper i steddet for en til
+ * start og en til stop") erstattede den tidligere toggle-knap (der GÆTTEDE
+ * enhedens tilstand) med to altid-synlige, uafhængige knapper. Det
+ * testværdige (regel 19): begge knapper skal kunne bruges direkte, i
+ * vilkårlig rækkefølge, uden at den ene kræver at den anden er trykket
+ * først — det er netop pointen, at der ikke er nogen gættet tilstand at
+ * være "ude af trit" med.
  */
 
 import { render, screen, waitFor } from "@testing-library/react";
@@ -131,7 +133,21 @@ describe("PlexShieldPlayButton (feature #178)", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("sender kind/id, viser succes-beskeden og skifter knappen til 'Stop'", async () => {
+  it("begge knapper er synlige med det samme, uden at kræve hinanden først", () => {
+    render(
+      <PlexShieldPlayButton
+        availability={AVAILABLE}
+        shieldConfigured={true}
+        kind="movie"
+        itemId="m1"
+        isAdmin={true}
+      />
+    );
+    expect(screen.getByRole("button", { name: "📺 Afspil på Shield TV" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "⏹ Stop Shield TV" })).toBeEnabled();
+  });
+
+  it("'Afspil' sender kind/id og viser succes-beskeden, uden at ændre nogen af knapperne", async () => {
     const playSpy = vi
       .spyOn(api, "playOnShield")
       .mockResolvedValue({ ok: true, message: "Afspilning startet på Shield TV." });
@@ -151,10 +167,33 @@ describe("PlexShieldPlayButton (feature #178)", () => {
 
     expect(playSpy).toHaveBeenCalledWith("show", "s1");
     expect(await screen.findByText("Afspilning startet på Shield TV.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "📺 Afspil på Shield TV" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "⏹ Stop Shield TV" })).toBeInTheDocument();
   });
 
-  it("viser fejlbeskeden fra backend og forbliver på 'Afspil', når Shield ikke kan nås", async () => {
+  it("'Stop' virker direkte, uden at 'Afspil' nogensinde er trykket først", async () => {
+    const stopSpy = vi
+      .spyOn(api, "stopShield")
+      .mockResolvedValue({ ok: true, message: "Afspilning stoppet på Shield TV." });
+    const user = userEvent.setup();
+
+    render(
+      <PlexShieldPlayButton
+        availability={AVAILABLE}
+        shieldConfigured={true}
+        kind="movie"
+        itemId="m1"
+        isAdmin={true}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "⏹ Stop Shield TV" }));
+
+    expect(stopSpy).toHaveBeenCalled();
+    expect(await screen.findByText("Afspilning stoppet på Shield TV.")).toBeInTheDocument();
+  });
+
+  it("viser fejlbeskeden fra backend, hvis Shield ikke kan nås", async () => {
     vi.spyOn(api, "playOnShield").mockResolvedValue({
       ok: false,
       message: "Shield TV'et svarede ikke — er Plex-appen åben og tændt på den?",
@@ -176,11 +215,9 @@ describe("PlexShieldPlayButton (feature #178)", () => {
     expect(
       await screen.findByText("Shield TV'et svarede ikke — er Plex-appen åben og tændt på den?")
     ).toBeInTheDocument();
-    // Startede aldrig reelt — knappen skal ikke lade som om den nu kan stoppes.
-    expect(screen.getByRole("button", { name: "📺 Afspil på Shield TV" })).toBeInTheDocument();
   });
 
-  it("deaktiverer knappen mens 'afspil'-kommandoen sendes", async () => {
+  it("deaktiverer BEGGE knapper mens én kommando er undervejs, for at undgå overlappende kald", async () => {
     let resolvePlay;
     vi.spyOn(api, "playOnShield").mockReturnValue(
       new Promise((resolve) => {
@@ -199,55 +236,19 @@ describe("PlexShieldPlayButton (feature #178)", () => {
       />
     );
 
-    const button = screen.getByRole("button", { name: "📺 Afspil på Shield TV" });
-    await user.click(button);
+    await user.click(screen.getByRole("button", { name: "📺 Afspil på Shield TV" }));
 
     expect(await screen.findByRole("button", { name: "Starter..." })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "⏹ Stop Shield TV" })).toBeDisabled();
 
     resolvePlay({ ok: true, message: "Afspilning startet på Shield TV." });
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "⏹ Stop Shield TV" })).toBeEnabled()
+      expect(screen.getByRole("button", { name: "📺 Afspil på Shield TV" })).toBeEnabled()
     );
+    expect(screen.getByRole("button", { name: "⏹ Stop Shield TV" })).toBeEnabled();
   });
 
-  it("kan stoppe igen efter start, og vender tilbage til 'Afspil'", async () => {
-    vi.spyOn(api, "playOnShield").mockResolvedValue({
-      ok: true,
-      message: "Afspilning startet på Shield TV.",
-    });
-    const stopSpy = vi
-      .spyOn(api, "stopShield")
-      .mockResolvedValue({ ok: true, message: "Afspilning stoppet på Shield TV." });
-    const user = userEvent.setup();
-
-    render(
-      <PlexShieldPlayButton
-        availability={AVAILABLE}
-        shieldConfigured={true}
-        kind="movie"
-        itemId="m1"
-        isAdmin={true}
-      />
-    );
-
-    await user.click(screen.getByRole("button", { name: "📺 Afspil på Shield TV" }));
-    const stopButton = await screen.findByRole("button", { name: "⏹ Stop Shield TV" });
-
-    await user.click(stopButton);
-
-    expect(stopSpy).toHaveBeenCalled();
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "📺 Afspil på Shield TV" })).toBeInTheDocument()
-    );
-    // Vellykket stop rydder beskeden — ingen gammel "startet"-tekst skal blive hængende.
-    expect(screen.queryByText("Afspilning startet på Shield TV.")).not.toBeInTheDocument();
-  });
-
-  it("forbliver på 'Stop' og viser fejlbeskeden, hvis selve stop-kommandoen fejler", async () => {
-    vi.spyOn(api, "playOnShield").mockResolvedValue({
-      ok: true,
-      message: "Afspilning startet på Shield TV.",
-    });
+  it("viser fejlbeskeden hvis selve stop-kommandoen fejler", async () => {
     vi.spyOn(api, "stopShield").mockResolvedValue({
       ok: false,
       message: "Plex afviste stop-kommandoen (HTTP 500).",
@@ -264,13 +265,8 @@ describe("PlexShieldPlayButton (feature #178)", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "📺 Afspil på Shield TV" }));
-    await user.click(await screen.findByRole("button", { name: "⏹ Stop Shield TV" }));
+    await user.click(screen.getByRole("button", { name: "⏹ Stop Shield TV" }));
 
     expect(await screen.findByText("Plex afviste stop-kommandoen (HTTP 500).")).toBeInTheDocument();
-    // Stoppet fejlede — knappen skal stadig tilbyde at prøve stop igen, ikke
-    // falde tilbage til "Afspil" og risikere at sende endnu en playMedia.
-    expect(screen.getByRole("button", { name: "⏹ Stop Shield TV" })).toBeInTheDocument();
   });
-
 });

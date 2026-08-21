@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.161.5 (build 0229) — 2026-08-21
+
+- **Rettet: AVM 70-diagnostikkens log viste ikke ændringer på enheden.** Selve overvågningen kunne godt starte og stoppe, men strømmen af hændelser (fx et lydformat-skift) døde stille i baggrunden efter kort tid uden aktivitet. Bør nu blive ved med at vise nye hændelser, så længe overvågningen kører.
+
 ## v0.161.4 (build 0228) — 2026-08-21
 
 - **Rettet: AVM 70-diagnostikkens "Start overvågning" blev aldrig "live".** De ægte rodårsager var to bugs i selve Anthem-integrationen (forbindelsen blev aldrig reelt oprettet, og et par felter blev læst forkert) — ikke den offentlige proxy, som var en tidligere, ufuldstændig teori. Bør nu enten vise live-data fra AVM70'en, eller en tydelig fejlbesked hvis enheden ikke kan nås.

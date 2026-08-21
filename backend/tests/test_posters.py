@@ -1,6 +1,7 @@
 from httpx import ASGITransport, AsyncClient
 
 from app.integrations import tmdb_client
+from app.integrations.tmdb_client import IMAGE_HOST
 from app.main import app
 
 
@@ -9,7 +10,13 @@ async def _anonymous_client():
     return AsyncClient(transport=transport, base_url="http://test")
 
 
-async def test_first_request_fetches_from_tmdb_and_caches(client, monkeypatch):
+async def test_first_request_redirects_to_tmdb_and_caches_in_the_background(client, monkeypatch):
+    """BUGS.md #80 (Jan: "nåe man browser film i portal så kommer der lille
+    pause være gang der skal hente en ny række film bileder") — et
+    cache-miss blokerede tidligere hele forespørgslen på en synkron TMDb-
+    hentning. Nu redirectes der med det samme direkte til TMDb's CDN (samme
+    hastighed som uden nogen cache overhovedet), mens selve cachningen sker
+    i baggrunden."""
     calls = []
 
     async def fake_fetch(size, path):
@@ -19,9 +26,11 @@ async def test_first_request_fetches_from_tmdb_and_caches(client, monkeypatch):
     monkeypatch.setattr(tmdb_client, "fetch_poster_image", fake_fetch)
 
     response = await client.get("/api/posters/w342/abc123.jpg")
-    assert response.status_code == 200
-    assert response.content == b"fake-jpeg-bytes"
-    assert response.headers["content-type"] == "image/jpeg"
+    assert response.status_code == 302
+    assert response.headers["location"] == f"{IMAGE_HOST}/w342/abc123.jpg"
+    # Baggrunds-cachningen er allerede kørt færdig på dette tidspunkt — en
+    # FastAPI `BackgroundTask` afvikles som en del af selve ASGI-svar-
+    # sekvensen, som `client.get(...)` afventer fuldt ud.
     assert calls == [("w342", "abc123.jpg")]
 
 
@@ -36,9 +45,10 @@ async def test_second_request_is_served_from_cache_not_tmdb(client, monkeypatch)
 
     first = await client.get("/api/posters/w342/repeat.jpg")
     second = await client.get("/api/posters/w342/repeat.jpg")
-    assert first.status_code == 200
+    assert first.status_code == 302
     assert second.status_code == 200
     assert second.content == b"fake-jpeg-bytes"
+    assert second.headers["content-type"] == "image/jpeg"
     # Kernen i feature #153: kun ét reelt TMDb-kald, uanset hvor mange gange
     # den samme (size, path) efterspørges bagefter.
     assert len(calls) == 1
@@ -58,14 +68,23 @@ async def test_unknown_size_is_rejected_without_calling_tmdb(client, monkeypatch
     assert calls == []
 
 
-async def test_tmdb_fetch_failure_returns_404_and_caches_nothing(client, monkeypatch):
+async def test_background_cache_failure_does_not_break_the_redirect(client, monkeypatch):
+    """En mislykket baggrunds-hentning (TMDb nede/fjernet billede) må ikke
+    kaste videre og vælte svaret — brugeren har allerede fået sin redirect;
+    fejlen betyder blot at NÆSTE forespørgsel også bliver en redirect."""
+
     async def fake_fetch(size, path):
         return None
 
     monkeypatch.setattr(tmdb_client, "fetch_poster_image", fake_fetch)
 
     response = await client.get("/api/posters/w185/missing.jpg")
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.headers["location"] == f"{IMAGE_HOST}/w185/missing.jpg"
+
+    # Stadig ikke cachet — næste forespørgsel er også en redirect, ikke en 500.
+    again = await client.get("/api/posters/w185/missing.jpg")
+    assert again.status_code == 302
 
 
 async def test_poster_endpoint_requires_no_login(client, monkeypatch):
@@ -83,5 +102,5 @@ async def test_poster_endpoint_requires_no_login(client, monkeypatch):
 
     async with await _anonymous_client() as anon:
         response = await anon.get("/api/posters/w185/public.jpg")
-    assert response.status_code == 200
-    assert response.content == b"public-bytes"
+    assert response.status_code == 302
+    assert response.headers["location"] == f"{IMAGE_HOST}/w185/public.jpg"

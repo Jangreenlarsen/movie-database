@@ -126,6 +126,18 @@ export function PlexPlayLink({ availability, plex }) {
  * `navigate_client_to_media`) er bevidst IKKE rørt — kan stadig afprøves
  * direkte hvis en fremtidig Shield-app-opdatering skulle ændre noget,
  * uden at UI'et skal bygges om for at gøre det.
+ *
+ * BUGS.md #79 (Jan, 2026-08-20: "det se ud for mig at det rent faktisk er
+ * to spederate komandoer som bliver sendt, hvis det er tilfældet så skal
+ * vi have to knapper i steddet for en til start og en til stop") — korrekt
+ * observeret: `playMedia`/`stop` er separate, tilstandsløse Plex Companion-
+ * kommandoer (se research-noten i CHANGELOG.md build 0215) uden nogen
+ * reelt forespurgt "spiller enheden lige nu?"-status. Den tidligere toggle
+ * gættede sig til enhedens tilstand ud fra sit eget seneste kald, hvilket
+ * kunne komme ud af trit hvis enheden blev styret et andet sted fra (fx
+ * Shieldens egen fjernbetjening). To altid-synlige, uafhængige knapper i
+ * stedet — begge sender deres kommando uforbeholdent, ingen gættet
+ * tilstand at komme ud af trit med.
  */
 export function PlexShieldPlayButton({
   availability,
@@ -136,7 +148,7 @@ export function PlexShieldPlayButton({
   playAllowed,
 }) {
   const t = useT();
-  const [phase, setPhase] = useState("idle"); // idle | starting | playing | stopping
+  const [busy, setBusy] = useState(null); // null | "play" | "stop" — kun for at forhindre overlappende kald
   const [message, setMessage] = useState(null);
   const [isError, setIsError] = useState(false);
 
@@ -145,61 +157,45 @@ export function PlexShieldPlayButton({
   }
 
   async function play() {
-    setPhase("starting");
+    setBusy("play");
     setMessage(null);
     setIsError(false);
     try {
       const result = await api.playOnShield(kind, itemId);
       setMessage(result.message);
       setIsError(!result.ok);
-      setPhase(result.ok ? "playing" : "idle");
     } catch (err) {
       setMessage(err.message);
       setIsError(true);
-      setPhase("idle");
+    } finally {
+      setBusy(null);
     }
   }
 
   async function stop() {
-    setPhase("stopping");
+    setBusy("stop");
     setMessage(null);
     setIsError(false);
     try {
       const result = await api.stopShield();
-      setMessage(result.ok ? null : result.message);
+      setMessage(result.message);
       setIsError(!result.ok);
-      // Fejler stoppet, antager vi den stadig spiller (giv brugeren chancen
-      // for at prøve stop igen, i stedet for at tvinge knappen tilbage til
-      // "Afspil", som ville sende endnu en playMedia-kommando).
-      setPhase(result.ok ? "idle" : "playing");
     } catch (err) {
       setMessage(err.message);
       setIsError(true);
-      setPhase("playing");
+    } finally {
+      setBusy(null);
     }
   }
-
-  const isPlaying = phase === "playing";
-  const isBusy = phase === "starting" || phase === "stopping";
 
   return (
     <div className="plex-shield-play">
       <div className="plex-shield-buttons">
-        <button
-          type="button"
-          className="btn btn-success"
-          onClick={isPlaying ? stop : play}
-          disabled={isBusy}
-        >
-          {t(
-            phase === "starting"
-              ? "plex.shieldSending"
-              : phase === "stopping"
-                ? "plex.shieldStopping"
-                : isPlaying
-                  ? "plex.shieldStop"
-                  : "plex.shieldPlay"
-          )}
+        <button type="button" className="btn btn-success" onClick={play} disabled={busy !== null}>
+          {t(busy === "play" ? "plex.shieldSending" : "plex.shieldPlay")}
+        </button>
+        <button type="button" className="btn btn-success" onClick={stop} disabled={busy !== null}>
+          {t(busy === "stop" ? "plex.shieldStopping" : "plex.shieldStop")}
         </button>
       </div>
       {message && <p className={isError ? "banner banner-error" : "muted"}>{message}</p>}

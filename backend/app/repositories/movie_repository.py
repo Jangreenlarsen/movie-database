@@ -350,7 +350,10 @@ async def free_serial_numbers(db: AsyncIOMotorDatabase) -> list[int]:
         number = doc.get("serial_number")
         if isinstance(number, int):
             taken.add(number)
-    return digital_serial_repository.gaps(taken)
+    config = await _ensure_serial_config(db)
+    return digital_serial_repository.gaps(
+        taken, config.get("next_value", 1), config.get("increment", 1)
+    )
 
 
 async def _next_from_counter(db: AsyncIOMotorDatabase) -> int:

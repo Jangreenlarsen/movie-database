@@ -104,6 +104,26 @@ async def test_stream_endpoint_returns_409_when_a_session_is_already_active(clie
         anthem_service._end_session()
 
 
+async def test_stream_endpoint_asks_the_public_nginx_hop_not_to_buffer_the_response(client, monkeypatch):
+    """BUGS.md #82: appen nås udefra via `movie.laces.dk` gennem en separat
+    nginx-VM (se DEPLOYMENT.md) foran Caddy. nginx bufferer som standard hele
+    response-body'en, hvilket for en uendelig SSE-strøm betyder intet nogensinde
+    når frem til klienten — knappen skiftede aldrig reelt til "live" i
+    produktion. `X-Accel-Buffering: no` er nginx's egen, standardiserede måde
+    for en upstream-app at bede om at netop dette svar ikke skal bufferes."""
+    _configure(monkeypatch)
+    fake_conn = _FakeConnection()
+
+    async def fake_open_connection(update_callback):
+        return fake_conn
+
+    monkeypatch.setattr(anthem_client, "open_connection", fake_open_connection)
+
+    async with client.stream("GET", "/api/anthem/diagnostics/stream") as response:
+        assert response.status_code == 200
+        assert response.headers["x-accel-buffering"] == "no"
+
+
 # --- stream_diagnostics (selve hændelses-strømmen) --------------------------
 
 

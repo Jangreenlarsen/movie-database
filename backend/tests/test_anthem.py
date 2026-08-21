@@ -9,8 +9,11 @@ hvorfor: en fejl efter `StreamingResponse` er oprettet kan ikke længere
 blive en HTTP-statuskode.
 """
 
+import asyncio
+
 import pytest
 
+from app.api.anthem import sse_stream, stream_anthem_diagnostics
 from app.core.config import settings
 from app.core.errors import AnthemNotConfiguredError, AnthemSessionBusyError
 from app.integrations import anthem_client
@@ -116,13 +119,21 @@ async def test_stream_endpoint_returns_409_when_a_session_is_already_active(clie
         anthem_service._end_session()
 
 
-async def test_stream_endpoint_asks_the_public_nginx_hop_not_to_buffer_the_response(client, monkeypatch):
+async def test_stream_endpoint_asks_the_public_nginx_hop_not_to_buffer_the_response(monkeypatch):
     """BUGS.md #82: appen nås udefra via `movie.laces.dk` gennem en separat
     nginx-VM (se DEPLOYMENT.md) foran Caddy. nginx bufferer som standard hele
     response-body'en, hvilket for en uendelig SSE-strøm betyder intet nogensinde
-    når frem til klienten — knappen skiftede aldrig reelt til "live" i
-    produktion. `X-Accel-Buffering: no` er nginx's egen, standardiserede måde
-    for en upstream-app at bede om at netop dette svar ikke skal bufferes."""
+    når frem til klienten. `X-Accel-Buffering: no` er nginx's egen,
+    standardiserede måde for en upstream-app at bede om at netop dette svar
+    ikke skal bufferes.
+
+    Kalder route-funktionen direkte i stedet for at gå via en levende
+    httpx-klient: strømmen er bevidst designet til at køre for evigt (feature
+    #183), og `httpx.ASGITransport`s test-simulering af et klient-disconnect
+    viste sig ikke pålideligt at afslutte den bagvedliggende opgave — kun
+    selve headerne på det returnerede `StreamingResponse`-objekt er
+    testværdige her, og de er tilgængelige uden nogensinde at skulle
+    iterere/afvikle selve body'en."""
     _configure(monkeypatch)
     fake_conn = _FakeConnection()
 
@@ -131,9 +142,18 @@ async def test_stream_endpoint_asks_the_public_nginx_hop_not_to_buffer_the_respo
 
     monkeypatch.setattr(anthem_client, "open_connection", fake_open_connection)
 
-    async with client.stream("GET", "/api/anthem/diagnostics/stream") as response:
-        assert response.status_code == 200
-        assert response.headers["x-accel-buffering"] == "no"
+    class _FakeRequest:
+        async def is_disconnected(self):
+            return False
+
+    try:
+        response = await stream_anthem_diagnostics(_FakeRequest())
+    finally:
+        anthem_service._end_session()
+
+    assert response.headers["x-accel-buffering"] == "no"
+    assert response.headers["cache-control"] == "no-cache"
+    assert response.media_type == "text/event-stream"
 
 
 # --- stream_diagnostics (selve hændelses-strømmen) --------------------------
@@ -219,3 +239,58 @@ async def test_stream_yields_an_error_event_when_the_connection_fails(monkeypatc
 
     with pytest.raises(StopAsyncIteration):
         await gen.__anext__()
+
+
+# --- sse_stream (heartbeat/timeout-wrapperen) -------------------------------
+
+
+async def test_sse_stream_delivers_a_late_event_after_one_or_more_heartbeats():
+    """BUGS.md #82 (Jan: "vi få ikke nogen log entry selv om vi se audio
+    skift"). Den oprindelige `asyncio.wait_for(gen.__anext__(), ...)`
+    annullerede generatorens interne `await` ved hvert heartbeat-timeout,
+    hvilket lukkede den permanent — et event der først opstod EFTER det
+    første heartbeat blev derfor aldrig leveret. Denne test reproducerer
+    netop det: en hændelse der ankommer efter to heartbeats skal stadig nå
+    frem, og strømmen skal fortsætte bagefter (endnu en hændelse leveres)."""
+
+    async def slow_gen():
+        yield "first"
+        await asyncio.sleep(0.2)  # længere end heartbeat_seconds herunder
+        yield "late-update"
+        yield "immediately-after"
+
+    async def never_disconnected():
+        return False
+
+    chunks = []
+    stream = sse_stream(slow_gen(), never_disconnected, heartbeat_seconds=0.05)
+    async for chunk in stream:
+        chunks.append(chunk)
+        # Nok til: første event, mindst ét heartbeat, den sene opdatering,
+        # og den umiddelbart efterfølgende hændelse.
+        if chunks.count("data: \"late-update\"\n\n") and chunks.count("data: \"immediately-after\"\n\n"):
+            break
+
+    assert "data: \"first\"\n\n" in chunks
+    assert ": heartbeat\n\n" in chunks  # bekræfter at mindst ét heartbeat reelt blev sendt undervejs
+    assert "data: \"late-update\"\n\n" in chunks
+    assert "data: \"immediately-after\"\n\n" in chunks
+
+
+async def test_sse_stream_stops_when_the_client_disconnects():
+    async def infinite_gen():
+        while True:
+            await asyncio.sleep(10)
+            yield "never"
+
+    calls = {"n": 0}
+
+    async def disconnect_after_first_check():
+        calls["n"] += 1
+        return calls["n"] > 1
+
+    chunks = []
+    async for chunk in sse_stream(infinite_gen(), disconnect_after_first_check, heartbeat_seconds=0.05):
+        chunks.append(chunk)
+
+    assert chunks == [": heartbeat\n\n"]  # ét heartbeat, saa opdages disconnect og streamen slutter

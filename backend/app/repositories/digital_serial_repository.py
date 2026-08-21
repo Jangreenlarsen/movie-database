@@ -12,6 +12,7 @@ ikke i en af dem: tildelingen skal kunne se begge, hvilket hverken
 """
 
 import logging
+from datetime import datetime
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
@@ -293,3 +294,64 @@ async def backfill(db: AsyncIOMotorDatabase, collection_name: str) -> int:
             assigned,
         )
     return assigned
+
+
+# Numre langt over 5000+-puljen (OTHER_SERIAL_START) og enhver realistisk
+# D#-værdi — brugt som et midlertidigt, garanteret ledigt "parkerings"-
+# område under renumber_from_one nedenfor.
+_RENUMBER_TEMP_OFFSET = 1_000_000
+
+
+async def renumber_from_one(db: AsyncIOMotorDatabase) -> int:
+    """Feature #188 (Jan, 2026-08-21, efter BUGS.md #81's årsag blev
+    forklaret — feature #93s migrering bevarede bevidst en digital posts
+    arvede, før-D#-nummer i stedet for at nulstille den til 1, hvilket
+    permanent efterlod numrene 1-162 ubrugte: "Nulstil til at starte fra
+    1"). Engangs-omnummerering af ALLE eksisterende digitale poster til en
+    ren, sammenhængende D#-serie fra 1, i deres oprettelses-rækkefølge på
+    tværs af begge collections (samme rækkefølge-princip som `backfill`
+    ovenfor). Kaldes udelukkende eksplicit af en admin
+    (`POST /api/settings/serial-number/renumber-digital`) — ALDRIG
+    automatisk ved opstart, i modsætning til `backfill`.
+
+    RØRER ALDRIG fysiske (M#/T#) poster (Jans eksplicitte krav: "vi på
+    ingen tidspunkt må røre ved M# serie da de er taget i brug") — kun
+    dokumenter med `media_type: Digital` forespørges eller opdateres
+    overhovedet. Rører heller ikke 5000+-puljens numre (`OTHER_SERIAL_START`)
+    — de er en helt separat, delt serie på tværs af alle medietyper.
+
+    To omgange i stedet for én lige-til-den-endelige-værdi: det unikke
+    `(serial_number, media_type)`-index håndhæver entydighed pr. collection,
+    så en posts NYE nummer (fx 1) kunne ellers midlertidigt kollidere med en
+    ANDEN, endnu-ikke-omnummereret posts GAMLE nummer (som også kunne være
+    1, hvis rækkefølgen tilfældigvis ramte den situation). Alle poster
+    flyttes derfor først til et garanteret ledigt midlertidigt område, og
+    får først derefter deres endelige 1..N-værdi."""
+    items: list[tuple[datetime | None, str, object]] = []
+    for collection_name in (MOVIE_COLLECTION, TV_SHOW_COLLECTION):
+        cursor = db[collection_name].find(
+            {
+                "media_type": DIGITAL,
+                "serial_number": {"$exists": True, "$lt": OTHER_SERIAL_START},
+            },
+            {"_id": 1, "created_at": 1},
+        )
+        async for doc in cursor:
+            items.append((doc.get("created_at"), collection_name, doc["_id"]))
+
+    items.sort(key=lambda item: item[0] or datetime.min)
+
+    for index, (_, collection_name, doc_id) in enumerate(items, start=1):
+        await set_serial(db, collection_name, doc_id, _RENUMBER_TEMP_OFFSET + index)
+
+    for index, (_, collection_name, doc_id) in enumerate(items, start=1):
+        await set_serial(db, collection_name, doc_id, index)
+
+    next_value = len(items) + 1
+    await db[COUNTERS_COLLECTION].update_one(
+        {"_id": SERIAL_COUNTER_ID}, {"$set": {"next_value": next_value}}, upsert=True
+    )
+
+    if items:
+        logger.info("D#-serie omnummereret fra 1: %s digitale poster (feature #188)", len(items))
+    return len(items)

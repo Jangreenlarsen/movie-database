@@ -881,7 +881,7 @@ function TlsCertSection() {
   );
 }
 
-function SerialNumberSection({ isAdmin }) {
+export function SerialNumberSection({ isAdmin }) {
   const t = useT();
   const [status, setStatus] = useState("loading");
   const [startNumber, setStartNumber] = useState("");
@@ -898,6 +898,10 @@ function SerialNumberSection({ isAdmin }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
+  // Feature #188 (retter BUGS.md #81) — engangs-omnummerering af D#-serien.
+  const [renumbering, setRenumbering] = useState(false);
+  const [renumberResult, setRenumberResult] = useState(null);
+  const [renumberError, setRenumberError] = useState(null);
 
   function applyConfig(data) {
     setStartNumber(String(data.start_number));
@@ -935,6 +939,25 @@ function SerialNumberSection({ isAdmin }) {
       setError(err.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function renumberDigital() {
+    if (!window.confirm(t("serial.confirmRenumberDigital"))) return;
+    setRenumbering(true);
+    setRenumberResult(null);
+    setRenumberError(null);
+    try {
+      const result = await api.renumberDigitalSerialNumbers();
+      setRenumberResult(result.renumbered);
+      // Genindlæs "Ledige numre"-oversigten, så den nye, sammenhængende
+      // D#-serie fra 1 vises med det samme.
+      const updated = await api.getSerialNumberConfig();
+      applyConfig(updated);
+    } catch (err) {
+      setRenumberError(err.message);
+    } finally {
+      setRenumbering(false);
     }
   }
 
@@ -1003,6 +1026,28 @@ function SerialNumberSection({ isAdmin }) {
             <SerialFreeList label={t("serial.freeTv")} numbers={freeNumbers.physical_tv} prefix="T" t={t} />
             <SerialFreeList label={t("serial.freeDigital")} numbers={freeNumbers.digital} prefix="D" t={t} />
           </div>
+
+          {/* Feature #188 (retter BUGS.md #81) — engangs-omnummerering af
+              D#-serien til at starte fra 1. Rører aldrig M#/T#. */}
+          {isAdmin && (
+            <div className="serial-renumber-digital">
+              <button
+                type="button"
+                className="btn"
+                onClick={renumberDigital}
+                disabled={renumbering}
+              >
+                {t(renumbering ? "serial.renumberingDigital" : "serial.renumberDigital")}
+              </button>
+              <p className="muted serial-reuse-hint">{t("serial.renumberDigitalHint")}</p>
+              {renumberError && <div className="banner banner-error">{renumberError}</div>}
+              {renumberResult != null && (
+                <div className="banner banner-info">
+                  {t("serial.renumberDigitalDone", { count: renumberResult })}
+                </div>
+              )}
+            </div>
+          )}
 
           {error && <div className="banner banner-error">{error}</div>}
           {saved && <div className="banner banner-info">{t("serial.saved")}</div>}

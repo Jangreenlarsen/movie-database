@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.161.0 (build 0224) — 2026-08-21
+
+- **Ny admin-handling: "Omnummerér D#-serien fra 1"** under Indstillinger → Bibliotek. Retter at digitale udgavers serienummer-serie (D#) historisk startede ved 163 i stedet for 1 — en engangs-konsekvens af en tidligere migrering, ikke en aktiv fejl. Giver alle eksisterende digitale film/serier et nyt, sammenhængende D#-nummer fra 1, i den rækkefølge de blev oprettet. Rører **aldrig** fysiske film/serier (M#/T#) — kun D#-serien påvirkes. Kan ikke fortrydes, og kræver bekræftelse før den udføres.
+
 ## v0.160.1 (build 0223) — 2026-08-21
 
 - **"Afspil på Shield TV" er nu to separate knapper** ("Afspil"/"Stop") i stedet for én der prøver at gætte om Shielden lige nu spiller. Stop virker altid, uanset om Afspil er trykket først.

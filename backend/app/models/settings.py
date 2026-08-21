@@ -32,6 +32,13 @@ class SerialNumberConfigUpdate(BaseModel):
     reuse_freed: bool | None = None
 
 
+class DigitalRenumberResult(BaseModel):
+    """Feature #188 — svaret på en engangs-omnummerering af D#-serien til at
+    starte fra 1 (retter BUGS.md #81's historiske "1-162 findes ikke"-hul)."""
+
+    renumbered: int
+
+
 # Skriv-kun: "source" fortæller hvorfra den *aktive* nøgle kommer, men den
 # faktiske værdi returneres aldrig til frontend (jf. CLAUDE.md regel 6).
 KeySource = Literal["env", "custom", "unset"]

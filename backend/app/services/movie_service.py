@@ -966,3 +966,10 @@ async def update_serial_number_config(
     updates = payload.model_dump(exclude_unset=True)
     config = await movie_repository.update_serial_config(db, updates)
     return SerialNumberConfig(**config, free_numbers=await _free_serial_numbers(db))
+
+
+async def renumber_digital_serial_from_one(db: AsyncIOMotorDatabase) -> int:
+    """Feature #188 — se `digital_serial_repository.renumber_from_one`s
+    docstring for hele begrundelsen. Ren gennemstilling til repository-laget;
+    lever her fordi API-laget kun kalder service-funktioner (ARCHITECTURE.md)."""
+    return await digital_serial_repository.renumber_from_one(db)

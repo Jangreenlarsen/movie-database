@@ -17,6 +17,7 @@ import {
   PlexImportSection,
   PlexShieldSettingsRow,
   ScreeningRequestPolicySection,
+  SerialNumberSection,
   UsersSection,
   formatUptime,
 } from "./Settings";
@@ -718,5 +719,86 @@ describe("AnthemDiagnosticsSection (feature #183)", () => {
     expect(downloaded[0].raw).toBe("Z1VOL55");
     expect(clickSpy).toHaveBeenCalled();
     expect(revokeUrlSpy).toHaveBeenCalledWith("blob:fake");
+  });
+});
+
+/**
+ * Feature #188 (retter BUGS.md #81) — engangs-omnummerering af D#-serien fra
+ * 1. Det testværdige (regel 19, "tilstands-skift i et vindue"): knappen skal
+ * reelt spørge om bekræftelse først, en annulleret bekræftelse må aldrig kalde
+ * API'et, og både succes- og fejl-udfald skal vises korrekt — inklusive at
+ * "Ledige numre"-oversigten genindlæses efter en vellykket omnummerering, så
+ * Jan ser den nye, sammenhængende D#-serie med det samme.
+ */
+describe("SerialNumberSection — omnummerering af D#-serien (feature #188)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function mockConfig(overrides = {}) {
+    return {
+      start_number: 166,
+      increment: 1,
+      padding_width: 3,
+      reuse_freed: false,
+      free_numbers: { physical_movies: [], physical_tv: [], digital: [] },
+      ...overrides,
+    };
+  }
+
+  it("spørger om bekræftelse, og annulleret bekræftelse kalder aldrig API'et", async () => {
+    vi.spyOn(api, "getSerialNumberConfig").mockResolvedValue(mockConfig());
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const renumberSpy = vi.spyOn(api, "renumberDigitalSerialNumbers");
+    const user = userEvent.setup();
+
+    render(<SerialNumberSection isAdmin={true} />);
+    const button = await screen.findByRole("button", { name: "Omnummerér D#-serien fra 1" });
+    await user.click(button);
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(renumberSpy).not.toHaveBeenCalled();
+  });
+
+  it("viser antal omnummererede poster efter bekræftelse, og genindlæser ledige numre", async () => {
+    vi.spyOn(api, "getSerialNumberConfig")
+      .mockResolvedValueOnce(mockConfig({ start_number: 166, free_numbers: { physical_movies: [], physical_tv: [], digital: [] } }))
+      .mockResolvedValueOnce(
+        mockConfig({ start_number: 4, free_numbers: { physical_movies: [], physical_tv: [], digital: [1, 2, 3] } })
+      );
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.spyOn(api, "renumberDigitalSerialNumbers").mockResolvedValue({ renumbered: 3 });
+    const user = userEvent.setup();
+
+    render(<SerialNumberSection isAdmin={true} />);
+    const button = await screen.findByRole("button", { name: "Omnummerér D#-serien fra 1" });
+    await user.click(button);
+
+    expect(await screen.findByText("3 digitale poster omnummereret.")).toBeInTheDocument();
+    expect(await screen.findByText("D#1, D#2, D#3")).toBeInTheDocument();
+  });
+
+  it("viser backendens specifikke fejlbesked hvis omnummerering fejler", async () => {
+    vi.spyOn(api, "getSerialNumberConfig").mockResolvedValue(mockConfig());
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.spyOn(api, "renumberDigitalSerialNumbers").mockRejectedValue(
+      new Error("Der er allerede en omnummerering i gang.")
+    );
+    const user = userEvent.setup();
+
+    render(<SerialNumberSection isAdmin={true} />);
+    const button = await screen.findByRole("button", { name: "Omnummerér D#-serien fra 1" });
+    await user.click(button);
+
+    expect(await screen.findByText("Der er allerede en omnummerering i gang.")).toBeInTheDocument();
+  });
+
+  it("vises ikke for ikke-admin brugere", async () => {
+    vi.spyOn(api, "getSerialNumberConfig").mockResolvedValue(mockConfig());
+
+    render(<SerialNumberSection isAdmin={false} />);
+    await screen.findByText("Serienummer-opsætning");
+
+    expect(screen.queryByRole("button", { name: "Omnummerér D#-serien fra 1" })).not.toBeInTheDocument();
   });
 });

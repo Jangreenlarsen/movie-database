@@ -5,6 +5,7 @@ from app.api.deps import get_current_user, require_admin
 from app.db import get_database
 from app.models.settings import (
     ApiKeyTestResult,
+    DigitalRenumberResult,
     PasswordPolicy,
     PasswordPolicyUpdate,
     PlexAutoImportPolicy,
@@ -34,6 +35,29 @@ async def update_serial_number_config(
     payload: SerialNumberConfigUpdate, db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     return await movie_service.update_serial_number_config(db, payload)
+
+
+@router.post(
+    "/serial-number/renumber-digital",
+    response_model=DigitalRenumberResult,
+    dependencies=[Depends(require_admin)],
+)
+async def renumber_digital_serial_number(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """Feature #188 (Jan, 2026-08-21: "Nulstil til at starte fra 1", efter
+    BUGS.md #81 blev forklaret) — engangs-omnummerering af D#-serien.
+    Rører aldrig fysiske (M#/T#) poster, se
+    `digital_serial_repository.renumber_from_one`s docstring."""
+    renumbered = await movie_service.renumber_digital_serial_from_one(db)
+    await audit_log_service.record(
+        db,
+        current_user["username"],
+        "digital_serial.renumbered",
+        f"{renumbered} digitale poster omnummereret til at starte fra D#1",
+    )
+    return DigitalRenumberResult(renumbered=renumbered)
 
 
 @router.get(

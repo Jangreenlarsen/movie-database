@@ -228,6 +228,10 @@ export const api = {
   getSerialNumberConfig: () => request("/settings/serial-number"),
   updateSerialNumberConfig: (payload) =>
     request("/settings/serial-number", { method: "PATCH", body: JSON.stringify(payload) }),
+  // Feature #188 (retter BUGS.md #81) — engangs-omnummerering af D#-serien
+  // til at starte fra 1. Rører aldrig fysiske (M#/T#) poster.
+  renumberDigitalSerialNumbers: () =>
+    request("/settings/serial-number/renumber-digital", { method: "POST" }),
   scanLookup: (barcode) =>
     request("/scan/lookup", { method: "POST", body: JSON.stringify({ barcode }) }),
   tmdbSearch: (query) =>

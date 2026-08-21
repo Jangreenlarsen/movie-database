@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.161.4 build 0228] — 2026-08-21 — fix: AVM70-diagnostikken fandt de ægte rodårsager — to bugs i anthem_client.py, ikke proxy-laget (BUGS.md #82)
+
+**BUGS.md #82, afsluttende del.** Efter at nginx-VM-rettelsen (v0.161.1) ikke løste problemet — Jan bekræftede stadig "ikke nogen forskel" i DevTools — blev fejlen isoleret ved at teste DIREKTE mod produktions-Caddy (`curl` mod `https://10.1.130.10`, helt uden om den offentlige nginx-proxy) via en midlertidig admin-testbruger oprettet med Jans eksplicitte tilladelse. Stadig fuldstændig tomt svar i 20 sekunder — nginx var altså aldrig hele forklaringen. `journalctl -u moviedb-backend` afslørede den ægte årsag: en ufanget `AttributeError: 'AVR' object has no attribute 'input_name'` i `anthem_client.snapshot()`, kastet på selve det første snapshot-event, EFTER at 200-status og SSE-headere allerede var sendt — så fejlen kunne aldrig blive en synlig HTTP-fejlkode, kun en stille afbrudt strøm der så ud som "aldrig live" fra klientens side.
+
+To adskilte rodårsager i `anthem_client.py`: (1) `anthemav.Connection.create(auto_reconnect=False, ...)` springer selve TCP-forbindelsesforsøget helt over — det ligger kun i bibliotekets `reconnect()`, som `create()` kun selv kalder når `auto_reconnect=True`. Diagnostikken troede den var forbundet uden nogensinde at have talt med enheden. (2) Den ægte `anthemav.AVR`-klasse holder `mute`/`input_number`/`input_name` udelukkende på `protocol.zones[1]`, ikke som en genvej på `protocol` selv — `snapshot()` læste dem fejlagtigt direkte på `protocol`. Ingen af delene blev fanget af testsuiten, fordi `_FakeProtocol` satte disse felter direkte på et fladt fake-objekt uden zone-strukturen.
+
+`open_connection` kalder nu eksplicit `await conn.reconnect()` (som med `auto_reconnect=False` fejler hurtigt med `OSError`, ingen retry-løkke). `snapshot()` læser nu de rigtige felter fra `protocol.zones[1]`. Test-dobbelten omskrevet til at spejle den ægte struktur.
+
+Berørte filer: `backend/app/integrations/anthem_client.py`, `backend/tests/test_anthem.py`, `backend/tests/test_anthem_client.py` (ny fil). Tests: backend +2 (810 i alt). Fuld backend-suite (810) grøn. nginx-rettelsen fra v0.161.1 er fortsat en reel forudsætning (uden den ville en nu-korrekt strøm heller ikke være nået frem) — den var bare ikke hele historien. **Afventer Jans bekræftelse efter deploy.**
+
 ## [0.161.3 build 0227] — 2026-08-21 — fix: Plex-diagnostikken viste ønskeliste-titler som "Ikke fundet i Plex" (BUGS.md #84)
 
 **BUGS.md #84.** Jan: *"når der plex scannes så kommer der fejl på film den ikke kan se i plex, det er alle de film som er på ønskelisten så de skal heller ikke kunne findes der"*. `plex_service.get_diagnostics` genbrugte samme dokumentliste (`_library_docs`) som bibliotekskortets "ligger allerede i Plex"-badge — der er ønskelisten bevidst med (nyttigt at se om en ønsket titel allerede findes). I diagnostik-scanningen, hvis formål er at finde titel-/år-uoverensstemmelser for titler man RENT FAKTISK EJER, gav samme inklusion derimod støj: en ønsket-men-endnu-ikke-anskaffet titel er per definition ikke i Plex, og er derfor ikke en reel mismatch-kandidat.

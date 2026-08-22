@@ -7,6 +7,7 @@ import PrintList from "./pages/PrintList";
 import Statistics from "./pages/Statistics";
 import Cinema from "./pages/Cinema";
 import CinemaPublic from "./pages/CinemaPublic";
+import CinemaPublicV2 from "./pages/CinemaPublicV2";
 import Login from "./pages/Login";
 import MessageBanner from "./components/MessageBanner";
 import PendingApproval from "./pages/PendingApproval";
@@ -142,6 +143,22 @@ function App() {
   // check is in flight) purely so the login badge can offer "Åbn
   // biblioteket" to someone already signed in — the page itself renders
   // immediately either way, which is the whole point of this early return.
+  // Feature #191 — /bio2: ny visuel forside, kun til intern preview/afprøvning
+  // sideordnet med /bio. Tjekket skal ligge FØR /bio-tjekket nedenfor: "/bio2"
+  // starter jo også med "/bio", så uden denne rækkefølge ville den gamle
+  // side altid vinde og /bio2 aldrig kunne nås.
+  if (window.location.pathname.startsWith("/bio2")) {
+    return (
+      <I18nProvider language={user?.settings?.language ?? preAuthLanguage}>
+        <CinemaPublicV2
+          user={user}
+          language={preAuthLanguage}
+          onLanguageChange={choosePreAuthLanguage}
+        />
+      </I18nProvider>
+    );
+  }
+
   if (window.location.pathname.startsWith("/bio")) {
     // Feature #89 — en besøgende uden login har intet sprogvalg at læse, så
     // siden bliver på kildesproget. Er man derimod allerede logget ind (den

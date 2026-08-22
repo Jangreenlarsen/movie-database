@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.165.0 (build 0238) — 2026-08-23
+
+- **Ny side: `/bio2` — en ny visuel forside til Voldby BIO, til intern afprøvning.** Nostalgisk papir-tema med det frilagte skilt-logo, en foto-kollage og en filmstrimme. Den nuværende `/bio`-side er helt uændret og er stadig den der bruges i dag — `/bio2` er kun en sideordnet forhåndsvisning, indtil der tages stilling til om den skal afløse den gamle.
+
 ## v0.164.2 (build 0237) — 2026-08-22
 
 - **Rettet: søgning på flere almindelige ord (fx "war the only") gav en masse urelaterede resultater.** Søgningen ledte tidligere også i filmens plot-resumé, hvor stort set alle almindelige ord findes et sted. Søgning på titel, skuespiller, instruktør, genre og serienummer er upåvirket.

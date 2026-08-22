@@ -1,0 +1,285 @@
+/* Feature #191 — "Voldby BIO v2" (/bio2). Bevidst selvstændig, fast
+   papir-/nostalgi-æstetik, uafhængig af appens eget lys/mørk-tema (samme
+   princip som CinemaPublic.css's faste hvide hero-tekst over sit eget
+   baggrundsbillede) — siden skal se ens ud uanset brugerens temavalg. */
+
+.cinema-v2-page {
+  position: relative;
+  /* BUGS.md-klasse fejl (fundet under regel 18-afprøvning på mobil, ikke kun
+     ved kodelæsning): #root (index.css) er en flex-column, og en flex-items
+     automatiske min-bredde er dens INDHOLDS min-content-bredde, ikke 0 —
+     for et <img> er det billedets EGEN intrinsiske pixel-bredde, uanset en
+     senere procent-bredde i CSS. Skiltet (1000px) og kollage-fotoene
+     (1280px+) tvang derfor hele siden bredere end en telefon-viewport, og
+     alt til højre (sprogvalg, Galleri-knap, højre kant af skiltet) blev
+     klippet af i stedet for at skrumpe. `min-width: 0` er den etablerede
+     rettelse for præcis dette flexbox-mønster. */
+  min-width: 0;
+  min-height: 100%;
+  overflow-x: clip;
+  background-color: #ede0c4;
+  background-image: url("/cinema/bio2-paper-bg.jpg");
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: cover;
+  color: #3a2a1a;
+  font-family: Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif;
+}
+
+/* Feature #191 — Jans ønske: filmstrimlen løber ned gennem sidens midte,
+   bag alt tekstindhold men foran baggrundsbilledet. Kræver at
+   .cinema-v2-main og .cinema-v2-hero-actions (næste regel) har deres egen
+   `position: relative` — uden det ville CSS'ens normale stakke-rækkefølge
+   (statisk indhold lægger sig BAG et positioneret element med z-index 0)
+   lade filmstrimlen ligge foran dem alligevel; fundet som en ægte bug under
+   afprøvning, ikke kun antaget. */
+.cinema-v2-filmstrip {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(56vw, 520px);
+  height: 2100px;
+  max-height: 260vh;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.cinema-v2-hero {
+  position: relative;
+  z-index: 1;
+  padding: 28px 20px 8px;
+  text-align: center;
+}
+
+.cinema-v2-hero-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  max-width: 1200px;
+  margin: 0 auto 12px;
+}
+
+.cinema-v2-sign {
+  position: relative;
+  z-index: 1;
+  margin: 8px 0 4px;
+}
+
+.cinema-v2-sign img {
+  display: inline-block;
+  width: 84%;
+  max-width: 760px;
+  height: auto;
+  filter: drop-shadow(0 22px 26px rgba(58, 42, 26, 0.35));
+}
+
+.cinema-v2-tagline {
+  position: relative;
+  z-index: 1;
+  max-width: 46ch;
+  margin: 0 auto 28px;
+  color: #6b5a44;
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+/* ============ Foto-kollage ============
+   Jans forløb: startede som midterbillede lige + to yderste roteret 45°
+   med ~50% overlap; siden justeret til 20° (mindre var mere naturligt), de
+   to yderste rykket 10% højere end midterbilledet, og indbyrdes byttet om. */
+.cinema-v2-collage {
+  position: relative;
+  z-index: 1;
+  max-width: 620px;
+  height: 340px;
+  margin: 0 auto 32px;
+}
+
+.cinema-v2-collage-photo {
+  position: absolute;
+  top: 6%;
+  width: 56%;
+  height: auto;
+  border: 6px solid #faf3e6;
+  border-radius: 6px;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.45);
+}
+
+.cinema-v2-collage-left {
+  left: -4%;
+  z-index: 1;
+  transform: rotate(-20deg);
+}
+
+.cinema-v2-collage-right {
+  right: -4%;
+  z-index: 1;
+  transform: rotate(20deg);
+}
+
+.cinema-v2-collage-center {
+  top: 0;
+  left: 50%;
+  z-index: 2;
+  transform: translateX(-50%);
+  border-radius: 8px;
+  box-shadow: 0 26px 50px rgba(0, 0, 0, 0.5);
+}
+
+.cinema-v2-now-badge {
+  position: absolute;
+  z-index: 3;
+  top: 46%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #faf3e6;
+  border: 1px solid rgba(58, 42, 26, 0.16);
+  border-radius: 6px;
+  padding: 10px 16px;
+  max-width: 260px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  text-align: left;
+}
+
+.cinema-v2-now-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8f5c14;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.cinema-v2-now-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #3a2a1a;
+}
+
+.cinema-v2-main {
+  position: relative;
+  z-index: 1;
+}
+
+.cinema-v2-section {
+  position: relative;
+  z-index: 1;
+  padding: 8px 20px 48px;
+}
+
+.cinema-v2-section > * {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cinema-v2-section-heading-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.cinema-v2-section-heading {
+  font-family: inherit;
+  font-size: 1.9rem;
+  font-weight: 700;
+  margin: 0;
+  color: #3a2a1a;
+}
+
+.cinema-v2-section-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cinema-v2-ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(250, 243, 230, 0.6);
+  color: #3a2a1a;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 8px 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(58, 42, 26, 0.25);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.cinema-v2-ghost-btn:hover {
+  background: rgba(250, 243, 230, 0.85);
+}
+
+.cinema-v2-about-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.cinema-v2-about-card {
+  min-width: 0;
+  background: #faf3e6;
+  border: 1px solid rgba(58, 42, 26, 0.16);
+  border-radius: 8px;
+  padding: 22px;
+  border-top: 3px solid #9a3323;
+}
+
+.cinema-v2-about-card--amber {
+  border-top-color: #8f5c14;
+}
+
+.cinema-v2-about-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8f5c14;
+  margin-bottom: 8px;
+}
+
+.cinema-v2-about-card p {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: #6b5a44;
+  margin: 0;
+}
+
+.cinema-v2-about-card ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 0.8rem;
+  line-height: 1.8;
+  color: #6b5a44;
+}
+
+@media (max-width: 900px) {
+  .cinema-v2-about-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .cinema-v2-collage {
+    height: 260px;
+  }
+
+  .cinema-v2-now-badge {
+    max-width: 200px;
+    padding: 8px 12px;
+  }
+
+  .cinema-v2-filmstrip {
+    width: min(70vw, 340px);
+  }
+}

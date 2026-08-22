@@ -182,23 +182,35 @@ async def test_backfill_assigns_numbers_to_digital_documents_without_one(db):
     assert doc["serial_number"] == 1
 
 
-async def test_backfill_renumbers_digital_document_clashing_with_a_physical_one(db):
-    """Poster fra før feature #92: nummeret stammer fra den fysiske serie og
-    hører ikke hjemme i D#-rækken."""
+async def test_backfill_does_not_renumber_a_digital_document_sharing_a_number_with_a_physical_one(db):
+    """BUGS.md #88 (Jan: "selv om jeg reset D# serie til at starte ved 1 så
+    hvis jeg opdatere portal, så starter de igen ved sidste nr som M# serie
+    slutter ved") — `backfill()` havde tidligere en gren der reassignerede
+    ethvert digitalt nummer der numerisk "kolliderede" med en fysisk post i
+    samme collection. Efter feature #188s omnummerering (lave, rene 1..N
+    D#-numre) er det HELT NORMALT at fx D#4 og M#4 begge findes — det er
+    selve pointen med adskilte, præfiksede serier. Den gamle gren
+    fejltolkede derfor ethvert korrekt lavt D#-nummer som en fejl og
+    omnummererede det væk igen ved hver eneste app-genstart (`backfill`
+    kører automatisk ved opstart), hvilket i praksis gjorde #188s rettelse
+    usynlig efter det første "Opdatér"-klik. Denne test bekræfter at et
+    digitalt nummer der deler tal med en fysisk post nu overlever `backfill`
+    uændret."""
     await db[movie_repository.COLLECTION].insert_one(
         {"title": "Fysisk", "media_type": "Fysisk", "serial_number": 4}
     )
     await db[movie_repository.COLLECTION].insert_one(
-        {"title": "Digital Med Fysisk Nummer", "media_type": "Digital", "serial_number": 4}
+        {"title": "Digital Med Samme Nummer", "media_type": "Digital", "serial_number": 4}
     )
 
-    await digital_serial_repository.backfill(db, movie_repository.COLLECTION)
+    assigned = await digital_serial_repository.backfill(db, movie_repository.COLLECTION)
 
     digital = await db[movie_repository.COLLECTION].find_one(
-        {"title": "Digital Med Fysisk Nummer"}
+        {"title": "Digital Med Samme Nummer"}
     )
     physical = await db[movie_repository.COLLECTION].find_one({"title": "Fysisk"})
-    assert digital["serial_number"] != 4
+    assert assigned == 0
+    assert digital["serial_number"] == 4
     assert physical["serial_number"] == 4
 
 

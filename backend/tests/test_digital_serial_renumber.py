@@ -113,6 +113,42 @@ async def test_returns_zero_and_does_nothing_when_no_digital_items_exist(db):
     assert renumbered == 0
 
 
+async def test_renumbering_survives_a_simulated_app_restart(db):
+    """BUGS.md #88 (Jan: "selv om jeg reset D# serie til at starte ved 1 så
+    hvis jeg opdatere portal, så starter de igen ved sidste nr som M# serie
+    slutter ved" — en ALVORLIG regression). `backfill()` kører automatisk
+    ved hver app-opstart (`ensure_indexes`), og havde tidligere en gren der
+    reassignerede ethvert digitalt nummer der numerisk kolliderede med en
+    fysisk post i samme collection — hvilket EFTER en omnummerering til lave
+    1..N-numre ramte praktisk talt alle digitale poster (M#-serien dækker jo
+    typisk netop det lave talområde). Denne test simulerer præcis Jans
+    scenarie: physiske poster med numre der overlapper D#-seriens nye,
+    omnummererede område, efterfulgt af et `backfill()`-kald (simulerer en
+    app-genstart/"Opdatér") — de omnummererede D#-numre skal stå uændret
+    bagefter."""
+    t1 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    t2 = datetime(2026, 1, 2, tzinfo=timezone.utc)
+
+    digital_a = await _insert_movie(db, media_type="Digital", serial_number=163, created_at=t1, title="DigA")
+    digital_b = await _insert_movie(db, media_type="Digital", serial_number=164, created_at=t2, title="DigB")
+    # Den fysiske M#-serie dækker (som i Jans faktiske bibliotek) også
+    # numrene 1 og 2 — det er FORVENTET og LOVLIGT, ikke en kollision.
+    await _insert_movie(db, media_type="Fysisk", serial_number=1, created_at=t1, title="FysA")
+    await _insert_movie(db, media_type="Fysisk", serial_number=2, created_at=t2, title="FysB")
+
+    renumbered = await digital_serial_repository.renumber_from_one(db)
+    assert renumbered == 2
+    assert (await db["movies"].find_one({"_id": digital_a}))["serial_number"] == 1
+    assert (await db["movies"].find_one({"_id": digital_b}))["serial_number"] == 2
+
+    # Simulerer en app-genstart: backfill() kører automatisk ved hver opstart.
+    await digital_serial_repository.backfill(db, "movies")
+    await digital_serial_repository.backfill(db, "tv_shows")
+
+    assert (await db["movies"].find_one({"_id": digital_a}))["serial_number"] == 1
+    assert (await db["movies"].find_one({"_id": digital_b}))["serial_number"] == 2
+
+
 async def test_endpoint_requires_admin(client):
     from httpx import ASGITransport, AsyncClient
 

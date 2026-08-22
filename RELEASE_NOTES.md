@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.164.1 (build 0236) — 2026-08-22
+
+- **Rettet alvorlig fejl: D#-omnummereringen blev fortrudt ved hver opdatering.** Nulstillede du D#-serien til at starte fra 1, blev den usynligt sat tilbage igen ved næste "Opdatér". **Kør "Omnummerér D#-serien fra 1" i Indstillinger → Bibliotek én gang mere efter denne opdatering** — den forbliver nu korrekt fremover.
+
 ## v0.164.0 (build 0235) — 2026-08-22
 
 - **Appen holder sig nu selv opdateret.** Har du appen liggende åben i lang tid (fx "Føj til hjemmeskærm" på iPhone), tjekker den nu selv jævnligt for en ny version i baggrunden og opdaterer stille — du behøver ikke selv lukke og genåbne appen for at få en ny udgivelse.

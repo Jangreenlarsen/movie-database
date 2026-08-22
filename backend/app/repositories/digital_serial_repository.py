@@ -278,25 +278,32 @@ async def set_serial(
 
 
 async def backfill(db: AsyncIOMotorDatabase, collection_name: str) -> int:
-    """Feature #93 — giver digitale poster et D#-nummer.
+    """Feature #93 — giver digitale poster uden et nummer et D#-nummer.
 
-    To grupper rettes, og begge kriterier er valgt så migreringen er
-    idempotent (den må køre ved hver opstart uden at omnummerere noget):
+    Retter kun ÉN ting, og gør det idempotent (kører ved hver opstart uden
+    at omnummerere noget der allerede er korrekt): digitale poster helt uden
+    serienummer. Enten oprettet før digitale fik numre, eller ryddet af
+    feature #92's migrering, som dengang fjernede dem igen fordi reglen var
+    "kun fysiske nummereres".
 
-    1. Digitale poster helt uden nummer. Enten oprettet før digitale fik
-       numre, eller ryddet af feature #92's migrering, som fjernede dem
-       igen fordi reglen dengang var "kun fysiske nummereres".
-    2. Digitale poster hvis nummer kolliderer med en *fysisk* post i samme
-       collection. Det er poster fra før feature #92 overhovedet blev
-       udrullet: deres nummer stammer fra den fysiske serie og hører ikke
-       hjemme i D#-rækken. Efter omnummereringen kolliderer de ikke længere,
-       så kriteriet holder op med at være opfyldt.
-
-    En digital post med et nummer der *ikke* kolliderer, får lov at beholde
-    det. Nummeret er måske tildelt fra den fysiske serie engang, men det er
-    stabilt, entydigt og kan stå skrevet ned — at omnummerere det ville være
-    en større gene end den kosmetiske uorden det retter.
-    """
+    BUGS.md #88 (Jan: "selv om jeg reset D# serie til at starte ved 1 så
+    hvis jeg opdatere portal, så starter de igen ved sidste nr som M# serie
+    slutter ved" — en ALVORLIG regression): denne funktion havde tidligere
+    EN ANDEN gren, der reassignerede ethvert digitalt nummer som "kolliderede"
+    med en fysisk post i samme collection. Den gren gav mening FØR M#/T#/D#-
+    opdelingen var fuldt indfaset (et digitalt nummer der bogstaveligt var
+    arvet fra den fysiske serie, jf. feature #92/#93). Men efter feature
+    #188s omnummerering (som bevidst giver D#-serien lave, rene 1..N-numre)
+    er det HELT NORMALT og TILSIGTET at fx D#5 og M#5 begge findes samtidigt
+    — det er selve pointen med adskilte, præfiksede serier (M#/T#/D# må
+    gerne overlappe numerisk, præfikset gør dem entydige). Den gamle
+    "kollision"-gren fejltolkede derfor EVERY korrekt lavt D#-nummer som en
+    fejl der skulle rettes, og omnummererede dem alle sammen VÆK igen ved
+    hver eneste app-genstart — hvilket i praksis gjorde #188s rettelse
+    usynlig efter det allerførste "Opdatér"-klik. Grenen er fjernet helt;
+    der er intet tilbage der reelt har brug for den (al historisk data fra
+    før #93 er enten allerede migreret, eller efterfølgende omnummereret af
+    #188)."""
     collection = db[collection_name]
     assigned = 0
 
@@ -306,26 +313,6 @@ async def backfill(db: AsyncIOMotorDatabase, collection_name: str) -> int:
     async for doc in cursor:
         collection_update = {"$set": {"serial_number": await _next_from_counter(db)}}
         await collection.update_one({"_id": doc["_id"]}, collection_update)
-        assigned += 1
-
-    # Kollisioner med den fysiske serie i samme collection.
-    cursor = collection.find(
-        {"media_type": DIGITAL, "serial_number": {"$exists": True}}, {"_id": 1, "serial_number": 1}
-    ).sort("created_at", 1)
-    async for doc in cursor:
-        clash = await collection.find_one(
-            {
-                "serial_number": doc["serial_number"],
-                "media_type": {"$ne": DIGITAL},
-                "_id": {"$ne": doc["_id"]},
-            },
-            {"_id": 1},
-        )
-        if clash is None:
-            continue
-        await collection.update_one(
-            {"_id": doc["_id"]}, {"$set": {"serial_number": await _next_from_counter(db)}}
-        )
         assigned += 1
 
     if assigned:

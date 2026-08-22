@@ -147,6 +147,28 @@ async def test_freed_trailing_numbers_are_recognized_immediately(client):
     assert g["serial_number"] == 5
 
 
+async def test_free_numbers_list_is_capped_even_with_a_huge_gap(client):
+    """BUGS.md #86 (Jan: "hvis en adm opretter en film med et nr på 50000,
+    så vil den genbrugs list indholde alle nr fra den sidste ca omkring 500
+    til 49999, det giver ikke mening") — et loft på 100 (Jans valg: "jeg
+    tænker max på 100") forhindrer at ét usædvanligt højt nummer får listen
+    til at indeholde titusindvis af "ledige" numre. Bruger 4999 (lige under
+    `OTHER_SERIAL_START`s 5000-grænse for den helt separate delte pulje,
+    feature #139) frem for Jans eget 50000-eksempel, som reelt ville lande i
+    DEN pulje og slet ikke tælle med i M#-seriens egen gaps-beregning."""
+    a = await _create(client, "A")
+    b = await _create(client, "B")
+    resp = await client.patch(f"/api/movies/{b['id']}", json={"serial_number": 4999})
+    assert resp.status_code == 200, resp.text
+
+    free = (await _config(client))["free_numbers"]["physical_movies"]
+    assert len(free) == 100
+    # De laveste numre først (dem der rent faktisk genbruges/vises), ikke et
+    # tilfældigt udsnit af det enorme interval.
+    assert free[0] == 2
+    assert free[-1] == 101
+
+
 async def test_physical_movie_and_tv_series_have_independent_free_numbers(client):
     await client.patch("/api/settings/serial-number", json={"reuse_freed": True})
     ma = await _create(client, "MovA")

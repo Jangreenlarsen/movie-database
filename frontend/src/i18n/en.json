@@ -556,6 +556,7 @@
   "serial.renumberDigitalDone": "{count} digital entries renumbered.",
   "serial.confirmRenumberDigital": "This gives ALL existing digital movies/shows a new D# number starting from 1. Physical (M#/T#) numbers are not touched. This action cannot be undone — continue?",
   "serial.freeNone": "none",
+  "serial.freeNumbersCapped": "showing only the {count} lowest",
   "serial.saved": "Saved!",
   "deleted.heading": "Deleted movies",
   "deleted.description": "When a movie is deleted, it is logged here along with its serial number — the number is then free to be reused by a new movie.",

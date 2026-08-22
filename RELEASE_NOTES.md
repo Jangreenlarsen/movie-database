@@ -1,5 +1,13 @@
 # Release Notes
 
+## v0.163.0 (build 0232) — 2026-08-22
+
+- **"Ledige numre" i Indstillinger → Bibliotek → Serienummer-opsætning vises nu som en dropdown** i stedet for en lang tekststreng, og er begrænset til de 100 laveste ledige numre (med en tydelig besked hvis der er flere).
+
+## v0.162.1 (build 0231) — 2026-08-22
+
+- **Hurtigere bibliotek på mobil ved høj sidestørrelse.** Var sidestørrelsen sat til 96 eller 200, kunne biblioteket blive mærkbart langsomt på mobil. Kort der ikke er i syne belaster nu ikke længere browseren, før du ruller ned til dem.
+
 ## v0.162.0 (build 0230) — 2026-08-21
 
 - **Ny besked: dit ønske er bestilt.** Sætter en admin en film/TV-serie på indkøbslisten til "bestilt" (fx "Bestilt ved Laserdisken"), får du nu en besked om det — samme måde som du allerede får besked når et ønske godkendes eller flyttes ind i biblioteket.

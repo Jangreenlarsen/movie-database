@@ -556,6 +556,7 @@
   "serial.renumberDigitalDone": "{count} digitale poster omnummereret.",
   "serial.confirmRenumberDigital": "Dette giver ALLE eksisterende digitale film/serier et nyt D#-nummer fra 1 og opefter. Fysiske (M#/T#) numre røres ikke. Handlingen kan ikke fortrydes — fortsæt?",
   "serial.freeNone": "ingen",
+  "serial.freeNumbersCapped": "viser kun de {count} laveste",
   "serial.saved": "Gemt!",
   "deleted.heading": "Slettede film",
   "deleted.description": "Når en film slettes, logges den her sammen med serienummeret — nummeret er derefter frit til at blive genbrugt af en ny film.",

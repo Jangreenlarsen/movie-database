@@ -45,12 +45,24 @@ async def test_search_matches_genre(client):
     assert await _titles(client, "Romance") == {"Amélie"}
 
 
-async def test_search_still_matches_title_and_overview(client):
+async def test_search_still_matches_title(client):
     await _movie(client, title="Heat", overview="A crew of professional thieves.")
     await _movie(client, title="Amélie", overview="A shy waitress in Paris.")
 
     assert await _titles(client, "Heat") == {"Heat"}
-    assert await _titles(client, "waitress") == {"Amélie"}
+
+
+async def test_search_no_longer_matches_overview(client):
+    """BUGS.md #89 (Jan: "hvis man søg eks. war the only, så bliver der søgt
+    på alle 3 forkomster af de ord, det er en fejl") — `overview` er en
+    100-300 ord lang fritekst-synopsis hvor stort set ethvert almindeligt ord
+    findes et sted, og var aldrig nævnt i søgefeltets egen placeholder-tekst.
+    Fjernet fra søgningen: et ord der KUN findes i overview må ikke længere
+    give et match."""
+    await _movie(client, title="Heat", overview="A crew of professional thieves.")
+    await _movie(client, title="Amélie", overview="A shy waitress in Paris.")
+
+    assert await _titles(client, "waitress") == set()
 
 
 async def test_search_is_case_insensitive(client):
@@ -89,6 +101,30 @@ async def test_regex_metacharacters_are_treated_as_text(client):
     await _movie(client, title="Movie 2019")
 
     assert await _titles(client, "(2019)") == {"Movie (2019)"}
+
+
+async def test_multi_word_query_does_not_match_via_unrelated_overview_text(client):
+    """BUGS.md #89 — Jans nøjagtige scenarie, reproduceret med samme mønster
+    som de faktiske film der matchede forkert: "war" fandtes kun som en
+    delstreng af "warheads" i én films overview, og "only" fandtes kun som
+    et almindeligt ord i en anden, helt urelateret films overview. Ingen af
+    filmene handler om noget der reelt matcher "war the only" — de matchede
+    kun fordi hvert ord for sig fandtes SOMEWHERE i en 100+ ords fritekst."""
+    await _movie(
+        client,
+        title="Crimson Tide",
+        genres=["Thriller", "War"],
+        overview="A breakaway republic with nuclear warheads becomes a threat.",
+    )
+    await _movie(
+        client,
+        title="Star Trek: Generations",
+        overview="Only one man can help Picard stop Soran's scheme.",
+    )
+
+    assert await _titles(client, "war the only") == set()
+    # Genre-feltet er stadig en fuldgyldig, tilsigtet matchtype for "war".
+    assert await _titles(client, "war") == {"Crimson Tide"}
 
 
 async def test_search_combines_with_tag_filter(client):

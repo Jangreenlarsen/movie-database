@@ -78,7 +78,20 @@ MAX_SORT_LEVELS = 3
 # Felterne fritekst-søgningen (`?q=`) rammer. Skuespiller/instruktør/genre er
 # med her, fordi både søgefeltets placeholder og CLAUDE.md regel 7 lover dem —
 # det gjorde det gamle `$text`-index ikke (BUGS.md #48).
-TEXT_SEARCH_FIELDS = ["title", "overview", "cast", "director", "genres"]
+#
+# BUGS.md #89 (Jan: "hvis man søg eks. war the only, så bliver der søgt på
+# alle 3 forkomster af de ord, det er en fejl") — `overview` er BEVIDST
+# fjernet igen. Den er en 100-300 ord lang fritekst-synopsis, hvor et
+# hvilket som helst almindeligt ord ("only", "war" som delstreng af
+# "warheads") næsten altid findes et sted — kombineret med at hvert
+# søgeord matches UAFHÆNGIGT af de andre (så "pacino heat" kan finde en
+# skuespiller og en titel i hver sit felt, feature #48), gav det en
+# lang række helt urelaterede film som "match", fordi hvert enkelt ord
+# for sig tilfældigvis fandtes et sted i en helt anden films synopsis.
+# `overview` har desuden ALDRIG været nævnt i søgefeltets egen
+# placeholder-tekst ("Søg på titel, skuespiller, genre, serienr...") —
+# feltet var searchable uden at UI'et nogensinde lovede det.
+TEXT_SEARCH_FIELDS = ["title", "cast", "director", "genres"]
 
 # AudioType label-historik -> de nuværende værdier — se
 # `_migrate_audio_type_labels` og `models/movie.py::AudioType`.

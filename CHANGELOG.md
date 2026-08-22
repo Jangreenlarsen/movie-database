@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.164.1 build 0236] — 2026-08-22 — fix: ALVORLIG regression — D#-omnummerering blev usynligt fortrudt ved hver app-genstart (BUGS.md #88)
+
+Jan: *"selv om jeg reset D# serie til at starte ved 1 så hvis jeg opdatere portal, så starter de igen ved sidste nr som M# serie slutter ved. Fiks det som det er en store fejl"*.
+
+Rodårsag: `digital_serial_repository.backfill()` kører automatisk ved HVER app-opstart (`ensure_indexes`, kaldt fra `main.py`) — modsat feature #188's `renumber_from_one`, som kun kører når en admin selv trykker. `backfill()` havde en gren der reassignerede ethvert digitalt nummer der numerisk "kolliderede" med en fysisk post i samme collection — gav mening FØR M#/T#/D#-opdelingen (dengang var et sådant sammenfald et levn fra den fælles nummerering). Men #188s omnummerering giver med vilje D#-serien lave, rene 1..N-numre, og da M#-serien typisk OGSÅ dækker det lave talområde, "kolliderede" praktisk talt hvert eneste nyomnummereret D#-nummer med et identisk M#-nummer — og blev derfor omgående reassigneret væk igen ved selve den næste genstart. Et D#-nummer der matcher et M#/T#-nummer er efter opdelingen helt normalt og tilsigtet (selve pointen med adskilte, præfiksede serier), så "kollisions"-grenen var for længst blevet forældet.
+
+Grenen er fjernet fra `backfill()` — funktionen retter nu udelukkende digitale poster der helt mangler et nummer (dens oprindelige, stadig relevante formål).
+
+**Jan skal køre "Omnummerér D#-serien fra 1" i Indstillinger → Bibliotek ÉN GANG MERE efter denne rettelse er deployet** — rettelsen forhindrer kun fremtidig beskadigelse; den nuværende produktionsdatabases D#-numre er allerede fejlagtigt omnummereret af den gamle gren og skal nulstilles igen, men forbliver denne gang korrekte.
+
+Berørte filer: `backend/app/repositories/digital_serial_repository.py`, `backend/tests/test_serial_number_rules.py`, `backend/tests/test_digital_serial_renumber.py`. Tests: backend netto +1 (818 i alt — én forældet test om den nu-fjernede "kollisions"-gren omskrevet til at bekræfte det MODSATTE, plus en ny ende-til-ende-test der reproducerer Jans nøjagtige scenarie: omnummerering efterfulgt af et simuleret genstart-kald til `backfill()`). Fuld backend-suite (818) grøn.
+
 ## [0.164.0 build 0235] — 2026-08-22 — feature: PWA'en tjekker nu aktivt og periodisk for en ny version (FEATURES.md #190)
 
 Jan: *"hvordan sikker vi os også at folk ikke sider med cache version af site, kan vi gøre noget sådan at browser altid er loadet med nyeste version"*.

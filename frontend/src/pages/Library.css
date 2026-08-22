@@ -90,7 +90,14 @@
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-muted);
+  /* Jan, 2026-08-22: "giv 'søg på title' en anden farve, den er svære at
+     få øje på" — søgeikonet og pladsholder-teksten (herunder) var begge
+     `--text-muted`, som blandede sig for meget med baggrunden til at
+     invitationen til at søge blev lagt mærke til. `--success` er appens
+     eksisterende, tema-bevidste grønne token (samme som bruges andre
+     steder for positive tilstande), genbrugt her rent for kontrast/
+     synlighed — ikke fordi søgning er en "success"-tilstand. */
+  color: var(--success);
   pointer-events: none;
 }
 
@@ -99,6 +106,13 @@
   padding-left: 36px;
   /* Plads til ryd-knappen, så lang søgetekst ikke løber ind under den. */
   padding-right: 34px;
+}
+
+.search-input-wrap input::placeholder {
+  color: var(--success);
+  /* Firefox dæmper ::placeholder til ~54% opacity som standard, hvilket
+     ville give en anden (svagere) grøn end den vi rent faktisk satte. */
+  opacity: 1;
 }
 
 /* Feature #102 — ryd-knappen. Browserens egen kun findes i WebKit/Chrome,
@@ -910,6 +924,37 @@
   position: absolute;
   top: 12px;
   right: 12px;
+}
+
+/* Jan, 2026-08-22: "gør x knap i højre hjørne rød med sort x så den er til
+   at se i en film detajle kort når man skal lukke kort igen" — den delte
+   luk-knap (film-/TV-detaljer, "tilføj film"-formularens tilbage-knap)
+   brugte hidtil den neutrale, generiske `.btn`-stil (samme overflade-farve
+   som kortet selv) og druknede visuelt. `--danger` er appens eksisterende
+   røde tema-token (samme som fx den røde afkrydsningsboks, BUGS.md #78);
+   sort X er en bevidst fast farve uafhængig af tema (samme begrundelse som
+   det hvide flueben i den røde boks — maksimal kontrast mod en rød
+   baggrund, ikke en tema-farve). Selektoren er bevidst `.btn.modal-close`
+   (begge klasser, ikke kun `.modal-close`) — ellers taber reglen mod
+   `.btn`s egen baggrund/farve, da de to klasser har samme specificitet og
+   `.btn` (App.css) indlæses senere end denne fil i den samlede cascade. */
+.btn.modal-close {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--danger);
+  color: #000;
+  font-size: 1rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn.modal-close:hover {
+  filter: brightness(0.92);
 }
 
 .modal-section-label {

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.163.1 (build 0233) — 2026-08-22
+
+- **Søgefeltet og luk-knappen er nu lettere at få øje på.** Søgeikonet og pladsholder-teksten ("Søg på titel...") er grønne; luk-knappen (✕) på film-/TV-detaljekortet er nu en rød cirkel med sort kryds.
+
 ## v0.163.0 (build 0232) — 2026-08-22
 
 - **"Ledige numre" i Indstillinger → Bibliotek → Serienummer-opsætning vises nu som en dropdown** i stedet for en lang tekststreng, og er begrænset til de 100 laveste ledige numre (med en tydelig besked hvis der er flere).

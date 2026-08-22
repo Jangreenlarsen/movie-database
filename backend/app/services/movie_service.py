@@ -704,6 +704,7 @@ async def update_movie(
     requested_wishlist = fields.pop("is_wishlist", None)
     requested_media_type = fields.get("media_type")
     requested_wishlist_status = fields.get("wishlist_status")
+    requested_order_status = fields.get("order_status")
 
     current_doc = None
     if (
@@ -711,6 +712,7 @@ async def update_movie(
         or requested_wishlist is not None
         or requested_media_type is not None
         or requested_wishlist_status is not None
+        or requested_order_status is not None
     ):
         current_doc = await movie_repository.find_by_id(db, movie_id)
         if current_doc is None:
@@ -796,6 +798,20 @@ async def update_movie(
         and current_doc.get("wishlist_status") == WishlistStatus.PENDING.value
     ):
         await message_service.notify_wishlist_approved(
+            db, current_doc, current_user, document.get("title"), is_tv=False
+        )
+    # Feature #189 — Jan: "hvis så en adm ændre film/tv til at den er
+    # bestilt så skal user have besked". Kun ved selve OVERGANGEN til bestilt
+    # (ikke-bestilt → bestilt), og kun mens ønsket stadig er på indkøbslisten
+    # — samme afgrænsning som #166s pending→approved, så et skift af
+    # bestillingssted på et allerede bestilt ønske ikke giver en ny besked.
+    if (
+        requested_order_status is not None
+        and current_doc is not None
+        and current_doc.get("is_wishlist")
+        and not current_doc.get("order_status")
+    ):
+        await message_service.notify_wishlist_ordered(
             db, current_doc, current_user, document.get("title"), is_tv=False
         )
     return _to_model(document)

@@ -121,6 +121,87 @@ async def test_tv_wishlist_approval_flow(client):
     await member.aclose()
 
 
+# Feature #189 — sætter en admin `order_status` på et ønske (markerer det
+# som bestilt), får opretteren besked — samme mønster som #166s
+# godkendt-besked.
+
+
+async def test_ordering_wishlist_notifies_the_creator(client):
+    member = await _member(client, "wish_order_notify")
+    created = await member.post("/api/movies", json={"title": "Bestil Besked", "is_wishlist": True})
+    movie_id = created.json()["id"]
+
+    resp = await client.patch(
+        f"/api/movies/{movie_id}", json={"order_status": "Bestilt ved Laserdisken"}
+    )
+    assert resp.status_code == 200
+
+    inbox = (await member.get("/api/messages/inbox")).json()
+    assert len(inbox) == 1
+    assert "Bestil Besked" in inbox[0]["subject"]
+    await member.aclose()
+
+
+async def test_changing_order_status_again_does_not_notify_again(client):
+    """Samme idempotens-afgrænsning som #166: kun selve overgangen til bestilt
+    giver en besked, ikke et efterfølgende skift af bestillingssted."""
+    member = await _member(client, "wish_order_idempotent")
+    created = await member.post("/api/movies", json={"title": "Bestil Igen", "is_wishlist": True})
+    movie_id = created.json()["id"]
+
+    await client.patch(f"/api/movies/{movie_id}", json={"order_status": "Bestilt ved Laserdisken"})
+    first_inbox = (await member.get("/api/messages/inbox")).json()
+    assert len(first_inbox) == 1
+    await member.post(f"/api/messages/{first_inbox[0]['id']}/read")
+
+    resp = await client.patch(f"/api/movies/{movie_id}", json={"order_status": "Bestilt ved iMusic"})
+    assert resp.status_code == 200
+
+    inbox = (await member.get("/api/messages/inbox")).json()
+    assert inbox == []
+    await member.aclose()
+
+
+async def test_setting_order_status_on_a_library_item_does_not_notify(client):
+    """order_status giver kun mening for et ønske — er ønsket allerede
+    flyttet ind i biblioteket (ikke længere is_wishlist), skal et
+    order_status-skift ikke give endnu en besked."""
+    member = await _member(client, "wish_order_library")
+    created = await member.post("/api/movies", json={"title": "Allerede Ejet", "is_wishlist": True})
+    movie_id = created.json()["id"]
+    # Flyt ind i biblioteket (feature #141 — giver allerede sin egen besked,
+    # ryddes fra indbakken før selve testens handling).
+    await client.patch(f"/api/movies/{movie_id}", json={"is_wishlist": False, "media_type": "Fysisk", "format": "F-DVD"})
+    moved_inbox = (await member.get("/api/messages/inbox")).json()
+    for msg in moved_inbox:
+        await member.post(f"/api/messages/{msg['id']}/read")
+
+    resp = await client.patch(
+        f"/api/movies/{movie_id}", json={"order_status": "Bestilt ved Laserdisken"}
+    )
+    assert resp.status_code == 200
+
+    inbox = (await member.get("/api/messages/inbox")).json()
+    assert inbox == []
+    await member.aclose()
+
+
+async def test_tv_wishlist_order_status_notifies_the_creator(client):
+    member = await _member(client, "wish_tv_order_notify")
+    created = await member.post("/api/tv-shows", json={"name": "TV Bestil", "is_wishlist": True})
+    show_id = created.json()["id"]
+
+    resp = await client.patch(
+        f"/api/tv-shows/{show_id}", json={"order_status": "Bestilt ved div."}
+    )
+    assert resp.status_code == 200
+
+    inbox = (await member.get("/api/messages/inbox")).json()
+    assert len(inbox) == 1
+    assert "TV Bestil" in inbox[0]["subject"]
+    await member.aclose()
+
+
 # Feature #165 — "afvis ønske" (modparten til godkendelse), med besked til
 # ønske-opretteren.
 

@@ -198,6 +198,7 @@ Begge tabeller opdateres når en feature tilføjes (jf. CLAUDE.md regel 2).
 | 187 | Udvidet AVM 70-monitor (større seksion) + skrive-/kontrolfunktioner (input, volumen, audio-mode m.m. som Anthem-protokollen tillader) | planned | — |
 | 188 | Engangs-admin-handling: omnummerér D#-serien til at starte fra 1 (retter BUGS.md #81) | done | 0.161.0 |
 | 189 | Besked til ønske-opretteren når en admin sætter `order_status` (markerer ønsket som bestilt) — samme mønster som eksisterende godkendt/afvist/flyttet-beskeder | done | 0.162.0 |
+| 190 | PWA'en tjekker nu aktivt og periodisk for en ny version (i stedet for kun ved en rigtig sideindlæsning) og opdaterer automatisk og stille | done | 0.164.0 |
 
 ---
 

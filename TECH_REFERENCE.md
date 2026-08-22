@@ -33,6 +33,7 @@ Konsulteres ved al teknisk implementering (jf. CLAUDE.md regel 10). Hold opdater
 
 - Scaffold via `npm create vite@latest frontend -- --template react`.
 - PWA: `vite-plugin-pwa` genererer service worker + kobler `public/manifest.json` sammen. Kræver HTTPS (eller `localhost`) for at kamera-API'et (`getUserMedia`) virker — i produktion derfor reverse proxy med TLS foran frontend (fx Caddy/Traefik/nginx med Let's Encrypt, eller self-signed cert på lokalt netværk).
+- **Service worker-registrering (feature #190)**: pluginets egen auto-injicerede registrerings-script er slået fra (`injectRegister: false` i `vite.config.js`) — `frontend/src/pwa.js` registrerer i stedet selv via `virtual:pwa-register`, med et periodisk `registration.update()`-tjek hvert 20. minut (`onRegisteredSW`). Uden dette tjekker browseren kun for en ny version ved en rigtig sideindlæsning/navigation, hvilket en PWA der bliver stående åben i lang tid (fx "Føj til hjemmeskærm") kan undgå i dagevis. `registerType: 'autoUpdate'` betyder en fundet ny version installeres og overtager siden stille, uden noget "ny version klar"-prompt.
 - `manifest.json`: `display: "standalone"`, ikon-sæt til iOS home-screen (`apple-touch-icon` i `index.html` — iOS Safari respekterer ikke altid manifest-ikoner alene).
 - API-client i `src/api/`: centraliseret `fetch`-wrapper mod backend `/api`, ingen komponent kalder `fetch` direkte.
 

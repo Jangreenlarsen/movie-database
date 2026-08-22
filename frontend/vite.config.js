@@ -36,6 +36,15 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Feature #190 — den automatisk indsatte standard-registrering tjekker
+      // kun for en ny version ved en rigtig sideindlæsning/navigation, hvilket
+      // for en PWA der bliver stående åben i lang tid (typisk "Føj til
+      // hjemmeskærm" på Jans iPhone) kan betyde at en ny version aldrig
+      // opdages før appen selv lukkes og genåbnes. `src/pwa.js` registrerer
+      // derfor selv service workeren, med et periodisk `registration.update()`-
+      // tjek lagt oveni (se den fil for detaljer) — kræver at pluginets EGEN
+      // auto-injicerede script slås fra her, ellers registreres SW'en to gange.
+      injectRegister: false,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       workbox: {
         // BUGS.md #68 — uden denne ekskludering fanger service workerens

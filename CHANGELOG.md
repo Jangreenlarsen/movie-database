@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.163.0 build 0232] — 2026-08-22 — feature+fix: "Ledige numre" som dropdown + loft på 100 (BUGS.md #86)
+
+Jan: *"under settings/bibliotek/Serienummer-opsætning skal vi have serie nr. i en dropdown liste fordi hvis der er mange nr. ikke i brug bliver den liste meget stor og vi skal også have en max størrelse på hvor mange nr vi holder i de lister over genbrugs nr."*, med et konkret eksempel på hvorfor: *"hvis en adm opretter en film med et nr på 50000, så vil den genbrugs list indholde alle nr fra den sidste ca omkring 500 til 49999, det giver ikke mening"*. Efterspurgt loft: *"jeg tænker max på 100"*.
+
+**Backend**: ny `digital_serial_repository.MAX_FREE_NUMBERS = 100` — `gaps()`s loop stopper nu tidligt så snart de 100 laveste ledige numre er fundet, i stedet for at udregne (og potentielt vise) et helt interval på titusindvis af numre for ét usædvanligt højt manuelt sat serienummer. Delt automatisk af alle tre serier (M#/T#/D#).
+
+**Frontend**: `SerialFreeList` viser numrene som en kompakt `<select>`-dropdown i stedet for en ubegrænset kommasepareret tekststreng. Rammes loftet på 100, vises en tydelig "viser kun de 100 laveste"-besked ved siden af, så det aldrig fejlagtigt ser ud som en komplet liste. Tom serie viser fortsat "ingen" som almindelig tekst, ikke en tom dropdown.
+
+Berørte filer: `backend/app/repositories/digital_serial_repository.py`, `backend/tests/test_serial_reuse.py`, `frontend/src/pages/Settings.jsx`, `frontend/src/pages/Settings.css`, `frontend/src/pages/Settings.test.jsx`, `frontend/src/i18n/da.json`/`en.json`. Tests: backend +1 (817 i alt), frontend +4 netto (140 i alt — dropdown-visning, tom liste, loft-besked ved/under 100, samt én eksisterende D#-renummererings-test opdateret til den nye dropdown-markup). Fuld backend-suite (817) og frontend-suite (140) grøn, `npm run lint` uden nye advarsler. Set i browser (regel 18): dropdown med "Ledige numre (100)" + "viser kun de 100 laveste"-hint i en reel lokal database med præcis 100 ledige M#-numre.
+
 ## [0.162.1 build 0231] — 2026-08-22 — fix: bibliotekets grid/liste blev langsom på mobil ved høj sidestørrelse (BUGS.md #85)
 
 **BUGS.md #85.** Jan: *"hvis portal kort visnings er sat til max 24 eller 48 er der ikke nogen problemer men ved 96 begynder de at komme og ved 200 er det problemet stort"*. Roden: `Library.jsx`/`TvShows.jsx` monterer hele siden (op til 200 poster) som rigtige DOM-noder på én gang uden nogen form for windowing/lazy-mount — hvert kort får fuldt layout/paint uanset om det er i syne. Billedtunge grids af den størrelse er en kendt kilde til layout/paint-omkostning på svage mobil-GPU'er, stigende lineært med antal kort.

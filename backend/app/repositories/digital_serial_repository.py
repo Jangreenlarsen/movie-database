@@ -80,6 +80,18 @@ async def set_reuse_enabled(db: AsyncIOMotorDatabase, enabled: bool) -> None:
     )
 
 
+MAX_FREE_NUMBERS = 100
+"""Jan, 2026-08-22: "vi skal også have en max størrelse på hvor mange nr vi
+holder i de lister over genbrugs nr. eks. hvis en adm opretter en film med
+et nr på 50000, så vil den genbrugs list indholde alle nr fra den sidste ca
+omkring 500 til 49999, det giver ikke mening" — uden et loft ville et enkelt
+usædvanligt højt nummer et sted i serien få `gaps()` til at regne (og
+frontend til at vise) titusindvis af "ledige" numre. Kun de LAVESTE tælles
+med (loopet i `gaps()` stopper tidligt), da det er dem `next_serial_number`
+rent faktisk genbruger først, og dem en admin realistisk vil kigge efter i
+Indstillinger-visningen. Jans valg: "jeg tænker max på 100"."""
+
+
 def gaps(taken: set[int], next_value: int = 1, increment: int = 1) -> list[int]:
     """De frigjorte numre = huller i det faktisk brugte interval.
 
@@ -99,11 +111,24 @@ def gaps(taken: set[int], next_value: int = 1, increment: int = 1) -> list[int]:
 
     Tal under det laveste brugte tælles bevidst stadig ikke med, så en
     flyttet start-værdi (fx start på 100) ikke pludselig udpeger 1-99 som
-    ledige."""
+    ledige.
+
+    BUGS.md #86: loopet stopper tidligt så snart `MAX_FREE_NUMBERS` (100,
+    laveste først) er fundet — ikke kun en efterfølgende afkortning af en
+    allerede fuldt udregnet liste, men et reelt tidligt stop, så et enkelt
+    usædvanligt højt nummer et sted i serien ikke får funktionen til at
+    iterere titusindvis af numre den alligevel aldrig ville vise eller
+    genbruge."""
     if not taken:
         return []
     highest_ever_assigned = max(max(taken), next_value - increment)
-    return [n for n in range(min(taken), highest_ever_assigned + 1) if n not in taken]
+    free: list[int] = []
+    for n in range(min(taken), highest_ever_assigned + 1):
+        if n not in taken:
+            free.append(n)
+            if len(free) >= MAX_FREE_NUMBERS:
+                break
+    return free
 
 
 async def _taken_digital_numbers(db: AsyncIOMotorDatabase) -> set[int]:

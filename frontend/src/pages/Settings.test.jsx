@@ -775,7 +775,11 @@ describe("SerialNumberSection — omnummerering af D#-serien (feature #188)", ()
     await user.click(button);
 
     expect(await screen.findByText("3 digitale poster omnummereret.")).toBeInTheDocument();
-    expect(await screen.findByText("D#1, D#2, D#3")).toBeInTheDocument();
+    // BUGS.md #86 — ledige numre vises nu som en dropdown (options) i
+    // stedet for en kommasepareret tekststreng.
+    expect(await screen.findByRole("option", { name: "D#1" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "D#2" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "D#3" })).toBeInTheDocument();
   });
 
   it("viser backendens specifikke fejlbesked hvis omnummerering fejler", async () => {
@@ -800,5 +804,75 @@ describe("SerialNumberSection — omnummerering af D#-serien (feature #188)", ()
     await screen.findByText("Serienummer-opsætning");
 
     expect(screen.queryByRole("button", { name: "Omnummerér D#-serien fra 1" })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * BUGS.md #86 (Jan, 2026-08-22: "under settings/bibliotek/Serienummer-
+ * opsætning skal vi have serie nr. i en dropdown liste fordi hvis der er
+ * mange nr. ikke i brug bliver den liste meget stor"). Det testværdige: den
+ * kommaseparerede tekst er erstattet af en `<select>`, og et loft ramt
+ * (backend'ens MAX_FREE_NUMBERS, 100) skal vise en tydelig "kun de laveste"-
+ * besked i stedet for stiltiende at se ud som en komplet liste.
+ */
+describe("SerialFreeList — ledige numre som dropdown (BUGS.md #86)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function mockConfig(overrides = {}) {
+    return {
+      start_number: 166,
+      increment: 1,
+      padding_width: 3,
+      reuse_freed: false,
+      free_numbers: { physical_movies: [], physical_tv: [], digital: [] },
+      ...overrides,
+    };
+  }
+
+  it("viser ledige numre som en dropdown med hvert nummer som en option", async () => {
+    vi.spyOn(api, "getSerialNumberConfig").mockResolvedValue(
+      mockConfig({ free_numbers: { physical_movies: [2, 5, 7], physical_tv: [], digital: [] } })
+    );
+
+    render(<SerialNumberSection isAdmin={true} />);
+
+    expect(await screen.findByRole("option", { name: "M#2" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "M#5" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "M#7" })).toBeInTheDocument();
+  });
+
+  it("viser 'ingen' i stedet for en tom dropdown når der ikke er ledige numre", async () => {
+    vi.spyOn(api, "getSerialNumberConfig").mockResolvedValue(
+      mockConfig({ free_numbers: { physical_movies: [], physical_tv: [], digital: [] } })
+    );
+
+    render(<SerialNumberSection isAdmin={true} />);
+
+    expect(await screen.findAllByText("ingen")).toHaveLength(3);
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+  });
+
+  it("viser en 'kun de laveste' -besked når loftet på 100 er ramt", async () => {
+    const hundredNumbers = Array.from({ length: 100 }, (_, i) => i + 1);
+    vi.spyOn(api, "getSerialNumberConfig").mockResolvedValue(
+      mockConfig({ free_numbers: { physical_movies: hundredNumbers, physical_tv: [], digital: [] } })
+    );
+
+    render(<SerialNumberSection isAdmin={true} />);
+
+    expect(await screen.findByText("viser kun de 100 laveste")).toBeInTheDocument();
+  });
+
+  it("viser IKKE en 'kun de laveste'-besked når antallet er under loftet", async () => {
+    vi.spyOn(api, "getSerialNumberConfig").mockResolvedValue(
+      mockConfig({ free_numbers: { physical_movies: [1, 2, 3], physical_tv: [], digital: [] } })
+    );
+
+    render(<SerialNumberSection isAdmin={true} />);
+
+    await screen.findByRole("option", { name: "M#1" });
+    expect(screen.queryByText(/viser kun de/)).not.toBeInTheDocument();
   });
 });

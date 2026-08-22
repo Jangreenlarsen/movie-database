@@ -1065,15 +1065,43 @@ export function SerialNumberSection({ isAdmin }) {
 
 // Feature #131 — én række "ledige numre" for en serie (M/T/D). Tom serie viser
 // en dæmpet "ingen"-tekst frem for en tom liste.
+//
+// BUGS.md #86 (Jan, 2026-08-22: "under settings/bibliotek/Serienummer-
+// opsætning skal vi have serie nr. i en dropdown liste fordi hvis der er
+// mange nr. ikke i brug bliver den liste meget stor") — var før en
+// kommasepareret tekststreng der voksede ubegrænset og ombrød grimt ved
+// mange ledige numre; en `<select>` holder rækken kompakt uanset antal, og
+// lader admin selv folde listen ud og bladre i den. Backend'en begrænser nu
+// selv listen til de laveste 100 (samme sag) — `numbers.length` kan derfor
+// aldrig være voldsomt stor, men dropdown'en er stadig den rigtige
+// visningsform uanset hvor mange der reelt er ledige.
 function SerialFreeList({ label, numbers, prefix, t }) {
   return (
     <div className="serial-free-row">
       <span className="serial-free-label">{label}</span>
-      <span className="serial-free-values">
-        {numbers.length > 0
-          ? numbers.map((n) => `${prefix}#${n}`).join(", ")
-          : t("serial.freeNone")}
-      </span>
+      {numbers.length > 0 ? (
+        <span className="serial-free-values">
+          <select className="serial-free-select" aria-label={label} defaultValue="">
+            <option value="" disabled>
+              {t("serial.freeNumbers")} ({numbers.length})
+            </option>
+            {numbers.map((n) => (
+              <option key={n} value={n}>
+                {`${prefix}#${n}`}
+              </option>
+            ))}
+          </select>
+          {/* Feature #86 — samme loft som backend'ens MAX_FREE_NUMBERS (100);
+              rammes det præcis, er der formentlig flere end vist. */}
+          {numbers.length >= 100 && (
+            <span className="muted serial-free-capped-hint">
+              {t("serial.freeNumbersCapped", { count: numbers.length })}
+            </span>
+          )}
+        </span>
+      ) : (
+        <span className="serial-free-values">{t("serial.freeNone")}</span>
+      )}
     </div>
   );
 }

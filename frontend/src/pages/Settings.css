@@ -58,6 +58,20 @@
 .serial-free-values {
   color: var(--text);
   text-align: right;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.serial-free-select {
+  max-width: 160px;
+  font-size: 0.85rem;
+  padding: 2px 6px;
+}
+
+.serial-free-capped-hint {
+  font-size: 0.72rem;
+  white-space: nowrap;
 }
 
 .role-badge {

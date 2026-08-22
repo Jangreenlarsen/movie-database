@@ -308,6 +308,12 @@
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
+  /* Listevisningens rækker er en helt anden, meget lavere geometri end
+     grid-kortene ovenfor — samme `content-visibility: auto`-begrundelse,
+     bare med et realistisk gæt for en tynd række i stedet for et helt kort.
+     Bredden sættes ikke (kun `<length>` er gyldigt her, ikke `%`) — rækken
+     er alligevel fuld bredde via flex-forælderen, uanset gættet. */
+  contain-intrinsic-height: auto 56px;
 }
 
 .movie-grid--list .movie-card:hover {
@@ -408,6 +414,35 @@
   box-shadow: var(--shadow-sm);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   cursor: pointer;
+  /* Jan, 2026-08-22: "hvis portal kort visnings er sat til max 24 eller 48
+     er der ikke nogen problemer men ved 96 begynder de at komme og ved 200
+     er det problemet stort", specifikt på mobil. Alle sider (op til 200)
+     blev hidtil monteret som rigtige DOM-noder på én gang, med fuld
+     layout/paint for hvert kort uanset om det overhovedet var i syne —
+     billedtunge grids af den størrelse er kendt for at koste meget layout/
+     paint på svage mobil-GPU'er. `content-visibility: auto` beder browseren
+     om at SPRINGE layout/paint over for kort der (endnu) ikke er i eller
+     nær viewport, og først lave det rigtige arbejde når de faktisk ruller i
+     syne — uden at ændre nogen markup, scroll-adfærd eller JS. Understøttes
+     ikke af alle browsere (ældre Safari/iOS), men degraderer helt sikkert:
+     ukendt CSS-egenskab ignoreres blot, og siden opfører sig som i dag.
+     `contain-intrinsic-size` reserverer et omtrentligt pladsforbrug så
+     siden ikke hopper rundt mens man ruller forbi endnu-usete kort —
+     `auto`-præfikset lader browseren huske kortets FAKTISKE målte størrelse
+     efter første rigtige layout, så det kun er et gæt indtil da.
+     Grid-visningens rigtige højde varierer med kortstørrelse (small/medium/
+     large, se de tre varianter nedenfor) og liste-visningen er en helt
+     anden, meget lavere geometri (se `.movie-grid--list .movie-card`). */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 220px auto 320px;
+}
+
+.movie-grid--small .movie-card {
+  contain-intrinsic-size: auto 160px auto 250px;
+}
+
+.movie-grid--large .movie-card {
+  contain-intrinsic-size: auto 300px auto 430px;
 }
 
 .movie-card:hover {

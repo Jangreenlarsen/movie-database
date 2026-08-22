@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.162.1 build 0231] — 2026-08-22 — fix: bibliotekets grid/liste blev langsom på mobil ved høj sidestørrelse (BUGS.md #85)
+
+**BUGS.md #85.** Jan: *"hvis portal kort visnings er sat til max 24 eller 48 er der ikke nogen problemer men ved 96 begynder de at komme og ved 200 er det problemet stort"*. Roden: `Library.jsx`/`TvShows.jsx` monterer hele siden (op til 200 poster) som rigtige DOM-noder på én gang uden nogen form for windowing/lazy-mount — hvert kort får fuldt layout/paint uanset om det er i syne. Billedtunge grids af den størrelse er en kendt kilde til layout/paint-omkostning på svage mobil-GPU'er, stigende lineært med antal kort.
+
+`.movie-card` (delt af film/TV, grid- og liste-visning) fik `content-visibility: auto` + et `contain-intrinsic-size`-gæt pr. kortstørrelse. Browseren springer nu layout/paint over for kort der ikke er i eller nær viewport. Ingen markup-, scroll- eller JS-ændring. Degraderer sikkert på ældre browsere uden understøttelse.
+
+Berørte filer: `frontend/src/pages/Library.css`. Ingen backend-/JS-ændring, ingen nye tests (ren CSS, regel 19's undtagelse). Verificeret i browser (regel 18): 210 midlertidige testfilm, sidestørrelse 200, mobil-viewport (390×844) — grid og liste renderer korrekt, `content-visibility: auto` bekræftet aktiv, sidste korts indhold vises korrekt ved rul-i-syne.
+
 ## [0.162.0 build 0230] — 2026-08-21 — feature: besked til ønske-opretteren når admin markerer ønsket som bestilt (FEATURES.md #189)
 
 Jan: *"vi skal have lavet det sådan at når en film/tv bliver requestet til ønskelisten af en user så hvis der er forandring til den film/tv status skal user have en besked ... hvis så en adm ændre film/tv til at den er bestilt så skal user have besked for den film/tv hvis det er en vedkommen har ønske, det samme hvis film/tv bliver flyttet til biblotekket også"*.

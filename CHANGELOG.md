@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.162.0 build 0230] — 2026-08-21 — feature: besked til ønske-opretteren når admin markerer ønsket som bestilt (FEATURES.md #189)
+
+Jan: *"vi skal have lavet det sådan at når en film/tv bliver requestet til ønskelisten af en user så hvis der er forandring til den film/tv status skal user have en besked ... hvis så en adm ændre film/tv til at den er bestilt så skal user have besked for den film/tv hvis det er en vedkommen har ønske, det samme hvis film/tv bliver flyttet til biblotekket også"*.
+
+Undersøgelse af den eksisterende `message_service.py` viste at to af de tre eksempler allerede var implementeret: godkendt-besked (feature #166) og flyttet-til-biblioteket-besked (feature #141). Den manglende tredjedel var `order_status` (markering af at et ønske er bestilt hos en forhandler) — ingen notifikation eksisterede for den overgang.
+
+Ny `message_service.notify_wishlist_ordered`, strukturelt en tro kopi af `notify_wishlist_approved`: best-effort (try/except), springer over hvis admin er den samme som opretteren, slår opretteren op via `wishlist_doc["registered_by"]`. Kaldes fra både `movie_service.update_movie` og `tv_show_service.update_tv_show`, kun ved selve OVERGANGEN fra ikke-bestilt til bestilt (samme pending→approved-afgrænsning som #166) og kun mens posten stadig er et ønske — et skift af bestillingssted på et allerede bestilt ønske, eller en order_status-ændring på et allerede-ejet biblioteks-eksemplar, giver ingen ny besked.
+
+Ingen frontend-ændring — genbruger 100% den eksisterende besked-infrastruktur (`MessageBanner.jsx` polling af `/api/messages/inbox`). Regel 20 (backup/restore): ingen nyt felt/collection, kun genbrug af eksisterende `order_status`-felt og `messages`-collection.
+
+Berørte filer: `backend/app/services/message_service.py`, `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`, `backend/tests/test_wishlist_approval.py`. Tests: backend +4 (816 i alt — bestilling giver besked, gentaget/skiftet bestillingssted giver ikke en ny, order_status på et biblioteks-eksemplar giver ingen besked, TV-varianten). Fuld backend-suite (816) grøn.
+
 ## [0.161.5 build 0229] — 2026-08-21 — fix: AVM70-diagnostikkens SSE-strøm døde stille efter første heartbeat (BUGS.md #82)
 
 **BUGS.md #82, fjerde og sidste del.** Efter at forbindelsen blev bekræftet "live" (Start/Stop virker), rapporterede Jan at der stadig ikke kom nogen log-poster selv ved reelle ændringer på AVM'en (*"vi se audio skift eks. på anthen"*). Roden lå i `anthem.py`s heartbeat-wrapper: `asyncio.wait_for(gen.__anext__(), timeout=15)` ANNULLERER sin indpakkede opgave ved timeout — hvilket her ramte den underliggende generators interne `await queue.get()` og lukkede generatoren PERMANENT (verificeret empirisk i et isoleret script: enhver efterfølgende `.__anext__()` gav med det samme `StopAsyncIteration`, uanset senere hændelser). Streamen "afsluttede" sig derfor selv stille efter den FØRSTE 15-sekunders stilhed — typisk længe før nogen nåede at ændre lydformat på enheden. Ironisk nok var det netop denne bug der tidligere fik en test til at se ud som om den bestod hurtigt (den antog fejlagtigt at streamen ville afslutte sig selv).

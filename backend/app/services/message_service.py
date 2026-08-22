@@ -144,6 +144,41 @@ async def notify_wishlist_approved(
         pass
 
 
+async def notify_wishlist_ordered(
+    db: AsyncIOMotorDatabase,
+    wishlist_doc: dict,
+    admin: dict,
+    title: str | None,
+    is_tv: bool,
+) -> None:
+    """Feature #189 — Jan: "hvis så en adm ændre film/tv til at den er
+    bestilt så skal user have besked". Tredje "status ændret"-besked ved
+    siden af `notify_wishlist_approved`/`notify_wishlist_moved` — samme
+    struktur, samme best-effort try/except og samme "spring over hvis
+    opretteren ikke kan slås op"-mønster (CLAUDE.md regel 16). Kaldes kun ved
+    selve OVERGANGEN fra ikke-bestilt til bestilt (mirroring #166's
+    pending→approved-afgrænsning), ikke ved hver eneste `order_status`-skrivning
+    — et skift af BESTILLINGSSTED på et allerede bestilt ønske er ikke en
+    ny nyhed for brugeren."""
+    owner_username = wishlist_doc.get("registered_by")
+    if not owner_username or owner_username == admin.get("username"):
+        return
+    owner = await user_repository.find_by_username_normalized(db, owner_username.lower())
+    if owner is None:
+        return
+    kind = "serie" if is_tv else "film"
+    display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or kind
+    payload = MessageCreate(
+        subject=f'Dit ønske "{display_title}" er bestilt',
+        body=f'Den {kind} du ønskede — "{display_title}" — er nu bestilt. 🎬',
+        recipient_user_id=str(owner["_id"]),
+    )
+    try:
+        await send(db, payload, admin)
+    except Exception:
+        pass
+
+
 async def notify_wishlist_rejected(
     db: AsyncIOMotorDatabase,
     wishlist_doc: dict,

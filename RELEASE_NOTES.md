@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.162.0 (build 0230) — 2026-08-21
+
+- **Ny besked: dit ønske er bestilt.** Sætter en admin en film/TV-serie på indkøbslisten til "bestilt" (fx "Bestilt ved Laserdisken"), får du nu en besked om det — samme måde som du allerede får besked når et ønske godkendes eller flyttes ind i biblioteket.
+
 ## v0.161.5 (build 0229) — 2026-08-21
 
 - **Rettet: AVM 70-diagnostikkens log viste ikke ændringer på enheden.** Selve overvågningen kunne godt starte og stoppe, men strømmen af hændelser (fx et lydformat-skift) døde stille i baggrunden efter kort tid uden aktivitet. Bør nu blive ved med at vise nye hændelser, så længe overvågningen kører.

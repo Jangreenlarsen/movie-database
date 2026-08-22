@@ -525,6 +525,7 @@ async def update_tv_show(
     requested_wishlist = fields.pop("is_wishlist", None)
     requested_media_type = fields.get("media_type")
     requested_wishlist_status = fields.get("wishlist_status")
+    requested_order_status = fields.get("order_status")
 
     current_doc = None
     if (
@@ -532,6 +533,7 @@ async def update_tv_show(
         or requested_wishlist is not None
         or requested_media_type is not None
         or requested_wishlist_status is not None
+        or requested_order_status is not None
     ):
         current_doc = await tv_show_repository.find_by_id(db, tv_show_id)
         if current_doc is None:
@@ -600,6 +602,16 @@ async def update_tv_show(
         and current_doc.get("wishlist_status") == WishlistStatus.PENDING.value
     ):
         await message_service.notify_wishlist_approved(
+            db, current_doc, current_user, document.get("name"), is_tv=True
+        )
+    # Feature #189 — se den identiske note i movie_service.update_movie.
+    if (
+        requested_order_status is not None
+        and current_doc is not None
+        and current_doc.get("is_wishlist")
+        and not current_doc.get("order_status")
+    ):
+        await message_service.notify_wishlist_ordered(
             db, current_doc, current_user, document.get("name"), is_tv=True
         )
     return _to_model(document)

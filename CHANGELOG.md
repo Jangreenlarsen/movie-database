@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.164.2 build 0237] — 2026-08-22 — fix: fritekst-søgning på flere almindelige ord gav mange urelaterede resultater (BUGS.md #89)
+
+Jan: *"i søg feltet se det ud til at hvis man søg eks. war the only, så bliver der søgt på alle 3 forkomster af de ord, det er en fejl"*, konkretiseret med 9 forkerte film fra hans eget bibliotek.
+
+Opslag i produktionsdatabasen viste den præcise mekanik: `overview` (100-300 ords fritekst-plotresumé) var med i søgningen, og hvert søgeord matches uafhængigt af de andre felter (bevidst, for at "pacino heat" kan finde en skuespiller i ét felt og en titel i et andet, feature #48). "war" matchede ikke ordet krig — det matchede som en delstreng af "**war**heads" i én films overview. "only" matchede bogstaveligt almindelige sætninger som "**Only** one man can help..." i en helt anden, urelateret films overview. "the" matcher stort set alt. Kombinationen af tre uafhængigt-svage delstrengs-match mod en lang fritekst gjorde reelt ethvert par-tre almindelige ord til en falsk-positiv-generator. `overview` har desuden aldrig været nævnt i søgefeltets egen placeholder-tekst ("Søg på titel, skuespiller, genre, serienr...").
+
+`overview` fjernet fra søgefelterne i både film og TV-serier. Søgning på titel/skuespiller/instruktør/creators/genre/serienr er fuldt uændret.
+
+Berørte filer: `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/tests/test_search.py`, `ARCHITECTURE.md`. Tests: backend netto +2 (820 i alt — den gamle "overview matcher stadig"-test omskrevet til to separate tests, plus en ny test der reproducerer Jans nøjagtige "war the only"-scenarie med samme datamønster som de faktiske produktionsfilm). Fuld backend-suite (820) grøn.
+
 ## [0.164.1 build 0236] — 2026-08-22 — fix: ALVORLIG regression — D#-omnummerering blev usynligt fortrudt ved hver app-genstart (BUGS.md #88)
 
 Jan: *"selv om jeg reset D# serie til at starte ved 1 så hvis jeg opdatere portal, så starter de igen ved sidste nr som M# serie slutter ved. Fiks det som det er en store fejl"*.

@@ -69,8 +69,9 @@ DEFAULT_SORT_FIELD = "created_at"
 MAX_SORT_LEVELS = 3
 
 # Spejler movie_repository.TEXT_SEARCH_FIELDS — TV-serier har `creators`
-# hvor film har `director` (BUGS.md #48).
-TEXT_SEARCH_FIELDS = ["name", "overview", "cast", "creators", "genres"]
+# hvor film har `director` (BUGS.md #48). `overview` fjernet igen, se den
+# udførlige begrundelse i movie_repository.TEXT_SEARCH_FIELDS (BUGS.md #89).
+TEXT_SEARCH_FIELDS = ["name", "cast", "creators", "genres"]
 
 # v0.84.0 — samme relabel som movie_repository._FORMAT_LABEL_MIGRATIONS. TV-serier
 # fandtes ikke ved den *første* format-omdøbning (v0.22.0), men de kan sagtens

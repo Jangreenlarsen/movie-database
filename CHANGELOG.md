@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.163.1 build 0233] — 2026-08-22 — fix: svært synligt søgefelt + luk-knap gjort grøn/rød (BUGS.md #87)
+
+Jan: *"giv 'søg på title' en anden farve, den er svære at få øje på, gør den grøn eventuelt"* og *"gør x knap i højre hjørne rød med sort x så den er til at se i en film detajle kort når man skal lukke kort igen"*. Begge brugte en dæmpet, næsten usynlig farve mod den mørke baggrund.
+
+**Søgefelt**: ikon + pladsholder-tekst bruger nu `--success` (grøn) i stedet for `--text-muted`.
+
+**Luk-knap**: rund rød baggrund (`--danger`) med en fast sort ✕. Undervejs blev en ægte CSS-cascade-bug fundet og rettet: `.modal-close` og `.btn` har samme specificitet, og `.btn` (App.css) indlæses senere end Library.css i den samlede cascade — et første forsøg på at style `.modal-close` direkte gav derfor slet ingen synlig ændring. Selektoren skærpet til det sammensatte `.btn.modal-close`, som vinder uanset cascade-rækkefølge.
+
+Berørte filer: `frontend/src/pages/Library.css`. Ren CSS, ingen nye tests (regel 19's undtagelse for visuelle ændringer). Set i browser (regel 18): begge farver bekræftet både visuelt og via faktiske computed styles.
+
 ## [0.163.0 build 0232] — 2026-08-22 — feature+fix: "Ledige numre" som dropdown + loft på 100 (BUGS.md #86)
 
 Jan: *"under settings/bibliotek/Serienummer-opsætning skal vi have serie nr. i en dropdown liste fordi hvis der er mange nr. ikke i brug bliver den liste meget stor og vi skal også have en max størrelse på hvor mange nr vi holder i de lister over genbrugs nr."*, med et konkret eksempel på hvorfor: *"hvis en adm opretter en film med et nr på 50000, så vil den genbrugs list indholde alle nr fra den sidste ca omkring 500 til 49999, det giver ikke mening"*. Efterspurgt loft: *"jeg tænker max på 100"*.

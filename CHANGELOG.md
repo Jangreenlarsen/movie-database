@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.163.2 build 0234] — 2026-08-22 — fix: indtastet søgetekst manglede stadig grøn farve (BUGS.md #87)
+
+Opfølgning samme dag, Jan: *"tekst i søg felt man skiver skal også være grønt"*. Forrige commit farvede kun ikonet og pladsholder-teksten grøn (`--success`) — selve den INDTASTEDE værdi brugte stadig standard tekstfarven. `.search-input-wrap input` fik nu `color: var(--success)` direkte.
+
+Berørte filer: `frontend/src/pages/Library.css`. Ren CSS. Set i browser (regel 18): skrev "Alien" i søgefeltet, bekræftede computed `color: rgb(74, 222, 128)` og et skærmbillede der viser teksten tydeligt grøn.
+
 ## [0.163.1 build 0233] — 2026-08-22 — fix: svært synligt søgefelt + luk-knap gjort grøn/rød (BUGS.md #87)
 
 Jan: *"giv 'søg på title' en anden farve, den er svære at få øje på, gør den grøn eventuelt"* og *"gør x knap i højre hjørne rød med sort x så den er til at se i en film detajle kort når man skal lukke kort igen"*. Begge brugte en dæmpet, næsten usynlig farve mod den mørke baggrund.

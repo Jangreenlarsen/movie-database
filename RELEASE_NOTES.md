@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.163.2 (build 0234) — 2026-08-22
+
+- **Den tekst du selv skriver i søgefeltet er nu også grøn**, ikke kun ikonet og pladsholder-teksten.
+
 ## v0.163.1 (build 0233) — 2026-08-22
 
 - **Søgefeltet og luk-knappen er nu lettere at få øje på.** Søgeikonet og pladsholder-teksten ("Søg på titel...") er grønne; luk-knappen (✕) på film-/TV-detaljekortet er nu en rød cirkel med sort kryds.

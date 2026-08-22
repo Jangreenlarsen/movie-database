@@ -1,5 +1,13 @@
 # Release Notes
 
+## v0.164.0 (build 0235) — 2026-08-22
+
+- **Appen holder sig nu selv opdateret.** Har du appen liggende åben i lang tid (fx "Føj til hjemmeskærm" på iPhone), tjekker den nu selv jævnligt for en ny version i baggrunden og opdaterer stille — du behøver ikke selv lukke og genåbne appen for at få en ny udgivelse.
+
+## v0.163.2 (build 0234) — 2026-08-22
+
+- **Den tekst du selv skriver i søgefeltet er nu også grøn**, ikke kun ikonet og pladsholder-teksten.
+
 ## v0.163.1 (build 0233) — 2026-08-22
 
 - **Søgefeltet og luk-knappen er nu lettere at få øje på.** Søgeikonet og pladsholder-teksten ("Søg på titel...") er grønne; luk-knappen (✕) på film-/TV-detaljekortet er nu en rød cirkel med sort kryds.

@@ -106,6 +106,10 @@
   padding-left: 36px;
   /* Plads til ryd-knappen, så lang søgetekst ikke løber ind under den. */
   padding-right: 34px;
+  /* Jan, 2026-08-22 (opfølgning): "tekst i søg felt man skiver skal også
+     være grønt" — den indtastede værdi brugte stadig standard tekstfarven;
+     kun ikonet og pladsholderen var farvet i første omgang. */
+  color: var(--success);
 }
 
 .search-input-wrap input::placeholder {

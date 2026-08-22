@@ -2,6 +2,22 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.164.0 build 0235] — 2026-08-22 — feature: PWA'en tjekker nu aktivt og periodisk for en ny version (FEATURES.md #190)
+
+Jan: *"hvordan sikker vi os også at folk ikke sider med cache version af site, kan vi gøre noget sådan at browser altid er loadet med nyeste version"*.
+
+Roden: `vite-plugin-pwa`s automatisk indsatte standard-registrering tjekker kun for en ny service worker-version ved en rigtig sideindlæsning/navigation — browserens eget, indbyggede tidspunkt for at genhente `sw.js`. En PWA der bliver stående åben i lang tid uden at blive lukket og genåbnet (typisk "Føj til hjemmeskærm" på en iPhone, appens primære brugsform) rammer derfor aldrig det tjek — en ny deployet version kunne ligge klar på serveren i dagevis uden at nogen browser opdagede den. Dette er den samme underliggende svaghed der tidligere denne session forklarede hvorfor en CSS-ændring ikke slog igennem med det samme på trods af et opdateret build.
+
+Ny `frontend/src/pwa.js` registrerer selv service workeren (vite.config.js's `injectRegister: false` slår pluginets egen auto-injicerede script fra, så den ikke registreres to gange) med et eksplicit periodisk `registration.update()`-tjek hvert 20. minut — vite-plugin-pwas egen anbefalede mønster for netop dette problem. `registerType: 'autoUpdate'` (uændret) sørger for at en fundet ny version installeres og overtager siden STILLE uden noget "ny version klar"-prompt — Jans eksplicitte valg (automatisk, ubemærket genindlæsning frem for en besked brugeren selv skal trykke på).
+
+Berørte filer: `frontend/vite.config.js`, `frontend/src/main.jsx`, `frontend/src/pwa.js` (ny fil), `frontend/src/pwa.test.js` (ny fil). Tests: frontend +2 (142 i alt — bekræfter periodisk `update()`-kald sat op korrekt, og at en manglende registrering håndteres uden at kaste). Fuld frontend-suite (142) grøn, `npm run lint` uden nye advarsler. Verificeret i browser: (1) `npm run build` + `npm run preview` (den rigtige produktions-build med en ægte service worker, ikke dev-serverens no-op-variant) — bekræftet at service workeren rent faktisk registrerer og aktiverer (`navigator.serviceWorker.getRegistrations()` viste 1 aktiv registrering), ingen konsol-fejl ud over den forventede 401 (ikke logget ind endnu); (2) bekræftet at det gamle auto-injicerede registrerings-script er væk fra `dist/index.html` efter `injectRegister: false`, så der ikke sker dobbelt-registrering.
+
+## [0.163.2 build 0234] — 2026-08-22 — fix: indtastet søgetekst manglede stadig grøn farve (BUGS.md #87)
+
+Opfølgning samme dag, Jan: *"tekst i søg felt man skiver skal også være grønt"*. Forrige commit farvede kun ikonet og pladsholder-teksten grøn (`--success`) — selve den INDTASTEDE værdi brugte stadig standard tekstfarven. `.search-input-wrap input` fik nu `color: var(--success)` direkte.
+
+Berørte filer: `frontend/src/pages/Library.css`. Ren CSS. Set i browser (regel 18): skrev "Alien" i søgefeltet, bekræftede computed `color: rgb(74, 222, 128)` og et skærmbillede der viser teksten tydeligt grøn.
+
 ## [0.163.1 build 0233] — 2026-08-22 — fix: svært synligt søgefelt + luk-knap gjort grøn/rød (BUGS.md #87)
 
 Jan: *"giv 'søg på title' en anden farve, den er svære at få øje på, gør den grøn eventuelt"* og *"gør x knap i højre hjørne rød med sort x så den er til at se i en film detajle kort når man skal lukke kort igen"*. Begge brugte en dæmpet, næsten usynlig farve mod den mørke baggrund.

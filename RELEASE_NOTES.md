@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.166.1 (build 0240) — 2026-08-23
+
+- **Rettet: baggrundsbilledet på `/bio2` fulgte ikke helt med ned, når man scrollede til bunden af siden** — en tynd, ustylet stribe kunne blive synlig i bunden. Baggrunden dækker nu hele siden, uanset hvor lang den er.
+
 ## v0.166.0 (build 0239) — 2026-08-23
 
 - **Skiltet øverst på Voldby BIO-siden (`/bio`) er skiftet til det nye, frilagte logo** — samme logo som forhåndsvisningen på `/bio2`, uden den gamle rektangulære fotoramme.

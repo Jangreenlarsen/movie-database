@@ -5,6 +5,19 @@
 
 .cinema-v2-page {
   position: relative;
+  /* Jan, 2026-08-23: "baggrunds billede ikke følger med ned fordi viewport
+     ikke skalere med". Rodårsag: #root (index.css) er `height:100%` +
+     `display:flex; flex-direction:column`, og som eneste flex-barn i
+     kolonne-retning bliver .cinema-v2-page presset (krympet) ned til
+     PRÆCIS viewportens højde af flexbox's standard `flex-shrink:1` — helt
+     uafhængigt af hvor højt selve indholdet reelt er. Boksens EGEN højde
+     (det `background-size:cover` regner ud fra) endte dermed langt kortere
+     end det faktiske, scrollbare indhold (fx 900px boks mod 2100px
+     indhold på en almindelig skærm) — baggrunden dækkede derfor kun den
+     allerførste skærmfuld og stoppede resten af vejen ned.
+     `flex-shrink: 0` forhindrer krympningen, så boksen altid matcher sit
+     eget indholds fulde, naturlige højde. */
+  flex-shrink: 0;
   /* BUGS.md-klasse fejl (fundet under regel 18-afprøvning på mobil, ikke kun
      ved kodelæsning): #root (index.css) er en flex-column, og en flex-items
      automatiske min-bredde er dens INDHOLDS min-content-bredde, ikke 0 —
@@ -16,7 +29,16 @@
      rettelse for præcis dette flexbox-mønster. */
   min-width: 0;
   min-height: 100%;
-  overflow-x: clip;
+  /* Anden halvdel af samme fejl: filmstrimlen (position:absolute,
+     height:2100px) tæller ikke med i denne boks' egen naturlige
+     auto-højde (absolut-positionerede børn gør aldrig det), men dens
+     overflow forbliver synligt og trækker sidens scroll-højde længere ned
+     end selve boksen — samme "baggrunden dækker ikke det sidste stykke"-
+     symptom, blot fra en anden mekanik. `overflow: hidden` (begge akser,
+     ikke kun X) klipper det overskydende i stedet, så filmstrimlen aldrig
+     kan presse siden til at scrolle længere end det indhold baggrunden
+     rent faktisk dækker. */
+  overflow: hidden;
   background-color: #ede0c4;
   background-image: url("/cinema/bio2-paper-bg.jpg");
   background-repeat: no-repeat;

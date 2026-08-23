@@ -7,7 +7,7 @@ from app.services import deploy_service
 
 async def test_deploy_requires_admin(client, monkeypatch):
     calls = []
-    monkeypatch.setattr(deploy_service, "trigger_deploy", lambda: calls.append(1))
+    monkeypatch.setattr(deploy_service, "trigger_deploy", lambda branch: calls.append(1))
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as standard_client:
@@ -22,16 +22,16 @@ async def test_deploy_requires_admin(client, monkeypatch):
 async def test_deploy_triggers_for_admin(client, monkeypatch):
     """The `client` fixture's user is always admin (first registered user)."""
     calls = []
-    monkeypatch.setattr(deploy_service, "trigger_deploy", lambda: calls.append(1))
+    monkeypatch.setattr(deploy_service, "trigger_deploy", lambda branch: calls.append(branch))
 
     response = await client.post("/api/system/deploy")
     assert response.status_code == 202
     assert response.json() == {"status": "started"}
-    assert calls == [1]
+    assert calls == ["main"]
 
 
 async def test_deploy_returns_500_when_script_missing(client, monkeypatch):
-    def fake_trigger():
+    def fake_trigger(branch):
         raise DeployScriptNotFoundError("/opt/moviedb-deploy.sh")
 
     monkeypatch.setattr(deploy_service, "trigger_deploy", fake_trigger)
@@ -75,8 +75,64 @@ async def test_trigger_deploy_launches_detached_process(tmp_path, monkeypatch):
 
     deploy_service.trigger_deploy()
 
-    assert captured["args"] == [str(script)]
+    assert captured["args"] == [str(script), "main"]
     assert captured["kwargs"]["start_new_session"] is True
+
+
+# Feature #194 — branch-valg (main/dev) ved OTA-opdatering.
+
+
+async def test_trigger_deploy_passes_requested_branch(tmp_path, monkeypatch):
+    script = tmp_path / "deploy.sh"
+    script.write_text("#!/bin/bash\necho hi\n")
+    log_path = tmp_path / "deploy.log"
+
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "deploy_script_path", str(script))
+    monkeypatch.setattr(settings, "deploy_log_path", str(log_path))
+
+    captured = {}
+
+    class FakePopen:
+        def __init__(self, args, **kwargs):
+            captured["args"] = args
+
+    monkeypatch.setattr(deploy_service.subprocess, "Popen", FakePopen)
+
+    deploy_service.trigger_deploy("dev")
+
+    assert captured["args"] == [str(script), "dev"]
+
+
+async def test_deploy_endpoint_defaults_to_main_branch(client, monkeypatch):
+    calls = []
+    monkeypatch.setattr(deploy_service, "trigger_deploy", lambda branch: calls.append(branch))
+
+    response = await client.post("/api/system/deploy")
+
+    assert response.status_code == 202
+    assert calls == ["main"]
+
+
+async def test_deploy_endpoint_passes_dev_branch(client, monkeypatch):
+    calls = []
+    monkeypatch.setattr(deploy_service, "trigger_deploy", lambda branch: calls.append(branch))
+
+    response = await client.post("/api/system/deploy", json={"branch": "dev"})
+
+    assert response.status_code == 202
+    assert calls == ["dev"]
+
+
+async def test_deploy_endpoint_rejects_unknown_branch(client, monkeypatch):
+    calls = []
+    monkeypatch.setattr(deploy_service, "trigger_deploy", lambda branch: calls.append(branch))
+
+    response = await client.post("/api/system/deploy", json={"branch": "staging"})
+
+    assert response.status_code == 422
+    assert calls == []
 
 
 # BUGS.md #36 — deploy-status polling (skelner "intet nyt at hente" fra en reel fejl).

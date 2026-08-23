@@ -72,7 +72,7 @@ async def test_system_settings_update_with_no_changed_keys_is_not_logged(client)
 
 
 async def test_deploy_trigger_is_logged(client, monkeypatch):
-    monkeypatch.setattr(deploy_service, "trigger_deploy", lambda: None)
+    monkeypatch.setattr(deploy_service, "trigger_deploy", lambda branch: None)
 
     await client.post("/api/system/deploy")
 

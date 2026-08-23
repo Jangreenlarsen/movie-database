@@ -237,7 +237,13 @@ export const api = {
   tmdbSearch: (query) =>
     request(`/movies/tmdb-search?${new URLSearchParams({ query })}`),
   movieTmdbPreview: (tmdbId) => request(`/movies/tmdb-preview/${tmdbId}`),
-  triggerDeploy: () => request("/system/deploy", { method: "POST" }),
+  // Feature #194 — branch er valgfri (default "main" på backend), så
+  // eksisterende kaldere uden argument er uændrede.
+  triggerDeploy: (branch) =>
+    request("/system/deploy", {
+      method: "POST",
+      body: JSON.stringify(branch ? { branch } : {}),
+    }),
   getDeployStatus: () => request("/system/deploy/status"),
   getSystemSettings: () => request("/settings/system"),
   updateSystemSettings: (payload) =>

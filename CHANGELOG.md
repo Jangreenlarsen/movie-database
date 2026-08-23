@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.169.0.1 build 0245] — 2026-08-23 — debug: fjern backdrop-filter-blur fra biblioteks-badges (BUGS.md #91)
+
+Jan indsendte en Android/GPU-compositor-profil af scroll-stutter i biblioteks-grid'et (526 draw calls/composite, næsten total picture-cache-invalidering, GPU-process er flaskehalsen — ikke JS). Første, lette forsøg før evt. reel virtualisering: `backdrop-filter: blur(4px)` fjernet fra alle 6 badge-klasser (rating/serial/watched/wishlist/namematch/plex) i `Library.css` og fra `.movie-seasons-badge` i `TvShows.css` — hver blur-badge tvinger sit eget GPU-compositing-lag, oplagt bidrag til draw-call-antallet med op til 200 kort på siden. Badgenes rgba-baggrunde er allerede opake nok til læsbarhed uden blur. `content-visibility` fra BUGS.md #85 er bevidst urørt i dette skridt. Afventer Jans test på telefonen.
+
+Berørte filer: `frontend/src/pages/Library.css`, `frontend/src/pages/TvShows.css`. Ingen backend-ændring. Frontend-testsuite (151) og lint uændret/grøn.
+
 ## [0.169.0 build 0244] — 2026-08-23 — feature: logget-ind gæst ser samme public-indhold som en anonym besøgende (FEATURES.md #195)
 
 Jan: *"guester som er login skal se samme public side for voldby bio som guester som ikke er login på portal"*.

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.169.0.1 (build 0245) — 2026-08-23
+
+- **Forsøg på at rette scroll-stutter i biblioteket på mobil**: fjernet en blur-effekt på kortenes badges (rating, serienummer, set, ønske, Plex) som en del af fejlsøgningen af en Android-GPU-flaskehals. Ingen tilsigtet visuel ændring — badgene skal se ud som før, bare uden den bløde slør-kant.
+
 ## v0.169.0 (build 0244) — 2026-08-23
 
 - **En logget-ind gæst kan nu se Presse Nyt, Forplejning i BIO og Galleri direkte fra Voldby BIO-fanen** — samme indhold som en anonym besøgende allerede kunne se på den offentlige side.

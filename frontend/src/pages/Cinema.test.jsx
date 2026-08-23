@@ -60,7 +60,7 @@ describe("Cinema — del-link (feature #193)", () => {
     vi.spyOn(api, "recordVisit").mockResolvedValue();
   });
 
-  it("kopierer et link til /bio2, ikke den gamle /bio", async () => {
+  it("kopierer et link til /bio, ikke preview-siden /bio2", async () => {
     const user = userEvent.setup();
     render(<Cinema user={{ role: "admin" }} />);
     await screen.findByText("Ingen kommende visninger er planlagt endnu.");
@@ -68,7 +68,7 @@ describe("Cinema — del-link (feature #193)", () => {
     const writeTextSpy = vi.spyOn(navigator.clipboard, "writeText");
     await user.click(screen.getByRole("button", { name: /Del link til Voldby BIO/ }));
 
-    expect(writeTextSpy).toHaveBeenCalledWith(`${window.location.origin}/bio2`);
+    expect(writeTextSpy).toHaveBeenCalledWith(`${window.location.origin}/bio`);
   });
 });
 

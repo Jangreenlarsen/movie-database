@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.167.1 (build 0242) — 2026-08-23
+
+- **Rettet: "Del link til Voldby BIO" peger igen på den rigtige, offentlige `/bio`-side** i stedet for preview-siden `/bio2`.
+
 ## v0.167.0 (build 0241) — 2026-08-23
 
 - **Rum/billede/lyd-visningen på Voldby BIO-fanen vises nu kun for gæster.** Admin og almindelige brugere kan allerede se den samme information på den offentlige side.

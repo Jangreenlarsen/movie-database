@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.167.1 build 0242] — 2026-08-23 — fix: "Del link" rullet tilbage til `/bio` igen (FEATURES.md #193)
+
+Jan: *"jeg kan se at 'del link til voldby bio' peger på /bio2 skal den ikke den skal pege på /bio som er den orginale"*. `/bio2` er stadig kun en intern preview, ikke den side der skal deles ud — `copyPublicLink` peger igen på `/bio`.
+
+Berørte filer: `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Cinema.test.jsx`.
+
 ## [0.167.0 build 0241] — 2026-08-23 — feature: Voldby BIO-fanens showcase-sektion kun for gæster + "Del link" peger på `/bio2` (FEATURES.md #193)
 
 Jan: *"vi skal have fjernet for admin og stadart user den seksion på voldby administrators side hvor man se voldby bio de de tre billeder og tekste som forklar rum, lyd og billede, sådan det kun er guester som se det, der er ikke grund til at man som adm skal se de ting når det kan ses på public side i forvejen"*, efterfulgt mid-turn af: *"den 'del link til voldby bio' skal være den ny link direkte til public siden samtiddit med at den er kopiret til klipboard"*.

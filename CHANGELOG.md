@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.169.0 build 0244] — 2026-08-23 — feature: logget-ind gæst ser samme public-indhold som en anonym besøgende (FEATURES.md #195)
+
+Jan: *"guester som er login skal se samme public side for voldby bio som guester som ikke er login på portal"*.
+
+Genbruger `GalleryModal`/`PressModal`/`RefreshmentsModal` (navngivet eksporteret fra `CinemaPublic.jsx` siden feature #191) direkte i `Cinema.jsx`, bag samme `isGuest`-betingelse som showcase-sektionen (feature #193) — en logget-ind gæst kan nu åbne Presse Nyt/Forplejning i BIO/Galleri fra Voldby BIO-fanen, samme indhold en anonym besøgende ser på `/bio`. Selve programlisten med sædebestilling forbliver fanens egen funktionelle version, ikke erstattet af den offentlige sides bookingsløse kort.
+
+Berørte filer: `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Cinema.test.jsx`. Ingen backend-ændring.
+
 ## [0.168.0 build 0243] — 2026-08-23 — feature: "Opdatér fra GitHub" kan vælge branch — main eller dev (FEATURES.md #194)
 
 Jan: *"vi skal have en mulighed for at opdater fra github på Main eller Dev på portal sådan det giver mening med main og dev versioner"*.

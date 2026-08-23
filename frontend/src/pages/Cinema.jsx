@@ -6,12 +6,22 @@ import SeatSelectionModal from "../components/SeatSelectionModal";
 import { formatDateHeading, formatShortDate, formatTime, groupByDate } from "../utils/cinemaFormat";
 import { posterSrc } from "../utils/posterUrl";
 import { useLocale, useT } from "../i18n";
+// Feature #195 — Jan: "guester som er login skal se samme public side for
+// voldby bio som guester som ikke er login på portal". Genbruger Presse/
+// Forplejning/Galleri-modalerne fra den offentlige /bio-side i stedet for
+// at duplikere dem, så en logget-ind gæst har adgang til nøjagtig det
+// samme indhold som en anonym besøgende — kun selve programlisten
+// (med sædebestilling) forbliver denne fanes egen, funktionelle version.
+import { GalleryModal, PressModal, RefreshmentsModal } from "./CinemaPublic";
 // Feature #185 — RequestDetailModal genbruger .modal-backdrop/.modal-card/
 // .modal-footer, defineret i Library.css (samme grund til TvShows.jsx også
 // importerer den) — uden denne import ville modalen stå ustylet ved en kold
 // navigation direkte til /cinema, uden at Library.jsx nogensinde er indlæst.
 import "./Library.css";
 import "./Cinema.css";
+// Feature #195 — stylingen af de genbrugte Presse/Forplejning/Galleri-
+// modaler (`.cinema-public-gallery-overlay` m.fl.) bor i CinemaPublic.css.
+import "./CinemaPublic.css";
 
 // Feature #133/#134 — lille biografstole-ikon på seat-valg-knappen. (Det
 // tidligere `Seat valg.png` var et screenshot af HELE modulet, så knappen så
@@ -37,6 +47,10 @@ export default function Cinema({ user }) {
   const [screenings, setScreenings] = useState([]);
   const [status, setStatus] = useState("loading");
   const [linkCopied, setLinkCopied] = useState(false);
+  // Feature #195 — samme tre modal-tilstande som CinemaPublic.jsx.
+  const [pressOpen, setPressOpen] = useState(false);
+  const [refreshmentsOpen, setRefreshmentsOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
 
   function copyPublicLink() {
     // Feature #193 bad om /bio2 her, men Jan rullede det tilbage samme dag
@@ -84,7 +98,37 @@ export default function Cinema({ user }) {
           har allerede /bio (og nu /bio2) til at se rum/billede/lyd-sektionen;
           kun gæster ser den her, da de ikke nødvendigvis kender/bruger den
           offentlige side. */}
-      {isGuest && <CinemaShowcase />}
+      {isGuest && (
+        <>
+          {/* Feature #195 — samme Presse/Forplejning/Galleri-adgang som den
+              offentlige side, så en logget-ind gæst ikke mister indhold en
+              anonym besøgende har. */}
+          <div className="cinema-public-section-heading-row" style={{ marginBottom: 12 }}>
+            <button
+              type="button"
+              className="cinema-public-press-btn"
+              onClick={() => setPressOpen(true)}
+            >
+              📰 {t("public.pressNews")}
+            </button>
+            <button
+              type="button"
+              className="cinema-public-refreshments-btn"
+              onClick={() => setRefreshmentsOpen(true)}
+            >
+              🍿 {t("public.refreshments")}
+            </button>
+            <button
+              type="button"
+              className="cinema-public-gallery-btn"
+              onClick={() => setGalleryOpen(true)}
+            >
+              🖼️ {t("public.gallery")}
+            </button>
+          </div>
+          <CinemaShowcase />
+        </>
+      )}
 
       {isAdmin && <AdminScreeningTools onChanged={refresh} />}
       {isAdmin && <ReservationAdmin screenings={screenings} />}
@@ -115,6 +159,12 @@ export default function Cinema({ user }) {
           </div>
         ))}
       </div>
+
+      {isGuest && pressOpen && <PressModal onClose={() => setPressOpen(false)} />}
+      {isGuest && refreshmentsOpen && (
+        <RefreshmentsModal onClose={() => setRefreshmentsOpen(false)} />
+      )}
+      {isGuest && galleryOpen && <GalleryModal onClose={() => setGalleryOpen(false)} />}
     </section>
   );
 }

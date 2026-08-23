@@ -53,6 +53,40 @@ describe("Cinema (feature #193 — rum/billede/lyd-sektion kun for gæster)", ()
   });
 });
 
+/**
+ * Feature #195 — Jan: "guester som er login skal se samme public side for
+ * voldby bio som guester som ikke er login på portal". Det testværdige
+ * (regel 19): en logget-ind gæst skal reelt kunne åbne de samme Presse/
+ * Forplejning/Galleri-modaler som en anonym besøgende på /bio — ikke kun
+ * mangle knapperne stille uden at nogen opdager det.
+ */
+describe("Cinema — Presse/Forplejning/Galleri kun for gæster (feature #195)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(api, "listScreenings").mockResolvedValue([]);
+    vi.spyOn(api, "recordVisit").mockResolvedValue();
+  });
+
+  it("en gæst kan åbne galleriet fra fanen", async () => {
+    const user = userEvent.setup();
+    render(<Cinema user={{ role: "guest" }} />);
+    await screen.findByText("Rummet");
+
+    await user.click(screen.getByRole("button", { name: /Galleri/ }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("admin ser ikke Presse/Forplejning/Galleri-knapperne (findes allerede på /bio)", async () => {
+    render(<Cinema user={{ role: "admin" }} />);
+    await screen.findByText("Ingen kommende visninger er planlagt endnu.");
+
+    expect(screen.queryByRole("button", { name: /Presse Nyt/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Forplejning/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Galleri/ })).not.toBeInTheDocument();
+  });
+});
+
 describe("Cinema — del-link (feature #193)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();

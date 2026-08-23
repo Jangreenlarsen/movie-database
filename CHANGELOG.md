@@ -2,6 +2,24 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.169.1 build 0246] — 2026-08-23 — fix: scroll-stutter i biblioteket på Android bekræftet løst (BUGS.md #91)
+
+Jan bekræftede på den faktiske telefon: *"det har løst performance problemerne så bug løst"*. Debug-serien afsluttes — fjernelsen af `backdrop-filter: blur(4px)` fra biblioteks-badgene (v0.169.0.1) var nok til at løse GPU-compositor-flaskehalsen fra profilen; reel virtualisering (react-window) blev ikke nødvendig. Ingen kodeændring i dette commit, kun status- og versionsafslutning.
+
+## [0.169.0.1 build 0245] — 2026-08-23 — debug: fjern backdrop-filter-blur fra biblioteks-badges (BUGS.md #91)
+
+Jan indsendte en Android/GPU-compositor-profil af scroll-stutter i biblioteks-grid'et (526 draw calls/composite, næsten total picture-cache-invalidering, GPU-process er flaskehalsen — ikke JS). Første, lette forsøg før evt. reel virtualisering: `backdrop-filter: blur(4px)` fjernet fra alle 6 badge-klasser (rating/serial/watched/wishlist/namematch/plex) i `Library.css` og fra `.movie-seasons-badge` i `TvShows.css` — hver blur-badge tvinger sit eget GPU-compositing-lag, oplagt bidrag til draw-call-antallet med op til 200 kort på siden. Badgenes rgba-baggrunde er allerede opake nok til læsbarhed uden blur. `content-visibility` fra BUGS.md #85 er bevidst urørt i dette skridt. Afventer Jans test på telefonen.
+
+Berørte filer: `frontend/src/pages/Library.css`, `frontend/src/pages/TvShows.css`. Ingen backend-ændring. Frontend-testsuite (151) og lint uændret/grøn.
+
+## [0.169.0 build 0244] — 2026-08-23 — feature: logget-ind gæst ser samme public-indhold som en anonym besøgende (FEATURES.md #195)
+
+Jan: *"guester som er login skal se samme public side for voldby bio som guester som ikke er login på portal"*.
+
+Genbruger `GalleryModal`/`PressModal`/`RefreshmentsModal` (navngivet eksporteret fra `CinemaPublic.jsx` siden feature #191) direkte i `Cinema.jsx`, bag samme `isGuest`-betingelse som showcase-sektionen (feature #193) — en logget-ind gæst kan nu åbne Presse Nyt/Forplejning i BIO/Galleri fra Voldby BIO-fanen, samme indhold en anonym besøgende ser på `/bio`. Selve programlisten med sædebestilling forbliver fanens egen funktionelle version, ikke erstattet af den offentlige sides bookingsløse kort.
+
+Berørte filer: `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Cinema.test.jsx`. Ingen backend-ændring.
+
 ## [0.168.0 build 0243] — 2026-08-23 — feature: "Opdatér fra GitHub" kan vælge branch — main eller dev (FEATURES.md #194)
 
 Jan: *"vi skal have en mulighed for at opdater fra github på Main eller Dev på portal sådan det giver mening med main og dev versioner"*.

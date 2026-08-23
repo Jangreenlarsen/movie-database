@@ -497,7 +497,6 @@
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 999px;
-  backdrop-filter: blur(4px);
 }
 
 .movie-serial {
@@ -511,7 +510,6 @@
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 999px;
-  backdrop-filter: blur(4px);
 }
 
 .movie-format-badge {
@@ -646,7 +644,6 @@
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 999px;
-  backdrop-filter: blur(4px);
 }
 
 /* Feature #144 — ønske afventer admin-godkendelse (gul/amber). */
@@ -657,7 +654,6 @@
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 999px;
-  backdrop-filter: blur(4px);
 }
 
 /* Feature #145 — navnet falder sammen med en titel i biblioteket (rød advarsel). */
@@ -668,7 +664,6 @@
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 999px;
-  backdrop-filter: blur(4px);
 }
 
 /* Feature #144 — godkend-knap på et afventende ønske-kort. */
@@ -711,7 +706,6 @@
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 999px;
-  backdrop-filter: blur(4px);
 }
 
 /* Feature #178, opfølgning (Jan: "lave de 2 knapper ... så de kan stå ved

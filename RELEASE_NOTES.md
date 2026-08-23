@@ -1,5 +1,13 @@
 # Release Notes
 
+## v0.169.1 (build 0246) — 2026-08-23
+
+- **Rettet: scroll-stutter i biblioteket på mobil (Android)**. Fjernet en blur-effekt på kortenes badges (rating, serienummer, set, ønske, Plex), som viste sig at være hovedårsagen til en GPU-flaskehals under scroll. Bekræftet løst på telefonen.
+
+## v0.169.0 (build 0244) — 2026-08-23
+
+- **En logget-ind gæst kan nu se Presse Nyt, Forplejning i BIO og Galleri direkte fra Voldby BIO-fanen** — samme indhold som en anonym besøgende allerede kunne se på den offentlige side.
+
 ## v0.168.0 (build 0243) — 2026-08-23
 
 - **"Opdatér fra GitHub" (Indstillinger → Drift) kan nu vælge mellem `main` (produktion) og `dev` (udvikling).** `main` er forudvalgt som hidtil; et valg af `dev` viser en advarsel og beder om en ekstra bekræftelse, da den branch ikke nødvendigvis er produktionsklar.

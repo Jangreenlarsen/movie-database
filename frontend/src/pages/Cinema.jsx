@@ -39,10 +39,12 @@ export default function Cinema({ user }) {
   const [linkCopied, setLinkCopied] = useState(false);
 
   function copyPublicLink() {
-    // Feature #193 — Jan: "den 'del link til voldby bio' skal være den ny
-    // link direkte til public siden" — peger nu på /bio2 (feature #191)
-    // i stedet for den gamle /bio.
-    const url = `${window.location.origin}/bio2`;
+    // Feature #193 bad om /bio2 her, men Jan rullede det tilbage samme dag
+    // (2026-08-23: "jeg kan se at 'del link til voldby bio' peger på /bio2
+    // skal den ikke den skal pege på /bio som er den orginale") — /bio2 er
+    // stadig kun en intern preview (feature #191), ikke den rigtige side
+    // der skal deles ud til andre.
+    const url = `${window.location.origin}/bio`;
     navigator.clipboard
       .writeText(url)
       .then(() => {

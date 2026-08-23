@@ -18,19 +18,43 @@ REPO_DIR="/opt/moviedb"
 RESTART_TRIGGER="$REPO_DIR/.deploy-restart-trigger"
 STATUS_FILE="$REPO_DIR/.deploy-status"
 
-echo "[$(date -u +%FT%TZ)] Deploy startet"
+# Feature #194 — Jan: "vi skal have en mulighed for at opdater fra github på
+# Main eller Dev på portal". Branchen sendes som script'ets eneste argument
+# (backend/app/services/deploy_service.py), valideret opstrøms som et
+# Pydantic Literal (main.py's DeployRequest) — men scriptet validerer også
+# selv, defensivt, i tilfælde af et direkte/manuelt kald.
+BRANCH="${1:-main}"
+case "$BRANCH" in
+  main|dev) ;;
+  *)
+    echo "[$(date -u +%FT%TZ)] Ugyldig branch: '$BRANCH' (kun main/dev understøttet)" >&2
+    exit 1
+    ;;
+esac
+
+echo "[$(date -u +%FT%TZ)] Deploy startet (branch: $BRANCH)"
 
 cd "$REPO_DIR"
 BEFORE_COMMIT=$(git rev-parse HEAD)
-git pull origin main
+git fetch origin "$BRANCH"
+
+# Skift til branchen hvis den ikke allerede er den aktive — dev findes
+# typisk kun som origin/dev ved første skift (den oprindelige kloning fulgte
+# kun main, jf. DEPLOYMENT.md), så en lokal sporings-branch oprettes da.
+if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
+  git checkout "$BRANCH"
+else
+  git checkout -b "$BRANCH" "origin/$BRANCH"
+fi
+git merge --ff-only "origin/$BRANCH"
 AFTER_COMMIT=$(git rev-parse HEAD)
 
 # BUGS.md #36 — intet nyt at hente er ikke en fejl: spring den fulde
 # pipeline (pip/npm/restart) helt over i stedet for at genstarte unødigt,
 # og skriv et tydeligt udfald frontend kan skelne fra en reel fejl.
 if [ "$BEFORE_COMMIT" = "$AFTER_COMMIT" ]; then
-  printf '{"outcome":"up-to-date","commit":"%s","at":"%s"}\n' "$AFTER_COMMIT" "$(date -u +%FT%TZ)" > "$STATUS_FILE"
-  echo "[$(date -u +%FT%TZ)] Allerede opdateret — intet nyt at hente (commit $AFTER_COMMIT)"
+  printf '{"outcome":"up-to-date","branch":"%s","commit":"%s","at":"%s"}\n' "$BRANCH" "$AFTER_COMMIT" "$(date -u +%FT%TZ)" > "$STATUS_FILE"
+  echo "[$(date -u +%FT%TZ)] Allerede opdateret — intet nyt at hente (branch $BRANCH, commit $AFTER_COMMIT)"
   exit 0
 fi
 
@@ -47,5 +71,5 @@ npm run build
 rm -f "$RESTART_TRIGGER"
 touch "$RESTART_TRIGGER"
 
-printf '{"outcome":"updated","commit":"%s","at":"%s"}\n' "$AFTER_COMMIT" "$(date -u +%FT%TZ)" > "$STATUS_FILE"
-echo "[$(date -u +%FT%TZ)] Deploy fuldført (genstart udløst)"
+printf '{"outcome":"updated","branch":"%s","commit":"%s","at":"%s"}\n' "$BRANCH" "$AFTER_COMMIT" "$(date -u +%FT%TZ)" > "$STATUS_FILE"
+echo "[$(date -u +%FT%TZ)] Deploy fuldført (branch: $BRANCH, genstart udløst)"

@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../api/client";
 import {
   AnthemDiagnosticsSection,
+  DeploySection,
   PasswordPolicySection,
   PlexAutoImportSection,
   PlexImportSection,
@@ -30,6 +31,61 @@ import {
  * til at nulstille ved et fejlklik, eller stå med et "Kopieret!" der aldrig
  * refererede til den rigtige værdi.
  */
+/**
+ * Feature #194 — Jan: "vi skal have en mulighed for at opdater fra github på
+ * Main eller Dev på portal". Det testværdige (regel 19): valget af branch
+ * skal rent faktisk sendes med til `api.triggerDeploy`, og dev-branchen skal
+ * kræve en bekræftelse (samme mønster som andre risikable handlinger) —
+ * en fejl her ville enten stille opdatere til den forkerte branch, eller
+ * lade en admin opdatere produktionen til dev uden nogen advarsel.
+ */
+describe("DeploySection — branch-valg (feature #194)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(api, "health").mockResolvedValue({ version: "0.1.0", build: "0001" });
+    vi.spyOn(api, "getDeployStatus").mockResolvedValue({ outcome: "unknown" });
+  });
+
+  it("opdaterer til main uden at bede om bekræftelse", async () => {
+    const triggerSpy = vi.spyOn(api, "triggerDeploy").mockResolvedValue();
+    const confirmSpy = vi.spyOn(window, "confirm");
+    const user = userEvent.setup();
+
+    render(<DeploySection />);
+    await user.click(await screen.findByRole("button", { name: "Opdatér fra GitHub" }));
+
+    expect(triggerSpy).toHaveBeenCalledWith("main");
+    expect(confirmSpy).not.toHaveBeenCalled();
+  });
+
+  it("viser en advarsel og beder om bekræftelse ved dev, og opdaterer når bekræftet", async () => {
+    const triggerSpy = vi.spyOn(api, "triggerDeploy").mockResolvedValue();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+
+    render(<DeploySection />);
+    await user.click(screen.getByLabelText(/dev \(udvikling\)/));
+    expect(screen.getByText(/ikke nødvendigvis stabil/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Opdatér fra GitHub" }));
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(triggerSpy).toHaveBeenCalledWith("dev");
+  });
+
+  it("opdaterer ikke hvis bekræftelsen til dev afvises", async () => {
+    const triggerSpy = vi.spyOn(api, "triggerDeploy").mockResolvedValue();
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    const user = userEvent.setup();
+
+    render(<DeploySection />);
+    await user.click(screen.getByLabelText(/dev \(udvikling\)/));
+    await user.click(screen.getByRole("button", { name: "Opdatér fra GitHub" }));
+
+    expect(triggerSpy).not.toHaveBeenCalled();
+  });
+});
+
 describe("UsersSection — adgangskode-nulstilling (feature #171)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();

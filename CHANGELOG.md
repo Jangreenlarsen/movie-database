@@ -2,6 +2,24 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.168.0 build 0243] — 2026-08-23 — feature: "Opdatér fra GitHub" kan vælge branch — main eller dev (FEATURES.md #194)
+
+Jan: *"vi skal have en mulighed for at opdater fra github på Main eller Dev på portal sådan det giver mening med main og dev versioner"*.
+
+Feature #20's OTA-opdateringsknap var hardkodet til `git pull origin main`. Ny `DeployRequest.branch: Literal["main", "dev"] = "main"` (backend), radio-knap-vælger i `DeploySection` (`main` forudvalgt, `dev` kræver en ekstra `window.confirm`-bekræftelse + synlig advarsel), og `scripts/deploy.sh` skifter nu rent faktisk `git`-branch (`git fetch` + `checkout` + `merge --ff-only`) i stedet for et ubetinget `git pull origin main`. Status-filen inkluderer nu et `branch`-felt.
+
+**Ikke en separat staging-server** — et valg af `dev` skifter selve produktionsserverens checkout til `dev`-branchen, indtil `main` vælges igen.
+
+**Kræver en manuel engangs-handling på serveren**: den eksekverbare kopi af `scripts/deploy.sh` (`/opt/moviedb-deploy.sh`) skal genindsættes efter denne opdatering (se DEPLOYMENT.md) — ellers kører den gamle, branch-uafhængige version indtil da.
+
+Berørte filer: `backend/app/models/deploy.py` (ny), `backend/app/services/deploy_service.py`, `backend/app/api/system.py`, `scripts/deploy.sh`, `frontend/src/pages/Settings.jsx`, `frontend/src/pages/Settings.css`, `frontend/src/api/client.js`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `DEPLOYMENT.md`. Tests: backend +5, frontend +3.
+
+## [0.167.1 build 0242] — 2026-08-23 — fix: "Del link" rullet tilbage til `/bio` igen (FEATURES.md #193)
+
+Jan: *"jeg kan se at 'del link til voldby bio' peger på /bio2 skal den ikke den skal pege på /bio som er den orginale"*. `/bio2` er stadig kun en intern preview, ikke den side der skal deles ud — `copyPublicLink` peger igen på `/bio`.
+
+Berørte filer: `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Cinema.test.jsx`.
+
 ## [0.167.0 build 0241] — 2026-08-23 — feature: Voldby BIO-fanens showcase-sektion kun for gæster + "Del link" peger på `/bio2` (FEATURES.md #193)
 
 Jan: *"vi skal have fjernet for admin og stadart user den seksion på voldby administrators side hvor man se voldby bio de de tre billeder og tekste som forklar rum, lyd og billede, sådan det kun er guester som se det, der er ikke grund til at man som adm skal se de ting når det kan ses på public side i forvejen"*, efterfulgt mid-turn af: *"den 'del link til voldby bio' skal være den ny link direkte til public siden samtiddit med at den er kopiret til klipboard"*.

@@ -2625,9 +2625,15 @@ function MonitorSection() {
   );
 }
 
-function DeploySection() {
+// Feature #194 — navngivet eksport, kun til test (regel 19 — samme mønster
+// som UsersSection, feature #171).
+export function DeploySection() {
   const t = useT();
   const [currentBuild, setCurrentBuild] = useState(null);
+  // Feature #194 — Jan: "vi skal have en mulighed for at opdater fra github
+  // på Main eller Dev på portal sådan det giver mening med main og dev
+  // versioner". "main" er standardvalget (uændret, sikker opførsel).
+  const [branch, setBranch] = useState("main");
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
 
@@ -2639,13 +2645,20 @@ function DeploySection() {
   }, []);
 
   async function deploy() {
+    // Samme "bekræft en risikabel handling"-mønster som database-reset/
+    // cert-install: kun for dev, da main er den hidtidige, allerede
+    // afprøvede standardopførsel og ikke behøver en ekstra bekræftelse.
+    if (branch === "dev" && !window.confirm(t("deploy.branchConfirm"))) {
+      return;
+    }
+
     setStatus("deploying");
     setError(null);
     const startedFromBuild = currentBuild;
     const triggeredAt = Date.now();
 
     try {
-      await api.triggerDeploy();
+      await api.triggerDeploy(branch);
     } catch (err) {
       setError(err.message);
       setStatus("error");
@@ -2696,6 +2709,33 @@ function DeploySection() {
         {t("deploy.description")}
         {currentBuild && t("deploy.currentBuild", { build: currentBuild })}
       </p>
+
+      <div className="deploy-branch-picker" role="radiogroup" aria-label={t("deploy.branchLabel")}>
+        <label>
+          <input
+            type="radio"
+            name="deploy-branch"
+            value="main"
+            checked={branch === "main"}
+            onChange={() => setBranch("main")}
+          />
+          {t("deploy.branchMain")}
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="deploy-branch"
+            value="dev"
+            checked={branch === "dev"}
+            onChange={() => setBranch("dev")}
+          />
+          {t("deploy.branchDev")}
+        </label>
+      </div>
+
+      {branch === "dev" && (
+        <p className="muted deploy-branch-warning">{t("deploy.branchDevWarning")}</p>
+      )}
 
       <button
         type="button"

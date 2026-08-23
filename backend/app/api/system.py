@@ -16,6 +16,7 @@ from app.models.cert import (
     CsrResult,
     Pkcs12Import,
 )
+from app.models.deploy import DeployRequest
 from app.models.feature import FeatureListItem
 from app.services import (
     audit_log_service,
@@ -43,11 +44,17 @@ async def feature_list() -> list[FeatureListItem]:
 
 @router.post("/deploy", status_code=202, dependencies=[Depends(require_admin)])
 async def deploy(
+    # Feature #194 — valgfrit request-body; en kalder der (som hidtil) ikke
+    # sender noget body overhovedet får stadig standardværdien "main" i
+    # stedet for en 422 for et "manglende" felt.
+    payload: DeployRequest = DeployRequest(),
     current_user: dict = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ) -> dict:
-    deploy_service.trigger_deploy()
-    await audit_log_service.record(db, current_user["username"], "deploy.triggered")
+    deploy_service.trigger_deploy(payload.branch)
+    await audit_log_service.record(
+        db, current_user["username"], "deploy.triggered", f"branch: {payload.branch}"
+    )
     return {"status": "started"}
 
 

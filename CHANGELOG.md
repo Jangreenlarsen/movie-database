@@ -2,6 +2,20 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.165.0 build 0238] — 2026-08-23 — feature: ny visuel forside "Voldby BIO v2" på `/bio2` (FEATURES.md #191)
+
+Jan udforskede fire designretninger via en Claude Design-canvas (papir/nostalgi-tema vandt), leverede selv to nye billeder (frilagt skilt-logo + isoleret papirbaggrund) og bad til sidst om at gøre retningen til en rigtig side på portalen: *"lave så den her side som vores ny hoved /bio2 side på portal men den gammel side på /bio skal ikke røres i nu den skal bestå og være den som vi bruger i prod i nu"*.
+
+Ny, selvstændig komponent `CinemaPublicV2.jsx` — ikke en ombygning af `CinemaPublic.jsx`. `/bio` er fuldstændig uændret og forbliver produktionssiden; `/bio2` er sideordnet, kun til intern preview indtil Jan beslutter andet. Al forretningslogik (login/opret, presse/forplejning/galleri-modaler, visningskort, `GET /api/screenings`) genbruges via nye navngivne eksporter fra `CinemaPublic.jsx` — kun den visuelle skal er ny.
+
+Tre nye statiske billeder i `frontend/public/cinema/` (afledt af Jans egne filer via PowerShell `System.Drawing`, intet ImageMagick/PIL i dette miljø): `bio2-paper-bg.jpg` (ren midterudsnit af papirteksturen, uden kildens mørke vignet-kant — sporet til at være selve årsagen til et "farvelag" Jan rapporterede tre gange, roteret 90° til stående format), `bio2-sign-cutout.png` (ægte alpha-transparent skilt-logo), `bio2-filmstrip.png` (hvid baggrund konverteret til alpha via luminans, vist ved 30% opacitet).
+
+Ny rute i `App.jsx`: `/bio2`-tjekket ligger bevidst FØR `/bio`-tjekket, da `"/bio2".startsWith("/bio")` ellers altid ville ramme den gamle side først.
+
+**Bug fundet og rettet under regel 18-afprøvningen**: filmstrimlen skulle ligge bag alt tekstindhold men foran baggrundsbilledet — de to indholds-sektioner havde ingen egen `position`, hvilket efter CSS'ens normale stakke-regler (statisk indhold lægger sig bag et positioneret element med `z-index: 0`) fik filmstrimlen til at ligge FORAN kortene i "Om Voldby BIO" i stedet for bagved. Rettet med `position: relative; z-index: 1` på begge sektioner.
+
+Berørte filer: `frontend/src/pages/CinemaPublicV2.jsx` (ny), `frontend/src/pages/CinemaPublicV2.css` (ny), `frontend/src/pages/CinemaPublic.jsx` (kun navngivne eksporter tilføjet, ingen adfærdsændring), `frontend/src/App.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, samt de tre nye billedfiler. Ingen backend-ændring.
+
 ## [0.164.2 build 0237] — 2026-08-22 — fix: fritekst-søgning på flere almindelige ord gav mange urelaterede resultater (BUGS.md #89)
 
 Jan: *"i søg feltet se det ud til at hvis man søg eks. war the only, så bliver der søgt på alle 3 forkomster af de ord, det er en fejl"*, konkretiseret med 9 forkerte film fra hans eget bibliotek.

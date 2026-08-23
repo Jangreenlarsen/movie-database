@@ -211,7 +211,10 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
 // undervejs (banneret er interaktivt gennem hele fade-forløbet, opacity
 // blokerer ikke klik) fjerner den med det samme og åbner login i stedet —
 // samme login-panel som "Log ind"-knappen i hero'en.
-function GuestLoginBanner({ onOpenLogin }) {
+// Feature #191 — navngivet eksport (ud over default-eksporten ovenfor), så
+// den nye /bio2-side (CinemaPublicV2.jsx) kan genbruge den uden at
+// duplikere logikken. Ingen adfærdsændring for /bio selv.
+export function GuestLoginBanner({ onOpenLogin }) {
   const t = useT();
   const [visible, setVisible] = useState(true);
 
@@ -244,7 +247,8 @@ function GuestLoginBanner({ onOpenLogin }) {
 // indholdet er gengivet som rigtig, oversat HTML (`public.press*`-nøglerne)
 // i stedet, og "Vis som PDF" er nu en sekundær, eksplicit fravalgt handling
 // for den der vil have originalens layout/print.
-function PressModal({ onClose }) {
+// Feature #191 — se GuestLoginBanner's kommentar ovenfor.
+export function PressModal({ onClose }) {
   const t = useT();
   const introParagraphs = t("public.pressIntro").split("\n\n");
   const premiereParagraphs = t("public.pressPremiere").split("\n\n");
@@ -311,7 +315,8 @@ function PressModal({ onClose }) {
 // Feature #168 — "Forplejning i BIO": et enkelt billede i samme
 // overlay-panel-mønster som Presse Nyt/Galleri, ikke genbrugt af
 // GalleryModal, da Jan bad om et selvstændigt, dedikeret link.
-function RefreshmentsModal({ onClose }) {
+// Feature #191 — se GuestLoginBanner's kommentar ovenfor.
+export function RefreshmentsModal({ onClose }) {
   const t = useT();
   return (
     <div
@@ -353,7 +358,8 @@ function RefreshmentsModal({ onClose }) {
 // Videoer forbliver klikbare direkte i gridet (native afspiller-kontroller)
 // — at gøre dem til endnu en lightbox-knap ville forhindre et klik på
 // afspil-knappen i at virke, se koden nedenfor.
-function GalleryModal({ onClose }) {
+// Feature #191 — se GuestLoginBanner's kommentar ovenfor.
+export function GalleryModal({ onClose }) {
   const t = useT();
   const [lightboxIndex, setLightboxIndex] = useState(null);
   const activeItem = lightboxIndex != null ? GALLERY_ITEMS[lightboxIndex] : null;
@@ -476,7 +482,8 @@ function GalleryModal({ onClose }) {
 // stå to forskellige steder i træet: knappen sammen med sprogvalget i den
 // absolut placerede hjørne-gruppe, panelet som søskende direkte i hero'en,
 // hvor det kan få sin egen bredde.
-function PublicLoginToggle({ user, open, onToggle }) {
+// Feature #191 — se GuestLoginBanner's kommentar ovenfor.
+export function PublicLoginToggle({ user, open, onToggle }) {
   const t = useT();
 
   // Feature #84 — someone already signed in shouldn't be offered a login
@@ -508,7 +515,8 @@ function PublicLoginToggle({ user, open, onToggle }) {
   );
 }
 
-function PublicLoginPanel({ language, onClose }) {
+// Feature #191 — se GuestLoginBanner's kommentar ovenfor.
+export function PublicLoginPanel({ language, onClose }) {
   const t = useT();
   // Feature #83 — samme to-tilstands-mønster som appens egen Login.jsx, så
   // en besøgende der har fået biograf-linket delt også kan oprette sin konto
@@ -642,7 +650,8 @@ function PublicLoginPanel({ language, onClose }) {
 // dupликeret styling; den offentlige udgave har blot ingen admin-værktøjer, og
 // tids-badgen viser dato+tid, da den offentlige liste er flad (ingen
 // dag-gruppering — bevidst valg fra #64 v2).
-function PublicScreeningCard({ screening }) {
+// Feature #191 — se GuestLoginBanner's kommentar ovenfor.
+export function PublicScreeningCard({ screening }) {
   const t = useT();
   const locale = useLocale();
   return (

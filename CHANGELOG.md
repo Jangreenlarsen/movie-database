@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.166.0 build 0239] — 2026-08-23 — feature: `/bio`'s skilt-topbillede skiftet til det frilagte logo fra `/bio2` (FEATURES.md #192)
+
+Jan: *"udskift voldbybio logo billede på orginal side /bio til det ny logo som vi bruger på /bio2"*.
+
+Det gamle rektangulære foto (`voldby-bio-sign.jpg`) i `CinemaPublic.jsx`s hero er skiftet til det alpha-transparente, frilagte skilt-logo fra feature #191 (`bio2-sign-cutout.png`) — samme fil `/bio2` allerede bruger. `.cinema-public-sign img`s CSS opdateret: `aspect-ratio`/`object-fit: cover`/`border-radius` (lavet til et rigtigt foto) erstattet af `height: auto` + `filter: drop-shadow(...)`, der passer til en transparent logo-fil uden en rektangulær kant.
+
+Berørte filer: `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`. Ingen backend-ændring.
+
 ## [0.165.0 build 0238] — 2026-08-23 — feature: ny visuel forside "Voldby BIO v2" på `/bio2` (FEATURES.md #191)
 
 Jan udforskede fire designretninger via en Claude Design-canvas (papir/nostalgi-tema vandt), leverede selv to nye billeder (frilagt skilt-logo + isoleret papirbaggrund) og bad til sidst om at gøre retningen til en rigtig side på portalen: *"lave så den her side som vores ny hoved /bio2 side på portal men den gammel side på /bio skal ikke røres i nu den skal bestå og være den som vi bruger i prod i nu"*.

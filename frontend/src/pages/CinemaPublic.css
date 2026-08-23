@@ -137,13 +137,16 @@
 .cinema-public-sign img {
   display: block;
   width: 100%;
-  aspect-ratio: 2.5 / 1;
-  object-fit: cover;
-  border-radius: var(--radius-md);
-  /* Feature #105 — hero'en har ikke længere en flad mørk boks bagved til at
-     give skiltet kontrast/dybde. Skyggen gør det samme job: løfter det
-     visuelt af den bløde, udtonede baggrund. */
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  height: auto;
+  /* Feature #192 — det nye skilt-billede (bio2-sign-cutout.png, delt med
+     /bio2) er et alpha-transparent frilagt logo, ikke et rektangulært
+     foto — `object-fit: cover` + `border-radius` gav mening for det gamle
+     foto (feature #105), men ville enten beskære selve skiltet eller runde
+     et hjørne der visuelt ikke findes (baggrunden er jo gennemsigtig).
+     `drop-shadow` følger logoets faktiske silhuet i stedet for en
+     rektangulær boks-skygge (samme løft-fra-baggrunden-formål som den
+     tidligere `box-shadow`). */
+  filter: drop-shadow(0 16px 32px rgba(0, 0, 0, 0.45));
 }
 
 .cinema-public-tagline {

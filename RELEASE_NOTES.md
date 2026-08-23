@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.166.0 (build 0239) — 2026-08-23
+
+- **Skiltet øverst på Voldby BIO-siden (`/bio`) er skiftet til det nye, frilagte logo** — samme logo som forhåndsvisningen på `/bio2`, uden den gamle rektangulære fotoramme.
+
 ## v0.165.0 (build 0238) — 2026-08-23
 
 - **Ny side: `/bio2` — en ny visuel forside til Voldby BIO, til intern afprøvning.** Nostalgisk papir-tema med det frilagte skilt-logo, en foto-kollage og en filmstrimme. Den nuværende `/bio`-side er helt uændret og er stadig den der bruges i dag — `/bio2` er kun en sideordnet forhåndsvisning, indtil der tages stilling til om den skal afløse den gamle.

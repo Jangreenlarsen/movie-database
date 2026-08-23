@@ -123,9 +123,14 @@ export default function CinemaPublic({ user = null, language, onLanguageChange }
             en tekst-overskrift på en accent-gradient. `<h1>` ombryder
             billedet frem for at stå separat: en skærmlæser skal stadig have
             en rigtig overskrift, og alt-teksten på billedet giver den —
-            uden behov for en visuelt skjult duplikat-tekst ved siden af. */}
+            uden behov for en visuelt skjult duplikat-tekst ved siden af.
+            Feature #192 (Jan: "udskift voldbybio logo billede på orginal
+            side /bio til det ny logo som vi bruger på /bio2") — det gamle
+            rektangulære foto (`voldby-bio-sign.jpg`) er skiftet ud med det
+            frilagte, alpha-transparente skilt-logo fra #191
+            (`bio2-sign-cutout.png`), samme fil som /bio2 bruger. */}
         <h1 className="cinema-public-sign">
-          <img src="/cinema/voldby-bio-sign.jpg" alt={t("public.signAlt")} />
+          <img src="/cinema/bio2-sign-cutout.png" alt={t("public.signAlt")} />
         </h1>
         <p className="cinema-public-tagline">{t("public.tagline")}</p>
       </header>

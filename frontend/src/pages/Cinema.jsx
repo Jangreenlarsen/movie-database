@@ -39,7 +39,10 @@ export default function Cinema({ user }) {
   const [linkCopied, setLinkCopied] = useState(false);
 
   function copyPublicLink() {
-    const url = `${window.location.origin}/bio`;
+    // Feature #193 — Jan: "den 'del link til voldby bio' skal være den ny
+    // link direkte til public siden" — peger nu på /bio2 (feature #191)
+    // i stedet for den gamle /bio.
+    const url = `${window.location.origin}/bio2`;
     navigator.clipboard
       .writeText(url)
       .then(() => {
@@ -74,7 +77,12 @@ export default function Cinema({ user }) {
         </button>
       </div>
 
-      <CinemaShowcase />
+      {/* Feature #193 — Jan: "det er ikke grund til at man som adm skal se
+          de ting når det kan ses på public side i forvejen". Admin/standard
+          har allerede /bio (og nu /bio2) til at se rum/billede/lyd-sektionen;
+          kun gæster ser den her, da de ikke nødvendigvis kender/bruger den
+          offentlige side. */}
+      {isGuest && <CinemaShowcase />}
 
       {isAdmin && <AdminScreeningTools onChanged={refresh} />}
       {isAdmin && <ReservationAdmin screenings={screenings} />}

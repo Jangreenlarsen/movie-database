@@ -12,7 +12,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "../api/client";
-import { RequestDetailModal, RequestRow } from "./Cinema";
+import Cinema, { RequestDetailModal, RequestRow } from "./Cinema";
 
 function _request(overrides = {}) {
   return {
@@ -27,6 +27,50 @@ function _request(overrides = {}) {
     ...overrides,
   };
 }
+
+describe("Cinema (feature #193 — rum/billede/lyd-sektion kun for gæster)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(api, "listScreenings").mockResolvedValue([]);
+    vi.spyOn(api, "recordVisit").mockResolvedValue();
+  });
+
+  it("viser sektionen for en gæst", async () => {
+    render(<Cinema user={{ role: "guest" }} />);
+    expect(await screen.findByText("Rummet")).toBeInTheDocument();
+  });
+
+  it("skjuler sektionen for en admin", async () => {
+    render(<Cinema user={{ role: "admin" }} />);
+    await screen.findByText("Ingen kommende visninger er planlagt endnu.");
+    expect(screen.queryByText("Rummet")).not.toBeInTheDocument();
+  });
+
+  it("skjuler sektionen for en standard-bruger", async () => {
+    render(<Cinema user={{ role: "standard" }} />);
+    await screen.findByText("Ingen kommende visninger er planlagt endnu.");
+    expect(screen.queryByText("Rummet")).not.toBeInTheDocument();
+  });
+});
+
+describe("Cinema — del-link (feature #193)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(api, "listScreenings").mockResolvedValue([]);
+    vi.spyOn(api, "recordVisit").mockResolvedValue();
+  });
+
+  it("kopierer et link til /bio2, ikke den gamle /bio", async () => {
+    const user = userEvent.setup();
+    render(<Cinema user={{ role: "admin" }} />);
+    await screen.findByText("Ingen kommende visninger er planlagt endnu.");
+
+    const writeTextSpy = vi.spyOn(navigator.clipboard, "writeText");
+    await user.click(screen.getByRole("button", { name: /Del link til Voldby BIO/ }));
+
+    expect(writeTextSpy).toHaveBeenCalledWith(`${window.location.origin}/bio2`);
+  });
+});
 
 describe("RequestRow (feature #185)", () => {
   beforeEach(() => {

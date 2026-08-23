@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.167.0 build 0241] — 2026-08-23 — feature: Voldby BIO-fanens showcase-sektion kun for gæster + "Del link" peger på `/bio2` (FEATURES.md #193)
+
+Jan: *"vi skal have fjernet for admin og stadart user den seksion på voldby administrators side hvor man se voldby bio de de tre billeder og tekste som forklar rum, lyd og billede, sådan det kun er guester som se det, der er ikke grund til at man som adm skal se de ting når det kan ses på public side i forvejen"*, efterfulgt mid-turn af: *"den 'del link til voldby bio' skal være den ny link direkte til public siden samtiddit med at den er kopiret til klipboard"*.
+
+`CinemaShowcase` på den indloggede Voldby BIO-fane vises nu kun for gæster (`{isGuest && <CinemaShowcase />}`) — admin/standard har allerede adgang til samme indhold på `/bio`/`/bio2`. `copyPublicLink` peger nu på `/bio2` i stedet for `/bio`.
+
+Berørte filer: `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Cinema.test.jsx`. Ingen backend-ændring.
+
 ## [0.166.1 build 0240] — 2026-08-23 — fix: `/bio2`s baggrundsbillede fulgte ikke helt med ned ved scroll (BUGS.md #90)
 
 Jan: *"jeg kan se fejl i baggrunds billedet i vores udviklings canvas retning A design hvor baggrunds billede ikke følger med ned fordi viewport ikke skalere med"*.

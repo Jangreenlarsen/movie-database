@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.166.1 build 0240] — 2026-08-23 — fix: `/bio2`s baggrundsbillede fulgte ikke helt med ned ved scroll (BUGS.md #90)
+
+Jan: *"jeg kan se fejl i baggrunds billedet i vores udviklings canvas retning A design hvor baggrunds billede ikke følger med ned fordi viewport ikke skalere med"*.
+
+To uafhængige rodårsager: (1) `#root`s `flex-direction:column` krympede `.cinema-v2-page` til viewportens højde uanset det faktiske indhold (`flex-shrink:0` rettet), (2) filmstrimlens absolutte overflow trak scroll-højden længere end boksens egen auto-højde selv derefter (`overflow: hidden` rettet). Samme klasse fejl rettet i Claude Design-canvas'ens `MainParchment.dc.html`/`MarqueeNostalgia.dc.html` (baggrund flyttet fra `body` til `html`).
+
+Fundet ved en ny test-metode: rigtig Playwright-scroll til bunden af siden (top- og bund-screenshot) i stedet for kun ét stort vindue der viser alt på én gang — sidstnævnte skjulte netop denne fejlklasse, da der reelt ikke var noget at scrolle i den test. Denne metode indgår nu i regel 18-afprøvningen for scrollbare sider fremover.
+
+Berørte filer: `frontend/src/pages/CinemaPublicV2.css`. Ingen backend-ændring.
+
 ## [0.166.0 build 0239] — 2026-08-23 — feature: `/bio`'s skilt-topbillede skiftet til det frilagte logo fra `/bio2` (FEATURES.md #192)
 
 Jan: *"udskift voldbybio logo billede på orginal side /bio til det ny logo som vi bruger på /bio2"*.

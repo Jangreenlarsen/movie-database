@@ -1,8 +1,8 @@
 # Release Notes
 
-## v0.169.0.1 (build 0245) — 2026-08-23
+## v0.169.1 (build 0246) — 2026-08-23
 
-- **Forsøg på at rette scroll-stutter i biblioteket på mobil**: fjernet en blur-effekt på kortenes badges (rating, serienummer, set, ønske, Plex) som en del af fejlsøgningen af en Android-GPU-flaskehals. Ingen tilsigtet visuel ændring — badgene skal se ud som før, bare uden den bløde slør-kant.
+- **Rettet: scroll-stutter i biblioteket på mobil (Android)**. Fjernet en blur-effekt på kortenes badges (rating, serienummer, set, ønske, Plex), som viste sig at være hovedårsagen til en GPU-flaskehals under scroll. Bekræftet løst på telefonen.
 
 ## v0.169.0 (build 0244) — 2026-08-23
 

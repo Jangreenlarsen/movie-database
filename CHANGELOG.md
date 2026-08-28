@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.170.0 build 0248] — 2026-08-23 — test: bekræfter at '+ Ønskeliste' allerede skifter til 'På indkøbslisten' efter tilføjelse (FEATURES.md #196)
+
+Jan spurgte om `+ Ønskeliste`-knappen i collection-sektionen (feature #196) opdaterer sig til at afspejle at delen nu er på ønskelisten, så man ikke risikerer at tilføje den igen ved et nyt klik. Undersøgt: mekanismen fandtes allerede (utestet) i `CollectionSection` — `addPart()` genindlæser collection-listen efter et vellykket kald, og `part.owned`/`part.owned_is_wishlist` (fra backendens `get_collection_info`, som krydstjekker mod `movies`-collectionen ved hvert opslag) erstatter knappen med den statiske tekst "På indkøbslisten" med det samme. Ingen kodeændring var nødvendig — kun `Library.test.jsx`s eksisterende collection-test udvidet til eksplicit at bekræfte hele forløbet (to-trins `getCollection`-mock: før/efter tilføjelse), så garantien nu er låst fast af en rigtig test i stedet for kun at være en observation.
+
+Berørte filer: `frontend/src/pages/Library.test.jsx`. Ingen produktionskode ændret. Fuld frontend-suite (154) grøn.
+
 ## [0.170.0 build 0247] — 2026-08-23 — feature: "flyt til bibliotek" gemmer hele formularen + tilføj serie-dele til ønskelisten fra en ejet film (FEATURES.md #196)
 
 Jan: *"vi skal have funktion 'flyt til bibliotek' fra ønskelist til at man skal sætte alle parameter som i edit med en save"*, samt: *"i bibliolitek i edit film/tv hvis film/tv er en del af en serie så skal man kunne tilføre elementer fra den liste til ønskelisten"*.

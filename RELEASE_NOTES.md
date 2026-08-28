@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.170.0 (build 0248) — 2026-08-23
+
+- Ingen ny funktionalitet — bekræftet og testdækket at "+ Ønskeliste"-knappen i en films samlingsliste allerede skifter til "På indkøbslisten", så samme del ikke kan tilføjes to gange.
+
 ## v0.170.0 (build 0247) — 2026-08-23
 
 - **"Flyt til bibliotek" fra ønskelisten sender nu hele formularen** (format, medietype, lokation, ejer, tags m.m.) i ét gem-skridt, i stedet for kun at flytte posten uden de rettelser du lige har lavet. Kræver nu at medietype og format er valgt, før knappen kan bruges — samme krav som ved almindelig oprettelse.

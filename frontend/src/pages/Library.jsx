@@ -2068,7 +2068,11 @@ function CollectionSection({ movie, onChanged }) {
                 </span>
                 {part.owned ? (
                   <span className="muted">
-                    {t(part.owned_is_wishlist ? "collection.onWishlist" : "collection.owned")}
+                    {part.owned_is_wishlist
+                      ? t("collection.onWishlist")
+                      : part.owned_media_type
+                        ? t("collection.ownedWithType", { type: part.owned_media_type })
+                        : t("collection.owned")}
                   </span>
                 ) : (
                   <button

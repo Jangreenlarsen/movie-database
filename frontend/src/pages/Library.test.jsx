@@ -180,3 +180,59 @@ describe("CollectionSection — tilføj serie-del til ønskelisten (feature #196
     expect(screen.getByText("På indkøbslisten")).toBeInTheDocument();
   });
 });
+
+describe("CollectionSection — viser medietype for ejede dele (feature #201)", () => {
+  beforeEach(() => {
+    vi.spyOn(api, "recordVisit").mockResolvedValue({});
+    vi.spyOn(api, "myScreeningRequests").mockResolvedValue([]);
+    vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({ require_preferred_at: false });
+  });
+
+  it("viser '✓ Ejer (Fysisk)'/'✓ Ejer (Digital)' i stedet for bare '✓ Ejer' når backend oplyser medietypen", async () => {
+    vi.spyOn(api, "getCollection").mockResolvedValue({
+      id: 99,
+      name: "Test-trilogien",
+      poster_url: null,
+      parts: [
+        {
+          tmdb_id: 1,
+          title: "Del Én",
+          year: 2019,
+          poster_url: null,
+          owned: true,
+          owned_movie_id: "m1",
+          owned_is_wishlist: false,
+          owned_media_type: "Fysisk",
+        },
+        {
+          tmdb_id: 2,
+          title: "Del To",
+          year: 2020,
+          poster_url: null,
+          owned: true,
+          owned_movie_id: "m2",
+          owned_is_wishlist: false,
+          owned_media_type: "Digital",
+        },
+      ],
+    });
+
+    const movie = {
+      ...baseMovie,
+      is_wishlist: false,
+      media_type: "Fysisk",
+      format: "F-DVD",
+      collection_id: 99,
+      collection_name: "Test-trilogien",
+    };
+    renderModal(movie);
+
+    await userEvent.click(screen.getByText(/Del af samlingen: Test-trilogien/));
+
+    expect(await screen.findByText("✓ Ejer (Fysisk)")).toBeInTheDocument();
+    expect(screen.getByText("✓ Ejer (Digital)")).toBeInTheDocument();
+    // Aldrig den generiske "✓ Ejer" uden medietype, når backend rent
+    // faktisk oplyste den.
+    expect(screen.queryByText("✓ Ejer")).not.toBeInTheDocument();
+  });
+});

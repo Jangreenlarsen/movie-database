@@ -320,6 +320,11 @@ class CollectionPart(BaseModel):
     owned: bool
     owned_movie_id: str | None = None
     owned_is_wishlist: bool = False
+    # Feature #201 (Jan: "i 'Del af samlingen:' skal fremgå om ... den er i
+    # digital eller fysiske version") — kun meningsfuld når `owned` er sand
+    # og delen IKKE er på ønskelisten (en ønske-post har ingen medietype
+    # endnu, feature #92). `None` for TMDb-delene der slet ikke er anskaffet.
+    owned_media_type: str | None = None
 
 
 class CollectionInfo(BaseModel):

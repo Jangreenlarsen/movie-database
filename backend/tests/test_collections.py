@@ -76,8 +76,12 @@ async def test_collection_endpoint_marks_owned_and_missing_parts(client, monkeyp
     assert part_1["owned"] is True
     assert part_1["owned_movie_id"] == owned_movie_id
     assert part_1["owned_is_wishlist"] is False
+    # Feature #201 — "Del af samlingen:" viser om en ejet del er digital
+    # eller fysisk.
+    assert part_1["owned_media_type"] == "Fysisk"
     assert part_2["owned"] is False
     assert part_2["owned_movie_id"] is None
+    assert part_2["owned_media_type"] is None
 
 
 async def test_collection_endpoint_marks_wishlist_parts(client, monkeypatch):
@@ -98,6 +102,28 @@ async def test_collection_endpoint_marks_wishlist_parts(client, monkeypatch):
     part = response.json()["parts"][0]
     assert part["owned"] is True
     assert part["owned_is_wishlist"] is True
+    # Feature #201 — en ønske-post har ingen medietype endnu (feature #92).
+    assert part["owned_media_type"] is None
+
+
+async def test_collection_endpoint_marks_digital_media_type(client, monkeypatch):
+    async def fake_get_movie_details(tmdb_id):
+        return _fake_details(tmdb_id, "Digital Part", collection_id=42, collection_name="A Saga")
+
+    monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
+    await client.post("/api/movies", json={"tmdb_id": 9, "media_type": "Digital", "format": "D-1080"})
+
+    async def fake_get_collection(collection_id):
+        return _fake_collection(
+            collection_id, [{"tmdb_id": 9, "title": "Digital Part", "year": 2012, "poster_url": None}]
+        )
+
+    monkeypatch.setattr(tmdb_client, "get_collection", fake_get_collection)
+
+    response = await client.get("/api/movies/collections/42")
+    part = response.json()["parts"][0]
+    assert part["owned"] is True
+    assert part["owned_media_type"] == "Digital"
 
 
 async def test_sync_refreshes_collection_fields(client, monkeypatch):

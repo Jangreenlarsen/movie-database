@@ -1,5 +1,13 @@
 # Release Notes
 
+## v0.175.0 (build 0254) — 2026-08-23
+
+- **"Del af samlingen:"-listen på en films detaljekort viser nu om en ejet del er fysisk eller digital** — ikke kun at den er ejet.
+
+## v0.174.1 (build 0253) — 2026-08-23
+
+- E-mail-feltet ved oprettelse af ny bruger er nu obligatorisk i formularen.
+
 ## v0.174.0 (build 0252) — 2026-08-23
 
 - **Ny bruger kan nu sætte sin e-mail direkte ved oprettelse** (både i appen og på den offentlige /bio-side) i stedet for kun bagefter i Indstillinger → Konto. Valgfrit, som fuldt navn.

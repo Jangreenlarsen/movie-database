@@ -156,6 +156,7 @@
   "collection.loadError": "Kunne ikke hente samlingen fra TMDb.",
   "collection.onWishlist": "På indkøbslisten",
   "collection.owned": "✓ Ejer",
+  "collection.ownedWithType": "✓ Ejer ({type})",
   "collection.adding": "Tilføjer...",
   "collection.addWish": "+ Ønskeliste",
   "plex.badgeTmdb": "Ligger i Plex (matchet på TMDb-id)",

@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.175.0 build 0254] — 2026-08-23 — feature: "Del af samlingen:" viser medietype for ejede dele (FEATURES.md #201)
+
+Jan: *"i edit detajle af film og i 'Del af samlingen:' skal fremgå om ... den er i digital eller fysiske version"*.
+
+`CollectionPart` fik `owned_media_type`, udfyldt fra det allerede-hentede ejer-dokument i `get_collection_info` — ingen ekstra databaseforespørgsel. `CollectionSection`s "✓ Ejer" bliver til "✓ Ejer (Fysisk)"/"✓ Ejer (Digital)" når typen kendes.
+
+Berørte filer: `backend/app/models/movie.py`, `backend/app/services/movie_service.py`, `frontend/src/pages/Library.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`. Tests: backend `test_collections.py` (+2 assertions, +1 ny), frontend `Library.test.jsx` (+1). Fuld suite + frontend (163) grøn.
+
 ## [0.174.1 build 0253] — 2026-08-23 — fix: e-mail obligatorisk i registrerings-formularerne (FEATURES.md #200)
 
 Jan, opfølgning: *"e-mail-felt skal være opligatorisk"*. `required` tilføjet til e-mail-inputtet i begge registrerings-formularer (Login.jsx + CinemaPublic.jsx's PublicLoginPanel) — samme håndhævelses-niveau som fuldt navn (kun i UI'et; backend-modellen forbliver teknisk valgfri, Jans eget valg, for ikke at bryde den eksisterende API-kontrakt/testsuite, som registrerer test-brugere uden e-mail på tværs af snesevis af filer). Ingen backend-ændring. Frontend-suite (162) uændret grøn.

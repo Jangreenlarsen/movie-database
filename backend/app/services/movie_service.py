@@ -453,6 +453,7 @@ async def get_collection_info(db: AsyncIOMotorDatabase, collection_id: int) -> C
                 owned=owned_doc is not None,
                 owned_movie_id=str(owned_doc["_id"]) if owned_doc else None,
                 owned_is_wishlist=owned_doc.get("is_wishlist", False) if owned_doc else False,
+                owned_media_type=owned_doc.get("media_type") if owned_doc else None,
             )
         )
     return CollectionInfo(

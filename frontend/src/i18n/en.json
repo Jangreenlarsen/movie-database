@@ -156,6 +156,7 @@
   "collection.loadError": "Could not load the collection from TMDb.",
   "collection.onWishlist": "On the shopping list",
   "collection.owned": "✓ Owned",
+  "collection.ownedWithType": "✓ Owned ({type})",
   "collection.adding": "Adding...",
   "collection.addWish": "+ Shopping list",
   "plex.badgeTmdb": "Available in Plex (matched on TMDb id)",

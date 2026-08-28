@@ -2,6 +2,10 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.174.1 build 0253] — 2026-08-23 — fix: e-mail obligatorisk i registrerings-formularerne (FEATURES.md #200)
+
+Jan, opfølgning: *"e-mail-felt skal være opligatorisk"*. `required` tilføjet til e-mail-inputtet i begge registrerings-formularer (Login.jsx + CinemaPublic.jsx's PublicLoginPanel) — samme håndhævelses-niveau som fuldt navn (kun i UI'et; backend-modellen forbliver teknisk valgfri, Jans eget valg, for ikke at bryde den eksisterende API-kontrakt/testsuite, som registrerer test-brugere uden e-mail på tværs af snesevis af filer). Ingen backend-ændring. Frontend-suite (162) uændret grøn.
+
 ## [0.174.0 build 0252] — 2026-08-23 — feature: valgfrit e-mail-felt ved registrering (FEATURES.md #200)
 
 Jan: *"opret ny user tager ikke en email adr., skal vi lige have den del af system til at gøre"*.

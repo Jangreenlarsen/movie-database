@@ -208,7 +208,7 @@ Begge tabeller opdateres når en feature tilføjes (jf. CLAUDE.md regel 2).
 | 197 | Udgående e-mail-notifikationer via Resend — enhver eksisterende og fremtidig in-app-besked (ønske-flyttet/godkendt/bestilt/afvist, admin-broadcasts) sendes nu også som e-mail til modtagere der har en e-mail sat i Indstillinger → Konto; admin-konfigurerbar Resend-nøgle + afsenderadresse, samme mønster som TMDb/Discogs/OMDb/Plex | done | 0.171.0 |
 | 198 | Indstillinger → Eksterne API-nøgler omorganiseret fra ét langt, ugrupperet kort til 6 selvstændige kort efter formål (metadata/stregkode-opslag/vurderinger/Plex/Anthem/e-mail) | done | 0.172.0 |
 | 199 | Ægte "Send testmail"-funktion i Indstillinger (E-mail-kortet) — sender en rigtig e-mail via Resend til en valgfri adresse, adskilt fra den eksisterende "Test forbindelse" (som for en sending-access-nøgle kun kan bekræfte nøglens gyldighed, ikke reel aflevering) | done | 0.173.0 |
-| 200 | Valgfrit e-mail-felt tilføjet til begge registrerings-formularer (app-login og den offentlige /bio-side), samme mønster som fuldt navn — så en ny bruger kan sætte sin e-mail med det samme og modtage notifikationer uden at skulle huske det bagefter i Indstillinger → Konto | done | 0.174.0 |
+| 200 | E-mail-felt tilføjet til begge registrerings-formularer (app-login og den offentlige /bio-side) — obligatorisk i selve formularen (Jans opfølgende krav), teknisk valgfrit i backend-modellen for ikke at bryde den eksisterende API-kontrakt/testsuite | done | 0.174.1 |
 
 ---
 

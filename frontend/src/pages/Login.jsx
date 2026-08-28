@@ -69,11 +69,13 @@ export default function Login({ onAuthenticated, language, onLanguageChange }) {
             </label>
           )}
           {/* Feature #199-opfølgning (Jan: "opret ny user tager ikke en
-              email adr., skal vi lige have den del af system til at gøre")
-              — bevidst VALGFRI (ingen `required`), i modsætning til fuldt
-              navn ovenfor: e-mailen bruges kun til notifikationer, ikke til
-              at vurdere hvem der beder om adgang, og kan altid sættes/
-              rettes senere i Indstillinger → Konto (UserEmailUpdate). */}
+              email adr., skal vi lige have den del af system til at gøre",
+              fulgt af "e-mail-felt skal være opligatorisk") — `required`
+              her, samme håndhævelses-niveau som fuldt navn ovenfor: kun i
+              selve FORMULAREN. Backend-modellen (UserRegister.email) holder
+              bevidst feltet teknisk valgfrit — Jans eget valg, for ikke at
+              bryde den eksisterende API-kontrakt/testsuite, som stort set
+              hele vejen igennem registrerer test-brugere uden e-mail. */}
           {mode === "register" && (
             <label>
               {t("account.email")}
@@ -83,6 +85,7 @@ export default function Login({ onAuthenticated, language, onLanguageChange }) {
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
                 placeholder={t("account.emailPlaceholder")}
+                required
               />
             </label>
           )}

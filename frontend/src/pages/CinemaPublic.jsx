@@ -588,7 +588,7 @@ export function PublicLoginPanel({ language, onClose }) {
           </label>
         )}
         {/* Feature #199-opfølgning — se den identiske note i Login.jsx:
-            bevidst valgfri, ingen `required`. */}
+            `required` i formularen, backend-modellen forbliver valgfri. */}
         {mode === "register" && (
           <label>
             {t("account.email")}
@@ -598,6 +598,7 @@ export function PublicLoginPanel({ language, onClose }) {
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
               placeholder={t("account.emailPlaceholder")}
+              required
             />
           </label>
         )}

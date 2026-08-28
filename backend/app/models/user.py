@@ -189,6 +189,14 @@ class UserRegister(BaseModel):
     # feltet) ikke brydes — det er et identitets-/oplysningsfelt, ikke et
     # sikkerhedsfelt. Tomt/kun-mellemrum normaliseres til None.
     full_name: str | None = Field(default=None, max_length=100)
+    # Feature #199-opfølgning (Jan: "opret ny user tager ikke en email adr.,
+    # skal vi lige have den del af system til at gøre") — valgfri, så man
+    # kan sætte sin e-mail med det samme ved oprettelse i stedet for at
+    # skulle huske det bagefter i Indstillinger → Konto (UserEmailUpdate,
+    # feature #197). Samme trim/tom-til-None-mønster som full_name_clean
+    # nedenfor, kørt FØR selve EmailStr-formatvalideringen (mode="before"),
+    # så et tomt felt tolkes som "intet sat", ikke som en 422-fejl.
+    email: EmailStr | None = Field(default=None, max_length=254)
     # Feature #97 — sproget valgt i login-boksen, så en ny konto starter på
     # det sprog brugeren allerede har valgt frem for altid på dansk.
     # Valgfrit: ældre klienter og API-kald uden feltet får kildesproget.
@@ -200,6 +208,14 @@ class UserRegister(BaseModel):
         if value is None:
             return None
         return value.strip() or None
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def email_blank_to_none(cls, value):
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
 
     @field_validator("username")
     @classmethod

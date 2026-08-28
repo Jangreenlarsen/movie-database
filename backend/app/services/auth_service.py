@@ -76,6 +76,9 @@ async def register(db: AsyncIOMotorDatabase, payload: UserRegister) -> User:
         "username_normalized": _normalize_username(payload.username),
         # Feature #140 — trimmet/None-normaliseret af UserRegister.full_name_clean.
         "full_name": payload.full_name,
+        # Feature #199-opfølgning — samme trim/tom-til-None-normalisering,
+        # se UserRegister.email_blank_to_none.
+        "email": payload.email,
         "password_hash": hash_password(payload.password),
         "role": UserRole.ADMIN if is_first_user else UserRole.GUEST,
         "status": UserStatus.ACTIVE if is_first_user else UserStatus.PENDING,

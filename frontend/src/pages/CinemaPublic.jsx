@@ -530,6 +530,7 @@ export function PublicLoginPanel({ language, onClose }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -550,8 +551,9 @@ export function PublicLoginPanel({ language, onClose }) {
         // "afventer godkendelse"-siden efter navigationen, præcis som når
         // man registrerer fra forsiden. Derfor samme redirect i begge
         // tilstande frem for en særskilt kvitteringsbesked her.
-        // Feature #97 — se den identiske note i Login.jsx.
-        await api.register(username, password, language, fullName);
+        // Feature #97 — se den identiske note i Login.jsx. Feature #199-
+        // opfølgning — valgfri e-mail, samme mønster.
+        await api.register(username, password, language, fullName, email);
       }
       window.location.assign("/");
     } catch (err) {
@@ -582,6 +584,20 @@ export function PublicLoginPanel({ language, onClose }) {
               autoComplete="name"
               placeholder={t("auth.fullNamePlaceholder")}
               required
+            />
+          </label>
+        )}
+        {/* Feature #199-opfølgning — se den identiske note i Login.jsx:
+            bevidst valgfri, ingen `required`. */}
+        {mode === "register" && (
+          <label>
+            {t("account.email")}
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              placeholder={t("account.emailPlaceholder")}
             />
           </label>
         )}

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.174.0 (build 0252) — 2026-08-23
+
+- **Ny bruger kan nu sætte sin e-mail direkte ved oprettelse** (både i appen og på den offentlige /bio-side) i stedet for kun bagefter i Indstillinger → Konto. Valgfrit, som fuldt navn.
+
 ## v0.173.0 (build 0251) — 2026-08-23
 
 - **Ny "Send testmail"-knap** i Indstillinger → Eksterne API-nøgler → E-mail-notifikationer. Sender en rigtig e-mail til en adresse du selv vælger, så du kan bekræfte at Resend-opsætningen reelt virker — ikke kun at nøglen er gyldig.

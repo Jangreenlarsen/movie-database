@@ -10,6 +10,7 @@ export default function Login({ onAuthenticated, language, onLanguageChange }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -22,8 +23,10 @@ export default function Login({ onAuthenticated, language, onLanguageChange }) {
         mode === "login"
           ? await api.login(username, password)
           // Feature #97 — sprogvalget følger med, så en ny konto starter på
-          // det sprog brugeren allerede har valgt her. Feature #140 — fuldt navn.
-          : await api.register(username, password, language, fullName);
+          // det sprog brugeren allerede har valgt her. Feature #140 — fuldt
+          // navn. Feature #199-opfølgning — valgfri e-mail, så man ikke
+          // skal huske at sætte den bagefter i Indstillinger → Konto.
+          : await api.register(username, password, language, fullName, email);
       onAuthenticated(user);
     } catch (err) {
       setError(err.message);
@@ -62,6 +65,24 @@ export default function Login({ onAuthenticated, language, onLanguageChange }) {
                 autoComplete="name"
                 placeholder={t("auth.fullNamePlaceholder")}
                 required
+              />
+            </label>
+          )}
+          {/* Feature #199-opfølgning (Jan: "opret ny user tager ikke en
+              email adr., skal vi lige have den del af system til at gøre")
+              — bevidst VALGFRI (ingen `required`), i modsætning til fuldt
+              navn ovenfor: e-mailen bruges kun til notifikationer, ikke til
+              at vurdere hvem der beder om adgang, og kan altid sættes/
+              rettes senere i Indstillinger → Konto (UserEmailUpdate). */}
+          {mode === "register" && (
+            <label>
+              {t("account.email")}
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                placeholder={t("account.emailPlaceholder")}
               />
             </label>
           )}

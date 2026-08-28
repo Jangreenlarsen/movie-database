@@ -83,13 +83,15 @@ export const api = {
   getFeatureList: () => request("/system/feature-list"),
   // Feature #97 — `language` er valgfri: den sætter startsproget på den nye
   // konto, så et valg truffet i login-boksen gælder fra første indlogning.
-  register: (username, password, language, fullName) =>
+  // Feature #199-opfølgning — `email` valgfri på samme måde som `fullName`.
+  register: (username, password, language, fullName, email) =>
     request("/auth/register", {
       method: "POST",
       body: JSON.stringify({
         username,
         password,
         ...(fullName ? { full_name: fullName } : {}),
+        ...(email ? { email } : {}),
         ...(language ? { language } : {}),
       }),
     }),

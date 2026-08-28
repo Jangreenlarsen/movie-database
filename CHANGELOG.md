@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.174.0 build 0252] — 2026-08-23 — feature: valgfrit e-mail-felt ved registrering (FEATURES.md #200)
+
+Jan: *"opret ny user tager ikke en email adr., skal vi lige have den del af system til at gøre"*.
+
+`UserRegister` fik `email: EmailStr | None`, samme trim/tomt-til-None-normalisering som `full_name`. Begge registrerings-formularer (app'ens `Login.jsx` og den offentlige `/bio`-sides `PublicLoginPanel`) fik et nyt, valgfrit e-mail-felt mellem Fuldt navn og Brugernavn. En bruger der udfylder den ved oprettelse kan modtage notifikationer (feature #197) med det samme, uden en ekstra tur til Indstillinger → Konto bagefter — bekræftet med en ende-til-ende-test.
+
+Berørte filer: `backend/app/models/user.py`, `backend/app/services/auth_service.py`, `frontend/src/api/client.js`, `frontend/src/pages/Login.jsx`, `frontend/src/pages/CinemaPublic.jsx`, `ARCHITECTURE.md`. Tests: backend ny `test_registration_email.py` (+5). Set i browser: begge formularer bekræftet korrekte. Fuld backend-suite + frontend (162) grøn.
+
 ## [0.173.0 build 0251] — 2026-08-23 — feature: ægte "Send testmail"-funktion (FEATURES.md #199)
 
 Jan, efter at have bekræftet at Resends `{"name":"restricted_api_key","message":"This API key is restricted to only send emails","statusCode":401}` netop er den forventede reaktion fra en sending-access-nøgle på `GET /api-keys`: *"lave også en email test funktion"*.

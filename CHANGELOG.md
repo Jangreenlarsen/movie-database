@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.170.0 build 0247] — 2026-08-23 — feature: "flyt til bibliotek" gemmer hele formularen + tilføj serie-dele til ønskelisten fra en ejet film (FEATURES.md #196)
+
+Jan: *"vi skal have funktion 'flyt til bibliotek' fra ønskelist til at man skal sætte alle parameter som i edit med en save"*, samt: *"i bibliolitek i edit film/tv hvis film/tv er en del af en serie så skal man kunne tilføre elementer fra den liste til ønskelisten"*.
+
+**"Flyt til bibliotek"**: `moveToLibrary()` sendte tidligere kun `{ is_wishlist: false }` og smed alle redigerede felter (format/medietype/lokation/ejer/tags m.m.) væk. Genbruger nu samme `buildPayload()` som "Gem ændringer" (film + TV). Backend-hul lukket samtidig (regel 16): ny `ClassificationRequiredError` (422) håndhæver format+medietype-kravet også i update-stien (`movie_service.update_movie`/`tv_show_service.update_tv_show`), ikke kun ved oprettelse — frontend-knappen er tilsvarende deaktiveret uden de to felter.
+
+**Collection-sektionen**: en EJET films collection-liste kunne tidligere slet ikke tilføje manglende serie-dele (kun en ønske-post kunne, "følg forælderen"-reglen fra BUGS.md #58) — urimeligt, da tilføjelse til ØNSKELISTEN aldrig har krævet format/medietype. Spærringen fjernet; handlingen tilføjer nu altid til ønskelisten, uanset om den film man ser på er ejet eller ønsket. Scope bevidst afgrænset til film (Jans valg) — TV har intet TMDb-collection-begreb.
+
+Berørte filer: `backend/app/core/errors.py`, `backend/app/main.py`, `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Tests: backend +2, frontend ny `Library.test.jsx` (+3). Fuld backend-suite (825) + frontend (154) grøn.
+
 ## [0.169.1 build 0246] — 2026-08-23 — fix: scroll-stutter i biblioteket på Android bekræftet løst (BUGS.md #91)
 
 Jan bekræftede på den faktiske telefon: *"det har løst performance problemerne så bug løst"*. Debug-serien afsluttes — fjernelsen af `backdrop-filter: blur(4px)` fra biblioteks-badgene (v0.169.0.1) var nok til at løse GPU-compositor-flaskehalsen fra profilen; reel virtualisering (react-window) blev ikke nødvendig. Ingen kodeændring i dette commit, kun status- og versionsafslutning.

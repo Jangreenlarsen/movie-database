@@ -319,9 +319,10 @@ async def test_move_wishlist_tv_show_to_library_assigns_serial(client):
     )
     show_id = created.json()["id"]
 
-    # Feature #92 — se den identiske note i test_wishlist.py.
+    # Feature #92/#196 — se den identiske note i test_wishlist.py.
     response = await client.patch(
-        f"/api/tv-shows/{show_id}", json={"is_wishlist": False, "media_type": "Fysisk"}
+        f"/api/tv-shows/{show_id}",
+        json={"is_wishlist": False, "media_type": "Fysisk", "format": "F-DVD"},
     )
     assert response.status_code == 200
     assert response.json()["serial_number"] == 1

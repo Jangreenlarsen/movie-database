@@ -7,6 +7,7 @@ from pymongo.errors import DuplicateKeyError
 
 from app.core.config import settings
 from app.core.errors import (
+    ClassificationRequiredError,
     DuplicateBarcodeError,
     MovieNotFoundError,
     NotAuthorizedError,
@@ -730,6 +731,18 @@ async def update_movie(
         media_type = requested_media_type or current_doc.get("media_type")
         if was_wishlist and not requested_wishlist:
             moved_to_library = True
+            # Feature #196 — samme krav som MovieCreate.
+            # require_media_type_and_format_for_library, håndhævet her fordi
+            # "flyt til bibliotek" er den samme overgang som at oprette
+            # biblioteks-posten (se ClassificationRequiredError).
+            format_value = fields.get("format") or current_doc.get("format")
+            missing = []
+            if not media_type:
+                missing.append("media_type")
+            if not format_value:
+                missing.append("format")
+            if missing:
+                raise ClassificationRequiredError(missing)
             # Moving from the wishlist into the real collection (feature
             # #28/#32) — assign a fresh serial number, same as at creation.
             # Unrestricted, like POST /api/movies: this isn't "editing" an

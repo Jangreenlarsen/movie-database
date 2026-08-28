@@ -32,6 +32,24 @@ class PreferredAtRequiredError(Exception):
         super().__init__("Angiv venligst hvornår du gerne vil se den.")
 
 
+class ClassificationRequiredError(Exception):
+    """Feature #196 — "flyt til bibliotek" fra ønskelisten. Samme krav som
+    `MovieCreate`/`TvShowCreate`s `require_media_type_and_format_for_library`-
+    validator (feature #92), men håndhævet her i update-stien: at flytte en
+    ønskeliste-post ind i biblioteket er reelt den samme overgang som at
+    OPRETTE biblioteks-posten, blot via PATCH i stedet for POST. Uden denne
+    ville kravet kunne omgås ved først at oprette posten på ønskelisten
+    (undtaget kravet) og derefter flytte den uden format/medietype sat —
+    CLAUDE.md regel 16: håndhæves i backend, ikke kun som UI-bekvemmelighed."""
+
+    def __init__(self, missing: list[str]):
+        self.missing = missing
+        super().__init__(
+            f"{' og '.join(missing)} skal angives for en post i biblioteket "
+            "(kun ønskelisten er undtaget)"
+        )
+
+
 class DuplicateBarcodeError(Exception):
     def __init__(self, barcode: str):
         self.barcode = barcode

@@ -1301,6 +1301,10 @@ export function MovieDetailModal({
   // den kan gemmes; backend afviser den ellers (MovieCreate-validatoren).
   // Ønskelisten er undtaget: man ejer ikke det man ønsker sig endnu.
   const missingClassification = !movie.is_wishlist && (!mediaType || !format);
+  // Feature #196 — "Flyt til bibliotek" gør en ønskeliste-post til en rigtig
+  // biblioteks-post, så kravet gælder her UANSET movie.is_wishlist (backend
+  // håndhæver det samme i update_movie, se ClassificationRequiredError).
+  const missingClassificationForMove = !mediaType || !format;
 
   const dirty = useMemo(() => {
     if (!movie.id) return true; // "kladde"-tilstand — Gem må altid være aktiv (feature #79)
@@ -1354,40 +1358,54 @@ export function MovieDetailModal({
     });
   }
 
+  // Feature #196 — udtrukket fra save(), så moveToLibrary() kan genbruge
+  // præcis samme felt-opbygning (inkl. serienummer-byt-bekræftelsen) i
+  // stedet for at sende et isoleret { is_wishlist: false }-kald der
+  // stiltiende smed alle redigerede felter væk. Returnerer `null` hvis
+  // brugeren fortryder en byt-plads-bekræftelse — kaldere skal da selv
+  // afbryde uden fejl.
+  async function buildPayload() {
+    const payload = {
+      tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
+      format: format || null,
+      audio_types: audioTypes,
+      media_type: mediaType || null,
+      location: location.trim() || null,
+      owner: owner.trim() || null,
+      subtitles,
+      order_status: orderStatus || null,
+      personal_rating: personalRating ? Number(personalRating) : null,
+      personal_note: personalNote.trim() || null,
+      watched,
+      watched_at: watched && watchedAt ? watchedAt : null,
+    };
+    if (movie.id) {
+      const nextSerial = Number(serialNumberInput);
+      if (canEditSerial && nextSerial > 0 && nextSerial !== movie.serial_number) {
+        // BUGS.md #56 — er nummeret allerede taget i samme serie, bytter de
+        // to poster plads. Bekræft først, og vis hvilken titel man bytter med
+        // (kan være en digital TV-serie, da D#-serien er delt). Prefikset
+        // (M/D) styres af medietypen, ikke af noget man taster her.
+        const holder = await api.getSerialSwapTarget(movie.id, nextSerial);
+        if (holder?.title) {
+          const confirmed = window.confirm(
+            t("detail.serialSwapConfirm", { serial: nextSerial, title: holder.title })
+          );
+          if (!confirmed) return null;
+        }
+        payload.serial_number = nextSerial;
+      }
+    }
+    return payload;
+  }
+
   async function save() {
     setSaving(true);
     setError(null);
     try {
-      const payload = {
-        tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
-        format: format || null,
-        audio_types: audioTypes,
-        media_type: mediaType || null,
-        location: location.trim() || null,
-        owner: owner.trim() || null,
-        subtitles,
-        order_status: orderStatus || null,
-        personal_rating: personalRating ? Number(personalRating) : null,
-        personal_note: personalNote.trim() || null,
-        watched,
-        watched_at: watched && watchedAt ? watchedAt : null,
-      };
+      const payload = await buildPayload();
+      if (!payload) return; // fortrudt byt-plads-bekræftelse — finally nulstiller saving
       if (movie.id) {
-        const nextSerial = Number(serialNumberInput);
-        if (canEditSerial && nextSerial > 0 && nextSerial !== movie.serial_number) {
-          // BUGS.md #56 — er nummeret allerede taget i samme serie, bytter de
-          // to poster plads. Bekræft først, og vis hvilken titel man bytter med
-          // (kan være en digital TV-serie, da D#-serien er delt). Prefikset
-          // (M/D) styres af medietypen, ikke af noget man taster her.
-          const holder = await api.getSerialSwapTarget(movie.id, nextSerial);
-          if (holder?.title) {
-            const confirmed = window.confirm(
-              t("detail.serialSwapConfirm", { serial: nextSerial, title: holder.title })
-            );
-            if (!confirmed) return; // finally nulstiller saving
-          }
-          payload.serial_number = nextSerial;
-        }
         await api.updateMovie(movie.id, payload);
       } else {
         // "Kladde"-tilstand (feature #79) — intet er oprettet endnu, dette
@@ -1447,11 +1465,19 @@ export function MovieDetailModal({
     }
   }
 
+  // Feature #196 (Jan: "flyt til bibliotek fra ønskeliste til at man skal
+  // sætte alle parameter som i edit med en save") — sendte tidligere kun
+  // { is_wishlist: false } og smed alle felter man lige havde udfyldt i
+  // formularen (format, medietype, lokation, ejer osv.) væk. Genbruger nu
+  // buildPayload() præcis som save(), og sender is_wishlist:false i SAMME
+  // kald, så det reelt er "gem + flyt" i ét skridt.
   async function moveToLibrary() {
     setMoving(true);
     setError(null);
     try {
-      await api.updateMovie(movie.id, { is_wishlist: false });
+      const payload = await buildPayload();
+      if (!payload) return; // fortrudt byt-plads-bekræftelse — finally nulstiller moving
+      await api.updateMovie(movie.id, { ...payload, is_wishlist: false });
       onChanged();
       onClose();
     } catch (err) {
@@ -1893,7 +1919,7 @@ export function MovieDetailModal({
           )}
 
           {error && <div className="banner banner-error">{error}</div>}
-          {missingClassification && (
+          {(missingClassification || (movie.is_wishlist && missingClassificationForMove)) && (
             <div className="banner banner-info">{t("detail.classificationRequired")}</div>
           )}
         </div>
@@ -1920,7 +1946,12 @@ export function MovieDetailModal({
               </button>
             )}
             {movie.id && movie.is_wishlist && (
-              <button type="button" className="btn" onClick={moveToLibrary} disabled={moving}>
+              <button
+                type="button"
+                className="btn"
+                onClick={moveToLibrary}
+                disabled={moving || missingClassificationForMove}
+              >
                 {t(moving ? "detail.moving" : "detail.moveToLibrary")}
               </button>
             )}
@@ -1987,16 +2018,16 @@ function CollectionSection({ movie, onChanged }) {
 
   async function addPart(part) {
     setAddError(null);
-    // "Følg forælderen" (Jans valg 2026-08-11, BUGS.md #58): ser man en
-    // ønskeliste-film, tilføjes søsterfilmen til ønskelisten; ser man en ejet
-    // film, skal søsteren også ejes. En ejet biblioteksfilm kræver format +
-    // medietype (feature #92 / MovieCreate.require_media_type_and_format_for_library),
-    // som ikke kan vælges her i samlingslisten — så i stedet for at sende et
-    // kald vi ved backend afviser med 422, henviser vi til det fulde tilføj-flow.
-    if (!movie.is_wishlist) {
-      setAddError(t("collection.addNeedsFullFlow"));
-      return;
-    }
+    // Feature #196 (Jan: tilføj manglende dele af en serie/collection til
+    // ønskelisten, uanset om den film man ser på selv er ejet eller ønsket).
+    // Tidligere "fulgte" tilføjelsen forælderen (BUGS.md #58): en ejet films
+    // søster kunne kun tilføjes som EJET, hvilket krævede format + medietype
+    // (feature #92) — umuligt at vælge her i samlings-listen, så handlingen
+    // blev i stedet blokeret med en henvisning til det fulde tilføj-flow.
+    // Tilføjelse til ØNSKELISTEN har derimod aldrig krævet format/medietype,
+    // så der er ingen grund til at blokere den uanset forælderens status —
+    // kun direkte tilføjelse som ejet kræver stadig det fulde flow, og det
+    // tilbydes slet ikke fra denne liste længere.
     setAddingId(part.tmdb_id);
     try {
       await api.createMovie({ tmdb_id: part.tmdb_id, is_wishlist: true });
@@ -2046,13 +2077,7 @@ function CollectionSection({ movie, onChanged }) {
                     onClick={() => addPart(part)}
                     disabled={addingId === part.tmdb_id}
                   >
-                    {t(
-                      addingId === part.tmdb_id
-                        ? "collection.adding"
-                        : movie.is_wishlist
-                          ? "collection.addWish"
-                          : "collection.add"
-                    )}
+                    {t(addingId === part.tmdb_id ? "collection.adding" : "collection.addWish")}
                   </button>
                 )}
               </div>

@@ -1174,6 +1174,8 @@ export function TvShowDetailModal({
 
   // Feature #92 — se den identiske regel i Library.MovieDetailModal.
   const missingClassification = !show.is_wishlist && (!mediaType || !format);
+  // Feature #196 — se den identiske note i Library.MovieDetailModal.
+  const missingClassificationForMove = !mediaType || !format;
 
   function toggleWatched() {
     setWatched((prev) => {
@@ -1183,24 +1185,32 @@ export function TvShowDetailModal({
     });
   }
 
+  // Feature #196 — udtrukket fra save(), se den identiske note i
+  // Library.MovieDetailModal.buildPayload(). TV-serier har intet
+  // serienummer-felt i denne formular (kun film kan redigere det direkte),
+  // så her er det en ren, synkron felt-opbygning.
+  function buildPayload() {
+    return {
+      tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
+      format: format || null,
+      audio_types: audioTypes,
+      media_type: mediaType || null,
+      location: location.trim() || null,
+      owner: owner.trim() || null,
+      subtitles,
+      order_status: orderStatus || null,
+      personal_rating: personalRating ? Number(personalRating) : null,
+      personal_note: personalNote.trim() || null,
+      watched,
+      watched_at: watched && watchedAt ? watchedAt : null,
+    };
+  }
+
   async function save() {
     setSaving(true);
     setError(null);
     try {
-      const payload = {
-        tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
-        format: format || null,
-        audio_types: audioTypes,
-        media_type: mediaType || null,
-        location: location.trim() || null,
-        owner: owner.trim() || null,
-        subtitles,
-        order_status: orderStatus || null,
-        personal_rating: personalRating ? Number(personalRating) : null,
-        personal_note: personalNote.trim() || null,
-        watched,
-        watched_at: watched && watchedAt ? watchedAt : null,
-      };
+      const payload = buildPayload();
       if (show.id) {
         await api.updateTvShow(show.id, payload);
       } else {
@@ -1260,11 +1270,13 @@ export function TvShowDetailModal({
     }
   }
 
+  // Feature #196 — se den identiske note i Library.MovieDetailModal.moveToLibrary().
   async function moveToLibrary() {
     setMoving(true);
     setError(null);
     try {
-      await api.updateTvShow(show.id, { is_wishlist: false });
+      const payload = buildPayload();
+      await api.updateTvShow(show.id, { ...payload, is_wishlist: false });
       onChanged();
       onClose();
     } catch (err) {
@@ -1706,7 +1718,7 @@ export function TvShowDetailModal({
           )}
 
           {error && <div className="banner banner-error">{error}</div>}
-          {missingClassification && (
+          {(missingClassification || (show.is_wishlist && missingClassificationForMove)) && (
             <div className="banner banner-info">{t("detail.classificationRequired")}</div>
           )}
         </div>
@@ -1730,7 +1742,12 @@ export function TvShowDetailModal({
               </button>
             )}
             {show.id && show.is_wishlist && (
-              <button type="button" className="btn" onClick={moveToLibrary} disabled={moving}>
+              <button
+                type="button"
+                className="btn"
+                onClick={moveToLibrary}
+                disabled={moving || missingClassificationForMove}
+              >
                 {t(moving ? "detail.moving" : "detail.moveToLibrary")}
               </button>
             )}

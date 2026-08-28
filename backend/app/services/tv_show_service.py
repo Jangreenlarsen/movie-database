@@ -6,6 +6,7 @@ from pymongo.errors import DuplicateKeyError
 
 from app.core.config import settings
 from app.core.errors import (
+    ClassificationRequiredError,
     DuplicateBarcodeError,
     NotAuthorizedError,
     PlexFilterUnavailableError,
@@ -548,6 +549,15 @@ async def update_tv_show(
         media_type = requested_media_type or current_doc.get("media_type")
         if was_wishlist and not requested_wishlist:
             moved_to_library = True
+            # Feature #196 — se den identiske note i movie_service.update_movie.
+            format_value = fields.get("format") or current_doc.get("format")
+            missing = []
+            if not media_type:
+                missing.append("media_type")
+            if not format_value:
+                missing.append("format")
+            if missing:
+                raise ClassificationRequiredError(missing)
             assigned = await _assign_serial_number(
                 db,
                 False,

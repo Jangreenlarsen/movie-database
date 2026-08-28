@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.170.0 (build 0247) — 2026-08-23
+
+- **"Flyt til bibliotek" fra ønskelisten sender nu hele formularen** (format, medietype, lokation, ejer, tags m.m.) i ét gem-skridt, i stedet for kun at flytte posten uden de rettelser du lige har lavet. Kræver nu at medietype og format er valgt, før knappen kan bruges — samme krav som ved almindelig oprettelse.
+- **En ejet films collection-sektion kan nu tilføje manglende serie-dele til ønskelisten** direkte — tidligere kunne det kun gøres fra en ønske-post.
+
 ## v0.169.1 (build 0246) — 2026-08-23
 
 - **Rettet: scroll-stutter i biblioteket på mobil (Android)**. Fjernet en blur-effekt på kortenes badges (rating, serienummer, set, ønske, Plex), som viste sig at være hovedårsagen til en GPU-flaskehals under scroll. Bekræftet løst på telefonen.

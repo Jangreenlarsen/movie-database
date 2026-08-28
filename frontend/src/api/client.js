@@ -255,6 +255,8 @@ export const api = {
   updateSystemSettings: (payload) =>
     request("/settings/system", { method: "PATCH", body: JSON.stringify(payload) }),
   testSystemSetting: (key) => request(`/settings/system/test/${key}`, { method: "POST" }),
+  sendTestEmail: (to) =>
+    request("/settings/system/test-email", { method: "POST", body: JSON.stringify({ to }) }),
   // Feature #174 — adgangskode-politik (min-længde + kompleksitetskrav).
   getPasswordPolicy: () => request("/settings/password-policy"),
   updatePasswordPolicy: (payload) =>

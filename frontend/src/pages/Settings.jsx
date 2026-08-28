@@ -1567,6 +1567,7 @@ export function SystemSettingsSection() {
               currentValue={statusData.email_from_address}
               onSaved={load}
             />
+            <SendTestEmailRow />
           </div>
         </>
       )}
@@ -2492,6 +2493,59 @@ function ApiKeyRow({ label, field, status, onSaved, testable = true }) {
           </button>
         )}
       </div>
+    </form>
+  );
+}
+
+// Feature #199 (Jan: "lave også en email test funktion") — ægte ende-til-
+// ende-afsendelse, adskilt fra Resend-rækkens "Test forbindelse"-knap
+// (ApiKeyRow, testable=true ovenfor), som kun bekræfter selve nøglens
+// gyldighed — for en "sending access"-nøgle (Resends anbefalede, mindst
+// privilegerede type) kan den slet ikke bekræfte mere end det. Egen
+// modtager-adresse i stedet for automatisk at bruge admins egen e-mail, så
+// den kan bruges før man overhovedet har sat en selv.
+export function SendTestEmailRow() {
+  const t = useT();
+  const [to, setTo] = useState("");
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState(null);
+
+  async function submit(event) {
+    event.preventDefault();
+    setSending(true);
+    setResult(null);
+    try {
+      const outcome = await api.sendTestEmail(to);
+      setResult(outcome);
+    } catch (err) {
+      setResult({ ok: false, message: err.message });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <form className="serial-config-form" style={{ marginTop: 16 }} onSubmit={submit}>
+      <label>
+        {t("sys.testEmailTo")}
+        <input
+          type="email"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          placeholder={t("account.emailPlaceholder")}
+          required
+        />
+      </label>
+
+      {result && (
+        <div className={`banner ${result.ok ? "banner-info" : "banner-error"}`}>
+          {result.ok ? "✓" : "✗"} {result.message}
+        </div>
+      )}
+
+      <button type="submit" className="btn" disabled={sending || !to}>
+        {t(sending ? "sys.testEmailSending" : "sys.testEmailSend")}
+      </button>
     </form>
   );
 }

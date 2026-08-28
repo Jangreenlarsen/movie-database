@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.173.0 (build 0251) — 2026-08-23
+
+- **Ny "Send testmail"-knap** i Indstillinger → Eksterne API-nøgler → E-mail-notifikationer. Sender en rigtig e-mail til en adresse du selv vælger, så du kan bekræfte at Resend-opsætningen reelt virker — ikke kun at nøglen er gyldig.
+
 ## v0.172.0 (build 0250) — 2026-08-23
 
 - **Indstillinger → Eksterne API-nøgler er nu opdelt i overskuelige grupper** (Metadata, Stregkode-opslag, Vurderinger, Plex, Anthem AVM 70, E-mail) i stedet for én lang liste af felter.

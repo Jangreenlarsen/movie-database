@@ -19,6 +19,7 @@ import {
   PlexImportSection,
   PlexShieldSettingsRow,
   ScreeningRequestPolicySection,
+  SendTestEmailRow,
   SerialNumberSection,
   SystemSettingsSection,
   UsersSection,
@@ -1048,5 +1049,45 @@ describe("AccountSection — e-mail (feature #197)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Gem e-mail" }));
 
     await waitFor(() => expect(updateSpy).toHaveBeenCalledWith("u1", null));
+  });
+});
+
+/**
+ * Feature #199 (Jan: "lave også en email test funktion") — knappen der
+ * sender en ægte testmail, adskilt fra "Test forbindelse" (som kun
+ * bekræfter nøglens gyldighed). Det testværdige (regel 19): den indtastede
+ * adresse skal rent faktisk sendes med, og et succes-/fejlsvar skal vises
+ * korrekt — ellers ved en admin ikke om Resend-opsætningen reelt virker.
+ */
+describe("SendTestEmailRow (feature #199)", () => {
+  it("sender testmailen til den indtastede adresse og viser succes-beskeden", async () => {
+    const sendSpy = vi
+      .spyOn(api, "sendTestEmail")
+      .mockResolvedValue({ ok: true, message: "Testmail sendt — tjek indbakken (og evt. spam-mappen)" });
+    render(<SendTestEmailRow />);
+
+    await userEvent.type(screen.getByLabelText(/Send en testmail til/), "jan@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Send testmail" }));
+
+    await waitFor(() => expect(sendSpy).toHaveBeenCalledWith("jan@example.com"));
+    expect(await screen.findByText(/Testmail sendt/)).toBeInTheDocument();
+  });
+
+  it("viser den specifikke fejlbesked når Resend afviser afsendelsen", async () => {
+    vi.spyOn(api, "sendTestEmail").mockResolvedValue({
+      ok: false,
+      message: "Resend-nøgle og/eller e-mail-afsenderadresse mangler",
+    });
+    render(<SendTestEmailRow />);
+
+    await userEvent.type(screen.getByLabelText(/Send en testmail til/), "jan@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Send testmail" }));
+
+    expect(await screen.findByText(/nøgle og\/eller e-mail-afsenderadresse mangler/)).toBeInTheDocument();
+  });
+
+  it("knappen er deaktiveret uden en indtastet adresse", () => {
+    render(<SendTestEmailRow />);
+    expect(screen.getByRole("button", { name: "Send testmail" })).toBeDisabled();
   });
 });

@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.173.0 build 0251] — 2026-08-23 — feature: ægte "Send testmail"-funktion (FEATURES.md #199)
+
+Jan, efter at have bekræftet at Resends `{"name":"restricted_api_key","message":"This API key is restricted to only send emails","statusCode":401}` netop er den forventede reaktion fra en sending-access-nøgle på `GET /api-keys`: *"lave også en email test funktion"*.
+
+Den eksisterende "Test forbindelse" bekræfter kun nøglens gyldighed — for en sending-access-nøgle kan den ikke bekræfte mere end det. Ny `POST /api/settings/system/test-email` sender en RIGTIG mail via `email_client.send_email` til en valgfri adresse, med samme `{ok, message}`-svarform. Ny `SendTestEmailRow`-komponent i E-mail-notifikationer-kortet.
+
+Berørte filer: `backend/app/models/settings.py`, `backend/app/api/settings.py`, `backend/app/services/system_settings_service.py`, `frontend/src/pages/Settings.jsx`, `frontend/src/api/client.js`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`. Tests: backend +6, frontend +3 (162 i alt). Se FEATURES.md #199 for fuld detalje.
+
 ## [0.172.0 build 0250] — 2026-08-23 — feature: gruppér Eksterne API-nøgler i selvstændige kort (FEATURES.md #198)
 
 Jan, efter feature #197: *"få lige orginaseret den config side at det hele ikke kommer i en lang smøre"*.

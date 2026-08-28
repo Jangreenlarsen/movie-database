@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from app.models.scan import BarcodeSource
 
@@ -65,6 +65,14 @@ TestableApiKey = Literal[
 class ApiKeyTestResult(BaseModel):
     ok: bool
     message: str
+
+
+class TestEmailRequest(BaseModel):
+    """Feature #199 — modtageradresse for en ægte testmail, adskilt fra
+    `test_connection` ovenfor (som kun bekræfter nøglens gyldighed, ikke at
+    en mail rent faktisk kan afleveres end-to-end)."""
+
+    to: EmailStr
 
 
 class SystemSettingsStatus(BaseModel):

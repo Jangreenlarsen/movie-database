@@ -21,7 +21,9 @@ from app.repositories import (
     screening_repository,
     screening_request_repository,
     tv_show_repository,
+    user_repository,
 )
+from app.services import message_service
 
 
 async def _resolve_display_info(
@@ -164,7 +166,9 @@ async def request_screening(
         }
         try:
             created = await screening_request_repository.insert(db, document)
-            return await _to_request_model(db, created)
+            model = await _to_request_model(db, created)
+            await _notify_admins_of_new_request(db, username, model)
+            return model
         except DuplicateKeyError:
             # BUGS.md #44 — someone else created the pending request for this
             # same title between our find and our insert. The new partial
@@ -178,8 +182,33 @@ async def request_screening(
             if existing is None:
                 raise
 
+    # Feature #202 — kun en GENUIN ny tilslutning (ikke allerede på listen)
+    # er en notifikations-værdig nyhed for admin; add_requester's egen
+    # $ne-dedup gør et gentaget ønske fra samme bruger til en stille no-op,
+    # og det skal den blive ved med at være her også (checket FØR selve
+    # skrivningen, mens `existing` stadig er før-tilstanden).
+    already_requested = any(r.get("username") == username for r in existing.get("requested_by", []))
     updated = await screening_request_repository.add_requester(db, str(existing["_id"]), entry)
-    return await _to_request_model(db, updated)
+    model = await _to_request_model(db, updated)
+    if not already_requested:
+        await _notify_admins_of_new_request(db, username, model)
+    return model
+
+
+async def _notify_admins_of_new_request(
+    db: AsyncIOMotorDatabase, username: str, model: ScreeningRequest
+) -> None:
+    """Feature #202 — delt af begge grene i request_screening ovenfor (ny
+    titel vs. tilslutning til en eksisterende). Slår selv brugeren op, så
+    message_service.notify_admins_new_screening_request kan sende med den
+    korrekte afsender-identitet (samme mønster som `sender` alle andre
+    steder i besked-systemet)."""
+    requester = await user_repository.find_by_username_normalized(db, username.lower())
+    if requester is None:
+        return
+    await message_service.notify_admins_new_screening_request(
+        db, requester, model.title, is_tv=model.media_kind == "tv"
+    )
 
 
 async def list_requests(db: AsyncIOMotorDatabase, status: str | None = None) -> list[ScreeningRequest]:
@@ -192,20 +221,29 @@ async def list_my_requests(db: AsyncIOMotorDatabase, username: str) -> list[Scre
     return [await _to_request_model(db, doc) for doc in documents]
 
 
-async def decline_request(db: AsyncIOMotorDatabase, request_id: str) -> ScreeningRequest:
+async def decline_request(
+    db: AsyncIOMotorDatabase, request_id: str, admin: dict
+) -> ScreeningRequest:
     existing = await screening_request_repository.find_by_id(db, request_id)
     if existing is None:
         raise ScreeningRequestNotFoundError(request_id)
     updated = await screening_request_repository.set_status(
         db, request_id, "declined", datetime.now(timezone.utc)
     )
-    return await _to_request_model(db, updated)
+    model = await _to_request_model(db, updated)
+    # Feature #202 — svar til hver af de(n) bruger(e) der stod bag ønsket
+    # (existing, ikke updated — begge har samme requested_by, men existing
+    # er allerede i hånden). Best-effort, se message_service-funktionens
+    # egen try/except pr. modtager.
+    await message_service.notify_screening_request_declined(db, existing, admin, model.title)
+    return model
 
 
 async def create_screening(
-    db: AsyncIOMotorDatabase, payload: ScreeningCreate, created_by: str
+    db: AsyncIOMotorDatabase, payload: ScreeningCreate, admin: dict
 ) -> Screening:
     now = datetime.now(timezone.utc)
+    created_by = admin["username"]
 
     # BUGS.md #42 — validate the linked request BEFORE inserting anything.
     # This used to run after the insert, so scheduling against a stale
@@ -231,11 +269,20 @@ async def create_screening(
         "created_at": now,
     }
     created = await screening_repository.insert(db, document)
+    model = await _to_screening_model(db, created)
 
     if payload.request_id:
         await screening_request_repository.set_status(db, payload.request_id, "scheduled", now)
+        # Feature #202 — svar til hver af de(n) bruger(e) der ønskede den nu
+        # planlagte titel. `existing` er forespørgslens tilstand FØR
+        # scheduled-skiftet (hentet ovenfor til BUGS.md #42-valideringen),
+        # men `requested_by` ændres ikke af selve status-skiftet, så den er
+        # stadig den rigtige modtagerliste.
+        await message_service.notify_screening_request_scheduled(
+            db, existing, admin, model.title, model.scheduled_at
+        )
 
-    return await _to_screening_model(db, created)
+    return model
 
 
 async def list_screenings(

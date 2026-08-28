@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.176.0 build 0255] — 2026-08-28 — feature: besked-notifikationer for ønsker/forvisninger, begge retninger (FEATURES.md #202)
+
+Jan: *"besked system skal kunne sende hvis user opretter ønsker til forvisning og ønskeliste og svar skal sendes return hvis adm lave forandring for de ønsker/forvisninger, besked skal sendes i email samt på portal for user, email skal kun sendes hvis email er config på user konto"*.
+
+Ny bruger→admin-retning: `notify_admins_new_wishlist`/`notify_admins_new_screening_request` sender til hver aktiv admin (ny `user_repository.list_active_admins`) når en bruger opretter et ønske eller en forvisnings-anmodning — kun ved en genuin ny anmodning, ikke et gentaget ønske fra samme bruger. Ny admin→bruger-retning for forvisninger: `notify_screening_request_declined`/`notify_screening_request_scheduled` sender til HVER bruger bag en delt anmodning ved afvisning/planlægning (`decline_request`/`create_screening` udvidet til at modtage det fulde admin-dict). E-mail-delen ("kun hvis email er config") krævede ingen ny kode — dækket af feature #197's eksisterende `_send_emails`-infrastruktur, som allerede no-op'er stille pr. modtager uden en e-mail.
+
+Berørte filer: `backend/app/repositories/user_repository.py`, `backend/app/services/message_service.py`, `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`, `backend/app/services/screening_service.py`, `backend/app/api/screening_requests.py`, `backend/app/api/screenings.py`. Tests: ny `backend/tests/test_screening_notifications.py` (+10). Fuld backend-suite (870) grøn.
+
 ## [0.175.0 build 0254] — 2026-08-23 — feature: "Del af samlingen:" viser medietype for ejede dele (FEATURES.md #201)
 
 Jan: *"i edit detajle af film og i 'Del af samlingen:' skal fremgå om ... den er i digital eller fysiske version"*.

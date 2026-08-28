@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.176.0 (build 0255) — 2026-08-28
+
+- **Admin får nu besked (portal + e-mail) når en bruger opretter et nyt ønske på indkøbslisten eller et nyt ønske om visning i Voldby BIO.**
+- **Brugeren bag et forvisnings-ønske får nu selv besked igen** når admin afviser eller planlægger den ønskede titel — samme "portal + e-mail hvis konfigureret"-princip som resten af beskedsystemet.
+
 ## v0.175.0 (build 0254) — 2026-08-23
 
 - **"Del af samlingen:"-listen på en films detaljekort viser nu om en ejet del er fysisk eller digital** — ikke kun at den er ejet.

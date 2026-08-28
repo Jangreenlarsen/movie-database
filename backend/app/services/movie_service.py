@@ -45,6 +45,7 @@ from app.repositories import (
     screening_repository,
     screening_request_repository,
     tv_show_repository,
+    user_repository,
 )
 from app.repositories.sort_title import strip_leading_article
 from app.services import message_service, tag_service
@@ -300,7 +301,20 @@ async def create_movie(
             document["serial_number"] = serial_number
         try:
             created = await movie_repository.insert(db, document)
-            return _to_model(created)
+            model = _to_model(created)
+            # Feature #202 — admin får besked når nogen tilføjer et nyt
+            # ønske, samme "bruger→admin"-retning som notify_wishlist_*
+            # (ovenfor i update_movie) allerede dækker "admin→bruger". Kun
+            # for ønskeliste-poster, ikke almindelige biblioteks-oprettelser.
+            if payload.is_wishlist:
+                wisher = await user_repository.find_by_username_normalized(
+                    db, registered_by.lower()
+                )
+                if wisher is not None:
+                    await message_service.notify_admins_new_wishlist(
+                        db, wisher, model.title, is_tv=False
+                    )
+            return model
         except DuplicateKeyError as exc:
             if _is_serial_collision(exc):
                 continue

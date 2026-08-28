@@ -279,6 +279,132 @@ async def notify_wishlist_rejected(
         pass
 
 
+async def notify_admins_new_wishlist(
+    db: AsyncIOMotorDatabase,
+    wisher: dict,
+    title: str | None,
+    is_tv: bool,
+) -> None:
+    """Feature #202 — Jan: "besked system skal kunne sende hvis user
+    opretter ønsker til ... ønskeliste". Modparten til de fire
+    notify_wishlist_*-funktioner ovenfor (som går admin→bruger): her går
+    beskeden bruger→ALLE aktive admins, så de opdager et nyt ønske uden selv
+    at skulle tjekke biblioteket først. Springer den enkelte admin over hvis
+    de selv er ønskeren (ingen grund til en besked om sin egen handling)."""
+    admins = await user_repository.list_active_admins(db)
+    if not admins:
+        return
+    kind = "serie" if is_tv else "film"
+    display_title = title or kind
+    for admin_doc in admins:
+        if admin_doc.get("username") == wisher.get("username"):
+            continue
+        payload = MessageCreate(
+            subject="Nyt ønske på indkøbslisten",
+            body=f'{wisher.get("username")} har tilføjet "{display_title}" ({kind}) til ønskelisten.',
+            recipient_user_id=str(admin_doc["_id"]),
+        )
+        try:
+            await send(db, payload, wisher)
+        except Exception:
+            pass
+
+
+async def notify_admins_new_screening_request(
+    db: AsyncIOMotorDatabase,
+    requester: dict,
+    title: str | None,
+    is_tv: bool,
+) -> None:
+    """Feature #202 — Jan: "... og forvisning". Samme bruger→admin-retning
+    som notify_admins_new_wishlist ovenfor, for et nyt (eller et yderligere,
+    fra en anden bruger) ønske om at se en titel i Voldby BIO."""
+    admins = await user_repository.list_active_admins(db)
+    if not admins:
+        return
+    kind = "serie" if is_tv else "film"
+    display_title = title or kind
+    for admin_doc in admins:
+        if admin_doc.get("username") == requester.get("username"):
+            continue
+        payload = MessageCreate(
+            subject="Nyt ønske om visning i Voldby BIO",
+            body=f'{requester.get("username")} ønsker at se "{display_title}" ({kind}) i Voldby BIO.',
+            recipient_user_id=str(admin_doc["_id"]),
+        )
+        try:
+            await send(db, payload, requester)
+        except Exception:
+            pass
+
+
+async def notify_screening_request_declined(
+    db: AsyncIOMotorDatabase,
+    request_doc: dict,
+    admin: dict,
+    title: str | None,
+) -> None:
+    """Feature #202 — Jan: "svar skal sendes return hvis adm lave
+    forandring for de ønsker/forvisninger". Flere brugere kan stå bag samme
+    forvisnings-ønske (feature #62/#85s delte requested_by-liste) — hver af
+    dem får deres egen besked, samme "én send() pr. modtager"-mønster som de
+    fire notify_wishlist_*-funktioner ovenfor bruger for én bruger ad
+    gangen."""
+    requesters = request_doc.get("requested_by", [])
+    if not requesters:
+        return
+    display_title = title or "titlen"
+    for entry in requesters:
+        username = entry.get("username")
+        if not username or username == admin.get("username"):
+            continue
+        requester = await user_repository.find_by_username_normalized(db, username.lower())
+        if requester is None:
+            continue
+        payload = MessageCreate(
+            subject=f'Dit ønske om at se "{display_title}" blev afvist',
+            body=f'Dit ønske om at se "{display_title}" i Voldby BIO er desværre ikke blevet til noget.',
+            recipient_user_id=str(requester["_id"]),
+        )
+        try:
+            await send(db, payload, admin)
+        except Exception:
+            pass
+
+
+async def notify_screening_request_scheduled(
+    db: AsyncIOMotorDatabase,
+    request_doc: dict,
+    admin: dict,
+    title: str | None,
+    scheduled_at: datetime | None,
+) -> None:
+    """Feature #202 — modparten til notify_screening_request_declined
+    ovenfor: ønsket blev til en rigtig, planlagt visning i stedet for
+    afvist."""
+    requesters = request_doc.get("requested_by", [])
+    if not requesters:
+        return
+    display_title = title or "titlen"
+    when = f" d. {scheduled_at.strftime('%d/%m/%Y kl. %H:%M')}" if scheduled_at else ""
+    for entry in requesters:
+        username = entry.get("username")
+        if not username or username == admin.get("username"):
+            continue
+        requester = await user_repository.find_by_username_normalized(db, username.lower())
+        if requester is None:
+            continue
+        payload = MessageCreate(
+            subject=f'Din ønskede visning "{display_title}" er planlagt!',
+            body=f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}. 🎬',
+            recipient_user_id=str(requester["_id"]),
+        )
+        try:
+            await send(db, payload, admin)
+        except Exception:
+            pass
+
+
 async def list_sent(db: AsyncIOMotorDatabase) -> list[Message]:
     return [_to_model(document) for document in await message_repository.list_all(db)]
 

@@ -125,6 +125,15 @@ async def list_all(db: AsyncIOMotorDatabase) -> list[dict]:
     return await cursor.to_list(length=1000)
 
 
+async def list_active_admins(db: AsyncIOMotorDatabase) -> list[dict]:
+    """Feature #202 — bruges til at rundsende en notifikation specifikt til
+    admin-rollen (nyt ønske/ny forvisnings-anmodning oprettet), i modsætning
+    til message_service.send()s eksisterende `recipient_user_id=None`-gren,
+    som rammer ALLE aktive brugere uanset rolle."""
+    cursor = db[COLLECTION].find({"role": "admin", "status": "active"})
+    return await cursor.to_list(length=1000)
+
+
 async def find_all_raw(db: AsyncIOMotorDatabase) -> list[dict]:
     """Unbounded, includes `password_hash` — backs the full system backup
     (feature #61). A hash isn't the plaintext password (that's the whole

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.172.0 (build 0250) — 2026-08-23
+
+- **Indstillinger → Eksterne API-nøgler er nu opdelt i overskuelige grupper** (Metadata, Stregkode-opslag, Vurderinger, Plex, Anthem AVM 70, E-mail) i stedet for én lang liste af felter.
+
 ## v0.171.0 (build 0249) — 2026-08-23
 
 - **Udgående e-mail-notifikationer.** Sæt din e-mail i Indstillinger → Konto, så får du fremover også en mail når fx et ønske godkendes eller flyttes til biblioteket — ikke kun en besked inde i appen. Helt valgfrit; ingen mails uden en adresse sat. Admin sætter Resend-nøglen og afsenderadressen op i Indstillinger → Eksterne API-nøgler.

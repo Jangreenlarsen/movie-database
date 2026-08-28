@@ -1445,99 +1445,132 @@ export function SystemSettingsSection() {
   useEffect(load, []);
 
   return (
-    <div className="card settings-section">
-      <h2>{t("sys.heading")}</h2>
-      <p className="muted">{t("sys.description")}</p>
+    <>
+      <div className="card settings-section">
+        <h2>{t("sys.heading")}</h2>
+        <p className="muted">{t("sys.description")}</p>
 
-      {loadStatus === "loading" && <p className="muted">{t("common.loading")}</p>}
-      {loadStatus === "error" && (
-        <div className="banner banner-error">{t("sys.statusError")}</div>
-      )}
+        {loadStatus === "loading" && <p className="muted">{t("common.loading")}</p>}
+        {loadStatus === "error" && (
+          <div className="banner banner-error">{t("sys.statusError")}</div>
+        )}
+      </div>
 
       {loadStatus === "ready" && statusData && (
         <>
-          <PrimaryBarcodeSourceRow
-            currentValue={statusData.primary_barcode_source}
-            onSaved={load}
-          />
-          <ApiKeyRow
-            label="TMDb API-token"
-            field="tmdb_api_token"
-            status={statusData.tmdb_api_token}
-            onSaved={load}
-          />
-          <ApiKeyRow
-            label="Discogs-token"
-            field="discogs_token"
-            status={statusData.discogs_token}
-            onSaved={load}
-          />
-          <ApiKeyRow
-            label="UPCDatabase-token"
-            field="upcdatabase_token"
-            status={statusData.upcdatabase_token}
-            onSaved={load}
-          />
-          <ApiKeyRow
-            label="EAN-Search.org-token"
-            field="ean_search_api_key"
-            status={statusData.ean_search_api_key}
-            onSaved={load}
-          />
-          <ApiKeyRow
-            label={t("sys.omdbKey")}
-            field="omdb_api_key"
-            status={statusData.omdb_api_key}
-            onSaved={load}
-          />
-          <PlainSettingRow
-            label={t("sys.plexServerUrl")}
-            field="plex_server_url"
-            hint={t("sys.plexServerUrlHint")}
-            currentValue={statusData.plex_server_url}
-            onSaved={load}
-          />
-          <ApiKeyRow
-            label={t("sys.plexToken")}
-            field="plex_token"
-            status={statusData.plex_token}
-            onSaved={load}
-            testable={false}
-          />
-          <PlexShieldSettingsRow
-            currentValue={statusData.plex_shield_client_identifier}
-            onSaved={load}
-          />
-          <PlainSettingRow
-            label={t("sys.anthemHost")}
-            field="anthem_host"
-            hint={t("sys.anthemHostHint")}
-            currentValue={statusData.anthem_host}
-            onSaved={load}
-          />
-          <PlainSettingRow
-            label={t("sys.anthemPort")}
-            field="anthem_port"
-            hint={t("sys.anthemPortHint")}
-            currentValue={statusData.anthem_port}
-            onSaved={load}
-          />
-          <ApiKeyRow
-            label={t("sys.resendKey")}
-            field="resend_api_key"
-            status={statusData.resend_api_key}
-            onSaved={load}
-          />
-          <PlainSettingRow
-            label={t("sys.emailFromAddress")}
-            field="email_from_address"
-            hint={t("sys.emailFromAddressHint")}
-            currentValue={statusData.email_from_address}
-            onSaved={load}
-          />
+          {/* Feature #197-opfølgning (Jan: "få lige orginaseret den config
+              side at det hele ikke kommer i en lang smøre") — de ~13 rækker
+              stod tidligere i ét langt, ugrupperet kort. Opdelt i selvstændige
+              kort efter FORMÅL (samme mønster resten af Indstillinger-siden
+              allerede bruger — hvert kort er sin egen afgrænsede ting), ikke
+              alfabetisk eller efter hvornår nøglen blev tilføjet. */}
+          <div className="card settings-section">
+            <h2>{t("sys.groupMetadata")}</h2>
+            <ApiKeyRow
+              label="TMDb API-token"
+              field="tmdb_api_token"
+              status={statusData.tmdb_api_token}
+              onSaved={load}
+            />
+          </div>
+
+          <div className="card settings-section">
+            <h2>{t("sys.groupBarcode")}</h2>
+            <p className="muted">{t("sys.groupBarcodeDescription")}</p>
+            <PrimaryBarcodeSourceRow
+              currentValue={statusData.primary_barcode_source}
+              onSaved={load}
+            />
+            <ApiKeyRow
+              label="Discogs-token"
+              field="discogs_token"
+              status={statusData.discogs_token}
+              onSaved={load}
+            />
+            <ApiKeyRow
+              label="UPCDatabase-token"
+              field="upcdatabase_token"
+              status={statusData.upcdatabase_token}
+              onSaved={load}
+            />
+            <ApiKeyRow
+              label="EAN-Search.org-token"
+              field="ean_search_api_key"
+              status={statusData.ean_search_api_key}
+              onSaved={load}
+            />
+          </div>
+
+          <div className="card settings-section">
+            <h2>{t("sys.groupRatings")}</h2>
+            <ApiKeyRow
+              label={t("sys.omdbKey")}
+              field="omdb_api_key"
+              status={statusData.omdb_api_key}
+              onSaved={load}
+            />
+          </div>
+
+          <div className="card settings-section">
+            <h2>{t("sys.groupPlex")}</h2>
+            <PlainSettingRow
+              label={t("sys.plexServerUrl")}
+              field="plex_server_url"
+              hint={t("sys.plexServerUrlHint")}
+              currentValue={statusData.plex_server_url}
+              onSaved={load}
+            />
+            <ApiKeyRow
+              label={t("sys.plexToken")}
+              field="plex_token"
+              status={statusData.plex_token}
+              onSaved={load}
+              testable={false}
+            />
+            <PlexShieldSettingsRow
+              currentValue={statusData.plex_shield_client_identifier}
+              onSaved={load}
+            />
+          </div>
+
+          <div className="card settings-section">
+            <h2>{t("sys.groupAnthem")}</h2>
+            <PlainSettingRow
+              label={t("sys.anthemHost")}
+              field="anthem_host"
+              hint={t("sys.anthemHostHint")}
+              currentValue={statusData.anthem_host}
+              onSaved={load}
+            />
+            <PlainSettingRow
+              label={t("sys.anthemPort")}
+              field="anthem_port"
+              hint={t("sys.anthemPortHint")}
+              currentValue={statusData.anthem_port}
+              onSaved={load}
+            />
+          </div>
+
+          <div className="card settings-section">
+            <h2>{t("sys.groupEmail")}</h2>
+            <p className="muted">{t("sys.groupEmailDescription")}</p>
+            <ApiKeyRow
+              label={t("sys.resendKey")}
+              field="resend_api_key"
+              status={statusData.resend_api_key}
+              onSaved={load}
+            />
+            <PlainSettingRow
+              label={t("sys.emailFromAddress")}
+              field="email_from_address"
+              hint={t("sys.emailFromAddressHint")}
+              currentValue={statusData.email_from_address}
+              onSaved={load}
+            />
+          </div>
         </>
       )}
-    </div>
+    </>
   );
 }
 

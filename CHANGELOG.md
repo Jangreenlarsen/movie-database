@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.172.0 build 0250] — 2026-08-23 — feature: gruppér Eksterne API-nøgler i selvstændige kort (FEATURES.md #198)
+
+Jan, efter feature #197: *"få lige orginaseret den config side at det hele ikke kommer i en lang smøre"*.
+
+`SystemSettingsSection` havde ~13 rækker stablet i ét enkelt, ugrupperet kort. Opdelt i 6 kort efter formål: Film- & TV-metadata (TMDb), Stregkode-opslag (primær kilde + Discogs/UPCDatabase/EAN-search), Vurderinger (OMDb), Plex, Anthem AVM 70, E-mail-notifikationer (Resend) — samme mønster resten af Indstillinger-siden allerede bruger. Ren frontend, ingen data-/logik-ændring, samme genbrugte row-komponenter.
+
+Berørte filer: `frontend/src/pages/Settings.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Ingen nye tests nødvendige (regel 19 — rent visuel omgruppering). Set i browser (regel 18): DOM-geometri + skærmbilleder bekræftede korrekt, ikke-overlappende opdeling hele vejen ned. Fuld frontend-suite (159) grøn.
+
 ## [0.171.0 build 0249] — 2026-08-23 — feature: udgående e-mail-notifikationer via Resend (FEATURES.md #197)
 
 Jan: *"vil det være muligt at integrare et email besked system, og hvordan gøre vi lige med email server access"*, opfulgt: *"hvordan får vi afsendt vores emails fra system, hvis vi som udgangspunkt ikke har en privat email server"* — valgte en transaktions-mail-udbyder (Resend, HTTP-API) over SMTP-relæ eller egen postserver.

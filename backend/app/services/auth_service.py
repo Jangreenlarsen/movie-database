@@ -11,6 +11,7 @@ from app.core.errors import (
     InvalidCredentialsError,
     InvalidUserStatusTransitionError,
     LastAdminError,
+    NotAuthorizedError,
     UserNotFoundError,
     UsernameTakenError,
 )
@@ -34,6 +35,7 @@ def to_user_model(document: dict) -> User:
         id=str(document["_id"]),
         username=document["username"],
         full_name=document.get("full_name"),
+        email=document.get("email"),
         role=document.get("role", UserRole.STANDARD),
         status=document.get("status", UserStatus.ACTIVE),
         must_change_password=document.get("must_change_password", False),
@@ -296,6 +298,34 @@ async def update_user_plex_play(db: AsyncIOMotorDatabase, user_id: str, enabled:
         raise UserNotFoundError(user_id)
 
     updated = await user_repository.set_plex_play_enabled(db, user_id, enabled)
+    return to_user_model(updated)
+
+
+def _assert_can_edit_email(current_user: dict, user_id: str) -> None:
+    """Feature #197 — samme selv-eller-admin-form som
+    movie_service._assert_can_edit_serial_number, blot uden dens
+    "hvem registrerede den"-gren: her er det brugerens EGEN konto, ikke en
+    tredje ressource nogen registrerede. Håndhæves i backend, ikke kun
+    ved at skjule et felt i UI'et (CLAUDE.md regel 16)."""
+    is_admin = current_user.get("role") == "admin"
+    is_self = str(current_user.get("_id")) == user_id
+    if not (is_admin or is_self):
+        raise NotAuthorizedError("Kun brugeren selv eller en admin kan ændre denne e-mail")
+
+
+async def update_user_email(
+    db: AsyncIOMotorDatabase, user_id: str, email: str | None, current_user: dict
+) -> User:
+    """Feature #197 — e-mailen bruges udelukkende til udgående
+    notifikationer (message_service._send_emails); intet login/identitet
+    afhænger af den, i modsætning til username."""
+    target = await user_repository.find_by_id(db, user_id)
+    if target is None:
+        raise UserNotFoundError(user_id)
+
+    _assert_can_edit_email(current_user, user_id)
+
+    updated = await user_repository.set_email(db, user_id, email)
     return to_user_model(updated)
 
 

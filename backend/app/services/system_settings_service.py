@@ -1,7 +1,14 @@
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import ENV_DEFAULT_API_KEYS, settings
-from app.integrations import discogs_client, ean_search_client, omdb_client, tmdb_client, upcdatabase_client
+from app.integrations import (
+    discogs_client,
+    ean_search_client,
+    email_client,
+    omdb_client,
+    tmdb_client,
+    upcdatabase_client,
+)
 from app.models.settings import (
     ApiKeyStatus,
     ApiKeyTestResult,
@@ -30,6 +37,7 @@ _TEST_CONNECTION_CLIENTS = {
     "upcdatabase_token": upcdatabase_client,
     "ean_search_api_key": ean_search_client,
     "omdb_api_key": omdb_client,
+    "resend_api_key": email_client,
 }
 
 # Rendered as a masked ApiKeyStatus (configured/source only) in GET responses
@@ -87,6 +95,7 @@ async def get_status(db: AsyncIOMotorDatabase) -> SystemSettingsStatus:
         plex_shield_client_identifier=settings.plex_shield_client_identifier,
         anthem_host=settings.anthem_host,
         anthem_port=settings.anthem_port,
+        email_from_address=settings.email_from_address,
     )
 
 

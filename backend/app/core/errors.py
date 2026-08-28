@@ -287,6 +287,17 @@ class NoRecipientsError(Exception):
         super().__init__("Der er ingen aktive brugere at sende beskeden til")
 
 
+class EmailRateLimitedError(Exception):
+    """Feature #197 — samme begrundelse som TmdbRateLimitedError ovenfor:
+    stopper message_service._send_emails' løkke over flere modtagere med
+    det samme ved et 429 fra Resend, i stedet for at blive ved med at
+    forsøge resten af en allerede rate-limitet udsendelse (CLAUDE.md regel
+    16's bulk-eksternt-API-princip)."""
+
+    def __init__(self):
+        super().__init__("Resend rate-limit ramt (429)")
+
+
 class ReservationNotFoundError(Exception):
     """Feature #133 — sæde-reservationen findes ikke (eller er allerede
     annulleret/afvist af en anden)."""

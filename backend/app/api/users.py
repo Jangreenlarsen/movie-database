@@ -12,6 +12,7 @@ from app.models.user import (
     PasswordChange,
     PasswordResetResult,
     User,
+    UserEmailUpdate,
     UserPlexPlayUpdate,
     UserRoleUpdate,
     UserSettingsUpdate,
@@ -102,6 +103,21 @@ async def update_user_status(
         updated.username,
     )
     return updated
+
+
+@router.patch("/{user_id}/email", response_model=User)
+async def update_user_email(
+    user_id: str,
+    payload: UserEmailUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """Feature #197 — bevidst UDEN `require_admin`: brugeren må sætte sin
+    egen e-mail selv (adgangs-splittet mellem selv/admin ligger i
+    auth_service._assert_can_edit_email, samme princip som
+    movie_service._assert_can_edit_serial_number). Bruges udelukkende til
+    udgående notifikationer."""
+    return await auth_service.update_user_email(db, user_id, payload.email, current_user)
 
 
 @router.patch(

@@ -165,6 +165,16 @@ async def set_plex_play_enabled(db: AsyncIOMotorDatabase, user_id: str, enabled:
     return await db[COLLECTION].find_one({"_id": ObjectId(user_id)})
 
 
+async def set_email(db: AsyncIOMotorDatabase, user_id: str, email: str | None) -> dict | None:
+    """Feature #197. `None` clears the field (stored as `null`, not an
+    unset/missing key — consistent with how other optional profile fields
+    on this collection are cleared)."""
+    if not ObjectId.is_valid(user_id):
+        return None
+    await db[COLLECTION].update_one({"_id": ObjectId(user_id)}, {"$set": {"email": email}})
+    return await db[COLLECTION].find_one({"_id": ObjectId(user_id)})
+
+
 async def set_password_hash(
     db: AsyncIOMotorDatabase, user_id: str, password_hash: str, must_change_password: bool
 ) -> None:

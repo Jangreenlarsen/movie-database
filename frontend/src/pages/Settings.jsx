@@ -63,7 +63,7 @@ export default function Settings({ user, onSettingsChanged }) {
 
       {activeTab === "konto" && (
         <>
-          <AccountSection user={user} />
+          <AccountSection user={user} onSettingsChanged={onSettingsChanged} />
           <CardSizeSection cardSize={user.settings.card_size} onSettingsChanged={onSettingsChanged} />
           <LanguageSection language={user.settings.language} onSettingsChanged={onSettingsChanged} />
           <ThemeSection theme={user.settings.theme} onSettingsChanged={onSettingsChanged} />
@@ -133,13 +133,23 @@ export default function Settings({ user, onSettingsChanged }) {
   );
 }
 
-function AccountSection({ user }) {
+// Feature #197 — navngivet export, kun til test (regel 19), samme mønster
+// som UsersSection/PlexShieldSettingsRow.
+export function AccountSection({ user, onSettingsChanged }) {
   const t = useT();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
+
+  // Feature #197 — brugerens egen e-mail, kun brugt til udgående
+  // notifikationer. Egen lille gem-tilstand, adskilt fra password-formen
+  // ovenfor (to uafhængige handlinger, ikke ét samlet "gem alt"-tryk).
+  const [email, setEmail] = useState(user.email ?? "");
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailSaved, setEmailSaved] = useState(false);
+  const [emailError, setEmailError] = useState(null);
 
   async function changePassword(event) {
     event.preventDefault();
@@ -158,6 +168,22 @@ function AccountSection({ user }) {
     }
   }
 
+  async function saveEmail(event) {
+    event.preventDefault();
+    setEmailSaving(true);
+    setEmailSaved(false);
+    setEmailError(null);
+    try {
+      const updated = await api.updateMyEmail(user.id, email.trim() || null);
+      onSettingsChanged(updated);
+      setEmailSaved(true);
+    } catch (err) {
+      setEmailError(err.message);
+    } finally {
+      setEmailSaving(false);
+    }
+  }
+
   return (
     <div className="card settings-account">
       <div className="modal-section-label">{t("account.heading")}</div>
@@ -173,6 +199,28 @@ function AccountSection({ user }) {
           )}
         </span>
       </p>
+
+      <form className="serial-config-form" onSubmit={saveEmail} style={{ marginBottom: 20 }}>
+        <label>
+          {t("account.email")}
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder={t("account.emailPlaceholder")}
+          />
+        </label>
+        <p className="muted" style={{ margin: 0 }}>
+          {t("account.emailHint")}
+        </p>
+
+        {emailError && <div className="banner banner-error">{emailError}</div>}
+        {emailSaved && <div className="banner banner-info">{t("account.emailSaved")}</div>}
+
+        <button type="submit" className="btn btn-primary" disabled={emailSaving}>
+          {t(emailSaving ? "common.saving" : "account.saveEmail")}
+        </button>
+      </form>
 
       <form className="serial-config-form" onSubmit={changePassword}>
         <label>
@@ -1376,7 +1424,9 @@ function TmdbSyncSection({ titleKey, descriptionKey, buttonLabelKey, itemLabelKe
   );
 }
 
-function SystemSettingsSection() {
+// Feature #197 — navngivet export, kun til test (regel 19), samme mønster
+// som UsersSection/PlexShieldSettingsRow.
+export function SystemSettingsSection() {
   const t = useT();
   const [statusData, setStatusData] = useState(null);
   const [loadStatus, setLoadStatus] = useState("loading");
@@ -1470,6 +1520,19 @@ function SystemSettingsSection() {
             field="anthem_port"
             hint={t("sys.anthemPortHint")}
             currentValue={statusData.anthem_port}
+            onSaved={load}
+          />
+          <ApiKeyRow
+            label={t("sys.resendKey")}
+            field="resend_api_key"
+            status={statusData.resend_api_key}
+            onSaved={load}
+          />
+          <PlainSettingRow
+            label={t("sys.emailFromAddress")}
+            field="email_from_address"
+            hint={t("sys.emailFromAddressHint")}
+            currentValue={statusData.email_from_address}
             onSaved={load}
           />
         </>

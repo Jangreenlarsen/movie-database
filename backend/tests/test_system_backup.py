@@ -78,12 +78,14 @@ async def test_backup_includes_all_expected_collections(client, monkeypatch):
     # Feature #183 added anthem_host/anthem_port — anthem_port is always its
     # actual effective value (never ""), since an int has no meaningful
     # "cleared" empty-string sentinel the way the string fields do.
+    # Feature #197 added email_from_address (Resend sender address).
     assert data["system_settings_plain"] == {
         "plex_server_url": "",
         "primary_barcode_source": "",
         "plex_shield_client_identifier": "",
         "anthem_host": "",
         "anthem_port": 14999,
+        "email_from_address": "",
     }
     # Feature #174 — den nyeste tilføjelse til samme system_settings-
     # dokument, checket ind fra dag ét i stedet for at blive opdaget
@@ -120,6 +122,7 @@ async def test_backup_includes_plain_settings_but_never_secret_ones(client):
         "plex_shield_client_identifier": "",
         "anthem_host": "",
         "anthem_port": 14999,
+        "email_from_address": "",
     }
     assert "super-secret-token" not in response.text
     assert "tmdb_api_token" not in data["system_settings_plain"]

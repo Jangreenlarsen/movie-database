@@ -21,6 +21,8 @@ OVERRIDABLE_KEYS = (
     "plex_shield_client_identifier",
     "anthem_host",
     "anthem_port",
+    "resend_api_key",
+    "email_from_address",
 )
 
 # The only overridable keys that aren't secrets (CLAUDE.md regel 6 —
@@ -34,6 +36,11 @@ PLAIN_KEYS = (
     "plex_shield_client_identifier",
     "anthem_host",
     "anthem_port",
+    # Feature #197 — email_from_address er en "Fra"-adresse, ikke en
+    # hemmelighed (samme princip som plex_server_url ovenfor). resend_api_key
+    # er bevidst UDELADT her — den er en rigtig hemmelighed, masket som de
+    # øvrige fem secrets.
+    "email_from_address",
 )
 
 

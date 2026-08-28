@@ -110,6 +110,20 @@ class Settings(BaseSettings):
     anthem_host: str = ""
     anthem_port: int = 14999
 
+    # Feature #197 — udgående e-mail-notifikationer via Resend
+    # (https://resend.com), en HTTP-API-baseret transaktions-mail-udbyder
+    # (Jans valg, efter at være gjort opmærksom på at appen ikke har nogen
+    # privat postserver). `resend_api_key` er en rigtig hemmelighed (masket,
+    # samme mønster som tmdb_api_token ovenfor). `email_from_address` er
+    # IKKE en hemmelighed — den optræder i hver afsendt mails synlige
+    # "Fra"-felt uanset, så den vises med sin faktiske værdi via
+    # GET /api/settings/system, samme princip som plex_server_url/anthem_host.
+    # Ingen separat "slået til"-kontakt: er begge sat, forsøges e-mails
+    # sendt — præcis som TMDb/Discogs/OMDb/Plex ikke har deres egen
+    # aktiverings-boks ud over selve nøglen.
+    resend_api_key: str = ""
+    email_from_address: str = ""
+
     log_level: str = "INFO"
     cors_origins: str = "http://localhost:5173"
 
@@ -178,6 +192,8 @@ ENV_DEFAULT_API_KEYS: dict[str, str] = {
     "plex_shield_client_identifier": settings.plex_shield_client_identifier,
     "primary_barcode_source": settings.primary_barcode_source,
     "anthem_host": settings.anthem_host,
+    "resend_api_key": settings.resend_api_key,
+    "email_from_address": settings.email_from_address,
     # anthem_port er bevidst UDELADT her: denne dict bruges kun til at
     # falde tilbage til .env-værdien når en admin rydder en override tilbage
     # til tom streng (se system_settings_service.update_settings) — det

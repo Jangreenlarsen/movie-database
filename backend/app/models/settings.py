@@ -53,7 +53,12 @@ class ApiKeyStatus(BaseModel):
 # — Plex har sin egen tilgængeligheds-tjek pr. film og er bevidst udeladt
 # her, for ikke at duplikere den mekanisme.
 TestableApiKey = Literal[
-    "tmdb_api_token", "discogs_token", "upcdatabase_token", "ean_search_api_key", "omdb_api_key"
+    "tmdb_api_token",
+    "discogs_token",
+    "upcdatabase_token",
+    "ean_search_api_key",
+    "omdb_api_key",
+    "resend_api_key",
 ]
 
 
@@ -81,6 +86,11 @@ class SystemSettingsStatus(BaseModel):
     # Feature #183 — Anthem AVM 70's IP/port. Heller ikke en hemmelighed.
     anthem_host: str
     anthem_port: int
+    # Feature #197 — udgående e-mail (Resend). Nøglen er en rigtig
+    # hemmelighed (masket som de øvrige ApiKeyStatus-felter ovenfor);
+    # afsenderadressen er det ikke (samme princip som plex_server_url).
+    resend_api_key: ApiKeyStatus
+    email_from_address: str
 
 
 class SystemSettingsUpdate(BaseModel):
@@ -99,6 +109,8 @@ class SystemSettingsUpdate(BaseModel):
     plex_shield_client_identifier: str | None = Field(default=None, max_length=100)
     anthem_host: str | None = Field(default=None, max_length=255)
     anthem_port: int | None = Field(default=None, ge=1, le=65535)
+    resend_api_key: str | None = Field(default=None, max_length=500)
+    email_from_address: str | None = Field(default=None, max_length=255)
 
 
 # Feature #174 — adgangskode-politik (Jan: "vi skal have en password politik

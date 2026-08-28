@@ -99,6 +99,12 @@ export const api = {
   me: () => request("/users/me"),
   updateMySettings: (payload) =>
     request("/users/me/settings", { method: "PATCH", body: JSON.stringify(payload) }),
+  // Feature #197 — `userId` (ikke "me") fordi endpointet også tillader en
+  // admin at sætte en ANDEN brugers e-mail (backend afgør selv om kalderen
+  // må, se auth_service._assert_can_edit_email); self-service kalder den
+  // blot med sit eget id.
+  updateMyEmail: (userId, email) =>
+    request(`/users/${userId}/email`, { method: "PATCH", body: JSON.stringify({ email }) }),
   changeMyPassword: (currentPassword, newPassword) =>
     request("/users/me/password", {
       method: "POST",

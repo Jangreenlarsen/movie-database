@@ -260,3 +260,44 @@ async def test_test_connection_reports_failure_message(client, monkeypatch):
     response = await client.post("/api/settings/system/test/tmdb_api_token")
     assert response.status_code == 200
     assert response.json() == {"ok": False, "message": "TMDb afviste nøglen (ugyldig)"}
+
+
+# Feature #197 — Resend (udgående e-mail-notifikationer). resend_api_key er
+# en hemmelighed (masket, samme mønster som de øvrige nøgler ovenfor);
+# email_from_address er det ikke (samme "faktiske værdi"-princip som
+# plex_server_url/anthem_host ovenfor).
+
+
+async def test_resend_api_key_behaves_like_the_other_secrets(client, monkeypatch):
+    monkeypatch.setattr(settings, "resend_api_key", "")
+
+    response = await client.patch("/api/settings/system", json={"resend_api_key": "resend-secret-abc"})
+    assert response.json()["resend_api_key"] == {"configured": True, "source": "custom"}
+    assert "resend-secret-abc" not in response.text
+    assert settings.resend_api_key == "resend-secret-abc"
+
+
+async def test_email_from_address_is_returned_with_its_actual_value(client, monkeypatch):
+    monkeypatch.setattr(settings, "email_from_address", "")
+
+    response = await client.patch(
+        "/api/settings/system", json={"email_from_address": "Voldby BIO <noreply@laces.dk>"}
+    )
+    assert response.status_code == 200
+    assert response.json()["email_from_address"] == "Voldby BIO <noreply@laces.dk>"
+
+    get_response = await client.get("/api/settings/system")
+    assert get_response.json()["email_from_address"] == "Voldby BIO <noreply@laces.dk>"
+
+
+async def test_test_connection_dispatches_to_the_email_client(client, monkeypatch):
+    from app.integrations import email_client
+
+    async def fake_test_connection():
+        return True, "Virker (fuld adgang)"
+
+    monkeypatch.setattr(email_client, "test_connection", fake_test_connection)
+
+    response = await client.post("/api/settings/system/test/resend_api_key")
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "message": "Virker (fuld adgang)"}

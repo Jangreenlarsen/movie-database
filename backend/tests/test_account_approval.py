@@ -425,6 +425,68 @@ async def test_fresh_login_with_the_temporary_password_reflects_must_change_pass
         assert login.json()["must_change_password"] is True
 
 
+async def test_user_can_set_their_own_email(client):
+    """Feature #197 — udelukkende brugt til udgående notifikationer, intet
+    login/identitet afhænger af den (i modsætning til username)."""
+    second, body = await _register("emailowner")
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "active"})
+
+    resp = await second.patch(f"/api/users/{body['id']}/email", json={"email": "own@example.com"})
+    assert resp.status_code == 200
+    assert resp.json()["email"] == "own@example.com"
+    await second.aclose()
+
+
+async def test_a_different_standard_user_cannot_set_someone_elses_email(client):
+    second, body = await _register("emailtarget")
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "active"})
+    await second.aclose()
+
+    third, third_body = await _register("emailintruder")
+    await client.patch(f"/api/users/{third_body['id']}/status", json={"status": "active"})
+
+    resp = await third.patch(f"/api/users/{body['id']}/email", json={"email": "sneaky@example.com"})
+    assert resp.status_code == 403
+    await third.aclose()
+
+
+async def test_admin_can_set_another_users_email(client):
+    second, body = await _register("emailbyadmin")
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "active"})
+    await second.aclose()
+
+    resp = await client.patch(f"/api/users/{body['id']}/email", json={"email": "set-by-admin@example.com"})
+    assert resp.status_code == 200
+    assert resp.json()["email"] == "set-by-admin@example.com"
+
+
+async def test_setting_email_of_unknown_user_returns_404(client):
+    resp = await client.patch(
+        "/api/users/000000000000000000000000/email", json={"email": "x@example.com"}
+    )
+    assert resp.status_code == 404
+
+
+async def test_malformed_email_is_rejected(client):
+    second, body = await _register("bademail")
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "active"})
+    await second.aclose()
+
+    resp = await client.patch(f"/api/users/{body['id']}/email", json={"email": "not-an-email"})
+    assert resp.status_code == 422
+
+
+async def test_blank_email_clears_the_field(client):
+    second, body = await _register("clearemail")
+    await client.patch(f"/api/users/{body['id']}/status", json={"status": "active"})
+    await second.aclose()
+
+    await client.patch(f"/api/users/{body['id']}/email", json={"email": "was-set@example.com"})
+    cleared = await client.patch(f"/api/users/{body['id']}/email", json={"email": ""})
+    assert cleared.status_code == 200
+    assert cleared.json()["email"] is None
+
+
 async def test_voluntary_password_change_does_not_set_must_change_password(client):
     """En almindelig, selvvalgt adgangskodeskift (ikke udløst af et
     admin-reset) må aldrig efterlade brugeren som om skiftet var tvunget."""

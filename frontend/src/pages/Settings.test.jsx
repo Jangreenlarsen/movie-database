@@ -5,12 +5,13 @@
  * (regel 19).
  */
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "../api/client";
 import {
+  AccountSection,
   AnthemDiagnosticsSection,
   DeploySection,
   PasswordPolicySection,
@@ -19,6 +20,7 @@ import {
   PlexShieldSettingsRow,
   ScreeningRequestPolicySection,
   SerialNumberSection,
+  SystemSettingsSection,
   UsersSection,
   formatUptime,
 } from "./Settings";
@@ -930,5 +932,121 @@ describe("SerialFreeList — ledige numre som dropdown (BUGS.md #86)", () => {
 
     await screen.findByRole("option", { name: "M#1" });
     expect(screen.queryByText(/viser kun de/)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Feature #197 — udgående e-mail via Resend. Det testværdige (regel 19):
+ * de to nye Indstillinger-rækker skal rent faktisk sende det rigtige felt-
+ * navn med til `updateSystemSettings`, samme som enhver anden
+ * nøgle/plain-række på denne side — en kopiér-fejl her ville stille sætte
+ * en helt anden nøgle end den admin troede de rettede.
+ */
+describe("SystemSettingsSection — Resend/e-mail (feature #197)", () => {
+  const fullStatus = {
+    tmdb_api_token: { configured: false, source: "unset" },
+    discogs_token: { configured: false, source: "unset" },
+    upcdatabase_token: { configured: false, source: "unset" },
+    ean_search_api_key: { configured: false, source: "unset" },
+    omdb_api_key: { configured: false, source: "unset" },
+    plex_token: { configured: false, source: "unset" },
+    plex_server_url: "",
+    primary_barcode_source: "upcitemdb",
+    plex_shield_client_identifier: "",
+    anthem_host: "",
+    anthem_port: 14999,
+    resend_api_key: { configured: false, source: "unset" },
+    email_from_address: "",
+  };
+
+  beforeEach(() => {
+    vi.spyOn(api, "getSystemSettings").mockResolvedValue(fullStatus);
+  });
+
+  it("gemmer resend_api_key under det rigtige feltnavn", async () => {
+    const updateSpy = vi.spyOn(api, "updateSystemSettings").mockResolvedValue({});
+    render(<SystemSettingsSection />);
+
+    // Flere rækker deler samme "Ikke sat"-pladsholder — find NETOP Resend-
+    // rækkens felt via dens label, og hold sig til dens egen form/knap
+    // resten af vejen, så testen ikke ved et tilfælde rammer en anden nøgle.
+    const input = await screen.findByLabelText(/Resend API-nøgle/);
+    await userEvent.type(input, "re_test_key");
+    const form = input.closest("form");
+    await userEvent.click(within(form).getByRole("button", { name: "Gem" }));
+
+    await waitFor(() =>
+      expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({ resend_api_key: "re_test_key" }))
+    );
+  });
+
+  it("gemmer email_from_address som almindelig tekst, ikke maskeret", async () => {
+    const updateSpy = vi.spyOn(api, "updateSystemSettings").mockResolvedValue({});
+    render(<SystemSettingsSection />);
+
+    const input = await screen.findByLabelText(/E-mail-afsenderadresse/);
+    await userEvent.type(input, "Voldby BIO <noreply@laces.dk>");
+    const form = input.closest("form");
+    await userEvent.click(within(form).getByRole("button", { name: "Gem" }));
+
+    await waitFor(() =>
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ email_from_address: "Voldby BIO <noreply@laces.dk>" })
+      )
+    );
+  });
+});
+
+/**
+ * Feature #197 — brugerens egen e-mail (Indstillinger → Konto), kun brugt
+ * til udgående notifikationer. Det testværdige (regel 19): en vellykket
+ * gemning skal give den opdaterede bruger videre til `onSettingsChanged`
+ * (ellers ville resten af appen blive ved med at vise den GAMLE e-mail
+ * indtil næste fulde sideindlæsning), og en backend-fejl skal vises som
+ * den specifikke besked (regel 16), ikke bare forsvinde.
+ */
+describe("AccountSection — e-mail (feature #197)", () => {
+  const baseUser = { id: "u1", username: "jan", role: "standard", email: null };
+
+  it("gemmer e-mailen og giver den opdaterede bruger videre til onSettingsChanged", async () => {
+    const updated = { ...baseUser, email: "jan@example.com" };
+    vi.spyOn(api, "updateMyEmail").mockResolvedValue(updated);
+    const onSettingsChanged = vi.fn();
+
+    render(<AccountSection user={baseUser} onSettingsChanged={onSettingsChanged} />);
+
+    await userEvent.type(screen.getByLabelText("E-mail"), "jan@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Gem e-mail" }));
+
+    await waitFor(() => expect(api.updateMyEmail).toHaveBeenCalledWith("u1", "jan@example.com"));
+    expect(onSettingsChanged).toHaveBeenCalledWith(updated);
+    expect(await screen.findByText("E-mail gemt!")).toBeInTheDocument();
+  });
+
+  it("viser backendens specifikke fejlbesked i stedet for at sluge den", async () => {
+    // Syntaktisk gyldig nok til at bestå <input type="email">s egen native
+    // browser-validering (ellers når submit-handleren aldrig at køre i
+    // jsdom) — selve pointen er at bekræfte at EN fejl fra backend vises
+    // med sin specifikke besked (regel 16), ikke frontendens eget formatkrav.
+    vi.spyOn(api, "updateMyEmail").mockRejectedValue(new Error("value is not a valid email address"));
+    render(<AccountSection user={baseUser} onSettingsChanged={vi.fn()} />);
+
+    await userEvent.type(screen.getByLabelText("E-mail"), "en.email@eksempel.dk");
+    await userEvent.click(screen.getByRole("button", { name: "Gem e-mail" }));
+
+    expect(await screen.findByText("value is not a valid email address")).toBeInTheDocument();
+  });
+
+  it("sender null (ikke tom streng) når feltet ryddes, så backend rydder e-mailen i stedet for at afvise den", async () => {
+    const updateSpy = vi
+      .spyOn(api, "updateMyEmail")
+      .mockResolvedValue({ ...baseUser, email: null });
+    render(<AccountSection user={{ ...baseUser, email: "old@example.com" }} onSettingsChanged={vi.fn()} />);
+
+    const input = screen.getByLabelText("E-mail");
+    await userEvent.clear(input);
+    await userEvent.click(screen.getByRole("button", { name: "Gem e-mail" }));
+
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith("u1", null));
   });
 });

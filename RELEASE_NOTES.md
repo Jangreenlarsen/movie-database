@@ -1,5 +1,13 @@
 # Release Notes
 
+## v0.171.0 (build 0249) — 2026-08-23
+
+- **Udgående e-mail-notifikationer.** Sæt din e-mail i Indstillinger → Konto, så får du fremover også en mail når fx et ønske godkendes eller flyttes til biblioteket — ikke kun en besked inde i appen. Helt valgfrit; ingen mails uden en adresse sat. Admin sætter Resend-nøglen og afsenderadressen op i Indstillinger → Eksterne API-nøgler.
+
+## v0.170.0 (build 0248) — 2026-08-23
+
+- Ingen ny funktionalitet — bekræftet og testdækket at "+ Ønskeliste"-knappen i en films samlingsliste allerede skifter til "På indkøbslisten", så samme del ikke kan tilføjes to gange.
+
 ## v0.170.0 (build 0247) — 2026-08-23
 
 - **"Flyt til bibliotek" fra ønskelisten sender nu hele formularen** (format, medietype, lokation, ejer, tags m.m.) i ét gem-skridt, i stedet for kun at flytte posten uden de rettelser du lige har lavet. Kræver nu at medietype og format er valgt, før knappen kan bruges — samme krav som ved almindelig oprettelse.

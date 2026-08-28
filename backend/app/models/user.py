@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.core.config import settings
 
@@ -282,12 +282,37 @@ class UserPlexPlayUpdate(BaseModel):
     enabled: bool
 
 
+class UserEmailUpdate(BaseModel):
+    """Feature #197 — sat af brugeren selv eller en admin (se
+    auth_service._assert_can_edit_email), udelukkende brugt til udgående
+    e-mail-notifikationer. `None`/tom streng rydder feltet igen — samme
+    trim/tom-til-None-mønster som UserRegister.full_name_clean, kørt FØR
+    Pydantics egen EmailStr-formatvalidering (mode="before"), så en
+    tomt-udfyldt formular ikke fejler som "ugyldig e-mail" i stedet for
+    bare at blive tolket som "ryd feltet"."""
+
+    email: EmailStr | None = Field(default=None, max_length=254)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def blank_to_none(cls, value):
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
+
+
 class User(BaseModel):
     id: str
     username: str
     # Feature #140 — vises for admin (bruger-listen) og for brugeren selv
     # (/users/me). None på konti oprettet før feltet eller via API uden det.
     full_name: str | None = None
+    # Feature #197 — valgfri, sat af brugeren selv (Indstillinger → Konto)
+    # eller en admin, brugt udelukkende til udgående e-mail-notifikationer.
+    # Plain `str` på læse-siden med vilje (ikke `EmailStr`) — allerede gemte,
+    # tidligere validerede data skal ikke revalideres ved hver læsning.
+    email: str | None = None
     role: UserRole
     status: UserStatus
     # Feature #172 — sat af en admin-nulstilling (#171), ryddet igen af en

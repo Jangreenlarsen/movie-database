@@ -8,6 +8,9 @@ læst den.
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
+from app.core.config import settings
+from app.core.errors import EmailRateLimitedError
+from app.integrations import email_client
 from app.main import app
 
 
@@ -190,3 +193,109 @@ async def test_deleting_an_unknown_message_is_a_404(client):
 async def test_inbox_requires_login(raw_client):
     response = await raw_client.get("/api/messages/inbox")
     assert response.status_code == 401
+
+
+# --- e-mail-notifikationer (feature #197) ------------------------------------
+
+
+async def test_send_emails_a_recipient_with_an_email_set_when_resend_is_configured(
+    client, second_user, monkeypatch
+):
+    monkeypatch.setattr(settings, "resend_api_key", "test-key")
+    monkeypatch.setattr(settings, "email_from_address", "Voldby BIO <noreply@laces.dk>")
+    await client.patch(f"/api/users/{second_user['id']}/email", json={"email": "modtager@example.com"})
+
+    sent = []
+
+    async def fake_send_email(to, subject, text):
+        sent.append((to, subject, text))
+        return True
+
+    monkeypatch.setattr(email_client, "send_email", fake_send_email)
+
+    response = await client.post("/api/messages", json={"subject": "Emne", "body": "Krop"})
+    assert response.status_code == 201
+    assert sent == [("modtager@example.com", "Emne", "Krop")]
+
+
+async def test_send_does_not_attempt_email_when_resend_is_not_configured(client, second_user, monkeypatch):
+    monkeypatch.setattr(settings, "resend_api_key", "")
+    monkeypatch.setattr(settings, "email_from_address", "")
+    await client.patch(f"/api/users/{second_user['id']}/email", json={"email": "modtager@example.com"})
+
+    async def fake_send_email(to, subject, text):
+        raise AssertionError("should not be called when Resend is unconfigured")
+
+    monkeypatch.setattr(email_client, "send_email", fake_send_email)
+
+    response = await client.post("/api/messages", json={"subject": "Emne", "body": "Krop"})
+    assert response.status_code == 201
+
+
+async def test_send_skips_a_recipient_without_an_email(client, second_user, monkeypatch):
+    """Ny bruger har ingen e-mail sat (feltet er valgfrit) — no-op for netop
+    den modtager, ikke en fejl."""
+    monkeypatch.setattr(settings, "resend_api_key", "test-key")
+    monkeypatch.setattr(settings, "email_from_address", "Voldby BIO <noreply@laces.dk>")
+
+    async def fake_send_email(to, subject, text):
+        raise AssertionError("should not be called for a recipient with no email set")
+
+    monkeypatch.setattr(email_client, "send_email", fake_send_email)
+
+    response = await client.post("/api/messages", json={"subject": "Emne", "body": "Krop"})
+    assert response.status_code == 201
+
+
+async def test_send_creates_the_in_app_message_even_if_email_sending_fails(
+    client, second_user, monkeypatch
+):
+    """En mail-fejl må aldrig vælte selve besked-oprettelsen (CLAUDE.md
+    regel 16 — best-effort sidekanal)."""
+    monkeypatch.setattr(settings, "resend_api_key", "test-key")
+    monkeypatch.setattr(settings, "email_from_address", "Voldby BIO <noreply@laces.dk>")
+    await client.patch(f"/api/users/{second_user['id']}/email", json={"email": "modtager@example.com"})
+
+    async def fake_send_email(to, subject, text):
+        raise RuntimeError("Resend er nede")
+
+    monkeypatch.setattr(email_client, "send_email", fake_send_email)
+
+    response = await client.post("/api/messages", json={"subject": "Emne", "body": "Krop"})
+    assert response.status_code == 201
+    inbox = (await second_user["client"].get("/api/messages/inbox")).json()
+    assert [m["subject"] for m in inbox] == ["Emne"]
+
+
+async def test_send_stops_the_rest_of_the_batch_on_a_rate_limit(client, second_user, raw_client, monkeypatch):
+    """En 429 fra Resend skal stoppe resten af udsendelsen med det samme
+    (regel 16 — bulk-kald mod en ekstern API), ikke blive ved med at ramme
+    en allerede rate-limitet tjeneste for hver resterende modtager."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as third:
+        register = await third.post(
+            "/api/auth/register", json={"username": "tredjemodtager", "password": "testpassword123"}
+        )
+        third_id = register.json()["id"]
+    await client.patch(f"/api/users/{third_id}/status", json={"status": "active"})
+    await client.patch(f"/api/users/{third_id}/email", json={"email": "tredje@example.com"})
+
+    monkeypatch.setattr(settings, "resend_api_key", "test-key")
+    monkeypatch.setattr(settings, "email_from_address", "Voldby BIO <noreply@laces.dk>")
+    # `second_user` has no email set (skipped, doesn't count toward the
+    # send attempts below) — only the third recipient does.
+    await client.patch(f"/api/users/{second_user['id']}/email", json={"email": "modtager@example.com"})
+
+    calls = []
+
+    async def fake_send_email(to, subject, text):
+        calls.append(to)
+        raise EmailRateLimitedError()
+
+    monkeypatch.setattr(email_client, "send_email", fake_send_email)
+
+    response = await client.post("/api/messages", json={"subject": "Emne", "body": "Krop"})
+    assert response.status_code == 201
+    # Kun ÉT forsøg — udsendelsen stoppede efter den første 429 i stedet for
+    # at forsøge den anden modtager også.
+    assert len(calls) == 1

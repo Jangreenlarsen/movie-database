@@ -132,23 +132,24 @@ describe("CollectionSection — tilføj serie-del til ønskelisten (feature #196
     vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({ require_preferred_at: false });
   });
 
-  it("tillader tilføjelse til ønskelisten fra en EJET films collection-sektion (tidligere blokeret, BUGS.md #58)", async () => {
-    vi.spyOn(api, "getCollection").mockResolvedValue({
-      id: 99,
-      name: "Test-trilogien",
+  it("tillader tilføjelse til ønskelisten fra en EJET films collection-sektion (tidligere blokeret, BUGS.md #58), og '+ Ønskeliste'-knappen erstattes af 'På indkøbslisten' bagefter, så samme del ikke kan tilføjes igen ved et nyt klik", async () => {
+    const unowned = {
+      tmdb_id: 501,
+      title: "Del To",
+      year: 2021,
       poster_url: null,
-      parts: [
-        {
-          tmdb_id: 501,
-          title: "Del To",
-          year: 2021,
-          poster_url: null,
-          owned: false,
-          owned_movie_id: null,
-          owned_is_wishlist: false,
-        },
-      ],
-    });
+      owned: false,
+      owned_movie_id: null,
+      owned_is_wishlist: false,
+    };
+    vi.spyOn(api, "getCollection")
+      .mockResolvedValueOnce({ id: 99, name: "Test-trilogien", poster_url: null, parts: [unowned] })
+      .mockResolvedValueOnce({
+        id: 99,
+        name: "Test-trilogien",
+        poster_url: null,
+        parts: [{ ...unowned, owned: true, owned_movie_id: "new-wish-id", owned_is_wishlist: true }],
+      });
     vi.spyOn(api, "createMovie").mockResolvedValue({});
 
     const ownedMovie = {
@@ -169,5 +170,13 @@ describe("CollectionSection — tilføj serie-del til ønskelisten (feature #196
     expect(api.createMovie).toHaveBeenCalledWith({ tmdb_id: 501, is_wishlist: true });
     // Ingen fejlbesked om "det fulde tilføj-flow" — handlingen lykkedes.
     expect(screen.queryByText(/fulde tilføj-flow/)).not.toBeInTheDocument();
+
+    // Efter reload (anden getCollection-respons) bør knappen være væk, erstattet
+    // af "På indkøbslisten" — ellers kunne et nyt klik tilføje samme del igen.
+    await waitFor(() => expect(api.getCollection).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "+ Ønskeliste" })).not.toBeInTheDocument()
+    );
+    expect(screen.getByText("På indkøbslisten")).toBeInTheDocument();
   });
 });

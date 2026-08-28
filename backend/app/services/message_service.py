@@ -1,13 +1,18 @@
 """Beskeder fra admin til brugerne (feature #100)."""
 
+import logging
 from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.core.errors import MessageNotFoundError, NoRecipientsError, UserNotFoundError
+from app.core.config import settings
+from app.core.errors import EmailRateLimitedError, MessageNotFoundError, NoRecipientsError, UserNotFoundError
+from app.integrations import email_client
 from app.models.message import InboxMessage, Message, MessageCreate, MessageRecipient
 from app.models.user import UserStatus
 from app.repositories import message_repository, user_repository
+
+logger = logging.getLogger("moviedb")
 
 
 def _to_model(document: dict) -> Message:
@@ -37,30 +42,84 @@ async def _resolve_recipients(
 
     Kun aktive konti — en `pending`/`rejected`/`disabled` bruger kan ikke
     bruge appen og ville bare stå som "ulæst" for evigt. Afsenderen selv
-    springes over: man skal ikke have en banner om sin egen besked."""
+    springes over: man skal ikke have en banner om sin egen besked.
+
+    Feature #197 — hvert dict bærer desuden en TRANSIENT `_email`-nøgle
+    (brugerens e-mail, hvis sat), brugt af `send()`s e-mail-udsendelse
+    nedenfor. Den fjernes igen før `recipients` skrives til Mongo (se
+    `send()`) — ellers ville en brugers e-mail på det tidspunkt beskeden
+    blev sendt ligge frosset fast i hvert historisk beskeddokument for
+    evigt, uafhængigt af om brugeren senere skifter eller rydder den."""
     if payload.recipient_user_id is not None:
         target = await user_repository.find_by_id(db, payload.recipient_user_id)
         if target is None:
             raise UserNotFoundError(payload.recipient_user_id)
-        return [{"user_id": str(target["_id"]), "username": target["username"], "read_at": None}]
+        return [
+            {
+                "user_id": str(target["_id"]),
+                "username": target["username"],
+                "read_at": None,
+                "_email": target.get("email"),
+            }
+        ]
 
     return [
-        {"user_id": str(user["_id"]), "username": user["username"], "read_at": None}
+        {
+            "user_id": str(user["_id"]),
+            "username": user["username"],
+            "read_at": None,
+            "_email": user.get("email"),
+        }
         for user in await user_repository.list_all(db)
         if user.get("status") == UserStatus.ACTIVE.value and str(user["_id"]) != sender_id
     ]
+
+
+async def _send_emails(recipients: list[dict], subject: str, body: str) -> None:
+    """Feature #197 — best-effort side-kanal, kaldes fra `send()` EFTER selve
+    in-app-beskeden er skrevet. Rent, ulogget fravalg (ikke engang forsøgt)
+    når Resend slet ikke er konfigureret — samme "unconfigured" vs. "error"-
+    skel som frontendens usePlexAvailability allerede bruger. En 429 stopper
+    resten af udsendelsen med det samme (CLAUDE.md regel 16 — bulk-kald mod
+    en ekstern API skal ikke blive ved med at ramme en allerede rate-limitet
+    tjeneste). Kaster aldrig selv ud af sig selv, men kaldes alligevel kun
+    fra callere der allerede pakker `send()` i try/except (notify_wishlist_*
+    nedenfor) — én ekstra sikkerhedslinje, ikke den eneste."""
+    if not settings.resend_api_key or not settings.email_from_address:
+        return
+    for recipient in recipients:
+        email = recipient.get("_email")
+        if not email:
+            continue
+        try:
+            ok = await email_client.send_email(to=email, subject=subject, text=body)
+            if not ok:
+                logger.warning("E-mail-notifikation fejlede for %s (%r)", recipient["username"], subject)
+        except EmailRateLimitedError:
+            logger.warning(
+                "Resend rate-limit ramt — stopper resten af e-mail-udsendelsen (besked %r)", subject
+            )
+            return
+        except Exception:
+            logger.exception("Uventet fejl ved e-mail-notifikation for %s", recipient["username"])
 
 
 async def send(
     db: AsyncIOMotorDatabase, payload: MessageCreate, sender: dict
 ) -> Message:
     sender_id = str(sender["_id"])
-    recipients = await _resolve_recipients(db, payload, sender_id)
-    if not recipients:
+    resolved = await _resolve_recipients(db, payload, sender_id)
+    if not resolved:
         # Ellers ville beskeden se ud som sendt, men ligge uden modtagere —
         # typisk når man er den eneste aktive bruger i portalen.
         raise NoRecipientsError()
 
+    # Feature #197 — `_email` er kun til e-mail-udsendelsen nedenfor, aldrig
+    # persisteret på selve beskeddokumentet (se _resolve_recipients' note).
+    recipients = [
+        {"user_id": r["user_id"], "username": r["username"], "read_at": r["read_at"]}
+        for r in resolved
+    ]
     document = {
         # Allerede trimmet af MessageCreate.not_blank.
         "subject": payload.subject,
@@ -70,7 +129,9 @@ async def send(
         "recipients": recipients,
         "is_broadcast": payload.recipient_user_id is None,
     }
-    return _to_model(await message_repository.insert(db, document))
+    message = _to_model(await message_repository.insert(db, document))
+    await _send_emails(resolved, message.subject, message.body)
+    return message
 
 
 async def notify_wishlist_moved(

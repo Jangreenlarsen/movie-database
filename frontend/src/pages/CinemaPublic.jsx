@@ -253,11 +253,54 @@ export function GuestLoginBanner({ onOpenLogin }) {
 // i stedet, og "Vis som PDF" er nu en sekundær, eksplicit fravalgt handling
 // for den der vil have originalens layout/print.
 // Feature #191 — se GuestLoginBanner's kommentar ovenfor.
+// Feature #210 — "Presse Nyt" udvidet fra ét fast nummer til en lille
+// arkiv-liste, Jans ønske efter portal-opdateringen med afstemning/e-mail
+// ("sæt den ind på presse nyt siden i portal og giv den en dato"). Nummer 2
+// (nyeste) vises som standard — det er jo det de fleste kommer for at læse
+// — med et diskret link ned til det oprindelige åbnings-nummer, i stedet
+// for en fuld arkiv-liste-UI der ville være overkill for kun to numre.
+function usePressIssues(t) {
+  return [
+    {
+      key: "issue2",
+      mastheadIssue: t("public.press2MastheadIssue"),
+      shortDate: t("public.press2ShortDate"),
+      headline: t("public.press2Headline"),
+      subheadline: t("public.press2Subheadline"),
+      intro: t("public.press2Intro"),
+      heading1: t("public.press2Heading1"),
+      body1: t("public.press2Body1"),
+      heading2: t("public.press2Heading2"),
+      body2: t("public.press2Body2"),
+      hasPdf: false,
+    },
+    {
+      key: "issue1",
+      mastheadIssue: t("public.pressMastheadIssue"),
+      shortDate: t("public.pressShortDate"),
+      headline: t("public.pressHeadline"),
+      subheadline: t("public.pressSubheadline"),
+      intro: t("public.pressIntro"),
+      heading1: t("public.pressHeading1"),
+      body1: t("public.pressPremiere"),
+      heading2: t("public.pressHeading2"),
+      body2: t("public.pressClosing"),
+      hasPdf: true,
+    },
+  ];
+}
+
 export function PressModal({ onClose }) {
   const t = useT();
-  const introParagraphs = t("public.pressIntro").split("\n\n");
-  const premiereParagraphs = t("public.pressPremiere").split("\n\n");
-  const closingParagraphs = t("public.pressClosing").split("\n\n");
+  const issues = usePressIssues(t);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const issue = issues[activeIndex];
+  const otherIndex = activeIndex === 0 ? 1 : 0;
+  const other = issues[otherIndex];
+
+  const introParagraphs = issue.intro.split("\n\n");
+  const body1Paragraphs = issue.body1.split("\n\n");
+  const body2Paragraphs = issue.body2.split("\n\n");
 
   return (
     <div
@@ -274,14 +317,16 @@ export function PressModal({ onClose }) {
           <button type="button" className="cinema-public-gallery-back" onClick={onClose}>
             ← {t("common.back")}
           </button>
-          <a
-            className="cinema-public-press-newtab"
-            href={PRESS_PDF_HREF}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {t("public.pressOpenNewTab")}
-          </a>
+          {issue.hasPdf && (
+            <a
+              className="cinema-public-press-newtab"
+              href={PRESS_PDF_HREF}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t("public.pressOpenNewTab")}
+            </a>
+          )}
         </div>
         <article className="cinema-public-press-article">
           <header className="cinema-public-press-masthead">
@@ -291,26 +336,34 @@ export function PressModal({ onClose }) {
             </p>
             <div className="cinema-public-press-masthead-rule">
               <span>{t("public.pressMastheadSince")}</span>
-              <span>{t("public.pressMastheadIssue")}</span>
+              <span>{issue.mastheadIssue}</span>
             </div>
           </header>
 
-          <h1 className="cinema-public-press-headline">{t("public.pressHeadline")}</h1>
-          <p className="cinema-public-press-subheadline">{t("public.pressSubheadline")}</p>
+          <h1 className="cinema-public-press-headline">{issue.headline}</h1>
+          <p className="cinema-public-press-subheadline">{issue.subheadline}</p>
 
           <div className="cinema-public-press-body">
             {introParagraphs.map((paragraph, index) => (
               <p key={`intro-${index}`}>{paragraph}</p>
             ))}
-            <h3>{t("public.pressHeading1")}</h3>
-            {premiereParagraphs.map((paragraph, index) => (
-              <p key={`premiere-${index}`}>{paragraph}</p>
+            <h3>{issue.heading1}</h3>
+            {body1Paragraphs.map((paragraph, index) => (
+              <p key={`body1-${index}`}>{paragraph}</p>
             ))}
-            <h3>{t("public.pressHeading2")}</h3>
-            {closingParagraphs.map((paragraph, index) => (
-              <p key={`closing-${index}`}>{paragraph}</p>
+            <h3>{issue.heading2}</h3>
+            {body2Paragraphs.map((paragraph, index) => (
+              <p key={`body2-${index}`}>{paragraph}</p>
             ))}
           </div>
+
+          <p className="cinema-public-press-other-issue">
+            <button type="button" className="cinema-public-press-other-issue-link" onClick={() => setActiveIndex(otherIndex)}>
+              {activeIndex === 0
+                ? t("public.pressPrevIssue", { headline: other.headline, date: other.shortDate })
+                : t("public.pressLatestIssue")}
+            </button>
+          </p>
         </article>
       </div>
     </div>

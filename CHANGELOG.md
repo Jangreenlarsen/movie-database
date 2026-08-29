@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.183.0 build 0262] — 2026-08-29 — feature: "Presse Nyt" udvidet til to numre (FEATURES.md #210)
+
+Jan, efter social-medie-udkastet om afstemning/e-mail-nyhederne: *"prefekt sæt den ind på presse nyt siden i portal og giv den en dato"*.
+
+`PressModal` havde ét hårdkodet nummer (feature #163). Ny `usePressIssues(t)`-hook returnerer begge numre som data (nyeste "Nu bestemmer biografgæsterne selv", dateret 29. august 2026, vises som standard); et diskret link nederst skifter mellem numrene begge veje. Kun det oprindelige nummer har en ægte PDF bag sig, så "Vis som PDF ↗" vises nu betinget (`issue.hasPdf`). Det nye nummer forklarer afstemnings-flowet (ønske → admin samler forslag → afstemning) og de nye e-mail-svar, i samme lokalavis-stemme som resten af featuren.
+
+Berørte filer: `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Ingen backend-ændring. Tests: ny `PressModal.test.jsx` (4). Fuld backend-suite (923, uændret) + frontend (201) grøn.
+
 ## [0.182.0 build 0261] — 2026-08-29 — feature: afstemninger forsvinder efter premiære eller manuelt (FEATURES.md #209)
 
 Jan: *"hvornår forsvinder afstemings resultaterne så fra users bio oversigt"* → *"de skal forsvinder efter film har haft premiæer"* → *"eller adm vælger at de skal forsvinde"*.

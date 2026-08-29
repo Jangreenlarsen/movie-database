@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.183.0 (build 0262) — 2026-08-29
+
+- **"Presse Nyt" har nu to numre** — det nyeste, om afstemning og de nye e-mail-nyheder, vises som standard, med et link ned til det oprindelige åbnings-nummer.
+
 ## v0.182.0 (build 0261) — 2026-08-29
 
 - **Afstemninger forsvinder nu automatisk** fra Voldby BIO-oversigten, når filmen har haft premiære — eller når som helst manuelt via en ny "Fjern"-knap for admin.

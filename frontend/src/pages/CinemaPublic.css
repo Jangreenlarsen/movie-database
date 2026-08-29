@@ -479,6 +479,30 @@ video.cinema-public-gallery-item {
   font-size: 1.1rem;
 }
 
+/* Feature #210 — link mellem de to presse-numre (se usePressIssues). Samme
+   dæmpede stil som "Vis som PDF" i header'en, men centreret under selve
+   artiklen, da den refererer til HELE nummeret, ikke kun PDF'en. */
+.cinema-public-press-other-issue {
+  margin: 28px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.cinema-public-press-other-issue-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.cinema-public-press-other-issue-link:hover {
+  color: var(--accent-strong);
+}
+
 /* Feature #168 — ét billede i et moderat smalt panel; hverken bredden fra
    pressens læse-spalte eller galleriets fulde grid-bredde giver mening for
    et enkelt billede. */

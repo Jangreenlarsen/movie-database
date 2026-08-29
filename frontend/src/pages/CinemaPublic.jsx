@@ -256,9 +256,14 @@ export function GuestLoginBanner({ onOpenLogin }) {
 // Feature #210 — "Presse Nyt" udvidet fra ét fast nummer til en lille
 // arkiv-liste, Jans ønske efter portal-opdateringen med afstemning/e-mail
 // ("sæt den ind på presse nyt siden i portal og giv den en dato"). Nummer 2
-// (nyeste) vises som standard — det er jo det de fleste kommer for at læse
-// — med et diskret link ned til det oprindelige åbnings-nummer, i stedet
-// for en fuld arkiv-liste-UI der ville være overkill for kun to numre.
+// (nyeste) vises som standard — det er jo det de fleste kommer for at læse.
+// Feature #211 — Jan bad om at kunne vælge numre fra en dropdown i stedet
+// for et enkelt frem/tilbage-link ("presse nyt må godt være en dropdown
+// list hvor man vælger de forskelige presse opslag fra") — skalerer bedre
+// end et binært toggle-link, når der en dag kommer et tredje nummer. Samme
+// besked bad også om billeder i selve det nye nummer ("der skal billeder
+// med i den ny presse nyhed") — kun nummer 2 har `images`, det oprindelige
+// nummer er urørt ren tekst.
 function usePressIssues(t) {
   return [
     {
@@ -273,6 +278,10 @@ function usePressIssues(t) {
       heading2: t("public.press2Heading2"),
       body2: t("public.press2Body2"),
       hasPdf: false,
+      images: [
+        { src: "/cinema/press2-poll.jpg", alt: t("public.press2PollImageAlt") },
+        { src: "/cinema/press2-email.jpg", alt: t("public.press2EmailImageAlt") },
+      ],
     },
     {
       key: "issue1",
@@ -286,6 +295,7 @@ function usePressIssues(t) {
       heading2: t("public.pressHeading2"),
       body2: t("public.pressClosing"),
       hasPdf: true,
+      images: [],
     },
   ];
 }
@@ -295,8 +305,6 @@ export function PressModal({ onClose }) {
   const issues = usePressIssues(t);
   const [activeIndex, setActiveIndex] = useState(0);
   const issue = issues[activeIndex];
-  const otherIndex = activeIndex === 0 ? 1 : 0;
-  const other = issues[otherIndex];
 
   const introParagraphs = issue.intro.split("\n\n");
   const body1Paragraphs = issue.body1.split("\n\n");
@@ -317,6 +325,18 @@ export function PressModal({ onClose }) {
           <button type="button" className="cinema-public-gallery-back" onClick={onClose}>
             ← {t("common.back")}
           </button>
+          <select
+            className="cinema-public-press-issue-select"
+            aria-label={t("public.pressSelectIssue")}
+            value={activeIndex}
+            onChange={(e) => setActiveIndex(Number(e.target.value))}
+          >
+            {issues.map((iss, index) => (
+              <option key={iss.key} value={index}>
+                {iss.headline} ({iss.shortDate})
+              </option>
+            ))}
+          </select>
           {issue.hasPdf && (
             <a
               className="cinema-public-press-newtab"
@@ -351,19 +371,23 @@ export function PressModal({ onClose }) {
             {body1Paragraphs.map((paragraph, index) => (
               <p key={`body1-${index}`}>{paragraph}</p>
             ))}
+            {issue.images[0] && (
+              <figure className="cinema-public-press-photo">
+                <img src={issue.images[0].src} alt={issue.images[0].alt} />
+                <figcaption>{issue.images[0].alt}</figcaption>
+              </figure>
+            )}
             <h3>{issue.heading2}</h3>
             {body2Paragraphs.map((paragraph, index) => (
               <p key={`body2-${index}`}>{paragraph}</p>
             ))}
+            {issue.images[1] && (
+              <figure className="cinema-public-press-photo">
+                <img src={issue.images[1].src} alt={issue.images[1].alt} />
+                <figcaption>{issue.images[1].alt}</figcaption>
+              </figure>
+            )}
           </div>
-
-          <p className="cinema-public-press-other-issue">
-            <button type="button" className="cinema-public-press-other-issue-link" onClick={() => setActiveIndex(otherIndex)}>
-              {activeIndex === 0
-                ? t("public.pressPrevIssue", { headline: other.headline, date: other.shortDate })
-                : t("public.pressLatestIssue")}
-            </button>
-          </p>
         </article>
       </div>
     </div>

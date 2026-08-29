@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.184.0 (build 0263) — 2026-08-29
+
+- **"Presse Nyt" fik en dropdown** til at vælge mellem numrene, og det nyeste nummer har nu to rigtige skærmbilleder af de nye funktioner.
+
 ## v0.183.0 (build 0262) — 2026-08-29
 
 - **"Presse Nyt" har nu to numre** — det nyeste, om afstemning og de nye e-mail-nyheder, vises som standard, med et link ned til det oprindelige åbnings-nummer.

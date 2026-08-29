@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.184.0 build 0263] — 2026-08-29 — feature: "Presse Nyt" dropdown + skærmbilleder (FEATURES.md #211)
+
+Jan, direkte efter #210: *"presse nyt må godt være en dropdown list hvor man vælger de forskelige presse opslag fra"*, fulgt op med *"og der skal billeder med i den ny presse nyhed"*.
+
+#210's frem/tilbage-link erstattet af en `<select>`-dropdown i header-rækken der lister alle numre — skalerer bedre end et binært link. Det nye nummer fik to ægte skærmbilleder (afstemningssiden + en e-mail-notifikation), hver med billedtekst, indsat ved det afsnit de illustrerer. Afstemnings-billedet er taget mod en midlertidig test-database med to rigtige TMDb-film og en ikke-admin bruger (så admin-kun knapper ikke optræder); e-mail-billedet er et beskåret uddrag af et eksisterende #204-verifikationsskærmbillede.
+
+Berørte filer: `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `frontend/public/cinema/press2-poll.jpg` (ny), `frontend/public/cinema/press2-email.jpg` (ny). Ingen backend-ændring. Tests: `PressModal.test.jsx` omskrevet til dropdown-interaktion (3). Fuld backend-suite (923, uændret) + frontend (200) grøn.
+
 ## [0.183.0 build 0262] — 2026-08-29 — feature: "Presse Nyt" udvidet til to numre (FEATURES.md #210)
 
 Jan, efter social-medie-udkastet om afstemning/e-mail-nyhederne: *"prefekt sæt den ind på presse nyt siden i portal og giv den en dato"*.

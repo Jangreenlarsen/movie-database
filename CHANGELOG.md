@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.177.0 build 0256] — 2026-08-29 — feature: "Bestilt"-badge for gæster (FEATURES.md #203)
+
+Jan: *"hvis en film/tv er bestilt så skal guest users se en badge hvor der står 'bestilt'"*.
+
+Feature #116 skjulte hele order-status-begrebet for gæster. Nu ser en gæst en forenklet, generisk "Bestilt"-badge (ny i18n-nøgle `orderStatus.ordered`) på ønske-kortet og i detaljevisningen — men kun når `order_status` rent faktisk er sat, og uden den fulde tekst (bestillingskilde, fx "Bestilt ved iMusic") som admin/standard ser. "Ikke bestilt" forbliver skjult for gæster, uændret fra #116.
+
+Berørte filer: `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Tests: ny `TvShows.test.jsx` (+3), `Library.test.jsx` (+3). Fuld frontend-suite (169) grøn. Ren frontend, ingen backend-ændring.
+
 ## [0.176.0 build 0255] — 2026-08-28 — feature: besked-notifikationer for ønsker/forvisninger, begge retninger (FEATURES.md #202)
 
 Jan: *"besked system skal kunne sende hvis user opretter ønsker til forvisning og ønskeliste og svar skal sendes return hvis adm lave forandring for de ønsker/forvisninger, besked skal sendes i email samt på portal for user, email skal kun sendes hvis email er config på user konto"*.

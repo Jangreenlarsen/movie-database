@@ -1135,6 +1135,16 @@ export default function Library({
                     </span>
                   </div>
                 )}
+                {/* Feature #203 — gæster ser en forenklet "Bestilt"-badge
+                    (uden bestillingskilde) når ønsket rent faktisk er
+                    bestilt; "ikke bestilt" vises fortsat aldrig for gæster,
+                    jf. #116's begrundelse om at de ikke skal møde
+                    order-status-begrebet i det hele taget. */}
+                {movie.is_wishlist && isGuest && movie.order_status && (
+                  <div className="movie-tags">
+                    <span className="movie-order-badge">{t("orderStatus.ordered")}</span>
+                  </div>
+                )}
                 {visibleFields.tags && movie.tags.length > 0 && (
                   <div className="movie-tags">
                     {movie.tags.map((tag) => (
@@ -1709,6 +1719,13 @@ export function MovieDetailModal({
                 <div>
                   <div className="modal-section-label">{t("field.orderStatus")}</div>
                   <p>{movie.order_status || t("orderStatus.notOrdered")}</p>
+                </div>
+              )}
+              {/* Feature #203 — se den identiske note ved kort-badgen ovenfor. */}
+              {movie.is_wishlist && isGuest && movie.order_status && (
+                <div>
+                  <div className="modal-section-label">{t("field.orderStatus")}</div>
+                  <p>{t("orderStatus.ordered")}</p>
                 </div>
               )}
               <div>

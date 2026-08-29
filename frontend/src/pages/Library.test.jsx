@@ -236,3 +236,53 @@ describe("CollectionSection — viser medietype for ejede dele (feature #201)", 
     expect(screen.queryByText("✓ Ejer")).not.toBeInTheDocument();
   });
 });
+
+describe("MovieDetailModal — 'Bestilt'-badge for gæster (feature #203)", () => {
+  function renderAsGuest(movie) {
+    return render(
+      <MovieDetailModal
+        movie={movie}
+        user={{ username: "guest1", role: "guest" }}
+        allTags={[]}
+        allOwners={[]}
+        allLocations={[]}
+        attributeOptions={attributeOptions}
+        serialPaddingWidth={0}
+        plex={basePlex}
+        onClose={() => {}}
+        onChanged={() => {}}
+        onFilterByPerson={() => {}}
+      />
+    );
+  }
+
+  beforeEach(() => {
+    vi.spyOn(api, "recordVisit").mockResolvedValue({});
+    vi.spyOn(api, "myScreeningRequests").mockResolvedValue([]);
+    vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({ require_preferred_at: false });
+  });
+
+  it("viser en forenklet 'Bestilt'-badge for en gæst, uden bestillingskilden", async () => {
+    const movie = { ...baseMovie, order_status: "Bestilt ved iMusic" };
+    renderAsGuest(movie);
+
+    expect(await screen.findByText("Bestilt")).toBeInTheDocument();
+    expect(screen.queryByText("Bestilt ved iMusic")).not.toBeInTheDocument();
+  });
+
+  it("viser fortsat intet bestillings-felt for en gæst når ønsket ikke er bestilt", async () => {
+    const movie = { ...baseMovie, order_status: null };
+    renderAsGuest(movie);
+
+    await screen.findByText(movie.title);
+    expect(screen.queryByText("Bestilt")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ikke bestilt")).not.toBeInTheDocument();
+  });
+
+  it("viser fortsat den fulde bestillingsstatus (med kilde) for en admin", async () => {
+    const movie = { ...baseMovie, order_status: "Bestilt ved iMusic" };
+    renderModal(movie);
+
+    expect(await screen.findByText("Bestilt ved iMusic")).toBeInTheDocument();
+  });
+});

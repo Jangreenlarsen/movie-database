@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.177.0 (build 0256) — 2026-08-29
+
+- **Gæster ser nu en "Bestilt"-badge** på et ønske-kort (og i detaljevisningen) når posten er bestilt — uden at afsløre hvor den er bestilt.
+
 ## v0.176.0 (build 0255) — 2026-08-28
 
 - **Admin får nu besked (portal + e-mail) når en bruger opretter et nyt ønske på indkøbslisten eller et nyt ønske om visning i Voldby BIO.**

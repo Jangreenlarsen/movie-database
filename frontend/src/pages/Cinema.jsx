@@ -745,6 +745,7 @@ export function PollCard({ poll, isAdmin, onChanged }) {
   const [error, setError] = useState(null);
   const [closing, setClosing] = useState(false);
   const [schedulingIndex, setSchedulingIndex] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function vote(index) {
     setBusyIndex(index);
@@ -771,6 +772,23 @@ export function PollCard({ poll, isAdmin, onChanged }) {
     }
   }
 
+  // Feature #208-opfølgning (Jan: "eller adm vælger at de skal forsvinde")
+  // — admin kan til enhver tid fjerne afstemningen fra oversigten manuelt,
+  // uanset status. Rører ALDRIG en evt. tilknyttet fremvisning — den er en
+  // selvstændig kalender-post nu, kun selve stemme-optællingen ryddes op.
+  async function remove() {
+    if (!window.confirm(t("polls.confirmRemove"))) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await api.deletePoll(poll.id);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+      setDeleting(false);
+    }
+  }
+
   const isOpen = poll.status === "open";
   const isTie = poll.status !== "open" && poll.winner_indices.length > 1;
 
@@ -781,6 +799,11 @@ export function PollCard({ poll, isAdmin, onChanged }) {
         <span className={`role-badge cinema-poll-status-${poll.status}`}>
           {t(`polls.status.${poll.status}`)}
         </span>
+        {isAdmin && (
+          <button type="button" className="btn cinema-poll-remove-btn" onClick={remove} disabled={deleting}>
+            {t(deleting ? "polls.removing" : "polls.remove")}
+          </button>
+        )}
       </div>
       {/* Feature #208 — hvilken aften der stemmes om, ikke et klokkeslæt. */}
       {poll.target_date && (

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.182.0 (build 0261) — 2026-08-29
+
+- **Afstemninger forsvinder nu automatisk** fra Voldby BIO-oversigten, når filmen har haft premiære — eller når som helst manuelt via en ny "Fjern"-knap for admin.
+
 ## v0.181.0 (build 0260) — 2026-08-29
 
 - **Afstemninger kan nu have en dato** — vises på afstemningskortet og foreslås automatisk videre når vinderen skal planlægges som en rigtig visning.

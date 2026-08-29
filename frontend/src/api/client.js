@@ -395,6 +395,7 @@ export const api = {
       body: JSON.stringify({ candidate_index: candidateIndex }),
     }),
   closePoll: (id) => request(`/polls/${id}/close`, { method: "POST" }),
+  deletePoll: (id) => request(`/polls/${id}`, { method: "DELETE" }),
 
   // Feature #133 — sæde-reservation til Voldby BIO.
   getSeatMap: (screeningId) => request(`/screenings/${screeningId}/seats`),

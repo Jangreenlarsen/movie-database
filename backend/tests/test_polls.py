@@ -297,6 +297,114 @@ async def test_poll_target_date_is_optional(client):
     assert response.json()["target_date"] is None
 
 
+async def test_scheduled_poll_still_shows_while_the_premiere_is_in_the_future(client):
+    a = await _create_movie(client, "Fremtid A")
+    b = await _create_movie(client, "Fremtid B")
+    poll = (await _create_poll(client, [a, b])).json()
+    await client.post(f"/api/polls/{poll['id']}/close")
+    await client.post(
+        "/api/screenings",
+        json={
+            "media_kind": "movie",
+            "movie_id": a,
+            "scheduled_at": "2099-09-01T20:00:00",
+            "poll_id": poll["id"],
+        },
+    )
+
+    polls = (await client.get("/api/polls")).json()
+    assert poll["id"] in [p["id"] for p in polls]
+
+
+async def test_scheduled_poll_disappears_once_the_premiere_has_passed(client):
+    """Jan: "de skal forsvinder efter film har haft premiære"."""
+    a = await _create_movie(client, "Fortid A")
+    b = await _create_movie(client, "Fortid B")
+    poll = (await _create_poll(client, [a, b])).json()
+    await client.post(f"/api/polls/{poll['id']}/close")
+    await client.post(
+        "/api/screenings",
+        json={
+            "media_kind": "movie",
+            "movie_id": a,
+            "scheduled_at": "2020-01-01T20:00:00",
+            "poll_id": poll["id"],
+        },
+    )
+
+    polls = (await client.get("/api/polls")).json()
+    assert poll["id"] not in [p["id"] for p in polls]
+
+
+async def test_a_premiered_poll_can_still_be_fetched_directly_by_id(client):
+    a = await _create_movie(client, "Direkte A")
+    b = await _create_movie(client, "Direkte B")
+    poll = (await _create_poll(client, [a, b])).json()
+    await client.post(f"/api/polls/{poll['id']}/close")
+    await client.post(
+        "/api/screenings",
+        json={
+            "media_kind": "movie",
+            "movie_id": a,
+            "scheduled_at": "2020-01-01T20:00:00",
+            "poll_id": poll["id"],
+        },
+    )
+
+    response = await client.get(f"/api/polls/{poll['id']}")
+    assert response.status_code == 200
+
+
+async def test_admin_can_delete_a_poll_at_any_time(client):
+    """Jan: "eller adm vælger at de skal forsvinde"."""
+    a = await _create_movie(client, "Slet A")
+    b = await _create_movie(client, "Slet B")
+    poll = (await _create_poll(client, [a, b])).json()
+
+    response = await client.delete(f"/api/polls/{poll['id']}")
+    assert response.status_code == 204
+
+    polls = (await client.get("/api/polls")).json()
+    assert poll["id"] not in [p["id"] for p in polls]
+
+
+async def test_deleting_a_scheduled_poll_does_not_remove_its_screening(client):
+    a = await _create_movie(client, "Behold A")
+    b = await _create_movie(client, "Behold B")
+    poll = (await _create_poll(client, [a, b])).json()
+    await client.post(f"/api/polls/{poll['id']}/close")
+    scheduled = await client.post(
+        "/api/screenings",
+        json={
+            "media_kind": "movie",
+            "movie_id": a,
+            "scheduled_at": "2099-09-01T20:00:00",
+            "poll_id": poll["id"],
+        },
+    )
+
+    await client.delete(f"/api/polls/{poll['id']}")
+
+    screenings = (await client.get("/api/screenings")).json()
+    assert scheduled.json()["id"] in [s["id"] for s in screenings]
+
+
+async def test_nonadmin_cannot_delete_a_poll(client):
+    guest = await _member(client, "poll_guest_delete")
+    a = await _create_movie(client, "Ej Slet A")
+    b = await _create_movie(client, "Ej Slet B")
+    poll = (await _create_poll(client, [a, b])).json()
+
+    response = await guest.delete(f"/api/polls/{poll['id']}")
+    assert response.status_code == 403
+    await guest.aclose()
+
+
+async def test_deleting_an_unknown_poll_returns_404(client):
+    response = await client.delete("/api/polls/000000000000000000000000")
+    assert response.status_code == 404
+
+
 async def test_list_polls_can_filter_by_status(client):
     a = await _create_movie(client, "Filter A")
     b = await _create_movie(client, "Filter B")

@@ -334,6 +334,36 @@ describe("PollCard (feature #162)", () => {
     const dateInput = document.querySelector('input[type="date"]');
     expect(dateInput.value).toBe("2099-09-05");
   });
+
+  it("admin kan fjerne en afstemning efter bekræftelse (feature #208-opfølgning)", async () => {
+    const deleteSpy = vi.spyOn(api, "deletePoll").mockResolvedValue();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const onChanged = vi.fn();
+    const user = userEvent.setup();
+
+    render(<PollCard poll={_poll()} isAdmin={true} onChanged={onChanged} />);
+    await user.click(await screen.findByRole("button", { name: "Fjern" }));
+
+    expect(deleteSpy).toHaveBeenCalledWith("poll1");
+    expect(onChanged).toHaveBeenCalled();
+  });
+
+  it("annulleret bekræftelse fjerner ikke afstemningen", async () => {
+    const deleteSpy = vi.spyOn(api, "deletePoll");
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    const user = userEvent.setup();
+
+    render(<PollCard poll={_poll()} isAdmin={true} onChanged={() => {}} />);
+    await user.click(await screen.findByRole("button", { name: "Fjern" }));
+
+    expect(deleteSpy).not.toHaveBeenCalled();
+  });
+
+  it("skjuler 'Fjern' for en ikke-admin", async () => {
+    render(<PollCard poll={_poll()} isAdmin={false} onChanged={() => {}} />);
+    await screen.findByText(/Dune/);
+    expect(screen.queryByRole("button", { name: "Fjern" })).not.toBeInTheDocument();
+  });
 });
 
 describe("Cinema — afstemninger vises for alle roller (feature #162)", () => {

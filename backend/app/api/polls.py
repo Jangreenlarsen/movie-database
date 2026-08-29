@@ -60,3 +60,11 @@ async def close_poll(
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     return await poll_service.close_poll(db, poll_id, current_user)
+
+
+@router.delete("/{poll_id}", status_code=204, dependencies=[Depends(require_admin)])
+async def delete_poll(
+    poll_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    await poll_service.delete_poll(db, poll_id)

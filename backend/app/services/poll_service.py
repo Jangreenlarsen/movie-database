@@ -14,7 +14,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.errors import InvalidPollCandidateError, PollNotFoundError, PollNotOpenError
 from app.models.poll import Poll, PollCandidateResult, PollCreate
-from app.repositories import poll_repository
+from app.repositories import poll_repository, screening_repository
 from app.services import message_service, screening_service
 
 
@@ -88,9 +88,42 @@ async def create_poll(db: AsyncIOMotorDatabase, payload: PollCreate, admin: dict
     return await _to_poll_model(db, created, admin["username"])
 
 
+async def _has_premiered(db: AsyncIOMotorDatabase, document: dict) -> bool:
+    """Feature #208-opfølgning (Jan: "de skal forsvinde efter film har haft
+    premiære") — en planlagt afstemning forsvinder fra oversigten så snart
+    dens fremvisning rent faktisk er overstået. Slår altid selve
+    fremvisningen op live (aldrig et gemt tidspunkt på afstemningen selv):
+    `scheduled_at` kan redigeres bagefter (PATCH /api/screenings/{id}), og
+    en kopi på afstemningen ville kunne komme ud af trit med den ægte dato.
+    Kan IKKE afgøres (fremvisningen findes ikke længere, fx slettet fra
+    kalenderen) → vises fortsat, i stedet for at forsvinde uden forklaring."""
+    if document["status"] != "scheduled" or not document.get("scheduled_screening_id"):
+        return False
+    screening = await screening_repository.find_by_id(db, document["scheduled_screening_id"])
+    if screening is None:
+        return False
+    scheduled_at = screening["scheduled_at"]
+    if scheduled_at.tzinfo is None:
+        scheduled_at = scheduled_at.replace(tzinfo=timezone.utc)
+    return scheduled_at < datetime.now(timezone.utc)
+
+
 async def list_polls(db: AsyncIOMotorDatabase, status: str | None, viewer_username: str) -> list[Poll]:
     documents = await poll_repository.find_all(db, status)
-    return [await _to_poll_model(db, doc, viewer_username) for doc in documents]
+    visible = [doc for doc in documents if not await _has_premiered(db, doc)]
+    return [await _to_poll_model(db, doc, viewer_username) for doc in visible]
+
+
+async def delete_poll(db: AsyncIOMotorDatabase, poll_id: str) -> None:
+    """Feature #208-opfølgning (Jan: "eller adm vælger at de skal
+    forsvinde") — admin kan til enhver tid fjerne en afstemning fra
+    oversigten manuelt, uanset status. Rører ALDRIG en evt. tilknyttet
+    fremvisning (`scheduled_screening_id`) — den er en selvstændig, ægte
+    kalender-post nu, ikke længere blot afstemningens data; at slette
+    afstemningen er ren oprydning af selve stemme-optællingen, ikke en
+    aflysning af aftenen."""
+    if not await poll_repository.delete(db, poll_id):
+        raise PollNotFoundError(poll_id)
 
 
 async def get_poll(db: AsyncIOMotorDatabase, poll_id: str, viewer_username: str) -> Poll:

@@ -72,3 +72,10 @@ async def set_scheduled(db: AsyncIOMotorDatabase, poll_id: str, screening_id: st
         {"$set": {"status": "scheduled", "scheduled_screening_id": screening_id}},
     )
     return await find_by_id(db, poll_id)
+
+
+async def delete(db: AsyncIOMotorDatabase, poll_id: str) -> bool:
+    if not ObjectId.is_valid(poll_id):
+        return False
+    result = await db[COLLECTION].delete_one({"_id": ObjectId(poll_id)})
+    return result.deleted_count > 0

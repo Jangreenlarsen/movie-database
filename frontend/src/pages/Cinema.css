@@ -538,3 +538,9 @@
   font-size: 0.85rem;
   color: var(--text-muted);
 }
+
+/* Feature #208-opfølgning — "Fjern"-knappen skubbes til højre i kortets
+   overskriftsrække, væk fra titel/status-badgen. */
+.cinema-poll-remove-btn {
+  margin-left: auto;
+}

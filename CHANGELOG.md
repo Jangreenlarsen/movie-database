@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.182.0 build 0261] — 2026-08-29 — feature: afstemninger forsvinder efter premiære eller manuelt (FEATURES.md #209)
+
+Jan: *"hvornår forsvinder afstemings resultaterne så fra users bio oversigt"* → *"de skal forsvinder efter film har haft premiæer"* → *"eller adm vælger at de skal forsvinde"*.
+
+To mekanismer: (1) en `scheduled`-afstemning udelades automatisk af `GET /api/polls` så snart dens fremvisnings `scheduled_at` er passeret — slået op live mod `screenings`, aldrig et gemt tidspunkt (som kunne komme ud af trit hvis fremvisningen redigeres). (2) ny `DELETE /api/polls/{id}` (admin) fjerner en afstemning manuelt til enhver tid, uden at røre en evt. tilknyttet fremvisning. Ny "Fjern"-knap på afstemningskortet.
+
+Berørte filer: `backend/app/repositories/poll_repository.py`, `backend/app/services/poll_service.py`, `backend/app/api/polls.py`, `frontend/src/api/client.js`, `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Cinema.css`, i18n, `ARCHITECTURE.md`. Tests: `test_polls.py` +7, `Cinema.test.jsx` +3. Fuld backend-suite (923) + frontend (197) grøn.
+
 ## [0.181.0 build 0260] — 2026-08-29 — feature: dato på afstemning (FEATURES.md #208)
 
 Jan, direkte efter #207: *"afstemming skal kunne sættes en dato på til de film vi stemmer om til forvisning"*.

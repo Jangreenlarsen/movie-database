@@ -463,3 +463,69 @@
   color: var(--text);
   font: inherit;
 }
+
+/* Feature #162 — afstemningssektionen. Kandidat-rækkerne genbruger
+   .cinema-request-row/-poster/-info/-actions (samme layout som en
+   anmodnings-række) — kun stemme-baren og sejrs-badgen er nye her. */
+.cinema-polls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 14px 0;
+}
+
+.cinema-poll-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cinema-poll-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cinema-poll-candidate-row {
+  border-color: var(--border);
+}
+
+.cinema-poll-bar-track {
+  margin-top: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  overflow: hidden;
+}
+
+.cinema-poll-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.cinema-poll-winner-badge {
+  font-size: 0.85em;
+}
+
+.cinema-poll-candidate-list {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cinema-poll-candidate-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.88rem;
+}

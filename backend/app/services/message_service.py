@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.errors import EmailRateLimitedError, MessageNotFoundError, NoRecipientsError, UserNotFoundError
 from app.integrations import email_client, email_templates
 from app.models.message import InboxMessage, Message, MessageCreate, MessageRecipient
+from app.models.poll import Poll, PollCandidateResult
 from app.models.user import UserStatus
 from app.repositories import message_repository, user_repository
 
@@ -488,6 +489,101 @@ async def notify_screening_request_scheduled(
                     tagline=f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}.',
                     body_text=body,
                     poster_url=poster_url,
+                    accent="gold",
+                ),
+            )
+        except Exception:
+            pass
+
+
+async def notify_poll_closed(
+    db: AsyncIOMotorDatabase, poll_document: dict, poll_model: Poll, admin: dict
+) -> None:
+    """Feature #162 — svar til hver bruger der stemte, når admin lukker
+    afstemningen. Samme "én send() pr. modtager"-mønster som de øvrige
+    svar-funktioner ovenfor. Ét enkelt topscorer-resultat får en fest-tone
+    med vinderens poster; et uafgjort resultat får samme rav-farve (det er
+    stadig gode nyheder, bare ikke endeligt afgjort endnu) uden noget
+    bestemt poster-billede."""
+    voters = {vote["username"] for vote in poll_document.get("votes", [])} - {admin.get("username")}
+    if not voters:
+        return
+
+    winners = [poll_model.candidates[i] for i in poll_model.winner_indices]
+    if len(winners) == 1:
+        winner = winners[0]
+        display_title = winner.title or "titlen"
+        tagline = f'"{display_title}" vandt afstemningen!'
+        poster_url = winner.poster_url
+    else:
+        titles = ", ".join(w.title or "en titel" for w in winners)
+        tagline = f"Uafgjort mellem {titles} — admin vælger snart hvilken der bliver til noget."
+        poster_url = None
+    body = tagline
+
+    for username in voters:
+        voter = await user_repository.find_by_username_normalized(db, username.lower())
+        if voter is None:
+            continue
+        payload = MessageCreate(
+            subject="Afstemningen er afgjort",
+            body=body,
+            recipient_user_id=str(voter["_id"]),
+        )
+        try:
+            await send(
+                db,
+                payload,
+                admin,
+                email_html=email_templates.render_notification_email(
+                    headline="Afstemningen er afgjort!",
+                    tagline=tagline,
+                    body_text=body,
+                    poster_url=poster_url,
+                    accent="gold",
+                ),
+            )
+        except Exception:
+            pass
+
+
+async def notify_poll_scheduled(
+    db: AsyncIOMotorDatabase,
+    poll_document: dict,
+    winner: PollCandidateResult,
+    admin: dict,
+    scheduled_at: datetime | None,
+) -> None:
+    """Feature #162 — modparten til notify_poll_closed: den vindende titel
+    er nu rent faktisk programsat (screening_service.create_screening med
+    `poll_id` sat)."""
+    voters = {vote["username"] for vote in poll_document.get("votes", [])} - {admin.get("username")}
+    if not voters:
+        return
+
+    display_title = winner.title or "titlen"
+    when = f" d. {scheduled_at.strftime('%d/%m/%Y kl. %H:%M')}" if scheduled_at else ""
+    body = f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}. 🎬'
+
+    for username in voters:
+        voter = await user_repository.find_by_username_normalized(db, username.lower())
+        if voter is None:
+            continue
+        payload = MessageCreate(
+            subject=f'Afstemningens vinder "{display_title}" er planlagt!',
+            body=body,
+            recipient_user_id=str(voter["_id"]),
+        )
+        try:
+            await send(
+                db,
+                payload,
+                admin,
+                email_html=email_templates.render_notification_email(
+                    headline="Biografen venter!",
+                    tagline=f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}.',
+                    body_text=body,
+                    poster_url=winner.poster_url,
                     accent="gold",
                 ),
             )

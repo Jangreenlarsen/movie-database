@@ -12,7 +12,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "../api/client";
-import Cinema, { RequestDetailModal, RequestRow } from "./Cinema";
+import Cinema, { PollCard, RequestDetailModal, RequestRow } from "./Cinema";
 
 function _request(overrides = {}) {
   return {
@@ -33,6 +33,9 @@ describe("Cinema (feature #193 — rum/billede/lyd-sektion kun for gæster)", ()
     vi.restoreAllMocks();
     vi.spyOn(api, "listScreenings").mockResolvedValue([]);
     vi.spyOn(api, "recordVisit").mockResolvedValue();
+    // Feature #162 — PollsSection renders unconditionally inside Cinema now,
+    // so every test in this file mounts it too.
+    vi.spyOn(api, "listPolls").mockResolvedValue([]);
   });
 
   it("viser sektionen for en gæst", async () => {
@@ -65,6 +68,9 @@ describe("Cinema — Presse/Forplejning/Galleri kun for gæster (feature #195)",
     vi.restoreAllMocks();
     vi.spyOn(api, "listScreenings").mockResolvedValue([]);
     vi.spyOn(api, "recordVisit").mockResolvedValue();
+    // Feature #162 — PollsSection renders unconditionally inside Cinema now,
+    // so every test in this file mounts it too.
+    vi.spyOn(api, "listPolls").mockResolvedValue([]);
   });
 
   it("en gæst kan åbne galleriet fra fanen", async () => {
@@ -92,6 +98,9 @@ describe("Cinema — del-link (feature #193)", () => {
     vi.restoreAllMocks();
     vi.spyOn(api, "listScreenings").mockResolvedValue([]);
     vi.spyOn(api, "recordVisit").mockResolvedValue();
+    // Feature #162 — PollsSection renders unconditionally inside Cinema now,
+    // so every test in this file mounts it too.
+    vi.spyOn(api, "listPolls").mockResolvedValue([]);
   });
 
   it("kopierer et link til /bio, ikke preview-siden /bio2", async () => {
@@ -215,5 +224,123 @@ describe("RequestDetailModal (feature #185)", () => {
     await user.click(await screen.findByRole("button", { name: "Luk" }));
 
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+/**
+ * Feature #162 (Jan: "Kunne man lave en afstemning side hvor man kunne
+ * stemme på nogen udvalgte film"). Det testværdige (regel 19): et klik på
+ * "Stem" skal rent faktisk kalde api.votePoll med det rigtige kandidat-
+ * index, sejrs-badgen skal kun vises på topscoreren efter lukning, og
+ * "Planlæg"-knappen skal kun tilbydes admin på en vindende kandidat i en
+ * LUKKET (ikke længere åben) afstemning.
+ */
+function _poll(overrides = {}) {
+  return {
+    id: "poll1",
+    title: null,
+    status: "open",
+    total_votes: 3,
+    my_vote: null,
+    winner_indices: [],
+    candidates: [
+      { media_kind: "movie", movie_id: "m1", tv_show_id: null, title: "Dune", year: 2021, poster_url: null, vote_count: 2 },
+      { media_kind: "movie", movie_id: "m2", tv_show_id: null, title: "Arrival", year: 2016, poster_url: null, vote_count: 1 },
+    ],
+    ...overrides,
+  };
+}
+
+describe("PollCard (feature #162)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("stemmer på en kandidat og genindlæser bagefter", async () => {
+    const voteSpy = vi.spyOn(api, "votePoll").mockResolvedValue(_poll());
+    const onChanged = vi.fn();
+    const user = userEvent.setup();
+
+    render(<PollCard poll={_poll()} isAdmin={false} onChanged={onChanged} />);
+    const voteButtons = screen.getAllByRole("button", { name: "Stem" });
+    await user.click(voteButtons[1]);
+
+    expect(voteSpy).toHaveBeenCalledWith("poll1", 1);
+    expect(onChanged).toHaveBeenCalled();
+  });
+
+  it("markerer egen stemme, ikke en generisk 'Stem'-knap", async () => {
+    render(<PollCard poll={_poll({ my_vote: 0 })} isAdmin={false} onChanged={() => {}} />);
+    expect(await screen.findByRole("button", { name: "✓ Din stemme" })).toBeInTheDocument();
+  });
+
+  it("viser sejrs-badge kun på topscoreren efter lukning", async () => {
+    render(
+      <PollCard
+        poll={_poll({ status: "closed", winner_indices: [0] })}
+        isAdmin={false}
+        onChanged={() => {}}
+      />
+    );
+    const dune = await screen.findByText(/Dune/);
+    expect(dune.textContent).toContain("🏆");
+    const arrival = screen.getByText(/Arrival/);
+    expect(arrival.textContent).not.toContain("🏆");
+  });
+
+  it("skjuler 'Stem'-knappen når afstemningen ikke længere er åben", async () => {
+    render(
+      <PollCard poll={_poll({ status: "closed", winner_indices: [0] })} isAdmin={false} onChanged={() => {}} />
+    );
+    await screen.findByText(/Dune/);
+    expect(screen.queryByRole("button", { name: "Stem" })).not.toBeInTheDocument();
+  });
+
+  it("tilbyder kun 'Planlæg' til admin på den vindende kandidat i en lukket afstemning", async () => {
+    render(
+      <PollCard
+        poll={_poll({ status: "closed", winner_indices: [0] })}
+        isAdmin={true}
+        onChanged={() => {}}
+      />
+    );
+    const scheduleButtons = await screen.findAllByRole("button", { name: "Planlæg" });
+    expect(scheduleButtons).toHaveLength(1);
+  });
+
+  it("skjuler 'Planlæg' for en ikke-admin", async () => {
+    render(
+      <PollCard poll={_poll({ status: "closed", winner_indices: [0] })} isAdmin={false} onChanged={() => {}} />
+    );
+    await screen.findByText(/Dune/);
+    expect(screen.queryByRole("button", { name: "Planlæg" })).not.toBeInTheDocument();
+  });
+});
+
+describe("Cinema — afstemninger vises for alle roller (feature #162)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(api, "listScreenings").mockResolvedValue([]);
+    vi.spyOn(api, "recordVisit").mockResolvedValue();
+  });
+
+  it("viser afstemnings-sektionen for en gæst", async () => {
+    vi.spyOn(api, "listPolls").mockResolvedValue([_poll()]);
+    render(<Cinema user={{ role: "guest" }} />);
+    expect(await screen.findByText("🗳️ Afstemninger")).toBeInTheDocument();
+    expect(screen.getByText(/Dune/)).toBeInTheDocument();
+  });
+
+  it("viser ikke 'Ny afstemning'-knappen for en gæst", async () => {
+    vi.spyOn(api, "listPolls").mockResolvedValue([]);
+    render(<Cinema user={{ role: "guest" }} />);
+    await screen.findByText("🗳️ Afstemninger");
+    expect(screen.queryByRole("button", { name: "+ Ny afstemning" })).not.toBeInTheDocument();
+  });
+
+  it("viser 'Ny afstemning'-knappen for admin", async () => {
+    vi.spyOn(api, "listPolls").mockResolvedValue([]);
+    render(<Cinema user={{ role: "admin" }} />);
+    expect(await screen.findByRole("button", { name: "+ Ny afstemning" })).toBeInTheDocument();
   });
 });

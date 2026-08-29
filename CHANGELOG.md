@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.180.0 build 0259] — 2026-08-29 — feature: afstemningsside for filmvalg (FEATURES.md #207)
+
+Jan: *"Kunne man lave en afstemning side hvor man kunne stemme på nogen udvalgte film hvor den/dem så blev vist på en given dato?"* (registreret som #162, taget op igen efter fire afklarende spørgsmål: én stemme pr. bruger/ombestemmelig, stemmetal synlige undervejs, kun admin opretter, uafgjort løses manuelt af admin).
+
+Ny `polls`-collection: admin udvælger kandidat-film/-serier, alle roller inkl. gæster kan stemme (genbruger #72's princip), stemmetal og vinder(e) beregnes live (aldrig gemt). Planlægning genbruger `POST /api/screenings` med et nyt valgfrit `poll_id` (samme mønster som `request_id`) — markerer afstemningen `scheduled` og sender besked (portal + e-mail) til alle der stemte, både ved lukning og ved planlægning (genbruger #204's HTML-skabelon). Ny `PollsSection` i Voldby BIO-fanen, synlig for alle roller. Regel 20: `polls` tilføjet til backup/restore og til biblioteks-reset (kandidat-referencer ville ellers dingle).
+
+Berørte filer: `backend/app/models/poll.py` (ny), `backend/app/repositories/poll_repository.py` (ny), `backend/app/services/poll_service.py` (ny), `backend/app/api/polls.py` (ny), `backend/app/core/errors.py`, `backend/app/main.py`, `backend/app/models/backup.py`, `backend/app/models/screening.py`, `backend/app/services/message_service.py`, `backend/app/services/screening_service.py`, `backend/app/services/system_backup_service.py`, `frontend/src/api/client.js`, `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Cinema.css`, i18n, `ARCHITECTURE.md`. Tests: ny `test_polls.py` (+16), `test_system_backup.py`/`test_database_reset.py` udvidet, `Cinema.test.jsx` +12. Set i browser: fuld admin-flow (opret → stem → luk → planlæg) verificeret ende-til-ende mod en midlertidig test-database. Fuld backend-suite (914) + frontend (192) grøn.
+
 ## [0.179.0 build 0258] — 2026-08-29 — feature: selvbetjent "glemt adgangskode" + admin kan redigere andres e-mail (FEATURES.md #205, #206)
 
 Jan: *"1 og 2 og så lad os se på #162"* (efter selv at have foreslået selvbetjent password-reset som naturligt næste skridt, nu hvor e-mail-infrastrukturen fra #197 findes).

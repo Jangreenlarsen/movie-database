@@ -65,6 +65,9 @@ class SystemBackup(BaseModel):
     counters: list[dict] = Field(default_factory=list)
     screenings: list[dict] = Field(default_factory=list)
     screening_requests: list[dict] = Field(default_factory=list)
+    # Feature #162 — samme regel-20-begrundelse som screenings/
+    # screening_requests: kandidater refererer movie_id/tv_show_id.
+    polls: list[dict] = Field(default_factory=list)
     seat_reservations: list[dict] = Field(default_factory=list)
     messages: list[dict] = Field(default_factory=list)
     audit_log: list[dict] = Field(default_factory=list)
@@ -99,6 +102,7 @@ class SystemRestoreResult(BaseModel):
     counters_imported: int
     screenings_imported: int
     screening_requests_imported: int
+    polls_imported: int
     seat_reservations_imported: int
     messages_imported: int
     # Merged insert-only, not wholesale-replaced (system_backup_service.
@@ -135,6 +139,7 @@ class DatabaseResetResult(BaseModel):
     counters_removed: int
     screenings_removed: int
     screening_requests_removed: int
+    polls_removed: int
     seat_reservations_removed: int
 
 

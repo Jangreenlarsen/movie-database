@@ -384,6 +384,18 @@ export const api = {
     request(`/screenings/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteScreening: (id) => request(`/screenings/${id}`, { method: "DELETE" }),
 
+  // Feature #162 — afstemning om hvilken film/serie der skal vises.
+  listPolls: (status) => request(`/polls${status ? `?status=${status}` : ""}`),
+  getPoll: (id) => request(`/polls/${id}`),
+  createPoll: (payload) =>
+    request("/polls", { method: "POST", body: JSON.stringify(payload) }),
+  votePoll: (id, candidateIndex) =>
+    request(`/polls/${id}/vote`, {
+      method: "POST",
+      body: JSON.stringify({ candidate_index: candidateIndex }),
+    }),
+  closePoll: (id) => request(`/polls/${id}/close`, { method: "POST" }),
+
   // Feature #133 — sæde-reservation til Voldby BIO.
   getSeatMap: (screeningId) => request(`/screenings/${screeningId}/seats`),
   reserveSeats: (screeningId, seatIds) =>

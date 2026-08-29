@@ -48,23 +48,38 @@ async def test_reset_clears_library_and_related_data(client):
     # BUGS.md #65 — a seat reservation references a screening_id; if reset
     # cleared screenings but left this behind, it would dangle.
     await client.post("/api/reservations/hold", json={"seat_id": "N1-1", "scope": "global"})
+    # Feature #162 — same dangling-reference reasoning as screenings above.
+    other_movie = await client.post(
+        "/api/movies", json={"title": "Poll Candidate Movie", "media_type": "Fysisk", "format": "F-DVD"}
+    )
+    await client.post(
+        "/api/polls",
+        json={
+            "candidates": [
+                {"media_kind": "movie", "movie_id": movie_id},
+                {"media_kind": "movie", "movie_id": other_movie.json()["id"]},
+            ]
+        },
+    )
 
     response = await client.post(
         "/api/system/reset", json={"current_password": "testpassword123"}
     )
     assert response.status_code == 200
     result = response.json()
-    # 2 still-active movies ("Doomed Movie", "Screening Movie") — the third
-    # was soft-deleted and lives in deleted_movies instead.
-    assert result["movies_removed"] == 2
+    # 3 still-active movies ("Doomed Movie", "Screening Movie", "Poll
+    # Candidate Movie") — the fourth was soft-deleted and lives in
+    # deleted_movies instead.
+    assert result["movies_removed"] == 3
     assert result["tv_shows_removed"] == 1
     assert result["deleted_movies_removed"] == 1
     # "x" plus the auto "Tilføjet af {username}" tag (feature #18) — the
-    # latter is shared/reused across all 4 creations in this test, not
+    # latter is shared/reused across all creations in this test, not
     # duplicated per item.
     assert result["tags_removed"] == 2
     assert result["screenings_removed"] == 1
     assert result["screening_requests_removed"] == 1
+    assert result["polls_removed"] == 1
     assert result["seat_reservations_removed"] == 1
 
     assert (await client.get("/api/movies")).json()["items"] == []
@@ -73,6 +88,7 @@ async def test_reset_clears_library_and_related_data(client):
     assert (await client.get("/api/tags")).json() == []
     assert (await client.get("/api/screenings")).json() == []
     assert (await client.get("/api/screening-requests")).json() == []
+    assert (await client.get("/api/polls")).json() == []
     assert (await client.get("/api/reservations?status=approved")).json() == []
 
 

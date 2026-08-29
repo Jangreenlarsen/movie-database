@@ -18,6 +18,7 @@ from app.api import (
     monitor,
     movies,
     plex,
+    polls,
     posters,
     reservations,
     scan,
@@ -58,9 +59,12 @@ from app.core.errors import (
     NotAuthenticatedError,
     NotAuthorizedError,
     NotSupportedOnThisPlatformError,
+    InvalidPollCandidateError,
     PasswordResetUnavailableError,
     Pkcs12ImportError,
     PlexFilterUnavailableError,
+    PollNotFoundError,
+    PollNotOpenError,
     PreferredAtRequiredError,
     ReservationNotFoundError,
     SeatTakenError,
@@ -81,6 +85,7 @@ from app.repositories import (
     audit_log_repository,
     message_repository,
     movie_repository,
+    poll_repository,
     poster_cache_repository,
     reservation_repository,
     screening_repository,
@@ -119,6 +124,7 @@ async def lifespan(app: FastAPI):
     await visit_repository.ensure_indexes(db)
     await reservation_repository.ensure_indexes(db)
     await poster_cache_repository.ensure_indexes(db)
+    await poll_repository.ensure_indexes(db)
     logger.info("MongoDB client initialized (%s)", settings.mongo_db_name)
 
     # Feature #181 (Jan: "vi skal have en automatisk scan af plex media
@@ -197,6 +203,21 @@ async def screening_request_not_found_handler(
 @app.exception_handler(ScreeningNotFoundError)
 async def screening_not_found_handler(request: Request, exc: ScreeningNotFoundError) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(PollNotFoundError)
+async def poll_not_found_handler(request: Request, exc: PollNotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(PollNotOpenError)
+async def poll_not_open_handler(request: Request, exc: PollNotOpenError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(InvalidPollCandidateError)
+async def invalid_poll_candidate_handler(request: Request, exc: InvalidPollCandidateError) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
 
 
 @app.exception_handler(PreferredAtRequiredError)
@@ -437,6 +458,7 @@ app.include_router(system.router)
 app.include_router(library_backup.router)
 app.include_router(screening_requests.router)
 app.include_router(screenings.router)
+app.include_router(polls.router)
 app.include_router(reservations.router)
 app.include_router(messages.router)
 app.include_router(posters.router)

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.180.0 (build 0259) — 2026-08-29
+
+- **Ny afstemningsside i Voldby BIO** — admin udvælger kandidat-film/-serier, alle kan stemme (én stemme, du kan skifte mening mens den er åben), admin lukker afstemningen og planlægger vinderen som en rigtig visning. Alle der stemte får besked når afstemningen afgøres, og igen når vinderen bliver planlagt.
+
 ## v0.179.0 (build 0258) — 2026-08-29
 
 - **Ny "Glemt din adgangskode?"-link på login-siden** — indtast din e-mail, og du får et link til selv at vælge en ny adgangskode. Ingen admin-hjælp nødvendig mere, medmindre din konto ikke har en e-mail sat.

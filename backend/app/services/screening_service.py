@@ -5,10 +5,12 @@ from pymongo.errors import DuplicateKeyError
 
 from app.core.config import settings
 from app.core.errors import (
+    PollNotFoundError,
     PreferredAtRequiredError,
     ScreeningNotFoundError,
     ScreeningRequestNotFoundError,
 )
+from app.models.poll import PollCandidateResult
 from app.models.screening import (
     Screening,
     ScreeningCreate,
@@ -17,6 +19,7 @@ from app.models.screening import (
 )
 from app.repositories import (
     movie_repository,
+    poll_repository,
     reservation_repository,
     screening_repository,
     screening_request_repository,
@@ -261,6 +264,13 @@ async def create_screening(
         if existing is None:
             raise ScreeningRequestNotFoundError(payload.request_id)
 
+    # Feature #162 — samme BUGS.md #42-begrundelse som request_id ovenfor:
+    # valideres FØR selve oprettelsen.
+    if payload.poll_id:
+        existing_poll = await poll_repository.find_by_id(db, payload.poll_id)
+        if existing_poll is None:
+            raise PollNotFoundError(payload.poll_id)
+
     document = {
         "media_kind": payload.media_kind,
         "movie_id": payload.movie_id,
@@ -284,6 +294,27 @@ async def create_screening(
         # sendes med, se den identiske note ved decline_request.
         await message_service.notify_screening_request_scheduled(
             db, existing, admin, model.title, model.scheduled_at, poster_url=model.poster_url
+        )
+
+    if payload.poll_id:
+        await poll_repository.set_scheduled(db, payload.poll_id, model.id)
+        # Feature #162 — svar til hver der stemte i afstemningen. Den
+        # planlagte titel ER selve vinderen (det er jo hele pointen med at
+        # planlægge fra en afstemning), så et letvægts PollCandidateResult
+        # bygges direkte af den allerede-resolverede screening-model i
+        # stedet for et ekstra opslag.
+        await message_service.notify_poll_scheduled(
+            db,
+            existing_poll,
+            PollCandidateResult(
+                media_kind=payload.media_kind,
+                movie_id=payload.movie_id,
+                tv_show_id=payload.tv_show_id,
+                title=model.title,
+                poster_url=model.poster_url,
+            ),
+            admin,
+            model.scheduled_at,
         )
 
     return model

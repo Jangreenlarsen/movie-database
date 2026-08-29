@@ -34,6 +34,19 @@ async def test_backup_includes_all_expected_collections(client, monkeypatch):
         json={"media_kind": "movie", "movie_id": movie_id, "scheduled_at": "2026-09-01T20:00:00"},
     )
     await client.post("/api/reservations/hold", json={"seat_id": "N1-1", "scope": "global"})
+    # Feature #162 — samme regel-20-begrundelse som screenings ovenfor.
+    other_movie_for_poll = await client.post(
+        "/api/movies", json={"title": "Poll Candidate", "media_type": "Fysisk", "format": "F-DVD"}
+    )
+    await client.post(
+        "/api/polls",
+        json={
+            "candidates": [
+                {"media_kind": "movie", "movie_id": movie_id},
+                {"media_kind": "movie", "movie_id": other_movie_for_poll.json()["id"]},
+            ]
+        },
+    )
     # A broadcast message excludes its own sender from the recipient list
     # (message_service._resolve_recipients), so a second active user is
     # needed or there'd be nobody to receive it (409 NoRecipientsError).
@@ -53,13 +66,14 @@ async def test_backup_includes_all_expected_collections(client, monkeypatch):
     assert response.status_code == 200
     data = response.json()
 
-    assert len(data["movies"]) == 2
+    assert len(data["movies"]) == 3
     assert len(data["tv_shows"]) == 1
     assert len(data["deleted_movies"]) == 1
     assert len(data["users"]) == 2
     assert len(data["counters"]) >= 1
     assert len(data["screenings"]) == 1
     assert len(data["screening_requests"]) == 1
+    assert len(data["polls"]) == 1
     assert len(data["seat_reservations"]) == 1
     assert len(data["messages"]) == 1
     # Creating the screening + the screening-request above are themselves
@@ -219,9 +233,19 @@ async def test_restore_round_trip_preserves_everything(client, monkeypatch):
 
     monkeypatch.setattr(tmdb_client, "fetch_poster_image", fake_fetch)
 
-    await client.post("/api/movies", json={"title": "Roundtrip Movie", "tags": ["Favorite"], "media_type": "Fysisk", "format": "F-DVD"})
+    movie_a = await client.post("/api/movies", json={"title": "Roundtrip Movie", "tags": ["Favorite"], "media_type": "Fysisk", "format": "F-DVD"})
+    movie_b = await client.post("/api/movies", json={"title": "Roundtrip Poll Candidate", "media_type": "Fysisk", "format": "F-DVD"})
     await client.post("/api/tv-shows", json={"name": "Roundtrip Show", "media_type": "Fysisk", "format": "F-DVD"})
     await client.post("/api/reservations/hold", json={"seat_id": "N1-1", "scope": "global"})
+    await client.post(
+        "/api/polls",
+        json={
+            "candidates": [
+                {"media_kind": "movie", "movie_id": movie_a.json()["id"]},
+                {"media_kind": "movie", "movie_id": movie_b.json()["id"]},
+            ]
+        },
+    )
     await client.get("/api/posters/w185/roundtrip.jpg")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as recipient_client:
@@ -239,9 +263,10 @@ async def test_restore_round_trip_preserves_everything(client, monkeypatch):
     response = await client.post("/api/system/restore", json=backup)
     assert response.status_code == 200
     result = response.json()
-    assert result["movies_imported"] == 1
+    assert result["movies_imported"] == 2
     assert result["tv_shows_imported"] == 1
     assert result["users_imported"] == 2
+    assert result["polls_imported"] == 1
     assert result["seat_reservations_imported"] == 1
     assert result["messages_imported"] == 1
     assert result["poster_cache_imported"] == 1
@@ -258,9 +283,15 @@ async def test_restore_round_trip_preserves_everything(client, monkeypatch):
     assert fetch_calls == []
 
     movies = (await client.get("/api/movies")).json()["items"]
-    assert len(movies) == 1
-    assert movies[0]["title"] == "Roundtrip Movie"
-    assert movies[0]["tags"] == ["Favorite", "Tilføjet af testuser"]
+    assert len(movies) == 2
+    roundtrip_movie = next(m for m in movies if m["title"] == "Roundtrip Movie")
+    assert roundtrip_movie["tags"] == ["Favorite", "Tilføjet af testuser"]
+
+    # Feature #162 — beviser at polls rent faktisk overlever restore
+    # (bruger movie_a's ID, som fik samme _id tilbage efter restore).
+    polls_after_restore = (await client.get("/api/polls")).json()
+    assert len(polls_after_restore) == 1
+    assert len(polls_after_restore[0]["candidates"]) == 2
 
     # BUGS.md #65 — the second hold (N1-2, taken after the backup) must be
     # gone, and the first (N1-1, in the backup) must still be there. Proves

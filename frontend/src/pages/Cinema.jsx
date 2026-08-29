@@ -130,6 +130,10 @@ export default function Cinema({ user }) {
         </>
       )}
 
+      {/* Feature #162 — vist for ALLE (ikke kun admin, i modsætning til
+          panelerne nedenfor), da enhver rolle inkl. gæster må stemme. */}
+      <PollsSection isAdmin={isAdmin} />
+
       {isAdmin && <AdminScreeningTools onChanged={refresh} />}
       {isAdmin && <ReservationAdmin screenings={screenings} />}
 
@@ -537,6 +541,347 @@ export function RequestRow({ request, onChanged }) {
           onClose={() => setShowDetail(false)}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * Feature #162 — afstemning om hvilken film/serie der skal vises. Kun admin
+ * må oprette/lukke en afstemning (require_admin i backend), men stemme er
+ * åbent for enhver rolle inkl. gæster (samme princip som feature #72's
+ * forvisnings-anmodninger). Vises for ALLE, ikke kun admin — i modsætning
+ * til AdminScreeningTools nedenfor.
+ */
+function PollsSection({ isAdmin }) {
+  const t = useT();
+  const [polls, setPolls] = useState([]);
+  const [status, setStatus] = useState("loading");
+  const [creating, setCreating] = useState(false);
+
+  function refresh() {
+    return api
+      .listPolls()
+      .then((data) => {
+        setPolls(data);
+        setStatus("ready");
+      })
+      .catch(() => setStatus("error"));
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  const openPolls = polls.filter((p) => p.status === "open");
+  // Feature #162 — kun de 5 seneste afgjorte afstemninger, så listen ikke
+  // vokser uendeligt; ingen efterspurgt "se alle"-historik endnu.
+  const decidedPolls = polls.filter((p) => p.status !== "open").slice(0, 5);
+
+  return (
+    <div className="card cinema-panel">
+      <h2>{t("polls.heading")}</h2>
+      <p className="muted">{t("polls.hint")}</p>
+
+      {isAdmin &&
+        (creating ? (
+          <PollCreateForm
+            onCreated={() => {
+              setCreating(false);
+              refresh();
+            }}
+            onCancel={() => setCreating(false)}
+          />
+        ) : (
+          <button type="button" className="btn" onClick={() => setCreating(true)}>
+            {t("polls.create")}
+          </button>
+        ))}
+
+      {status === "loading" && <p className="muted">{t("common.loading")}</p>}
+      {status === "error" && <div className="banner banner-error">{t("polls.loadError")}</div>}
+      {status === "ready" && polls.length === 0 && !creating && (
+        <p className="muted">{t("polls.none")}</p>
+      )}
+
+      <div className="cinema-polls">
+        {openPolls.map((poll) => (
+          <PollCard key={poll.id} poll={poll} isAdmin={isAdmin} onChanged={refresh} />
+        ))}
+        {decidedPolls.map((poll) => (
+          <PollCard key={poll.id} poll={poll} isAdmin={isAdmin} onChanged={refresh} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PollCreateForm({ onCreated, onCancel }) {
+  const t = useT();
+  const [title, setTitle] = useState("");
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [candidates, setCandidates] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function search(event) {
+    event.preventDefault();
+    if (!query.trim()) return;
+    const [movies, shows] = await Promise.all([
+      api.listMovies({ q: query.trim() }),
+      api.listTvShows({ q: query.trim() }),
+    ]);
+    setResults([
+      ...movies.items.map((m) => ({ media_kind: "movie", id: m.id, title: m.title, year: m.year, poster_url: m.poster_url })),
+      ...shows.items.map((s) => ({ media_kind: "tv", id: s.id, title: s.name, year: s.year, poster_url: s.poster_url })),
+    ]);
+  }
+
+  function addCandidate(candidate) {
+    if (candidates.some((c) => c.media_kind === candidate.media_kind && c.id === candidate.id)) return;
+    setCandidates([...candidates, candidate]);
+    setResults([]);
+    setQuery("");
+  }
+
+  function removeCandidate(candidate) {
+    setCandidates(candidates.filter((c) => !(c.media_kind === candidate.media_kind && c.id === candidate.id)));
+  }
+
+  async function submit() {
+    if (candidates.length < 2) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.createPoll({
+        title: title.trim() || null,
+        candidates: candidates.map((c) => ({
+          media_kind: c.media_kind,
+          movie_id: c.media_kind === "movie" ? c.id : null,
+          tv_show_id: c.media_kind === "tv" ? c.id : null,
+        })),
+      });
+      onCreated();
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="cinema-card-edit-form" style={{ marginTop: 10 }}>
+      <input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder={t("polls.titlePlaceholder")}
+      />
+      <form className="cinema-search-form" onSubmit={search}>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("cinema.searchLibraryPlaceholder")}
+        />
+        <button type="submit" className="btn">
+          {t("scan.search")}
+        </button>
+      </form>
+
+      {results.length > 0 && (
+        <div className="cinema-search-results">
+          {results.map((result) => (
+            <button
+              type="button"
+              key={`${result.media_kind}-${result.id}`}
+              className="cinema-search-result"
+              onClick={() => addCandidate(result)}
+            >
+              {result.poster_url ? <img src={posterSrc(result.poster_url, "w185")} alt="" /> : <span>{result.media_kind === "movie" ? "🎬" : "📺"}</span>}
+              <span>
+                {result.title} {result.year ? `(${result.year})` : ""}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {candidates.length > 0 && (
+        <ul className="cinema-poll-candidate-list">
+          {candidates.map((c) => (
+            <li key={`${c.media_kind}-${c.id}`}>
+              {c.title} {c.year ? `(${c.year})` : ""}
+              <button type="button" className="btn" onClick={() => removeCandidate(c)}>
+                {t("cinema.remove")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {error && <div className="banner banner-error">{error}</div>}
+
+      <button type="button" className="btn btn-primary" onClick={submit} disabled={candidates.length < 2 || busy}>
+        {t(busy ? "polls.creating" : "polls.confirmCreate")}
+      </button>
+      <button type="button" className="btn" onClick={onCancel} disabled={busy}>
+        {t("common.cancel")}
+      </button>
+    </div>
+  );
+}
+
+export function PollCard({ poll, isAdmin, onChanged }) {
+  const t = useT();
+  const [busyIndex, setBusyIndex] = useState(null);
+  const [error, setError] = useState(null);
+  const [closing, setClosing] = useState(false);
+  const [schedulingIndex, setSchedulingIndex] = useState(null);
+
+  async function vote(index) {
+    setBusyIndex(index);
+    setError(null);
+    try {
+      await api.votePoll(poll.id, index);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyIndex(null);
+    }
+  }
+
+  async function close() {
+    setClosing(true);
+    setError(null);
+    try {
+      await api.closePoll(poll.id);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+      setClosing(false);
+    }
+  }
+
+  const isOpen = poll.status === "open";
+  const isTie = poll.status !== "open" && poll.winner_indices.length > 1;
+
+  return (
+    <div className="cinema-poll-card">
+      <div className="cinema-poll-heading">
+        <strong>{poll.title || t("polls.untitled")}</strong>
+        <span className={`role-badge cinema-poll-status-${poll.status}`}>
+          {t(`polls.status.${poll.status}`)}
+        </span>
+      </div>
+      {isTie && <p className="muted">{t("polls.tieHint")}</p>}
+
+      {poll.candidates.map((candidate, index) => {
+        const pct = poll.total_votes > 0 ? Math.round((candidate.vote_count / poll.total_votes) * 100) : 0;
+        const isWinner = poll.winner_indices.includes(index);
+        return (
+          <div key={index} className="cinema-request-row cinema-poll-candidate-row">
+            <div className="cinema-request-poster">
+              {candidate.poster_url ? (
+                <img src={posterSrc(candidate.poster_url, "w185")} alt="" />
+              ) : (
+                <span>{candidate.media_kind === "movie" ? "🎬" : "📺"}</span>
+              )}
+            </div>
+            <div className="cinema-request-info">
+              <strong>
+                {candidate.title ?? t("cinema.unknown")} {candidate.year ? `(${candidate.year})` : ""}
+                {isWinner && <span className="cinema-poll-winner-badge"> 🏆</span>}
+              </strong>
+              <div className="cinema-poll-bar-track">
+                <div className="cinema-poll-bar-fill" style={{ width: `${pct}%` }} />
+              </div>
+              <div className="muted">{t("polls.voteCount", { count: candidate.vote_count, pct })}</div>
+            </div>
+            <div className="cinema-request-actions">
+              {isOpen && (
+                <button
+                  type="button"
+                  className={`btn${poll.my_vote === index ? " btn-primary" : ""}`}
+                  disabled={busyIndex !== null}
+                  onClick={() => vote(index)}
+                >
+                  {t(poll.my_vote === index ? "polls.voted" : "polls.vote")}
+                </button>
+              )}
+              {isAdmin && isWinner && poll.status === "closed" && (
+                schedulingIndex === index ? null : (
+                  <button type="button" className="btn btn-primary" onClick={() => setSchedulingIndex(index)}>
+                    {t("polls.schedule")}
+                  </button>
+                )
+              )}
+            </div>
+            {isAdmin && isWinner && poll.status === "closed" && schedulingIndex === index && (
+              <SchedulePollWinnerForm
+                poll={poll}
+                candidate={candidate}
+                onScheduled={onChanged}
+                onCancel={() => setSchedulingIndex(null)}
+              />
+            )}
+          </div>
+        );
+      })}
+
+      {error && <div className="banner banner-error">{error}</div>}
+
+      {isAdmin && isOpen && (
+        <button type="button" className="btn" onClick={close} disabled={closing}>
+          {t(closing ? "polls.closing" : "polls.close")}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function SchedulePollWinnerForm({ poll, candidate, onScheduled, onCancel }) {
+  const t = useT();
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [note, setNote] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function submit() {
+    if (!scheduledAt) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.createScreening({
+        media_kind: candidate.media_kind,
+        movie_id: candidate.movie_id,
+        tv_show_id: candidate.tv_show_id,
+        scheduled_at: scheduledAt,
+        note: note || null,
+        is_private: isPrivate,
+        poll_id: poll.id,
+      });
+      onScheduled();
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="cinema-card-edit-form" style={{ flexBasis: "100%" }}>
+      <DateTime24Input value={scheduledAt} onChange={setScheduledAt} />
+      <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("cinema.notePlaceholder")} />
+      <label className="cinema-private-toggle">
+        <input type="checkbox" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} />
+        {t("cinema.privateEvent")}
+      </label>
+      {error && <div className="banner banner-error">{error}</div>}
+      <button type="button" className="btn btn-primary" onClick={submit} disabled={!scheduledAt || busy}>
+        {t(busy ? "cinema.scheduling" : "cinema.confirm")}
+      </button>
+      <button type="button" className="btn" onClick={onCancel} disabled={busy}>
+        {t("common.cancel")}
+      </button>
     </div>
   );
 }

@@ -16,6 +16,7 @@ from app.repositories import (
     audit_log_repository,
     message_repository,
     movie_repository,
+    poll_repository,
     poster_cache_repository,
     reservation_repository,
     screening_repository,
@@ -70,6 +71,7 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
     counters = await db[_COUNTERS_COLLECTION].find({}).to_list(length=None)
     screenings = await db[screening_repository.COLLECTION].find({}).to_list(length=None)
     screening_requests = await db[screening_request_repository.COLLECTION].find({}).to_list(length=None)
+    polls = await db[poll_repository.COLLECTION].find({}).to_list(length=None)
     seat_reservations = await db[reservation_repository.COLLECTION].find({}).to_list(length=None)
     messages = await db[message_repository.COLLECTION].find({}).to_list(length=None)
     audit_log = await db[audit_log_repository.COLLECTION].find({}).to_list(length=None)
@@ -112,6 +114,7 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
         counters=[to_json_safe(doc) for doc in counters],
         screenings=[to_json_safe(doc) for doc in screenings],
         screening_requests=[to_json_safe(doc) for doc in screening_requests],
+        polls=[to_json_safe(doc) for doc in polls],
         seat_reservations=[to_json_safe(doc) for doc in seat_reservations],
         messages=[to_json_safe(doc) for doc in messages],
         audit_log=[to_json_safe(doc) for doc in audit_log],
@@ -202,6 +205,7 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
     counters = [from_json_safe(doc) for doc in backup.counters]
     screenings = [from_json_safe(doc) for doc in backup.screenings]
     screening_requests = [from_json_safe(doc) for doc in backup.screening_requests]
+    polls = [from_json_safe(doc) for doc in backup.polls]
     seat_reservations = [from_json_safe(doc) for doc in backup.seat_reservations]
     messages = [from_json_safe(doc) for doc in backup.messages]
     audit_log = [from_json_safe(doc) for doc in backup.audit_log]
@@ -225,6 +229,7 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
     await _replace_raw_collection(db, _COUNTERS_COLLECTION, counters)
     await _replace_raw_collection(db, screening_repository.COLLECTION, screenings)
     await _replace_raw_collection(db, screening_request_repository.COLLECTION, screening_requests)
+    await _replace_raw_collection(db, poll_repository.COLLECTION, polls)
     await _replace_raw_collection(db, reservation_repository.COLLECTION, seat_reservations)
     await _replace_raw_collection(db, message_repository.COLLECTION, messages)
     audit_log_imported = await _merge_raw_collection(db, audit_log_repository.COLLECTION, audit_log)
@@ -253,6 +258,7 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
         counters_imported=len(counters),
         screenings_imported=len(screenings),
         screening_requests_imported=len(screening_requests),
+        polls_imported=len(polls),
         seat_reservations_imported=len(seat_reservations),
         messages_imported=len(messages),
         audit_log_imported=audit_log_imported,
@@ -295,6 +301,10 @@ async def reset_library(db: AsyncIOMotorDatabase) -> DatabaseResetResult:
     counters_removed = await _clear_collection(db, _COUNTERS_COLLECTION)
     screenings_removed = await _clear_collection(db, screening_repository.COLLECTION)
     screening_requests_removed = await _clear_collection(db, screening_request_repository.COLLECTION)
+    # Feature #162 — samme dinglende-reference-begrundelse som screenings/
+    # screening_requests ovenfor: en afstemnings kandidater refererer
+    # movie_id/tv_show_id, som ikke længere findes efter et biblioteks-reset.
+    polls_removed = await _clear_collection(db, poll_repository.COLLECTION)
     seat_reservations_removed = await _clear_collection(db, reservation_repository.COLLECTION)
 
     return DatabaseResetResult(
@@ -306,5 +316,6 @@ async def reset_library(db: AsyncIOMotorDatabase) -> DatabaseResetResult:
         counters_removed=counters_removed,
         screenings_removed=screenings_removed,
         screening_requests_removed=screening_requests_removed,
+        polls_removed=polls_removed,
         seat_reservations_removed=seat_reservations_removed,
     )

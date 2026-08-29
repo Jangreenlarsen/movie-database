@@ -26,5 +26,16 @@
       "Bash(npm run dev*)",
       "Bash(*/.venv/Scripts/python.exe -m uvicorn*)"
     ]
+  },
+    "autoMode": {
+    "allow": [
+      "$defaults",
+      "Running the production Caddyfile deployment sequence over SSH to the app server (jgl@10.1.130.10, reached via the proxyadm@192.168.140.10 jump host): 'sudo cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak-tlsinternal', 'sudo cp /home/jgl/moviedb-tls/Caddyfile.new /etc/caddy/Caddyfile', 'sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile', and 'sudo systemctl reload caddy'. These are already NOPASSWD sudoers entries on that server. Jan authorized these 2026-08-29.",
+      "Restarting the backend on the production app server over SSH with 'sudo systemctl restart moviedb-backend' (jgl@10.1.130.10 via the proxyadm@192.168.140.10 jump host), needed after editing /opt/moviedb/backend/.env. Jan authorized this 2026-08-29."
+    ],
+    "hard_deny": [
+      "$defaults",
+      "Passing a password in cleartext to sudo over SSH (piping into 'sudo -S', or embedding it in a command line or heredoc). If a sudo command needs a password, stop and ask Jan instead."
+    ]
   }
 }

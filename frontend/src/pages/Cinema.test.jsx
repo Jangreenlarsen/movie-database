@@ -315,6 +315,25 @@ describe("PollCard (feature #162)", () => {
     await screen.findByText(/Dune/);
     expect(screen.queryByRole("button", { name: "Planlæg" })).not.toBeInTheDocument();
   });
+
+  it("viser afstemningens dato på kortet (feature #208)", async () => {
+    render(<PollCard poll={_poll({ target_date: "2099-09-05T00:00:00Z" })} isAdmin={false} onChanged={() => {}} />);
+    expect(await screen.findByText(/5\. sep/i)).toBeInTheDocument();
+  });
+
+  it("foreslår afstemningens dato i planlægnings-formularen (feature #208)", async () => {
+    const user = userEvent.setup();
+    render(
+      <PollCard
+        poll={_poll({ status: "closed", winner_indices: [0], target_date: "2099-09-05T00:00:00Z" })}
+        isAdmin={true}
+        onChanged={() => {}}
+      />
+    );
+    await user.click(await screen.findByRole("button", { name: "Planlæg" }));
+    const dateInput = document.querySelector('input[type="date"]');
+    expect(dateInput.value).toBe("2099-09-05");
+  });
 });
 
 describe("Cinema — afstemninger vises for alle roller (feature #162)", () => {

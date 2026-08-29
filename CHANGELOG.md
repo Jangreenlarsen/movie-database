@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.181.0 build 0260] — 2026-08-29 — feature: dato på afstemning (FEATURES.md #208)
+
+Jan, direkte efter #207: *"afstemming skal kunne sættes en dato på til de film vi stemmer om til forvisning"*.
+
+`Poll`/`PollCreate` fik et nyt valgfrit `target_date` — hvilken aften der stemmes om, uden klokkeslæt (det vælges først ved selve programsætningen). Vises på afstemningskortet, og foreslås videre ind i planlægnings-formularen (dato forudfyldt, tid forudfyldt til 20:00) når admin planlægger vinderen.
+
+Berørte filer: `backend/app/models/poll.py`, `backend/app/services/poll_service.py`, `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Cinema.css`, i18n, `ARCHITECTURE.md`. Tests: `test_polls.py` +2, `Cinema.test.jsx` +2. Fuld backend-suite (916) + frontend (194) grøn.
+
 ## [0.180.0 build 0259] — 2026-08-29 — feature: afstemningsside for filmvalg (FEATURES.md #207)
 
 Jan: *"Kunne man lave en afstemning side hvor man kunne stemme på nogen udvalgte film hvor den/dem så blev vist på en given dato?"* (registreret som #162, taget op igen efter fire afklarende spørgsmål: én stemme pr. bruger/ombestemmelig, stemmetal synlige undervejs, kun admin opretter, uafgjort løses manuelt af admin).

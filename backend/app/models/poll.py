@@ -23,6 +23,16 @@ class PollCreate(BaseModel):
     # Valgfri — en admin behøver ikke navngive hver afstemning ("Fredag
     # aften?" er implicit af selve konteksten den bruges i).
     title: str | None = Field(default=None, max_length=200)
+    # Feature #208 (Jan: "afstemming skal kunne sættes en dato på til de
+    # film vi stemmer om til forvisning") — hvilken AFTEN der stemmes om,
+    # ikke et klokkeslæt (det fastlægges først når vinderen rent faktisk
+    # planlægges, se poll_service.create_poll/SchedulePollWinnerForm i
+    # frontend, som foreslår denne dato videre til selve
+    # visnings-planlægningen). `datetime`, ikke `date` — samme "kun dato
+    # betyder navnet, typen er datetime" konvention som Movie/TvShow's
+    # `watched_at` allerede bruger (MongoDB/BSON har ingen ren dato-type).
+    # Valgfri, som title.
+    target_date: datetime | None = None
     candidates: list[PollCandidateCreate]
 
     @model_validator(mode="after")
@@ -57,6 +67,7 @@ class PollCandidateResult(BaseModel):
 class Poll(BaseModel):
     id: str
     title: str | None = None
+    target_date: datetime | None = None
     status: PollStatus
     candidates: list[PollCandidateResult]
     total_votes: int

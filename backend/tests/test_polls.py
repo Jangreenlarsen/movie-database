@@ -267,6 +267,36 @@ async def test_scheduling_with_an_unknown_poll_id_returns_404(client):
     assert response.status_code == 404
 
 
+async def test_poll_can_be_created_with_a_target_date(client):
+    """Feature #208 (Jan: "afstemming skal kunne sættes en dato på til de
+    film vi stemmer om til forvisning")."""
+    a = await _create_movie(client, "Dato A")
+    b = await _create_movie(client, "Dato B")
+
+    response = await client.post(
+        "/api/polls",
+        json={
+            "candidates": [
+                {"media_kind": "movie", "movie_id": a},
+                {"media_kind": "movie", "movie_id": b},
+            ],
+            "target_date": "2099-09-05",
+        },
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["target_date"].startswith("2099-09-05")
+
+
+async def test_poll_target_date_is_optional(client):
+    a = await _create_movie(client, "Ingen Dato A")
+    b = await _create_movie(client, "Ingen Dato B")
+
+    response = await _create_poll(client, [a, b])
+    assert response.status_code == 201
+    assert response.json()["target_date"] is None
+
+
 async def test_list_polls_can_filter_by_status(client):
     a = await _create_movie(client, "Filter A")
     b = await _create_movie(client, "Filter B")

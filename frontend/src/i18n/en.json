@@ -342,6 +342,8 @@
   "polls.creating": "Creating...",
   "polls.confirmCreate": "Create poll",
   "polls.titlePlaceholder": "Title (optional, e.g. \"Friday night\")",
+  "polls.targetDate": "Date (optional)",
+  "polls.targetDateLine": "Voting for {date}",
   "polls.loadError": "Couldn't load the polls.",
   "polls.none": "No polls yet.",
   "polls.untitled": "Poll",

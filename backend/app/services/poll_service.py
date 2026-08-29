@@ -58,6 +58,7 @@ async def _to_poll_model(db: AsyncIOMotorDatabase, document: dict, viewer_userna
     return Poll(
         id=str(document["_id"]),
         title=document.get("title"),
+        target_date=document.get("target_date"),
         status=document["status"],
         candidates=candidates,
         total_votes=len(votes),
@@ -74,6 +75,7 @@ async def create_poll(db: AsyncIOMotorDatabase, payload: PollCreate, admin: dict
     now = datetime.now(timezone.utc)
     document = {
         "title": payload.title,
+        "target_date": payload.target_date,
         "candidates": [c.model_dump() for c in payload.candidates],
         "votes": [],
         "status": "open",

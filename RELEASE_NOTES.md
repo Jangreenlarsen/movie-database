@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.181.0 (build 0260) — 2026-08-29
+
+- **Afstemninger kan nu have en dato** — vises på afstemningskortet og foreslås automatisk videre når vinderen skal planlægges som en rigtig visning.
+
 ## v0.180.0 (build 0259) — 2026-08-29
 
 - **Ny afstemningsside i Voldby BIO** — admin udvælger kandidat-film/-serier, alle kan stemme (én stemme, du kan skifte mening mens den er åben), admin lukker afstemningen og planlægger vinderen som en rigtig visning. Alle der stemte får besked når afstemningen afgøres, og igen når vinderen bliver planlagt.

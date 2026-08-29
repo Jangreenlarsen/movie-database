@@ -342,6 +342,8 @@
   "polls.creating": "Opretter...",
   "polls.confirmCreate": "Opret afstemning",
   "polls.titlePlaceholder": "Overskrift (valgfri, fx \"Fredag aften\")",
+  "polls.targetDate": "Dato (valgfri)",
+  "polls.targetDateLine": "Der stemmes om {date}",
   "polls.loadError": "Kunne ikke hente afstemningerne.",
   "polls.none": "Ingen afstemninger endnu.",
   "polls.untitled": "Afstemning",

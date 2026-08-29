@@ -618,6 +618,10 @@ function PollsSection({ isAdmin }) {
 function PollCreateForm({ onCreated, onCancel }) {
   const t = useT();
   const [title, setTitle] = useState("");
+  // Feature #208 (Jan: "afstemming skal kunne sættes en dato på til de film
+  // vi stemmer om til forvisning") — hvilken aften der stemmes om, ikke et
+  // klokkeslæt (det vælges først når vinderen rent faktisk planlægges).
+  const [targetDate, setTargetDate] = useState("");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [candidates, setCandidates] = useState([]);
@@ -655,6 +659,7 @@ function PollCreateForm({ onCreated, onCancel }) {
     try {
       await api.createPoll({
         title: title.trim() || null,
+        target_date: targetDate || null,
         candidates: candidates.map((c) => ({
           media_kind: c.media_kind,
           movie_id: c.media_kind === "movie" ? c.id : null,
@@ -675,6 +680,10 @@ function PollCreateForm({ onCreated, onCancel }) {
         onChange={(e) => setTitle(e.target.value)}
         placeholder={t("polls.titlePlaceholder")}
       />
+      <label className="cinema-poll-date-label">
+        {t("polls.targetDate")}
+        <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+      </label>
       <form className="cinema-search-form" onSubmit={search}>
         <input
           value={query}
@@ -731,6 +740,7 @@ function PollCreateForm({ onCreated, onCancel }) {
 
 export function PollCard({ poll, isAdmin, onChanged }) {
   const t = useT();
+  const locale = useLocale();
   const [busyIndex, setBusyIndex] = useState(null);
   const [error, setError] = useState(null);
   const [closing, setClosing] = useState(false);
@@ -772,6 +782,10 @@ export function PollCard({ poll, isAdmin, onChanged }) {
           {t(`polls.status.${poll.status}`)}
         </span>
       </div>
+      {/* Feature #208 — hvilken aften der stemmes om, ikke et klokkeslæt. */}
+      {poll.target_date && (
+        <p className="muted">{t("polls.targetDateLine", { date: formatShortDate(poll.target_date, locale) })}</p>
+      )}
       {isTie && <p className="muted">{t("polls.tieHint")}</p>}
 
       {poll.candidates.map((candidate, index) => {
@@ -840,7 +854,13 @@ export function PollCard({ poll, isAdmin, onChanged }) {
 
 function SchedulePollWinnerForm({ poll, candidate, onScheduled, onCancel }) {
   const t = useT();
-  const [scheduledAt, setScheduledAt] = useState("");
+  // Feature #208 — foreslår afstemningens dato videre til selve
+  // planlægningen (samme "forslag, ikke bindende"-princip som
+  // earliestUpcomingSuggestion for forvisnings-anmodninger); 20:00 er kun
+  // et startpunkt for klokkeslættet, som admin frit kan ændre.
+  const [scheduledAt, setScheduledAt] = useState(
+    poll.target_date ? `${poll.target_date.slice(0, 10)}T20:00` : ""
+  );
   const [note, setNote] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [busy, setBusy] = useState(false);

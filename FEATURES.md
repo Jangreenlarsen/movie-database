@@ -212,6 +212,7 @@ Begge tabeller opdateres når en feature tilføjes (jf. CLAUDE.md regel 2).
 | 201 | "Del af samlingen:"-listen viser nu om en ejet del er Fysisk eller Digital, ikke kun "✓ Ejer" | done | 0.175.0 |
 | 202 | Besked-notifikationer for ønsker/forvisninger: admin får besked (portal + e-mail) når en bruger opretter et nyt ønske eller en ny forvisnings-anmodning; brugeren(e) bag en forvisnings-anmodning får besked når admin afviser eller planlægger den | done | 0.176.0 |
 | 203 | Gæster ser nu en "Bestilt"-badge på et bestilt ønske-kort (og i detaljevisningen) — uden at afsløre bestillingskilden; "ikke bestilt" forbliver skjult for gæster | done | 0.177.0 |
+| 204 | Rigtige HTML-svar-mails (poster-billede + kort, inspirerende tekst) for alle admin→bruger-svar på ønsker/forvisninger (godkendt/afvist/bestilt/flyttet/afvist-forvisning/planlagt-forvisning), i stedet for ren tekst | planned | — |
 
 ---
 

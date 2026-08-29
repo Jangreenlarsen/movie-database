@@ -112,7 +112,24 @@ Udsteder skal vise `Let's Encrypt`, ikke `Caddy Local Authority`. Test bagefter 
 
 ## `.env` (produktion)
 
-Ligger i `/opt/moviedb/backend/.env` (git-ignoreret, `chmod 600`, ejes af `jgl`). Indeholder en **unik** `JWT_SECRET_KEY` genereret direkte på serveren (ikke genbrugt fra dev), `TMDB_API_TOKEN`, og `COOKIE_SECURE=true` (rigtig HTTPS i produktion). `DISCOGS_TOKEN` er tom (Discogs-opslag virker uden token, bare med lavere rate-limit — se MOVIE_API_REFERENCE.md).
+Ligger i `/opt/moviedb/backend/.env` (git-ignoreret, `chmod 600`, ejes af `jgl`). Indeholder en **unik** `JWT_SECRET_KEY` genereret direkte på serveren (ikke genbrugt fra dev), `TMDB_API_TOKEN`, og `COOKIE_SECURE=true` (rigtig HTTPS i produktion). `DISCOGS_TOKEN` er tom (Discogs-opslag virker uden token, bare med lavere rate-limit — se MOVIE_API_REFERENCE.md). `RESEND_API_KEY`/`EMAIL_FROM_ADDRESS` (feature #197) er som udgangspunkt **også** tomme her — den anbefalede vej er admin-UI'et, se næste afsnit.
+
+## E-mail (Resend) — opsætning (feature #197)
+
+Appen sender udgående notifikations-mails (ønske godkendt/afvist/bestilt/flyttet, forvisnings-svar, admin-broadcasts m.fl.) via **Resend** (`https://resend.com`), en transaktions-mail-udbyder med et rent HTTP-API — valgt fremfor SMTP-relæ eller egen postserver, da appen ikke har (og ikke skal have) sin egen mailserver. Se FEATURES.md #197 for den fulde begrundelse.
+
+**Kontoopsætning hos Resend** (én gang, uden for selve appen):
+
+1. Opret en Resend-konto (gratis niveau: 3.000 mails/måned, 100/dag — rigeligt til en husstands-portal, men værd at kende hvis notifikationsvolumen nogensinde vokser).
+2. **Verificér et afsender-domæne** under *Domains* i Resend-dashboardet — brug et rigtigt (sub)domæne appen allerede kontrollerer DNS'en for (fx `mail.laces.dk`), ikke selve `laces.dk` hvis andre systemer (fx almindelig e-mail) allerede bruger den. Resend viser de nødvendige DNS-records (SPF, DKIM, og en valgfri men anbefalet DMARC) — de tilføjes hos domænets DNS-udbyder, ikke på serveren. Verifikation tager typisk minutter til et par timer afhængig af DNS-propagering. **Uden et verificeret domæne** kan der kun sendes fra Resends eget `onboarding@resend.dev` og kun til kontoens egen, bekræftede e-mail — fint til en hurtig test, ikke brugbart i produktion.
+3. Opret en API-nøgle under *API Keys* — vælg scope **"Sending access"** (Resends mindst-privilegerede, anbefalede type), ikke "Full access". Denne nøgletype kan ikke læse domæne-/kontooplysninger tilbage (`email_client.test_connection()` i koden håndterer eksplicit dens karakteristiske 401 `restricted_api_key`-svar på `GET /api-keys` som "nøglen virker", ikke som en fejl — se BUGS.md-mønsteret dokumenteret i koden).
+4. Vælg en afsenderadresse **på det verificerede domæne** (fx `noreply@mail.laces.dk`) — det er værdien der skal i `EMAIL_FROM_ADDRESS`.
+
+**I appen** (admin-only, Indstillinger → Eksterne API-nøgler → E-mail-notifikationer, feature #198): indsæt den nye API-nøgle i **Resend API-nøgle** og afsenderadressen fra trin 4 i **E-mail-afsenderadresse**. Aktiveres med det samme, ingen genstart nødvendig (samme mønster som TMDb/Discogs/Plex-nøglerne). Brug **"Test forbindelse"** for at bekræfte selve nøglen er gyldig, og **"Send testmail"** (feature #199) for at bekræfte en rigtig mail rent faktisk bliver leveret til en valgfri modtageradresse — de to knapper tester forskellige ting, se #199's begrundelse hvis kun den ene virker.
+
+**`.env` som fallback**: `RESEND_API_KEY`/`EMAIL_FROM_ADDRESS` kan i stedet sættes i `/opt/moviedb/backend/.env` (samme to variabelnavne som `backend/.env.example`) hvis man foretrækker at undgå at have nøglen i databasen — en værdi sat i admin-UI'et overstyrer altid `.env`, som kun bruges hvis UI'et ikke har en værdi sat. Kræver backend-genstart for at slå igennem, i modsætning til UI-vejen.
+
+**Uden konfiguration**: hverken nøgle eller afsenderadresse sat = e-mail-afsendelse er et rent, ulogget no-op — alle notifikationer fortsætter med at virke som in-app-beskeder i portalen, kun selve e-mail-delen udebliver. Ingen fejl, intet der stopper appen.
 
 ## Opdatere produktion til en ny version
 

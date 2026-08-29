@@ -76,7 +76,7 @@ async def test_registered_email_can_immediately_receive_notifications(client, mo
 
     sent = []
 
-    async def fake_send_email(to, subject, text):
+    async def fake_send_email(to, subject, text, html=None):
         sent.append(to)
         return True
 

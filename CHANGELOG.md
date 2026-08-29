@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.178.0 build 0257] — 2026-08-29 — feature: rigtige HTML-svar-mails med poster og inspirerende tekst (FEATURES.md #204)
+
+Jan: *"vi skal have lavet en fede svar email til users når de få svar fra movie portal med billeder og indspirerende tekst"*.
+
+De seks admin→bruger-svar-notifikationer (ønske godkendt/afvist/bestilt/flyttet, forvisnings-anmodning afvist/planlagt) sender nu en pæn HTML-mail ved siden af den uændrede rene tekst: ny `email_templates.render_notification_email()` bygger en tabel-baseret mail med mørk header + rav-accent, filmens/seriens TMDb-poster (udeladt når ukendt), en kort headline + inspirerende tagline pr. begivenhed. Afvisnings-typer får en dæmpet grå accent i stedet for rav. `email_client.send_email()` fik et nyt valgfrit `html`-parameter; `message_service.send()` fik et internt (ikke API-eksponeret) `email_html`-parameter, så en admin-broadcast forbliver ren tekst. Alle interpolerede tekstfelter HTML-escapes eksplicit.
+
+Berørte filer: `backend/app/integrations/email_templates.py` (ny), `backend/app/integrations/email_client.py`, `backend/app/services/message_service.py`, `backend/app/services/screening_service.py`. Tests: ny `test_email_templates.py` (+6), `test_email_client.py` (+1), ny `test_reply_email_html.py` (+7). Fuld backend-suite (883) + frontend (169, uændret) grøn.
+
 ## [0.177.0 build 0256] — 2026-08-29 — feature: "Bestilt"-badge for gæster (FEATURES.md #203)
 
 Jan: *"hvis en film/tv er bestilt så skal guest users se en badge hvor der står 'bestilt'"*.

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.178.0 (build 0257) — 2026-08-29
+
+- **Rigtige HTML-mails med filmplakat og hilsen** når du får svar på et ønske eller en forvisnings-anmodning (godkendt/afvist/bestilt/flyttet/afvist forvisning/planlagt visning) — i stedet for ren tekst.
+
 ## v0.177.0 (build 0256) — 2026-08-29
 
 - **Gæster ser nu en "Bestilt"-badge** på et ønske-kort (og i detaljevisningen) når posten er bestilt — uden at afsløre hvor den er bestilt.

@@ -234,8 +234,11 @@ async def decline_request(
     # Feature #202 — svar til hver af de(n) bruger(e) der stod bag ønsket
     # (existing, ikke updated — begge har samme requested_by, men existing
     # er allerede i hånden). Best-effort, se message_service-funktionens
-    # egen try/except pr. modtager.
-    await message_service.notify_screening_request_declined(db, existing, admin, model.title)
+    # egen try/except pr. modtager. Feature #204 — model.poster_url sendes
+    # med, da eksisterende (det rå dokument) ikke selv bærer den.
+    await message_service.notify_screening_request_declined(
+        db, existing, admin, model.title, poster_url=model.poster_url
+    )
     return model
 
 
@@ -277,9 +280,10 @@ async def create_screening(
         # planlagte titel. `existing` er forespørgslens tilstand FØR
         # scheduled-skiftet (hentet ovenfor til BUGS.md #42-valideringen),
         # men `requested_by` ændres ikke af selve status-skiftet, så den er
-        # stadig den rigtige modtagerliste.
+        # stadig den rigtige modtagerliste. Feature #204 — model.poster_url
+        # sendes med, se den identiske note ved decline_request.
         await message_service.notify_screening_request_scheduled(
-            db, existing, admin, model.title, model.scheduled_at
+            db, existing, admin, model.title, model.scheduled_at, poster_url=model.poster_url
         )
 
     return model

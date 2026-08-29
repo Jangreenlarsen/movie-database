@@ -10,7 +10,7 @@ BASE_URL = "https://api.resend.com"
 logger = logging.getLogger("moviedb")
 
 
-async def send_email(to: str, subject: str, text: str) -> bool:
+async def send_email(to: str, subject: str, text: str, html: str | None = None) -> bool:
     """Feature #197 — ét HTTP-kald pr. modtager, ALDRIG en samlet `to`-liste
     med flere adresser i samme kald (ville lade modtagere se hinandens
     e-mail via svaret/headerne). Kaster kun `EmailRateLimitedError` (429) —
@@ -18,18 +18,27 @@ async def send_email(to: str, subject: str, text: str) -> bool:
     af en udsendelse i stedet for at blive ved med at ramme en allerede
     rate-limitet Resend (CLAUDE.md regel 16). Enhver anden fejl logges og
     giver `False` i stedet for at kaste, så én mislykket e-mail aldrig
-    vælter selve besked-oprettelsen i message_service.send()."""
+    vælter selve besked-oprettelsen i message_service.send().
+
+    Feature #204 — `html` er valgfri (en generisk admin-broadcast eller en
+    "nyt ønske"-notifikation til admin har stadig kun almindelig tekst).
+    `text` sendes ALTID med, uanset om `html` er sat — Resend/e-mail-klienter
+    der ikke kan rendere HTML falder tilbage til den, og det holder mailens
+    spam-score nede at have et rigtigt tekst-alternativ, ikke kun HTML."""
     try:
         async with httpx.AsyncClient(timeout=10) as client:
+            payload = {
+                "from": settings.email_from_address,
+                "to": [to],
+                "subject": subject,
+                "text": text,
+            }
+            if html:
+                payload["html"] = html
             response = await client.post(
                 f"{BASE_URL}/emails",
                 headers={"Authorization": f"Bearer {settings.resend_api_key}"},
-                json={
-                    "from": settings.email_from_address,
-                    "to": [to],
-                    "subject": subject,
-                    "text": text,
-                },
+                json=payload,
             )
     except httpx.HTTPError as exc:
         logger.warning("Resend-afsendelse fejlede (netværksfejl): %s", exc)

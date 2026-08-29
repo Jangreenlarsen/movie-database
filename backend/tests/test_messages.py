@@ -207,7 +207,7 @@ async def test_send_emails_a_recipient_with_an_email_set_when_resend_is_configur
 
     sent = []
 
-    async def fake_send_email(to, subject, text):
+    async def fake_send_email(to, subject, text, html=None):
         sent.append((to, subject, text))
         return True
 
@@ -223,7 +223,7 @@ async def test_send_does_not_attempt_email_when_resend_is_not_configured(client,
     monkeypatch.setattr(settings, "email_from_address", "")
     await client.patch(f"/api/users/{second_user['id']}/email", json={"email": "modtager@example.com"})
 
-    async def fake_send_email(to, subject, text):
+    async def fake_send_email(to, subject, text, html=None):
         raise AssertionError("should not be called when Resend is unconfigured")
 
     monkeypatch.setattr(email_client, "send_email", fake_send_email)
@@ -238,7 +238,7 @@ async def test_send_skips_a_recipient_without_an_email(client, second_user, monk
     monkeypatch.setattr(settings, "resend_api_key", "test-key")
     monkeypatch.setattr(settings, "email_from_address", "Voldby BIO <noreply@laces.dk>")
 
-    async def fake_send_email(to, subject, text):
+    async def fake_send_email(to, subject, text, html=None):
         raise AssertionError("should not be called for a recipient with no email set")
 
     monkeypatch.setattr(email_client, "send_email", fake_send_email)
@@ -256,7 +256,7 @@ async def test_send_creates_the_in_app_message_even_if_email_sending_fails(
     monkeypatch.setattr(settings, "email_from_address", "Voldby BIO <noreply@laces.dk>")
     await client.patch(f"/api/users/{second_user['id']}/email", json={"email": "modtager@example.com"})
 
-    async def fake_send_email(to, subject, text):
+    async def fake_send_email(to, subject, text, html=None):
         raise RuntimeError("Resend er nede")
 
     monkeypatch.setattr(email_client, "send_email", fake_send_email)
@@ -288,7 +288,7 @@ async def test_send_stops_the_rest_of_the_batch_on_a_rate_limit(client, second_u
 
     calls = []
 
-    async def fake_send_email(to, subject, text):
+    async def fake_send_email(to, subject, text, html=None):
         calls.append(to)
         raise EmailRateLimitedError()
 

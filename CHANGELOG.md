@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.185.0 build 0265] — 2026-08-29 — feature: "Test forbindelse" for Anthem AVM70 (FEATURES.md #212)
+
+Jan, efter BUGS.md #93 var løst: *"kan vi ikke lige få en test funktion ind i api config for AVM70 også sådan at vi kan testet den på samme hvilkor som api keys"*.
+
+Ny `anthem_service.test_connection()` — genbruger `anthem_client.open_connection` til en kortvarig, ægte TCP-forbindelse, tjekker først om en diagnostik-session allerede er aktiv (AVM70 tillader kun én netværksklient). Wired ind i den eksisterende `TestableApiKey`/`_TEST_CONNECTION_CLIENTS`-dispatch (samme `POST /api/settings/system/test/{key}` som TMDb/Discogs/Resend m.fl.). Ny frontend-komponent `AnthemTestConnectionRow` genbruger samme knap/banner-mønster som de øvrige testbare nøgler.
+
+Berørte filer: `backend/app/services/anthem_service.py`, `backend/app/services/system_settings_service.py`, `backend/app/models/settings.py`, `frontend/src/pages/Settings.jsx`. Ikke visuelt verificeret i browser (uafhængigt test-miljø-problem, se FEATURES.md #212) — dækket af automatiserede tests i stedet. Fuld backend-suite (928) + frontend (202) grøn.
+
 ## [0.184.0 build 0264] — 2026-08-29 — debug: forkert domæne i password-reset-link rettet på produktionsserveren + `movie.ll.lan` retired (BUGS.md #92)
 
 Jan rapporterede efter en rigtig live-test af feature #205: reset-mailen fra `movie.laces.dk` linkede til IP'en `10.1.130.10` i stedet. Bekræftet direkte på produktionsserveren (SSH via nginx-proxyen, med Jans eksplicitte lov): `CORS_ORIGINS` indeholdt kun `https://10.1.130.10` — `resolve_reset_base_url` faldt derfor tilbage til den, uanset hvilket domæne brugeren rent faktisk kom ind fra. Rettet direkte i `/opt/moviedb/backend/.env` (backup taget først) til `https://10.1.130.10,https://movie.laces.dk`.

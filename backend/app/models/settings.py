@@ -51,7 +51,9 @@ class ApiKeyStatus(BaseModel):
 
 # De eneste nøgler der har et rigtigt eksternt testkald bag sig (feature #75)
 # — Plex har sin egen tilgængeligheds-tjek pr. film og er bevidst udeladt
-# her, for ikke at duplikere den mekanisme.
+# her, for ikke at duplikere den mekanisme. `anthem_host` (feature #212) er
+# ikke en hemmelighed (samme som `plex_server_url`), men "test forbindelse"
+# giver lige så god mening for en LAN-enhedsadresse som for en API-nøgle.
 TestableApiKey = Literal[
     "tmdb_api_token",
     "discogs_token",
@@ -59,6 +61,7 @@ TestableApiKey = Literal[
     "ean_search_api_key",
     "omdb_api_key",
     "resend_api_key",
+    "anthem_host",
 ]
 
 

@@ -24,7 +24,7 @@ from app.models.settings import (
     TestableApiKey,
 )
 from app.repositories import system_settings_repository
-from app.services import plex_service
+from app.services import anthem_service, plex_service
 
 KEYS = system_settings_repository.OVERRIDABLE_KEYS
 
@@ -39,6 +39,9 @@ _TEST_CONNECTION_CLIENTS = {
     "ean_search_api_key": ean_search_client,
     "omdb_api_key": omdb_client,
     "resend_api_key": email_client,
+    # Feature #212 — anthem_service, ikke anthem_client selv: skal tjekke
+    # den aktive diagnostik-session først (se anthem_service.test_connection).
+    "anthem_host": anthem_service,
 }
 
 # Rendered as a masked ApiKeyStatus (configured/source only) in GET responses

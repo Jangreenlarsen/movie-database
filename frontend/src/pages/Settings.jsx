@@ -1549,6 +1549,7 @@ export function SystemSettingsSection() {
               currentValue={statusData.anthem_port}
               onSaved={load}
             />
+            <AnthemTestConnectionRow />
           </div>
 
           <div className="card settings-section">
@@ -2494,6 +2495,45 @@ function ApiKeyRow({ label, field, status, onSaved, testable = true }) {
         )}
       </div>
     </form>
+  );
+}
+
+// Feature #212 (Jan: "kan vi ikke lige få en test funktion ind i api config
+// for AVM70 også sådan at vi kan testet den på samme hvilkor som api
+// keys") — anthem_host/anthem_port er PLAIN felter (PlainSettingRow, ikke
+// ApiKeyRow, da IP/port ikke er en hemmelighed), som ikke selv har noget
+// testbegreb. I stedet for at gøre PlainSettingRow generisk testbar for et
+// behov kun Anthem har lige nu, er dette en lille, dedikeret række der
+// genbruger samme "Test forbindelse"-knap/banner-mønster som ApiKeyRow.
+function AnthemTestConnectionRow() {
+  const t = useT();
+  const [testStatus, setTestStatus] = useState("idle");
+  const [testResult, setTestResult] = useState(null);
+
+  async function testConnection() {
+    setTestStatus("testing");
+    setTestResult(null);
+    try {
+      const result = await api.testSystemSetting("anthem_host");
+      setTestResult(result);
+    } catch (err) {
+      setTestResult({ ok: false, message: err.message });
+    } finally {
+      setTestStatus("idle");
+    }
+  }
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      {testResult && (
+        <div className={`banner ${testResult.ok ? "banner-info" : "banner-error"}`}>
+          {testResult.ok ? "✓" : "✗"} {testResult.message}
+        </div>
+      )}
+      <button type="button" className="btn" onClick={testConnection} disabled={testStatus === "testing"}>
+        {t(testStatus === "testing" ? "sys.testing" : "sys.testConnection")}
+      </button>
+    </div>
   );
 }
 

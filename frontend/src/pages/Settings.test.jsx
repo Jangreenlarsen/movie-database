@@ -1075,6 +1075,73 @@ describe("SystemSettingsSection — Resend/e-mail (feature #197)", () => {
 });
 
 /**
+ * Feature #212 (Jan: "kan vi ikke lige få en test funktion ind i api config
+ * for AVM70 også sådan at vi kan testet den på samme hvilkor som api
+ * keys"). Det testværdige (regel 19): knappen skal rent faktisk kalde
+ * `testSystemSetting("anthem_host")` (ikke en anden nøgle ved en
+ * kopiér-fejl) og vise backendens resultat-besked, både ved succes og fejl.
+ */
+describe("AnthemTestConnectionRow (feature #212)", () => {
+  const fullStatus = {
+    tmdb_api_token: { configured: false, source: "unset" },
+    discogs_token: { configured: false, source: "unset" },
+    upcdatabase_token: { configured: false, source: "unset" },
+    ean_search_api_key: { configured: false, source: "unset" },
+    omdb_api_key: { configured: false, source: "unset" },
+    plex_token: { configured: false, source: "unset" },
+    plex_server_url: "",
+    primary_barcode_source: "upcitemdb",
+    plex_shield_client_identifier: "",
+    anthem_host: "192.168.1.60",
+    anthem_port: 14999,
+    resend_api_key: { configured: false, source: "unset" },
+    email_from_address: "",
+  };
+
+  beforeEach(() => {
+    vi.spyOn(api, "getSystemSettings").mockResolvedValue(fullStatus);
+  });
+
+  // Flere rækker på siden deler samme "Test forbindelse"-knaptekst (TMDb,
+  // Discogs, Resend, ...) — skop til netop Anthem-kortet via dets egen
+  // overskrift, så testen ikke ved et tilfælde rammer en anden nøgles knap.
+  async function anthemSection() {
+    const heading = await screen.findByRole("heading", { name: "Anthem AVM 70" });
+    return within(heading.closest(".settings-section"));
+  }
+
+  it("kalder testSystemSetting med anthem_host og viser succes-beskeden", async () => {
+    const testSpy = vi
+      .spyOn(api, "testSystemSetting")
+      .mockResolvedValue({ ok: true, message: "Forbundet til Anthem-enheden på 192.168.1.60:14999" });
+    render(<SystemSettingsSection />);
+
+    const section = await anthemSection();
+    await userEvent.click(section.getByRole("button", { name: "Test forbindelse" }));
+
+    expect(testSpy).toHaveBeenCalledWith("anthem_host");
+    expect(
+      await section.findByText(/Forbundet til Anthem-enheden på 192\.168\.1\.60:14999/)
+    ).toBeInTheDocument();
+  });
+
+  it("viser den specifikke fejlbesked ved en mislykket test", async () => {
+    vi.spyOn(api, "testSystemSetting").mockResolvedValue({
+      ok: false,
+      message: "Kunne ikke forbinde til 192.168.1.60:14999 (Connection refused)",
+    });
+    render(<SystemSettingsSection />);
+
+    const section = await anthemSection();
+    await userEvent.click(section.getByRole("button", { name: "Test forbindelse" }));
+
+    expect(
+      await section.findByText(/Kunne ikke forbinde til 192\.168\.1\.60:14999 \(Connection refused\)/)
+    ).toBeInTheDocument();
+  });
+});
+
+/**
  * Feature #197 — brugerens egen e-mail (Indstillinger → Konto), kun brugt
  * til udgående notifikationer. Det testværdige (regel 19): en vellykket
  * gemning skal give den opdaterede bruger videre til `onSettingsChanged`

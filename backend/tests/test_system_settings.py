@@ -303,6 +303,26 @@ async def test_test_connection_dispatches_to_the_email_client(client, monkeypatc
     assert response.json() == {"ok": True, "message": "Virker (fuld adgang)"}
 
 
+# Feature #212 — "Test forbindelse" for Anthem AVM70 (Jan: "kan vi ikke lige
+# få en test funktion ind i api config for AVM70 også sådan at vi kan
+# testet den på samme hvilkor som api keys"). anthem_host er en plain
+# (ikke-hemmelig) nøgle, men dispatches på nøjagtig samme måde som de
+# øvrige testbare nøgler ovenfor.
+
+
+async def test_test_connection_dispatches_to_anthem_service(client, monkeypatch):
+    from app.services import anthem_service
+
+    async def fake_test_connection():
+        return True, "Forbundet til Anthem-enheden på 192.168.1.60:14999"
+
+    monkeypatch.setattr(anthem_service, "test_connection", fake_test_connection)
+
+    response = await client.post("/api/settings/system/test/anthem_host")
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "message": "Forbundet til Anthem-enheden på 192.168.1.60:14999"}
+
+
 # Feature #199 — ægte ende-til-ende testmail, adskilt fra "Test forbindelse"
 # ovenfor.
 

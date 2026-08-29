@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.184.0 (build 0264) — 2026-08-29
+
+- **Rettet: forkert link i "glemt adgangskode"-mail på movie.laces.dk** — produktionens `CORS_ORIGINS` manglede domænet, rettet direkte på serveren. Der logges nu en advarsel, hvis noget lignende sker igen. **Kræver stadig en backend-genstart fra Jan for at slå igennem.**
+- **`movie.ll.lan` er retired** som adgangsvej — `movie.laces.dk` er nu den primære produktionsadgang.
+
 ## v0.184.0 (build 0263) — 2026-08-29
 
 - **"Presse Nyt" fik en dropdown** til at vælge mellem numrene, og det nyeste nummer har nu to rigtige skærmbilleder af de nye funktioner.

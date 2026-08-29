@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.184.0 build 0264] — 2026-08-29 — debug: forkert domæne i password-reset-link rettet på produktionsserveren + `movie.ll.lan` retired (BUGS.md #92)
+
+Jan rapporterede efter en rigtig live-test af feature #205: reset-mailen fra `movie.laces.dk` linkede til IP'en `10.1.130.10` i stedet. Bekræftet direkte på produktionsserveren (SSH via nginx-proxyen, med Jans eksplicitte lov): `CORS_ORIGINS` indeholdt kun `https://10.1.130.10` — `resolve_reset_base_url` faldt derfor tilbage til den, uanset hvilket domæne brugeren rent faktisk kom ind fra. Rettet direkte i `/opt/moviedb/backend/.env` (backup taget først) til `https://10.1.130.10,https://movie.laces.dk`.
+
+Samtidig: Jan besluttede at retire `movie.ll.lan` helt (*"movie.ll.lan skal ikke være en del af dns mere da vi er gået i prod med movie.laces.dk"*) — hostnavnet er derfor bevidst UDELADT af den nye `CORS_ORIGINS`, og Caddyfilens `movie.ll.lan`-site-block er fjernet (staged i `/home/jgl/moviedb-tls/Caddyfile.new`, klar til den forhåndsgodkendte backup→swap→validate→reload-sekvens). DEPLOYMENT.md og `movie-laces-dk-runbook.md` opdateret til at afspejle `movie.laces.dk` som primær produktionsadgang og markere `movie.ll.lan`-relateret indhold som historisk/retired. FEATURES.md #74 (det oprindeligt planlagte "tredje Caddy site-block" til offentlig adgang) markeret som opnået via en anden mekanisme (nginx-proxyen, 2026-08-09) i stedet.
+
+**Afventer Jan**: `sudo systemctl restart moviedb-backend` (for at CORS_ORIGINS-ændringen slår igennem) og Caddyfile-swap-sekvensen — begge blokeret for Claude af Claude Code's auto-mode-klassifikator (sudo over SSH mod produktion).
+
+Tilføjet uafhængigt af selve rettelsen: `resolve_reset_base_url` logger nu en tydelig advarsel hver gang fallback'en rammes, så en fremtidig manglende CORS_ORIGINS-post opdages i logs med det samme.
+
+Berørte filer: `backend/app/services/auth_service.py`, `DEPLOYMENT.md`, `FEATURES.md`, `BUGS.md`, produktionens `.env` og `Caddyfile` (uden for repoet). Fuld backend-suite (923) grøn.
+
 ## [0.184.0 build 0263] — 2026-08-29 — feature: "Presse Nyt" dropdown + skærmbilleder (FEATURES.md #211)
 
 Jan, direkte efter #210: *"presse nyt må godt være en dropdown list hvor man vælger de forskelige presse opslag fra"*, fulgt op med *"og der skal billeder med i den ny presse nyhed"*.

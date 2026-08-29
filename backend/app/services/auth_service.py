@@ -257,6 +257,18 @@ def resolve_reset_base_url(origin_header: str | None, fallback_base_url: str) ->
     (aldrig til den ubekræftede værdi selv)."""
     if origin_header and origin_header in settings.cors_origin_list:
         return origin_header
+    # BUGS.md #92 — et Origin der ikke matcher noget kendt værtsnavn er ikke
+    # nødvendigvis et angreb: det sker også helt legitimt hvis en gyldig
+    # adgangsvej (fx movie.laces.dk) ganske enkelt mangler i CORS_ORIGINS.
+    # Fallback'en er stadig sikker (aldrig den ubekræftede værdi selv), men
+    # giver et forkert link i det tilfælde — log derfor tydeligt, så en
+    # manglende CORS_ORIGINS-post opdages i logs i stedet for først når en
+    # bruger rapporterer et forkert nulstillings-link.
+    logger.warning(
+        "Password-reset: Origin '%s' matcher ingen CORS_ORIGINS-post — falder tilbage til '%s'",
+        origin_header,
+        settings.cors_origin_list[0] if settings.cors_origin_list else fallback_base_url.rstrip("/"),
+    )
     if settings.cors_origin_list:
         return settings.cors_origin_list[0]
     return fallback_base_url.rstrip("/")

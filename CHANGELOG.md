@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.179.0 build 0258] — 2026-08-29 — feature: selvbetjent "glemt adgangskode" + admin kan redigere andres e-mail (FEATURES.md #205, #206)
+
+Jan: *"1 og 2 og så lad os se på #162"* (efter selv at have foreslået selvbetjent password-reset som naturligt næste skridt, nu hvor e-mail-infrastrukturen fra #197 findes).
+
+**#205**: To nye login-frie endpoints, `POST /api/auth/forgot-password`/`reset-password`. Anti-enumerering (samme svar uanset om e-mailen findes), 256-bit engangs-token (kun SHA-256-hash gemt, 1 times udløb, fjernes atomisk ved brug). Nulstillings-linkets domæne valideres mod den eksisterende `cors_origin_list`-allowlist (ikke et hardkodet domæne, og ikke en ubekræftet Origin-header — forhindrer kontoovertagelse via en forfalsket nulstil-side). #171's admin-assisterede vej forbliver uændret, som fallback for konti uden e-mail. Login.jsx og CinemaPublic.jsx fik begge et "Glemt din adgangskode?"-link; ny `ResetPassword.jsx`-side.
+
+**#206**: Admin kan nu redigere en ANDEN brugers e-mail direkte i Indstillinger → Brugere (backend understøttede det allerede — ren frontend-tilføjelse, genbruger `PATCH /api/users/{id}/email`).
+
+Berørte filer: `backend/app/models/user.py`, `backend/app/core/errors.py`, `backend/app/repositories/user_repository.py`, `backend/app/services/auth_service.py`, `backend/app/api/auth.py`, `backend/app/integrations/email_templates.py`, `backend/app/main.py`, `frontend/src/api/client.js`, `frontend/src/pages/Login.jsx`, `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/ResetPassword.jsx` (ny), `frontend/src/pages/Settings.jsx`, `frontend/src/App.jsx`, i18n, `ARCHITECTURE.md`. Tests: ny `test_password_reset.py` (+15), ny `Login.test.jsx`/`ResetPassword.test.jsx`/`PublicLoginPanel.test.jsx` (+10), `Settings.test.jsx` (+4). Fuld backend + frontend (183) grøn.
+
 ## [0.178.0 build 0257] — 2026-08-29 — feature: rigtige HTML-svar-mails med poster og inspirerende tekst (FEATURES.md #204)
 
 Jan: *"vi skal have lavet en fede svar email til users når de få svar fra movie portal med billeder og indspirerende tekst"*.

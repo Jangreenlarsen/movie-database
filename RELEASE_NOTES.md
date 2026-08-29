@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.179.0 (build 0258) — 2026-08-29
+
+- **Ny "Glemt din adgangskode?"-link på login-siden** — indtast din e-mail, og du får et link til selv at vælge en ny adgangskode. Ingen admin-hjælp nødvendig mere, medmindre din konto ikke har en e-mail sat.
+- **Admin kan nu redigere andre brugeres e-mail** direkte fra Indstillinger → Brugere.
+
 ## v0.178.0 (build 0257) — 2026-08-29
 
 - **Rigtige HTML-mails med filmplakat og hilsen** når du får svar på et ønske eller en forvisnings-anmodning (godkendt/afvist/bestilt/flyttet/afvist forvisning/planlagt visning) — i stedet for ren tekst.

@@ -199,6 +199,82 @@ describe("UsersSection — adgangskode-nulstilling (feature #171)", () => {
 });
 
 /**
+ * Feature #206 (#197's afgrænsede "senere"-punkt: admin kan nu redigere en
+ * ANDEN brugers e-mail, ikke kun sin egen). Det testværdige (regel 19): en
+ * gemt ændring skal rent faktisk kalde det rigtige endpoint med den
+ * indtastede værdi og genindlæse listen, og backendens specifikke fejl skal
+ * vises.
+ */
+describe("UsersSection — admin redigerer en brugers e-mail (feature #206)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  function mockUserWithEmail(email) {
+    vi.spyOn(api, "listUsers").mockResolvedValue([
+      {
+        id: "u1",
+        username: "hasmail",
+        full_name: null,
+        email,
+        role: "standard",
+        status: "active",
+        settings: {},
+        created_at: "2026-01-01T00:00:00Z",
+      },
+    ]);
+  }
+
+  it("viser 'Ingen e-mail' når feltet er tomt", async () => {
+    mockUserWithEmail(null);
+    render(<UsersSection currentUserId="admin1" />);
+    expect(await screen.findByText("Ingen e-mail")).toBeInTheDocument();
+  });
+
+  it("gemmer den nye adresse og genindlæser listen", async () => {
+    mockUserWithEmail(null);
+    const updateSpy = vi.spyOn(api, "updateMyEmail").mockResolvedValue({});
+    const user = userEvent.setup();
+
+    render(<UsersSection currentUserId="admin1" />);
+    await user.click(await screen.findByRole("button", { name: "Redigér e-mail" }));
+    await user.type(screen.getByPlaceholderText("din@e-mail.dk"), "hasmail@example.com");
+    await user.click(screen.getByRole("button", { name: "Gem" }));
+
+    await waitFor(() =>
+      expect(updateSpy).toHaveBeenCalledWith("u1", "hasmail@example.com")
+    );
+  });
+
+  it("annullér lukker redigeringen uden at kalde API'et", async () => {
+    mockUserWithEmail("hasmail@example.com");
+    const updateSpy = vi.spyOn(api, "updateMyEmail");
+    const user = userEvent.setup();
+
+    render(<UsersSection currentUserId="admin1" />);
+    await user.click(await screen.findByRole("button", { name: "Redigér e-mail" }));
+    await user.click(screen.getByRole("button", { name: "Annullér" }));
+
+    expect(updateSpy).not.toHaveBeenCalled();
+    expect(screen.getByText("hasmail@example.com")).toBeInTheDocument();
+  });
+
+  it("viser backendens specifikke fejlbesked ved en fejlet gemning", async () => {
+    mockUserWithEmail(null);
+    vi.spyOn(api, "updateMyEmail").mockRejectedValue(new Error("Ugyldig e-mailadresse"));
+    const user = userEvent.setup();
+
+    render(<UsersSection currentUserId="admin1" />);
+    await user.click(await screen.findByRole("button", { name: "Redigér e-mail" }));
+    await user.type(screen.getByPlaceholderText("din@e-mail.dk"), "not-an-email");
+    await user.click(screen.getByRole("button", { name: "Gem" }));
+
+    expect(await screen.findByText("Ugyldig e-mailadresse")).toBeInTheDocument();
+  });
+});
+
+/**
  * Feature #178-opfølgning (Jan: "sæt op i users styring hvem kan se og
  * bruge vis iplex/spil i plex i detajle for film/tv"). Det testværdige
  * (regel 19): knappen skal reelt afspejle og skifte den enkelte brugers

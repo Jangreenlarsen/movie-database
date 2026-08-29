@@ -202,6 +202,29 @@ class LastAdminError(Exception):
         super().__init__("Cannot remove the last remaining admin")
 
 
+class InvalidResetTokenError(Exception):
+    """Feature #205 — dækker både 'findes slet ikke', 'allerede brugt' (token
+    fjernes atomisk ved brug, se user_repository.consume_reset_token) og
+    'udløbet'. Bevidst ÉN fælles fejl for alle tre — at skelne dem i UI'et
+    ville kunne bruges til kontoenumerering/token-gætning i det små."""
+
+    def __init__(self):
+        super().__init__("Nulstillings-linket er ugyldigt eller udløbet. Anmod om et nyt.")
+
+
+class PasswordResetUnavailableError(Exception):
+    """Feature #205 — Resend er ikke konfigureret systemet over (ikke en
+    pr.-bruger tilstand), så det er sikkert at fortælle det ærligt uden at
+    afsløre noget om den konkrete e-mailadresse (CLAUDE.md regel 16 — vis
+    den specifikke fejl, i stedet for at brugeren venter for evigt på en
+    mail der aldrig sendes)."""
+
+    def __init__(self):
+        super().__init__(
+            "E-mail-udsendelse er ikke konfigureret på serveren endnu — kontakt en administrator."
+        )
+
+
 class InvalidBackupError(Exception):
     """BUGS.md #41 — refuses a restore payload that would leave the system
     with no admin able to log in. Every collection list on `SystemBackup`

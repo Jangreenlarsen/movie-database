@@ -533,6 +533,9 @@ export function PublicLoginPanel({ language, onClose }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  // Feature #205 — se den identiske note i Login.jsx.
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotMessage, setForgotMessage] = useState(null);
 
   function switchMode(nextMode) {
     setMode(nextMode);
@@ -562,6 +565,21 @@ export function PublicLoginPanel({ language, onClose }) {
     }
   }
 
+  async function handleForgotPassword(event) {
+    event.preventDefault();
+    setError(null);
+    setForgotMessage(null);
+    setSubmitting(true);
+    try {
+      const result = await api.forgotPassword(forgotEmail);
+      setForgotMessage(result.message);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <div
       className="cinema-public-login-overlay"
@@ -572,6 +590,38 @@ export function PublicLoginPanel({ language, onClose }) {
       {/* stopPropagation: klik inde i selve dialogen må ikke lukke den — kun
           klik på det mørke backdrop udenom (eller Annullér-knappen). */}
       <div className="cinema-public-login-panel" onClick={(e) => e.stopPropagation()}>
+        {mode === "forgot" ? (
+          <form className="auth-form" onSubmit={handleForgotPassword}>
+            <p className="auth-hint">{t("auth.forgotPasswordIntro")}</p>
+            <label>
+              {t("account.email")}
+              <input
+                type="email"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                autoComplete="email"
+                placeholder={t("account.emailPlaceholder")}
+                required
+                autoFocus
+              />
+            </label>
+            {error && <div className="banner banner-error">{error}</div>}
+            {forgotMessage && <div className="banner banner-info">{forgotMessage}</div>}
+            <div className="cinema-public-login-actions">
+              <button type="button" className="btn" onClick={onClose} disabled={submitting}>
+                {t("common.cancel")}
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? t("auth.submitting") : t("auth.sendResetLink")}
+              </button>
+            </div>
+            <div className="auth-switch">
+              <button type="button" onClick={() => switchMode("login")}>
+                {t("auth.backToLogin")}
+              </button>
+            </div>
+          </form>
+        ) : (
         <form className="auth-form" onSubmit={handleSubmit}>
         {/* Feature #140 — obligatorisk fuldt navn ved oprettelse (kun i
             opret-tilstand), så en admin kan se hvem der beder om adgang. */}
@@ -643,6 +693,14 @@ export function PublicLoginPanel({ language, onClose }) {
             )}
           </button>
         </div>
+        {/* Feature #205 — se den identiske note i Login.jsx. */}
+        {mode === "login" && (
+          <p className="auth-hint">
+            <button type="button" className="auth-link" onClick={() => switchMode("forgot")}>
+              {t("auth.forgotPasswordLink")}
+            </button>
+          </p>
+        )}
         <div className="auth-switch">
           {mode === "login" ? (
             <>
@@ -661,6 +719,7 @@ export function PublicLoginPanel({ language, onClose }) {
           )}
         </div>
         </form>
+        )}
       </div>
     </div>
   );

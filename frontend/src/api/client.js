@@ -98,6 +98,14 @@ export const api = {
   login: (username, password) =>
     request("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
   logout: () => request("/auth/logout", { method: "POST" }),
+  // Feature #205 — begge kaldbare uden login (det er jo hele pointen).
+  forgotPassword: (email) =>
+    request("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
+  resetPassword: (token, newPassword) =>
+    request("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, new_password: newPassword }),
+    }),
   me: () => request("/users/me"),
   updateMySettings: (payload) =>
     request("/users/me/settings", { method: "PATCH", body: JSON.stringify(payload) }),

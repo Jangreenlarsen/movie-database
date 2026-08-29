@@ -2934,6 +2934,12 @@ export function UsersSection({ currentUserId }) {
   // ved næste nulstilling, sideskift eller genindlæsning.
   const [resetResult, setResetResult] = useState(null);
   const [passwordCopied, setPasswordCopied] = useState(false);
+  // Feature #206 (#197's afgrænsede "senere"-punkt: "admin redigerer en
+  // ANDEN brugers e-mail") — egen lille redigerings-tilstand pr. række,
+  // adskilt fra `updatingId` (som dækker rolle/status/nulstilling), da
+  // e-mail-redigering har sin egen inputværdi at holde styr på.
+  const [editingEmailId, setEditingEmailId] = useState(null);
+  const [emailDraft, setEmailDraft] = useState("");
   // BUGS.md #74 — banneret (nedenfor) renderes øverst i sektionen, over
   // bruger-listen. Med mange brugere er admin typisk scrollet langt ned for
   // overhovedet at kunne se/klikke den række der udløste handlingen, så
@@ -3032,6 +3038,32 @@ export function UsersSection({ currentUserId }) {
       .catch(() => {});
   }
 
+  function startEditEmail(targetUser) {
+    setEditingEmailId(targetUser.id);
+    setEmailDraft(targetUser.email ?? "");
+    setError(null);
+  }
+
+  function cancelEditEmail() {
+    setEditingEmailId(null);
+    setEmailDraft("");
+  }
+
+  async function saveEmail(targetUser) {
+    setUpdatingId(targetUser.id);
+    setError(null);
+    try {
+      await api.updateMyEmail(targetUser.id, emailDraft.trim() || null);
+      setEditingEmailId(null);
+      setEmailDraft("");
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
   async function deleteUser(targetUser) {
     if (!window.confirm(t("users.confirmDelete", { username: targetUser.username }))) {
       return;
@@ -3105,6 +3137,38 @@ export function UsersSection({ currentUserId }) {
                 {u.full_name && <span className="muted"> · {u.full_name}</span>}
                 {u.id === currentUserId && <span className="muted">{t("users.you")}</span>}
               </span>
+              {/* Feature #206 — admin kan redigere en ANDEN brugers e-mail
+                  (backend understøtter det allerede, self-eller-admin, se
+                  auth_service._assert_can_edit_email fra feature #197). */}
+              {editingEmailId === u.id ? (
+                <span className="user-row-email-edit">
+                  <input
+                    type="email"
+                    value={emailDraft}
+                    onChange={(e) => setEmailDraft(e.target.value)}
+                    placeholder={t("account.emailPlaceholder")}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={updatingId === u.id}
+                    onClick={() => saveEmail(u)}
+                  >
+                    {t("common.save")}
+                  </button>
+                  <button type="button" className="btn" onClick={cancelEditEmail}>
+                    {t("common.cancel")}
+                  </button>
+                </span>
+              ) : (
+                <span className="muted user-row-email">
+                  {u.email || t("users.noEmail")}{" "}
+                  <button type="button" className="auth-link" onClick={() => startEditEmail(u)}>
+                    {t("users.editEmail")}
+                  </button>
+                </span>
+              )}
               {u.status === "pending" && (
                 <span className="role-badge">{t("users.statusPending")}</span>
               )}

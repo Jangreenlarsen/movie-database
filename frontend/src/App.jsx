@@ -9,6 +9,7 @@ import Cinema from "./pages/Cinema";
 import CinemaPublic from "./pages/CinemaPublic";
 import CinemaPublicV2 from "./pages/CinemaPublicV2";
 import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
 import MessageBanner from "./components/MessageBanner";
 import PendingApproval from "./pages/PendingApproval";
 import ForcePasswordChange from "./pages/ForcePasswordChange";
@@ -171,6 +172,18 @@ function App() {
           language={preAuthLanguage}
           onLanguageChange={choosePreAuthLanguage}
         />
+      </I18nProvider>
+    );
+  }
+
+  // Feature #205 — tokenet i URL'en er selve legitimationen; ingen login
+  // krævet (samme princip som /bio). Skal ligge FØR /login-tjekket, ellers
+  // ville "/login"s eget startsWith-tjek aldrig komme i vejen alligevel
+  // (forskellige præfikser), men holdt her for logisk nærhed til login.
+  if (window.location.pathname.startsWith("/reset-password")) {
+    return (
+      <I18nProvider language={preAuthLanguage}>
+        <ResetPassword />
       </I18nProvider>
     );
   }

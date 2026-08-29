@@ -45,6 +45,7 @@ from app.core.errors import (
     ClassificationRequiredError,
     DuplicateBarcodeError,
     InvalidCredentialsError,
+    InvalidResetTokenError,
     InvalidUserStatusTransitionError,
     LastAdminError,
     MessageNotFoundError,
@@ -57,6 +58,7 @@ from app.core.errors import (
     NotAuthenticatedError,
     NotAuthorizedError,
     NotSupportedOnThisPlatformError,
+    PasswordResetUnavailableError,
     Pkcs12ImportError,
     PlexFilterUnavailableError,
     PreferredAtRequiredError,
@@ -252,6 +254,18 @@ async def invalid_credentials_handler(
     request: Request, exc: InvalidCredentialsError
 ) -> JSONResponse:
     return JSONResponse(status_code=401, content={"detail": str(exc)})
+
+
+@app.exception_handler(InvalidResetTokenError)
+async def invalid_reset_token_handler(request: Request, exc: InvalidResetTokenError) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(PasswordResetUnavailableError)
+async def password_reset_unavailable_handler(
+    request: Request, exc: PasswordResetUnavailableError
+) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": str(exc)})
 
 
 @app.exception_handler(NotAuthenticatedError)

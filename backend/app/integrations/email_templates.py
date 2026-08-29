@@ -32,13 +32,21 @@ def render_notification_email(
     body_text: str,
     poster_url: str | None = None,
     accent: str = "gold",
+    cta_url: str | None = None,
+    cta_label: str | None = None,
 ) -> str:
     """Alle tekst-argumenter er brugerdata (filmtitler kan være frit
     indtastet ved manuel oprettelse, admins afvisnings-begrundelse er fri
     tekst) og escapes derfor eksplicit — uden det ville en titel/begrundelse
     med `<`/`>` kunne injicere markup i mailen (samme klasse sårbarhed som
     reflekteret XSS, blot i en e-mail-klients HTML-renderer i stedet for en
-    browser)."""
+    browser).
+
+    Feature #205 — `cta_url`/`cta_label` er en valgfri knap (bruges af
+    password-reset-mailen). `cta_url` forventes allerede valideret af
+    kalderen (auth_service — matchet mod settings.cors_origin_list), men
+    escapes alligevel her som forsvar-i-dybden, samme princip som
+    `poster_url`."""
     accent_color = _ACCENT.get(accent, _ACCENT["gold"])
     safe_headline = html_lib.escape(headline)
     safe_tagline = html_lib.escape(tagline)
@@ -58,6 +66,18 @@ def render_notification_email(
         poster_block = """
             <tr>
               <td style="padding:28px 32px 0;"></td>
+            </tr>"""
+
+    cta_block = ""
+    if cta_url and cta_label:
+        safe_cta_url = html_lib.escape(cta_url)
+        safe_cta_label = html_lib.escape(cta_label)
+        cta_block = f"""
+            <tr>
+              <td style="padding:4px 32px 28px;" align="center">
+                <a href="{safe_cta_url}"
+                   style="display:inline-block;background:{accent_color};color:#fff;font-weight:700;font-size:14px;text-decoration:none;padding:12px 28px;border-radius:999px;">{safe_cta_label}</a>
+              </td>
             </tr>"""
 
     return f"""<!doctype html>
@@ -86,7 +106,7 @@ def render_notification_email(
               <td style="padding:0 32px 28px;">
                 <p style="margin:0;font-size:14px;line-height:1.6;color:#44403c;">{safe_body}</p>
               </td>
-            </tr>
+            </tr>{cta_block}
             <tr>
               <td style="padding:16px 32px;background:#f5f4f2;border-top:1px solid #e7e5e4;" align="center">
                 <p style="margin:0;font-size:11px;color:#a8a29e;">Denne mail er sendt fordi du har en e-mail registreret på din konto i Filmportalen.</p>

@@ -266,6 +266,37 @@ class PasswordChange(BaseModel):
         return _validate_bcrypt_byte_length(value)
 
 
+class ForgotPasswordRequest(BaseModel):
+    """Feature #205 — selvbetjent password-reset via e-mail."""
+
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    # Samme politik/bcrypt-grænse som PasswordChange.new_password ovenfor —
+    # en nulstillet adgangskode skal opfylde nøjagtig samme krav som en
+    # almindeligt skiftet.
+    new_password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def new_password_policy(cls, value: str) -> str:
+        return validate_password_policy(value)
+
+    @field_validator("new_password")
+    @classmethod
+    def new_password_bcrypt_length(cls, value: str) -> str:
+        return _validate_bcrypt_byte_length(value)
+
+
+class ForgotPasswordResponse(BaseModel):
+    """Bevidst ÉN fast besked uanset om e-mailen rent faktisk findes i
+    systemet (anti-enumerering) — se auth_service.request_password_reset."""
+
+    message: str
+
+
 class PasswordResetResult(BaseModel):
     """Feature #171 — admin-assisteret password recovery (ingen e-mail-
     system). Den nye adgangskode returneres i klartekst PRÆCIS denne ene

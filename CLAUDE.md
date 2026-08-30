@@ -22,7 +22,7 @@ Hver film/serie kan tildeles frie, **brugerdefinerede tags** (fx "Julefilm", "Se
 - **Database**: MongoDB (film-/TV-serie-dokumenter i hver sin collection, tags, cache af ekstern metadata)
 - **Stregkode-scanning**: klient-side JS i browseren via `getUserMedia` + en barcode-detection-lib (fx `@zxing/browser`)
 - **Eksterne API'er**: TMDb (film- og TV-metadata + posters), en UPC-opslagstjeneste (stregkode → produkt/titel-gæt)
-- **Deployment**: Docker Compose (backend + frontend + MongoDB), selv-hostet på hjemmenetværk
+- **Deployment**: selv-hostet, **native under systemd** på en dedikeret Debian-VM (MongoDB, FastAPI/uvicorn, Caddy) — *ikke* Docker Compose; `docker-compose.yml` er et uverificeret scaffold der aldrig er taget i brug (se regel 17). Publiceret på internettet som `movie.laces.dk` via en separat nginx-reverse-proxy-VM, som er klienternes eneste vej ind; appserveren selv sidder på et isoleret transport-subnet. Se [INFRASTRUCTURE.md](INFRASTRUCTURE.md) for topologien og [DEPLOYMENT.md](DEPLOYMENT.md) for driften.
 
 ---
 

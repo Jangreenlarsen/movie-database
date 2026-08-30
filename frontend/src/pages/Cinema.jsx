@@ -132,7 +132,7 @@ export default function Cinema({ user }) {
 
       {/* Feature #162 — vist for ALLE (ikke kun admin, i modsætning til
           panelerne nedenfor), da enhver rolle inkl. gæster må stemme. */}
-      <PollsSection isAdmin={isAdmin} />
+      <PollsSection user={user} />
 
       {isAdmin && <AdminScreeningTools onChanged={refresh} />}
       {isAdmin && <ReservationAdmin screenings={screenings} />}
@@ -546,14 +546,22 @@ export function RequestRow({ request, onChanged }) {
 }
 
 /**
- * Feature #162 — afstemning om hvilken film/serie der skal vises. Kun admin
- * må oprette/lukke en afstemning (require_admin i backend), men stemme er
- * åbent for enhver rolle inkl. gæster (samme princip som feature #72's
- * forvisnings-anmodninger). Vises for ALLE, ikke kun admin — i modsætning
- * til AdminScreeningTools nedenfor.
+ * Feature #162 — afstemning om hvilken film/serie der skal vises. Vises for
+ * ALLE, ikke kun admin — i modsætning til AdminScreeningTools nedenfor.
+ *
+ * Feature #213 (Jan: "guest kan opret en afsteming med x antal film til
+ * afsteming men det er en adm som skal godkende at afsteming skal gøre
+ * global for alle efter følgende og det er også adm som kan tilret listen
+ * som en guest vil laveafsteming på") — OPRETTELSE er nu åben for enhver
+ * rolle, men kun en admins afstemning er 'open' med det samme. Alle andres
+ * starter 'pending' (backend skjuler den for alle andre end
+ * forslagsstilleren selv og admin, se poll_service._can_view_pending) —
+ * admin kan derefter redigere kandidatlisten og/eller godkende den, eller
+ * fjerne (= afvise) forslaget via den allerede eksisterende "Fjern"-knap.
  */
-function PollsSection({ isAdmin }) {
+function PollsSection({ user }) {
   const t = useT();
+  const isAdmin = user.role === "admin";
   const [polls, setPolls] = useState([]);
   const [status, setStatus] = useState("loading");
   const [creating, setCreating] = useState(false);
@@ -572,35 +580,52 @@ function PollsSection({ isAdmin }) {
     refresh();
   }, []);
 
+  // Feature #213 — hvad backend'en returnerer i "pending" er allerede
+  // afgrænset til det DENNE bruger må se (kun egne forslag, medmindre
+  // admin, som ser alle) — ingen yderligere filtrering nødvendig her.
+  const pendingPolls = polls.filter((p) => p.status === "pending");
   const openPolls = polls.filter((p) => p.status === "open");
   // Feature #162 — kun de 5 seneste afgjorte afstemninger, så listen ikke
   // vokser uendeligt; ingen efterspurgt "se alle"-historik endnu.
-  const decidedPolls = polls.filter((p) => p.status !== "open").slice(0, 5);
+  const decidedPolls = polls.filter((p) => p.status !== "open" && p.status !== "pending").slice(0, 5);
 
   return (
     <div className="card cinema-panel">
       <h2>{t("polls.heading")}</h2>
       <p className="muted">{t("polls.hint")}</p>
 
-      {isAdmin &&
-        (creating ? (
-          <PollCreateForm
-            onCreated={() => {
-              setCreating(false);
-              refresh();
-            }}
-            onCancel={() => setCreating(false)}
-          />
-        ) : (
-          <button type="button" className="btn" onClick={() => setCreating(true)}>
-            {t("polls.create")}
-          </button>
-        ))}
+      {creating ? (
+        <PollCreateForm
+          isAdmin={isAdmin}
+          onCreated={() => {
+            setCreating(false);
+            refresh();
+          }}
+          onCancel={() => setCreating(false)}
+        />
+      ) : (
+        <button type="button" className="btn" onClick={() => setCreating(true)}>
+          {t(isAdmin ? "polls.create" : "polls.suggest")}
+        </button>
+      )}
 
       {status === "loading" && <p className="muted">{t("common.loading")}</p>}
       {status === "error" && <div className="banner banner-error">{t("polls.loadError")}</div>}
       {status === "ready" && polls.length === 0 && !creating && (
         <p className="muted">{t("polls.none")}</p>
+      )}
+
+      {pendingPolls.length > 0 && (
+        <>
+          <h3 className="cinema-polls-pending-heading">
+            {t(isAdmin ? "polls.pendingHeadingAdmin" : "polls.pendingHeadingMine")}
+          </h3>
+          <div className="cinema-polls">
+            {pendingPolls.map((poll) => (
+              <PollCard key={poll.id} poll={poll} isAdmin={isAdmin} onChanged={refresh} />
+            ))}
+          </div>
+        </>
       )}
 
       <div className="cinema-polls">
@@ -615,18 +640,16 @@ function PollsSection({ isAdmin }) {
   );
 }
 
-function PollCreateForm({ onCreated, onCancel }) {
+/**
+ * Feature #213 — søg i biblioteket + tilføj/fjern-listen, tidligere kun
+ * inline i PollCreateForm. Udtrukket fordi den administrative
+ * kandidat-redigering af en 'pending' afstemning (PollCandidatesEditor
+ * nedenfor) har brug for præcis den samme byggesten, ikke en dublet.
+ */
+function CandidatePicker({ candidates, onAdd, onRemove }) {
   const t = useT();
-  const [title, setTitle] = useState("");
-  // Feature #208 (Jan: "afstemming skal kunne sættes en dato på til de film
-  // vi stemmer om til forvisning") — hvilken aften der stemmes om, ikke et
-  // klokkeslæt (det vælges først når vinderen rent faktisk planlægges).
-  const [targetDate, setTargetDate] = useState("");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
-  const [candidates, setCandidates] = useState([]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
 
   async function search(event) {
     event.preventDefault();
@@ -641,11 +664,73 @@ function PollCreateForm({ onCreated, onCancel }) {
     ]);
   }
 
-  function addCandidate(candidate) {
+  function add(candidate) {
     if (candidates.some((c) => c.media_kind === candidate.media_kind && c.id === candidate.id)) return;
-    setCandidates([...candidates, candidate]);
+    onAdd(candidate);
     setResults([]);
     setQuery("");
+  }
+
+  return (
+    <>
+      <form className="cinema-search-form" onSubmit={search}>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("cinema.searchLibraryPlaceholder")}
+        />
+        <button type="submit" className="btn">
+          {t("scan.search")}
+        </button>
+      </form>
+
+      {results.length > 0 && (
+        <div className="cinema-search-results">
+          {results.map((result) => (
+            <button
+              type="button"
+              key={`${result.media_kind}-${result.id}`}
+              className="cinema-search-result"
+              onClick={() => add(result)}
+            >
+              {result.poster_url ? <img src={posterSrc(result.poster_url, "w185")} alt="" /> : <span>{result.media_kind === "movie" ? "🎬" : "📺"}</span>}
+              <span>
+                {result.title} {result.year ? `(${result.year})` : ""}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {candidates.length > 0 && (
+        <ul className="cinema-poll-candidate-list">
+          {candidates.map((c) => (
+            <li key={`${c.media_kind}-${c.id}`}>
+              {c.title} {c.year ? `(${c.year})` : ""}
+              <button type="button" className="btn" onClick={() => onRemove(c)}>
+                {t("cinema.remove")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+function PollCreateForm({ isAdmin, onCreated, onCancel }) {
+  const t = useT();
+  const [title, setTitle] = useState("");
+  // Feature #208 (Jan: "afstemming skal kunne sættes en dato på til de film
+  // vi stemmer om til forvisning") — hvilken aften der stemmes om, ikke et
+  // klokkeslæt (det vælges først når vinderen rent faktisk planlægges).
+  const [targetDate, setTargetDate] = useState("");
+  const [candidates, setCandidates] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  function addCandidate(candidate) {
+    setCandidates([...candidates, candidate]);
   }
 
   function removeCandidate(candidate) {
@@ -684,52 +769,79 @@ function PollCreateForm({ onCreated, onCancel }) {
         {t("polls.targetDate")}
         <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
       </label>
-      <form className="cinema-search-form" onSubmit={search}>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t("cinema.searchLibraryPlaceholder")}
-        />
-        <button type="submit" className="btn">
-          {t("scan.search")}
-        </button>
-      </form>
 
-      {results.length > 0 && (
-        <div className="cinema-search-results">
-          {results.map((result) => (
-            <button
-              type="button"
-              key={`${result.media_kind}-${result.id}`}
-              className="cinema-search-result"
-              onClick={() => addCandidate(result)}
-            >
-              {result.poster_url ? <img src={posterSrc(result.poster_url, "w185")} alt="" /> : <span>{result.media_kind === "movie" ? "🎬" : "📺"}</span>}
-              <span>
-                {result.title} {result.year ? `(${result.year})` : ""}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
+      <CandidatePicker candidates={candidates} onAdd={addCandidate} onRemove={removeCandidate} />
 
-      {candidates.length > 0 && (
-        <ul className="cinema-poll-candidate-list">
-          {candidates.map((c) => (
-            <li key={`${c.media_kind}-${c.id}`}>
-              {c.title} {c.year ? `(${c.year})` : ""}
-              <button type="button" className="btn" onClick={() => removeCandidate(c)}>
-                {t("cinema.remove")}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* Feature #213 — kun vist for ikke-admin: sætter forventningen om at
+          forslaget ikke er synligt for andre endnu. */}
+      {!isAdmin && <p className="muted">{t("polls.suggestHint")}</p>}
 
       {error && <div className="banner banner-error">{error}</div>}
 
       <button type="button" className="btn btn-primary" onClick={submit} disabled={candidates.length < 2 || busy}>
         {t(busy ? "polls.creating" : "polls.confirmCreate")}
+      </button>
+      <button type="button" className="btn" onClick={onCancel} disabled={busy}>
+        {t("common.cancel")}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Feature #213 — admin retter kandidatlisten på en 'pending' afstemning før
+ * godkendelse. Erstatter hele den viste kandidat-liste mens den er åben
+ * (ikke ved siden af), så der ikke er to modstridende visninger af "hvad
+ * afstemningen indeholder" på samme tid.
+ */
+function PollCandidatesEditor({ poll, onSaved, onCancel }) {
+  const t = useT();
+  const [candidates, setCandidates] = useState(
+    poll.candidates.map((c) => ({
+      media_kind: c.media_kind,
+      id: c.media_kind === "movie" ? c.movie_id : c.tv_show_id,
+      title: c.title,
+      year: c.year,
+      poster_url: c.poster_url,
+    }))
+  );
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  function addCandidate(candidate) {
+    setCandidates([...candidates, candidate]);
+  }
+
+  function removeCandidate(candidate) {
+    setCandidates(candidates.filter((c) => !(c.media_kind === candidate.media_kind && c.id === candidate.id)));
+  }
+
+  async function save() {
+    if (candidates.length < 2) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.updatePollCandidates(
+        poll.id,
+        candidates.map((c) => ({
+          media_kind: c.media_kind,
+          movie_id: c.media_kind === "movie" ? c.id : null,
+          tv_show_id: c.media_kind === "tv" ? c.id : null,
+        }))
+      );
+      onSaved();
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="cinema-card-edit-form" style={{ flexBasis: "100%" }}>
+      <CandidatePicker candidates={candidates} onAdd={addCandidate} onRemove={removeCandidate} />
+      {error && <div className="banner banner-error">{error}</div>}
+      <button type="button" className="btn btn-primary" onClick={save} disabled={candidates.length < 2 || busy}>
+        {t(busy ? "polls.savingCandidates" : "polls.saveCandidates")}
       </button>
       <button type="button" className="btn" onClick={onCancel} disabled={busy}>
         {t("common.cancel")}
@@ -746,6 +858,9 @@ export function PollCard({ poll, isAdmin, onChanged }) {
   const [closing, setClosing] = useState(false);
   const [schedulingIndex, setSchedulingIndex] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  // Feature #213
+  const [approving, setApproving] = useState(false);
+  const [editingCandidates, setEditingCandidates] = useState(false);
 
   async function vote(index) {
     setBusyIndex(index);
@@ -772,12 +887,30 @@ export function PollCard({ poll, isAdmin, onChanged }) {
     }
   }
 
+  async function approve() {
+    setApproving(true);
+    setError(null);
+    try {
+      await api.approvePoll(poll.id);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+      setApproving(false);
+    }
+  }
+
   // Feature #208-opfølgning (Jan: "eller adm vælger at de skal forsvinde")
   // — admin kan til enhver tid fjerne afstemningen fra oversigten manuelt,
   // uanset status. Rører ALDRIG en evt. tilknyttet fremvisning — den er en
   // selvstændig kalender-post nu, kun selve stemme-optællingen ryddes op.
+  //
+  // Feature #213 — samme knap dobler nu som "afvis" for en 'pending'
+  // afstemning (backend-siden i poll_service.delete_poll's docstring); kun
+  // selve bekræftelsesteksten skifter, så den ikke fejlagtigt nævner
+  // stemmer der slet ikke findes endnu.
   async function remove() {
-    if (!window.confirm(t("polls.confirmRemove"))) return;
+    const confirmText = poll.status === "pending" ? t("polls.confirmReject") : t("polls.confirmRemove");
+    if (!window.confirm(confirmText)) return;
     setDeleting(true);
     setError(null);
     try {
@@ -789,6 +922,7 @@ export function PollCard({ poll, isAdmin, onChanged }) {
     }
   }
 
+  const isPending = poll.status === "pending";
   const isOpen = poll.status === "open";
   const isTie = poll.status !== "open" && poll.winner_indices.length > 1;
 
@@ -799,70 +933,102 @@ export function PollCard({ poll, isAdmin, onChanged }) {
         <span className={`role-badge cinema-poll-status-${poll.status}`}>
           {t(`polls.status.${poll.status}`)}
         </span>
+        {isAdmin && isPending && !editingCandidates && (
+          <button type="button" className="btn" onClick={() => setEditingCandidates(true)} disabled={approving}>
+            {t("polls.editCandidates")}
+          </button>
+        )}
+        {isAdmin && isPending && (
+          <button type="button" className="btn btn-primary" onClick={approve} disabled={approving || editingCandidates}>
+            {t(approving ? "polls.approving" : "polls.approve")}
+          </button>
+        )}
         {isAdmin && (
           <button type="button" className="btn cinema-poll-remove-btn" onClick={remove} disabled={deleting}>
-            {t(deleting ? "polls.removing" : "polls.remove")}
+            {t(deleting ? "polls.removing" : isPending ? "polls.reject" : "polls.remove")}
           </button>
         )}
       </div>
+      {/* Feature #213 — kun relevant for admin: hvem der foreslog den. En
+          gæst der ser sit eget forslag ved det jo allerede. */}
+      {isAdmin && isPending && (
+        <p className="muted">{t("polls.suggestedBy", { username: poll.created_by })}</p>
+      )}
       {/* Feature #208 — hvilken aften der stemmes om, ikke et klokkeslæt. */}
       {poll.target_date && (
         <p className="muted">{t("polls.targetDateLine", { date: formatShortDate(poll.target_date, locale) })}</p>
       )}
       {isTie && <p className="muted">{t("polls.tieHint")}</p>}
 
-      {poll.candidates.map((candidate, index) => {
-        const pct = poll.total_votes > 0 ? Math.round((candidate.vote_count / poll.total_votes) * 100) : 0;
-        const isWinner = poll.winner_indices.includes(index);
-        return (
-          <div key={index} className="cinema-request-row cinema-poll-candidate-row">
-            <div className="cinema-request-poster">
-              {candidate.poster_url ? (
-                <img src={posterSrc(candidate.poster_url, "w185")} alt="" />
-              ) : (
-                <span>{candidate.media_kind === "movie" ? "🎬" : "📺"}</span>
-              )}
-            </div>
-            <div className="cinema-request-info">
-              <strong>
-                {candidate.title ?? t("cinema.unknown")} {candidate.year ? `(${candidate.year})` : ""}
-                {isWinner && <span className="cinema-poll-winner-badge"> 🏆</span>}
-              </strong>
-              <div className="cinema-poll-bar-track">
-                <div className="cinema-poll-bar-fill" style={{ width: `${pct}%` }} />
+      {isPending && editingCandidates ? (
+        <PollCandidatesEditor
+          poll={poll}
+          onSaved={() => {
+            setEditingCandidates(false);
+            onChanged();
+          }}
+          onCancel={() => setEditingCandidates(false)}
+        />
+      ) : (
+        poll.candidates.map((candidate, index) => {
+          const pct = poll.total_votes > 0 ? Math.round((candidate.vote_count / poll.total_votes) * 100) : 0;
+          const isWinner = poll.winner_indices.includes(index);
+          return (
+            <div key={index} className="cinema-request-row cinema-poll-candidate-row">
+              <div className="cinema-request-poster">
+                {candidate.poster_url ? (
+                  <img src={posterSrc(candidate.poster_url, "w185")} alt="" />
+                ) : (
+                  <span>{candidate.media_kind === "movie" ? "🎬" : "📺"}</span>
+                )}
               </div>
-              <div className="muted">{t("polls.voteCount", { count: candidate.vote_count, pct })}</div>
-            </div>
-            <div className="cinema-request-actions">
-              {isOpen && (
-                <button
-                  type="button"
-                  className={`btn${poll.my_vote === index ? " btn-primary" : ""}`}
-                  disabled={busyIndex !== null}
-                  onClick={() => vote(index)}
-                >
-                  {t(poll.my_vote === index ? "polls.voted" : "polls.vote")}
-                </button>
-              )}
-              {isAdmin && isWinner && poll.status === "closed" && (
-                schedulingIndex === index ? null : (
-                  <button type="button" className="btn btn-primary" onClick={() => setSchedulingIndex(index)}>
-                    {t("polls.schedule")}
+              <div className="cinema-request-info">
+                <strong>
+                  {candidate.title ?? t("cinema.unknown")} {candidate.year ? `(${candidate.year})` : ""}
+                  {isWinner && <span className="cinema-poll-winner-badge"> 🏆</span>}
+                </strong>
+                {/* Feature #213 — ingen stemmetal at vise for en 'pending'
+                    afstemning; stemme er slet ikke muligt endnu. */}
+                {!isPending && (
+                  <>
+                    <div className="cinema-poll-bar-track">
+                      <div className="cinema-poll-bar-fill" style={{ width: `${pct}%` }} />
+                    </div>
+                    <div className="muted">{t("polls.voteCount", { count: candidate.vote_count, pct })}</div>
+                  </>
+                )}
+              </div>
+              <div className="cinema-request-actions">
+                {isOpen && (
+                  <button
+                    type="button"
+                    className={`btn${poll.my_vote === index ? " btn-primary" : ""}`}
+                    disabled={busyIndex !== null}
+                    onClick={() => vote(index)}
+                  >
+                    {t(poll.my_vote === index ? "polls.voted" : "polls.vote")}
                   </button>
-                )
+                )}
+                {isAdmin && isWinner && poll.status === "closed" && (
+                  schedulingIndex === index ? null : (
+                    <button type="button" className="btn btn-primary" onClick={() => setSchedulingIndex(index)}>
+                      {t("polls.schedule")}
+                    </button>
+                  )
+                )}
+              </div>
+              {isAdmin && isWinner && poll.status === "closed" && schedulingIndex === index && (
+                <SchedulePollWinnerForm
+                  poll={poll}
+                  candidate={candidate}
+                  onScheduled={onChanged}
+                  onCancel={() => setSchedulingIndex(null)}
+                />
               )}
             </div>
-            {isAdmin && isWinner && poll.status === "closed" && schedulingIndex === index && (
-              <SchedulePollWinnerForm
-                poll={poll}
-                candidate={candidate}
-                onScheduled={onChanged}
-                onCancel={() => setSchedulingIndex(null)}
-              />
-            )}
-          </div>
-        );
-      })}
+          );
+        })
+      )}
 
       {error && <div className="banner banner-error">{error}</div>}
 

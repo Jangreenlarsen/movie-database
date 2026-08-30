@@ -64,6 +64,17 @@ async def set_status(
     return await find_by_id(db, poll_id)
 
 
+async def set_candidates(db: AsyncIOMotorDatabase, poll_id: str, candidates: list[dict]) -> dict | None:
+    """Feature #213 — admin erstatter hele kandidatlisten på en 'pending'
+    afstemning før godkendelse. `$set` på hele feltet (samme mønster som
+    set_status/set_scheduled) — ikke en read-modify-write, da hele listen
+    kommer fra kalderen som den ønskede slutliste, ikke en delvis diff."""
+    if not ObjectId.is_valid(poll_id):
+        return None
+    await db[COLLECTION].update_one({"_id": ObjectId(poll_id)}, {"$set": {"candidates": candidates}})
+    return await find_by_id(db, poll_id)
+
+
 async def set_scheduled(db: AsyncIOMotorDatabase, poll_id: str, screening_id: str) -> dict | None:
     if not ObjectId.is_valid(poll_id):
         return None

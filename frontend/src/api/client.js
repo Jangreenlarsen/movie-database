@@ -396,6 +396,10 @@ export const api = {
     }),
   closePoll: (id) => request(`/polls/${id}/close`, { method: "POST" }),
   deletePoll: (id) => request(`/polls/${id}`, { method: "DELETE" }),
+  // Feature #213 — admin godkender/redigerer en ikke-admins afstemnings-forslag.
+  approvePoll: (id) => request(`/polls/${id}/approve`, { method: "POST" }),
+  updatePollCandidates: (id, candidates) =>
+    request(`/polls/${id}/candidates`, { method: "PATCH", body: JSON.stringify({ candidates }) }),
 
   // Feature #133 — sæde-reservation til Voldby BIO.
   getSeatMap: (screeningId) => request(`/screenings/${screeningId}/seats`),

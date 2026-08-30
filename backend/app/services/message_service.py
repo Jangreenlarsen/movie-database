@@ -401,6 +401,35 @@ async def notify_admins_new_screening_request(
             pass
 
 
+async def notify_admins_new_poll_suggestion(
+    db: AsyncIOMotorDatabase, creator: dict, poll_document: dict
+) -> None:
+    """Feature #213 (Jan: "guest kan opret en afsteming ... men det er en
+    adm som skal godkende") — samme bruger→admin-retning som
+    notify_admins_new_wishlist/notify_admins_new_screening_request ovenfor,
+    men for et nyt afstemnings-FORSLAG der afventer godkendelse. `admin_doc`
+    skal aldrig kunne være forslagsstilleren selv (kun ikke-admins opretter
+    en 'pending' afstemning i første omgang, se poll_service.create_poll),
+    men samme skip-guard bevares alligevel for konsistens med de øvrige
+    notify_admins_new_*-funktioner."""
+    admins = await user_repository.list_active_admins(db)
+    if not admins:
+        return
+    title = poll_document.get("title") or "En ny afstemning"
+    for admin_doc in admins:
+        if admin_doc.get("username") == creator.get("username"):
+            continue
+        payload = MessageCreate(
+            subject="Nyt afstemnings-forslag afventer godkendelse",
+            body=f'{creator.get("username")} har foreslået afstemningen "{title}" — godkend eller afvis den under Voldby BIO.',
+            recipient_user_id=str(admin_doc["_id"]),
+        )
+        try:
+            await send(db, payload, creator)
+        except Exception:
+            pass
+
+
 async def notify_screening_request_declined(
     db: AsyncIOMotorDatabase,
     request_doc: dict,
@@ -589,6 +618,80 @@ async def notify_poll_scheduled(
             )
         except Exception:
             pass
+
+
+async def notify_poll_approved(db: AsyncIOMotorDatabase, poll_document: dict, admin: dict) -> None:
+    """Feature #213 — svar til forslagsstilleren når admin godkender deres
+    afstemnings-forslag og gør den global for alle. Ingen poster/vinder at
+    vise endnu (afstemningen er lige blevet åbnet, ikke afgjort) — kun en
+    kort bekræftelse."""
+    creator_username = poll_document.get("created_by")
+    if not creator_username or creator_username == admin.get("username"):
+        return
+    creator = await user_repository.find_by_username_normalized(db, creator_username.lower())
+    if creator is None:
+        return
+
+    title = poll_document.get("title") or "din afstemning"
+    body = f'"{title}" er nu godkendt og åben for alle i Voldby BIO — alle kan stemme.'
+    payload = MessageCreate(
+        subject="Din afstemning er godkendt",
+        body=body,
+        recipient_user_id=str(creator["_id"]),
+    )
+    try:
+        await send(
+            db,
+            payload,
+            admin,
+            email_html=email_templates.render_notification_email(
+                headline="Din afstemning er godkendt!",
+                tagline=body,
+                body_text=body,
+                poster_url=None,
+                accent="gold",
+            ),
+        )
+    except Exception:
+        pass
+
+
+async def notify_poll_suggestion_rejected(
+    db: AsyncIOMotorDatabase, poll_document: dict, admin: dict
+) -> None:
+    """Feature #213 — modparten til notify_poll_approved: admin fjernede
+    forslaget i stedet for at godkende det (poll_service.delete_poll's
+    'was_pending'-gren). Samme dæmpede tone som
+    notify_screening_request_declined — det er ikke en fejl, bare et nej."""
+    creator_username = poll_document.get("created_by")
+    if not creator_username or creator_username == admin.get("username"):
+        return
+    creator = await user_repository.find_by_username_normalized(db, creator_username.lower())
+    if creator is None:
+        return
+
+    title = poll_document.get("title") or "dit afstemnings-forslag"
+    body = f'"{title}" blev desværre ikke godkendt som afstemning denne gang.'
+    payload = MessageCreate(
+        subject="Om dit afstemnings-forslag",
+        body=body,
+        recipient_user_id=str(creator["_id"]),
+    )
+    try:
+        await send(
+            db,
+            payload,
+            admin,
+            email_html=email_templates.render_notification_email(
+                headline="Om dit afstemnings-forslag",
+                tagline=body,
+                body_text=body,
+                poster_url=None,
+                accent="muted",
+            ),
+        )
+    except Exception:
+        pass
 
 
 async def list_sent(db: AsyncIOMotorDatabase) -> list[Message]:

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.186.0 (build 0266) — 2026-08-30
+
+- **Gæster og alle roller kan nu foreslå en afstemning** under Voldby BIO — forslaget er skjult for andre end forslagsstilleren selv, indtil en admin godkender det og gør det synligt/stemme-bart for alle. Admin kan redigere kandidatlisten inden godkendelse, eller afvise forslaget.
+
 ## v0.185.0 (build 0265) — 2026-08-29
 
 - **"Test forbindelse" til Anthem AVM70** i Indstillinger → Eksterne API-nøgler, på samme vilkår som de øvrige API-nøgler.

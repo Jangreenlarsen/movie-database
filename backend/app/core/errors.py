@@ -222,6 +222,17 @@ class InvalidPollCandidateError(Exception):
         super().__init__("Ugyldig kandidat — den findes ikke i denne afstemning.")
 
 
+class PollNotPendingError(Exception):
+    """Feature #213 — kandidatlisten kan kun redigeres, og en afstemning kan
+    kun godkendes, mens den står som 'pending' (en ikke-admins forslag,
+    endnu ikke gjort global). Et forsøg på begge dele efter godkendelse ville
+    enten være meningsløst (afstemningen kører allerede, stemmer kunne blive
+    ugyldige af en kandidat-ændring) eller en dobbelt-godkendelse."""
+
+    def __init__(self):
+        super().__init__("Denne handling kræver at afstemningen stadig afventer godkendelse.")
+
+
 class InvalidResetTokenError(Exception):
     """Feature #205 — dækker både 'findes slet ikke', 'allerede brugt' (token
     fjernes atomisk ved brug, se user_repository.consume_reset_token) og

@@ -12,10 +12,26 @@ from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.core.errors import InvalidPollCandidateError, PollNotFoundError, PollNotOpenError
-from app.models.poll import Poll, PollCandidateResult, PollCreate
+from app.core.errors import (
+    InvalidPollCandidateError,
+    PollNotFoundError,
+    PollNotOpenError,
+    PollNotPendingError,
+)
+from app.models.poll import Poll, PollCandidateCreate, PollCandidateResult, PollCreate
 from app.repositories import poll_repository, screening_repository
 from app.services import message_service, screening_service
+
+
+def _can_view_pending(document: dict, viewer: dict) -> bool:
+    """Feature #213 — en 'pending' afstemning (en ikke-admins forslag, endnu
+    ikke godkendt) er kun synlig for forslagsstilleren selv og for admin.
+    Bruges af både list_polls (filtrerer listen) og get_poll (skjuler et
+    direkte id-opslag på samme måde, så der ikke er to forskellige adfærd
+    afhængig af hvilken vej man kom ind)."""
+    if document["status"] != "pending":
+        return True
+    return viewer.get("role") == "admin" or document["created_by"] == viewer.get("username")
 
 
 async def _to_poll_model(db: AsyncIOMotorDatabase, document: dict, viewer_username: str) -> Poll:
@@ -71,21 +87,76 @@ async def _to_poll_model(db: AsyncIOMotorDatabase, document: dict, viewer_userna
     )
 
 
-async def create_poll(db: AsyncIOMotorDatabase, payload: PollCreate, admin: dict) -> Poll:
+async def create_poll(db: AsyncIOMotorDatabase, payload: PollCreate, creator: dict) -> Poll:
+    """Feature #213 (Jan: "guest kan opret en afsteming ... men det er en
+    adm som skal godkende at afsteming skal gøre global for alle") — enhver
+    logget-ind rolle må nu oprette (require_admin fjernet fra selve
+    endpointet, se api/polls.py), men KUN en admins afstemning starter
+    'open' med det samme. Alle andres starter 'pending' — usynlig for andre
+    end forslagsstilleren selv, indtil en admin godkender den
+    (approve_poll). Admin skal ikke selv godkende sine egne afstemninger,
+    som hidtil."""
     now = datetime.now(timezone.utc)
+    is_admin = creator.get("role") == "admin"
     document = {
         "title": payload.title,
         "target_date": payload.target_date,
         "candidates": [c.model_dump() for c in payload.candidates],
         "votes": [],
-        "status": "open",
-        "created_by": admin["username"],
+        "status": "open" if is_admin else "pending",
+        "created_by": creator["username"],
         "created_at": now,
         "closed_at": None,
         "scheduled_screening_id": None,
     }
     created = await poll_repository.insert(db, document)
-    return await _to_poll_model(db, created, admin["username"])
+    if not is_admin:
+        # Best-effort, samme mønster som de øvrige notify_admins_new_*
+        # funktioner — en fejl her må aldrig vælte selve oprettelsen.
+        try:
+            await message_service.notify_admins_new_poll_suggestion(db, creator, created)
+        except Exception:
+            pass
+    return await _to_poll_model(db, created, creator["username"])
+
+
+async def update_poll_candidates(
+    db: AsyncIOMotorDatabase, poll_id: str, candidates: list[PollCandidateCreate], admin: dict
+) -> Poll:
+    """Feature #213 (Jan: "det er også adm som kan tilret listen som en
+    guest vil laveafsteming på") — admin erstatter hele kandidatlisten på
+    en 'pending' afstemning før den godkendes, fx for at fjerne en
+    upassende foreslået titel. Kun muligt mens afstemningen stadig
+    afventer — der er ingen stemmer at ugyldiggøre på det tidspunkt."""
+    document = await poll_repository.find_by_id(db, poll_id)
+    if document is None:
+        raise PollNotFoundError(poll_id)
+    if document["status"] != "pending":
+        raise PollNotPendingError()
+
+    updated = await poll_repository.set_candidates(
+        db, poll_id, [c.model_dump() for c in candidates]
+    )
+    return await _to_poll_model(db, updated, admin["username"])
+
+
+async def approve_poll(db: AsyncIOMotorDatabase, poll_id: str, admin: dict) -> Poll:
+    """Feature #213 — gør en 'pending' afstemning global: fra nu af kan alle
+    se og stemme på den, præcis som en admin-oprettet afstemning altid har
+    kunnet."""
+    document = await poll_repository.find_by_id(db, poll_id)
+    if document is None:
+        raise PollNotFoundError(poll_id)
+    if document["status"] != "pending":
+        raise PollNotPendingError()
+
+    updated = await poll_repository.set_status(db, poll_id, "open")
+    model = await _to_poll_model(db, updated, admin["username"])
+    try:
+        await message_service.notify_poll_approved(db, updated, admin)
+    except Exception:
+        pass
+    return model
 
 
 async def _has_premiered(db: AsyncIOMotorDatabase, document: dict) -> bool:
@@ -108,29 +179,51 @@ async def _has_premiered(db: AsyncIOMotorDatabase, document: dict) -> bool:
     return scheduled_at < datetime.now(timezone.utc)
 
 
-async def list_polls(db: AsyncIOMotorDatabase, status: str | None, viewer_username: str) -> list[Poll]:
+async def list_polls(db: AsyncIOMotorDatabase, status: str | None, viewer: dict) -> list[Poll]:
     documents = await poll_repository.find_all(db, status)
-    visible = [doc for doc in documents if not await _has_premiered(db, doc)]
-    return [await _to_poll_model(db, doc, viewer_username) for doc in visible]
+    visible = [
+        doc
+        for doc in documents
+        if not await _has_premiered(db, doc) and _can_view_pending(doc, viewer)
+    ]
+    return [await _to_poll_model(db, doc, viewer["username"]) for doc in visible]
 
 
-async def delete_poll(db: AsyncIOMotorDatabase, poll_id: str) -> None:
+async def delete_poll(db: AsyncIOMotorDatabase, poll_id: str, admin: dict) -> None:
     """Feature #208-opfølgning (Jan: "eller adm vælger at de skal
     forsvinde") — admin kan til enhver tid fjerne en afstemning fra
     oversigten manuelt, uanset status. Rører ALDRIG en evt. tilknyttet
     fremvisning (`scheduled_screening_id`) — den er en selvstændig, ægte
     kalender-post nu, ikke længere blot afstemningens data; at slette
     afstemningen er ren oprydning af selve stemme-optællingen, ikke en
-    aflysning af aftenen."""
-    if not await poll_repository.delete(db, poll_id):
-        raise PollNotFoundError(poll_id)
+    aflysning af aftenen.
 
-
-async def get_poll(db: AsyncIOMotorDatabase, poll_id: str, viewer_username: str) -> Poll:
+    Feature #213 — samme endpoint dobler nu som "afvis" for en 'pending'
+    afstemning: der er ikke bedt om en separat afvis-handling, og en admin
+    der fjerner en endnu-ikke-godkendt afstemning MENER reelt at afvise
+    forslaget. Forslagsstilleren får besked i det tilfælde (ikke ved
+    fjernelse af en allerede afgjort afstemning, hvor alle involverede
+    allerede har set udfaldet)."""
     document = await poll_repository.find_by_id(db, poll_id)
     if document is None:
         raise PollNotFoundError(poll_id)
-    return await _to_poll_model(db, document, viewer_username)
+    was_pending = document["status"] == "pending"
+
+    if not await poll_repository.delete(db, poll_id):
+        raise PollNotFoundError(poll_id)
+
+    if was_pending and document["created_by"] != admin.get("username"):
+        try:
+            await message_service.notify_poll_suggestion_rejected(db, document, admin)
+        except Exception:
+            pass
+
+
+async def get_poll(db: AsyncIOMotorDatabase, poll_id: str, viewer: dict) -> Poll:
+    document = await poll_repository.find_by_id(db, poll_id)
+    if document is None or not _can_view_pending(document, viewer):
+        raise PollNotFoundError(poll_id)
+    return await _to_poll_model(db, document, viewer["username"])
 
 
 async def cast_vote(db: AsyncIOMotorDatabase, poll_id: str, candidate_index: int, voter: dict) -> Poll:

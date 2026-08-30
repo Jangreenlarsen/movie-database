@@ -243,6 +243,7 @@ function _poll(overrides = {}) {
     total_votes: 3,
     my_vote: null,
     winner_indices: [],
+    created_by: "creator",
     candidates: [
       { media_kind: "movie", movie_id: "m1", tv_show_id: null, title: "Dune", year: 2021, poster_url: null, vote_count: 2 },
       { media_kind: "movie", movie_id: "m2", tv_show_id: null, title: "Arrival", year: 2016, poster_url: null, vote_count: 1 },
@@ -366,6 +367,95 @@ describe("PollCard (feature #162)", () => {
   });
 });
 
+/**
+ * Feature #213 (Jan: "guest kan opret en afsteming med x antal film til
+ * afsteming men det er en adm som skal godkende at afsteming skal gøre
+ * global for alle efter følgende og det er også adm som kan tilret listen
+ * som en guest vil laveafsteming på"). Det testværdige (regel 19): en
+ * 'pending' afstemning skal ikke vise stemme-furniture (der er ingen
+ * stemmer endnu), kun admin skal se godkend-/redigér-knapperne, og
+ * "Fjern"-knappen skal kaldes "Afvis" for netop denne status.
+ */
+describe("PollCard — 'pending' afstemning (feature #213)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function _pendingPoll(overrides = {}) {
+    return _poll({ status: "pending", total_votes: 0, created_by: "voldbygæst", ...overrides });
+  }
+
+  it("viser 'Afventer godkendelse'-badge og skjuler stemmetal/knap", async () => {
+    render(<PollCard poll={_pendingPoll()} isAdmin={false} onChanged={() => {}} />);
+    expect(await screen.findByText("Afventer godkendelse")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Stem" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/stemme/)).not.toBeInTheDocument();
+  });
+
+  it("viser hverken Godkend-, Redigér- eller Fjern/Afvis-knap for en ikke-admin", async () => {
+    render(<PollCard poll={_pendingPoll()} isAdmin={false} onChanged={() => {}} />);
+    await screen.findByText("Afventer godkendelse");
+    expect(screen.queryByRole("button", { name: "Godkend" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Redigér kandidater" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Afvis" })).not.toBeInTheDocument();
+  });
+
+  it("admin ser hvem der foreslog den, og kan godkende", async () => {
+    const approveSpy = vi.spyOn(api, "approvePoll").mockResolvedValue(_poll());
+    const onChanged = vi.fn();
+    const user = userEvent.setup();
+
+    render(<PollCard poll={_pendingPoll()} isAdmin={true} onChanged={onChanged} />);
+    expect(await screen.findByText("Foreslået af voldbygæst")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Godkend" }));
+    expect(approveSpy).toHaveBeenCalledWith("poll1");
+    expect(onChanged).toHaveBeenCalled();
+  });
+
+  it("admin ser 'Afvis' i stedet for 'Fjern', og den kalder stadig deletePoll", async () => {
+    const deleteSpy = vi.spyOn(api, "deletePoll").mockResolvedValue();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+
+    render(<PollCard poll={_pendingPoll()} isAdmin={true} onChanged={() => {}} />);
+    expect(screen.queryByRole("button", { name: "Fjern" })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "Afvis" }));
+
+    expect(window.confirm).toHaveBeenCalledWith(
+      "Afvis dette afstemnings-forslag? Forslagsstilleren får besked."
+    );
+    expect(deleteSpy).toHaveBeenCalledWith("poll1");
+  });
+
+  it("admin kan redigere kandidatlisten og gemme den", async () => {
+    vi.spyOn(api, "listMovies").mockResolvedValue({
+      items: [{ id: "m3", title: "Ny Kandidat", year: 2020, poster_url: null }],
+    });
+    vi.spyOn(api, "listTvShows").mockResolvedValue({ items: [] });
+    const updateSpy = vi.spyOn(api, "updatePollCandidates").mockResolvedValue(_poll());
+    const onChanged = vi.fn();
+    const user = userEvent.setup();
+
+    render(<PollCard poll={_pendingPoll()} isAdmin={true} onChanged={onChanged} />);
+    await user.click(await screen.findByRole("button", { name: "Redigér kandidater" }));
+
+    // Fjern den ene oprindelige kandidat (Arrival), tilføj en ny.
+    const removeButtons = await screen.findAllByRole("button", { name: "Fjern" });
+    await user.click(removeButtons[removeButtons.length - 1]);
+    await user.type(screen.getByPlaceholderText("Søg i biblioteket..."), "Ny Kandidat");
+    await user.click(screen.getByRole("button", { name: "Søg" }));
+    await user.click(await screen.findByText(/Ny Kandidat/));
+    await user.click(screen.getByRole("button", { name: "Gem kandidater" }));
+
+    expect(updateSpy).toHaveBeenCalledWith("poll1", [
+      { media_kind: "movie", movie_id: "m1", tv_show_id: null },
+      { media_kind: "movie", movie_id: "m3", tv_show_id: null },
+    ]);
+    expect(onChanged).toHaveBeenCalled();
+  });
+});
+
 describe("Cinema — afstemninger vises for alle roller (feature #162)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -380,16 +470,31 @@ describe("Cinema — afstemninger vises for alle roller (feature #162)", () => {
     expect(screen.getByText(/Dune/)).toBeInTheDocument();
   });
 
-  it("viser ikke 'Ny afstemning'-knappen for en gæst", async () => {
+  it("viser 'Foreslå en afstemning' i stedet for 'Ny afstemning' for en gæst (feature #213)", async () => {
     vi.spyOn(api, "listPolls").mockResolvedValue([]);
     render(<Cinema user={{ role: "guest" }} />);
     await screen.findByText("🗳️ Afstemninger");
     expect(screen.queryByRole("button", { name: "+ Ny afstemning" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "+ Foreslå en afstemning" })).toBeInTheDocument();
   });
 
   it("viser 'Ny afstemning'-knappen for admin", async () => {
     vi.spyOn(api, "listPolls").mockResolvedValue([]);
     render(<Cinema user={{ role: "admin" }} />);
     expect(await screen.findByRole("button", { name: "+ Ny afstemning" })).toBeInTheDocument();
+  });
+
+  it("gæst ser 'Dine forslag' som overskrift over sin egen pending afstemning (feature #213)", async () => {
+    vi.spyOn(api, "listPolls").mockResolvedValue([_poll({ status: "pending", created_by: "testuser" })]);
+    render(<Cinema user={{ role: "guest", username: "testuser" }} />);
+    expect(await screen.findByText("Dine forslag")).toBeInTheDocument();
+    expect(screen.queryByText("Afventer din godkendelse")).not.toBeInTheDocument();
+  });
+
+  it("admin ser 'Afventer din godkendelse' som overskrift over andres pending afstemninger (feature #213)", async () => {
+    vi.spyOn(api, "listPolls").mockResolvedValue([_poll({ status: "pending", created_by: "voldbygæst" })]);
+    render(<Cinema user={{ role: "admin", username: "admin1" }} />);
+    expect(await screen.findByText("Afventer din godkendelse")).toBeInTheDocument();
+    expect(screen.queryByText("Dine forslag")).not.toBeInTheDocument();
   });
 });

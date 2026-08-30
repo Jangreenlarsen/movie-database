@@ -5,7 +5,15 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.models.screening import MediaKind, _validate_media_reference
 
-PollStatus = Literal["open", "closed", "scheduled"]
+# Feature #213 (Jan: "guest kan opret en afsteming med x antal film til
+# afsteming men det er en adm som skal godkende at afsteming skal gøre
+# global for alle efter følgende") — "pending" er en afstemning en
+# ikke-admin har foreslået, men som endnu ikke er godkendt/synlig for
+# andre end forslagsstilleren selv og admin (se poll_service.list_polls/
+# get_poll). Samme ord som UserStatus/wishlist allerede bruger for "afventer
+# admins beslutning" — bevidst genbrug af etableret vokabular, ikke en ny
+# opfindelse.
+PollStatus = Literal["pending", "open", "closed", "scheduled"]
 
 
 class PollCandidateCreate(BaseModel):
@@ -19,9 +27,20 @@ class PollCandidateCreate(BaseModel):
         return self
 
 
+def _check_candidate_list(candidates: list[PollCandidateCreate]) -> None:
+    """Delt af PollCreate og PollCandidatesUpdate (feature #213) — samme
+    regler skal gælde uanset om listen sættes ved oprettelse eller redigeres
+    af admin bagefter, mens afstemningen stadig er 'pending'."""
+    if len(candidates) < 2:
+        raise ValueError("En afstemning kræver mindst 2 kandidater")
+    keys = [(c.media_kind, c.movie_id, c.tv_show_id) for c in candidates]
+    if len(keys) != len(set(keys)):
+        raise ValueError("Samme titel kan ikke være kandidat to gange i samme afstemning")
+
+
 class PollCreate(BaseModel):
-    # Valgfri — en admin behøver ikke navngive hver afstemning ("Fredag
-    # aften?" er implicit af selve konteksten den bruges i).
+    # Valgfri — man behøver ikke navngive hver afstemning ("Fredag aften?"
+    # er implicit af selve konteksten den bruges i).
     title: str | None = Field(default=None, max_length=200)
     # Feature #208 (Jan: "afstemming skal kunne sættes en dato på til de
     # film vi stemmer om til forvisning") — hvilken AFTEN der stemmes om,
@@ -37,11 +56,22 @@ class PollCreate(BaseModel):
 
     @model_validator(mode="after")
     def check_candidates(self) -> "PollCreate":
-        if len(self.candidates) < 2:
-            raise ValueError("En afstemning kræver mindst 2 kandidater")
-        keys = [(c.media_kind, c.movie_id, c.tv_show_id) for c in self.candidates]
-        if len(keys) != len(set(keys)):
-            raise ValueError("Samme titel kan ikke være kandidat to gange i samme afstemning")
+        _check_candidate_list(self.candidates)
+        return self
+
+
+class PollCandidatesUpdate(BaseModel):
+    """Feature #213 — admin retter kandidatlisten på en 'pending' afstemning
+    (fx fjerner en upassende foreslået titel eller tilføjer en mere) FØR den
+    godkendes. Erstatter hele listen, samme "$set på hele feltet"-mønster
+    som poll_repository.set_status — ikke en tilføj/fjern-diff, da det er
+    admin der har det fulde overblik og sender den ønskede slutliste."""
+
+    candidates: list[PollCandidateCreate]
+
+    @model_validator(mode="after")
+    def check_candidates(self) -> "PollCandidatesUpdate":
+        _check_candidate_list(self.candidates)
         return self
 
 

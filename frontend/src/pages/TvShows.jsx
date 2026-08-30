@@ -558,10 +558,16 @@ export default function TvShows({
           </div>
         )}
 
-        <div className={`search-row${wishlist ? " search-row-secondary" : ""}`}>
-          {searchInputWrap(t(wishlist ? "lib.wishlistFilterPlaceholder" : "tv.searchPlaceholder"))}
-          {sortFilterFieldButtons}
-        </div>
+        {/* Feature #214 — under "Søg titel"-tilføjelsen på Ønskelisten
+            skjules rækken helt: den sidder lige over MovieLookupForms eget
+            søgefelt og de to blev nemt forvekslet (samme rettelse som
+            Library.jsx). */}
+        {!(wishlist && addMode === "manual") && (
+          <div className={`search-row${wishlist ? " search-row-secondary" : ""}`}>
+            {searchInputWrap(t(wishlist ? "lib.wishlistFilterPlaceholder" : "tv.searchPlaceholder"))}
+            {sortFilterFieldButtons}
+          </div>
+        )}
 
         {addMode && (
           <div style={{ marginTop: 8 }}>

@@ -65,6 +65,7 @@ from app.core.errors import (
     PlexFilterUnavailableError,
     PollNotFoundError,
     PollNotOpenError,
+    PollNotPendingError,
     PreferredAtRequiredError,
     ReservationNotFoundError,
     SeatTakenError,
@@ -218,6 +219,11 @@ async def poll_not_open_handler(request: Request, exc: PollNotOpenError) -> JSON
 @app.exception_handler(InvalidPollCandidateError)
 async def invalid_poll_candidate_handler(request: Request, exc: InvalidPollCandidateError) -> JSONResponse:
     return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(PollNotPendingError)
+async def poll_not_pending_handler(request: Request, exc: PollNotPendingError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 @app.exception_handler(PreferredAtRequiredError)

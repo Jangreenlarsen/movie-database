@@ -474,6 +474,15 @@
   margin: 14px 0;
 }
 
+/* Feature #213 — overskrift over de(n) 'pending' afstemning(er), samme
+   afstand til naboerne som resten af sektionens elementer (fx
+   .cinema-polls' egen margin ovenfor). */
+.cinema-polls-pending-heading {
+  margin: 14px 0 0;
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
 .cinema-poll-card {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);

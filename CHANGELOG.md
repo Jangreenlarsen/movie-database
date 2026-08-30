@@ -2,6 +2,24 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.187.0 build 0267] — 2026-08-30 — feature: skjul "Filtrér dine ønsker"-rækken under "Tilføre film på title" (FEATURES.md #214)
+
+Jan, midt i #213's implementering: *"vi skal have en funktion på portal der fjener 'filter dine ønske' funktion når man trykker på tilføre film på title"*.
+
+Ønskelistens filter-række sad lige over `MovieLookupForm`s eget søgefelt når "Tilføre film på title" var åben — to søgefelter oven i hinanden. Rækken skjules nu (`!(wishlist && addMode === "manual")`) mens formularen er åben; scan-tilføjelse og selve bibliotekets almindelige søgning er upåvirket. Samme rettelse i `Library.jsx` og `TvShows.jsx` (regel 16).
+
+Berørte filer: `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`. Nye tests: `Library.wishlistFilter.test.jsx`, `TvShows.wishlistFilter.test.jsx`. Set i browser (regel 18) på begge underfaner. Fuld backend-suite (942, uændret) + frontend (211) grøn.
+
+## [0.186.0 build 0266] — 2026-08-30 — feature: gæste-foreslåede afstemninger med admin-godkendelse (FEATURES.md #213)
+
+Jan: *"det jeg forstiller mig er at guest kan opret en afsteming med x antal film til afsteming men det er en adm som skal godkende at afsteming skal gøre global for alle efter følgende og det er også adm som kan tilret listen som en guest vil laveafsteming på"*.
+
+`POST /api/polls` åbnet for alle roller (var admin-only). Ikke-admins forslag starter i ny status `"pending"` — synlig kun for forslagsstilleren og admin (`_can_view_pending`), skjult for alle andre i både liste og direkte id-opslag. Ny `PATCH /api/polls/{id}/candidates` (admin redigerer kandidatlisten mens pending) og `POST /api/polls/{id}/approve` (gør global/åben). Afvisning genbruger den eksisterende admin-only `DELETE /api/polls/{id}` i stedet for et nyt endpoint. Tre nye notifikationer (`notify_admins_new_poll_suggestion`, `notify_poll_approved`, `notify_poll_suggestion_rejected`), alle spejlinger af etablerede mønstre fra #162/#202.
+
+Frontend: ny delt `CandidatePicker`-komponent, `PollCard` fik pending-visning med Godkend/Afvis/Redigér kandidater for admin. Berørte filer: `backend/app/models/poll.py`, `backend/app/core/errors.py`, `backend/app/main.py`, `backend/app/repositories/poll_repository.py`, `backend/app/services/poll_service.py`, `backend/app/api/polls.py`, `backend/app/services/message_service.py`, `frontend/src/api/client.js`, `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Cinema.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`.
+
+Set i browser (regel 18) via to separate Playwright browser-contexts (én pr. brugeridentitet) — bekræftede alle fire tilstande (gæstens pending-visning, admins godkendelses-UI, kandidat-redigering, den åbne/stemme-bare tilstand) uden layout-brud. Se FEATURES.md #213 for detaljer om et undervejs-fundet testscript-artefakt (ikke en app-fejl). Fuld backend-suite (942) + frontend (209) grøn.
+
 ## [0.185.0 build 0265] — 2026-08-29 — feature: "Test forbindelse" for Anthem AVM70 (FEATURES.md #212)
 
 Jan, efter BUGS.md #93 var løst: *"kan vi ikke lige få en test funktion ind i api config for AVM70 også sådan at vi kan testet den på samme hvilkor som api keys"*.

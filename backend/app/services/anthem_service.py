@@ -48,6 +48,30 @@ def _end_session() -> None:
     _session_active = False
 
 
+async def test_connection() -> tuple[bool, str]:
+    """Feature #212 (Jan: "kan vi ikke lige få en test funktion ind i api
+    config for AVM70 også sådan at vi kan testet den på samme hvilkor som
+    api keys") — genbruger `anthem_client.open_connection` uændret: en
+    ægte, kortvarig TCP-forbindelse til enheden, lukket med det samme igen
+    (samme mønster som de øvrige integrations-klienters `test_connection`,
+    se `system_settings_service._TEST_CONNECTION_CLIENTS`). Lever i
+    service-laget, ikke i `anthem_client` selv, fordi den skal tjekke
+    `_session_active` først — AVM70 accepterer kun én netværksklient ad
+    gangen (modulets docstring), så et testforsøg mens en rigtig
+    diagnostik-session kører ville ellers fejle med en vildledende
+    "kunne ikke forbinde"-besked i stedet for den reelle årsag."""
+    if not anthem_client.is_configured():
+        return False, "Anthem-enhedens IP/host er ikke sat"
+    if _session_active:
+        return False, "Kan ikke teste lige nu — en diagnostik-session er allerede i gang"
+    try:
+        conn = await anthem_client.open_connection(lambda _raw: None)
+    except OSError as exc:
+        return False, f"Kunne ikke forbinde til {settings.anthem_host}:{settings.anthem_port} ({exc})"
+    conn.close()
+    return True, f"Forbundet til Anthem-enheden på {settings.anthem_host}:{settings.anthem_port}"
+
+
 def _event(event_type: str, protocol, raw: str | None) -> dict:
     return {
         "type": event_type,

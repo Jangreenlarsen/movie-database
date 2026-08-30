@@ -83,19 +83,29 @@ export const api = {
   getFeatureList: () => request("/system/feature-list"),
   // Feature #97 — `language` er valgfri: den sætter startsproget på den nye
   // konto, så et valg truffet i login-boksen gælder fra første indlogning.
-  register: (username, password, language, fullName) =>
+  // Feature #199-opfølgning — `email` valgfri på samme måde som `fullName`.
+  register: (username, password, language, fullName, email) =>
     request("/auth/register", {
       method: "POST",
       body: JSON.stringify({
         username,
         password,
         ...(fullName ? { full_name: fullName } : {}),
+        ...(email ? { email } : {}),
         ...(language ? { language } : {}),
       }),
     }),
   login: (username, password) =>
     request("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
   logout: () => request("/auth/logout", { method: "POST" }),
+  // Feature #205 — begge kaldbare uden login (det er jo hele pointen).
+  forgotPassword: (email) =>
+    request("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
+  resetPassword: (token, newPassword) =>
+    request("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, new_password: newPassword }),
+    }),
   me: () => request("/users/me"),
   updateMySettings: (payload) =>
     request("/users/me/settings", { method: "PATCH", body: JSON.stringify(payload) }),
@@ -255,6 +265,8 @@ export const api = {
   updateSystemSettings: (payload) =>
     request("/settings/system", { method: "PATCH", body: JSON.stringify(payload) }),
   testSystemSetting: (key) => request(`/settings/system/test/${key}`, { method: "POST" }),
+  sendTestEmail: (to) =>
+    request("/settings/system/test-email", { method: "POST", body: JSON.stringify({ to }) }),
   // Feature #174 — adgangskode-politik (min-længde + kompleksitetskrav).
   getPasswordPolicy: () => request("/settings/password-policy"),
   updatePasswordPolicy: (payload) =>
@@ -371,6 +383,19 @@ export const api = {
   updateScreening: (id, payload) =>
     request(`/screenings/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteScreening: (id) => request(`/screenings/${id}`, { method: "DELETE" }),
+
+  // Feature #162 — afstemning om hvilken film/serie der skal vises.
+  listPolls: (status) => request(`/polls${status ? `?status=${status}` : ""}`),
+  getPoll: (id) => request(`/polls/${id}`),
+  createPoll: (payload) =>
+    request("/polls", { method: "POST", body: JSON.stringify(payload) }),
+  votePoll: (id, candidateIndex) =>
+    request(`/polls/${id}/vote`, {
+      method: "POST",
+      body: JSON.stringify({ candidate_index: candidateIndex }),
+    }),
+  closePoll: (id) => request(`/polls/${id}/close`, { method: "POST" }),
+  deletePoll: (id) => request(`/polls/${id}`, { method: "DELETE" }),
 
   // Feature #133 — sæde-reservation til Voldby BIO.
   getSeatMap: (screeningId) => request(`/screenings/${screeningId}/seats`),

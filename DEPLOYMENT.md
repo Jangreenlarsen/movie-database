@@ -2,6 +2,10 @@
 
 Produktion kører **native** på en dedikeret Debian-server — ikke Docker Compose. `docker-compose.yml` i repo-roden er fra det oprindelige scaffold og er aldrig blevet færdiggjort/verificeret (se FEATURES.md #10); den bruges ikke.
 
+> **Netværkstopologi: se [INFRASTRUCTURE.md](INFRASTRUCTURE.md)** — den beskriver hvordan systemet ser ud *i dag*, uden historik, og er kilden hvis noget i denne fil modsiger den. Denne fil rummer også historiske afsnit fra tidligere opsætninger (markeret som sådan); de beskriver hvordan tingene var dengang, ikke hvordan de er nu.
+>
+> **Kort version af det der oftest misforstås**: al klienttrafik går gennem nginx-proxyen til `movie.laces.dk`. Appserveren sidder på et isoleret transport-subnet uden routet vej ind fra hjemme-LAN'et — dens IP er ikke en adgangsvej for brugere, kun proxyens destination og drifts-/SSH-vejen. Netværket blev lagt om 2026-08-09 (VLAN 130's router-SVI fjernet, proxyen gjort til gateway); flere afsnit nedenfor er skrevet før den omlægning.
+
 ---
 
 ## Server
@@ -9,7 +13,7 @@ Produktion kører **native** på en dedikeret Debian-server — ikke Docker Comp
 | | |
 |---|---|
 | OS | Debian 13 (trixie) |
-| Host | `10.1.130.10` (hjemmenetværket), `movie.ll.lan` (intern DNS), og offentligt via `movie.laces.dk` (se "Offentlig adgang" nedenfor) |
+| Host | **Eneste adgangsvej for klienter er `https://movie.laces.dk`** gennem nginx-proxyen (se "Offentlig adgang" nedenfor). Appserveren har én NIC på et isoleret transport-subnet, med proxyen som default gateway; der er **ingen routet vej ind i det segment fra hjemme-LAN'et** — verificeret 2026-08-29 ved direkte måling fra en LAN-maskine: `https://10.1.130.10` gav ingen forbindelse, `https://movie.laces.dk` gav 200. `10.1.130.10` optræder stadig i Caddys site-block og i `CORS_ORIGINS`, men er i praksis kun nåbar fra proxyen selv (og dermed for drift/SSH). Se `INFRASTRUCTURE.md` for det fulde nuværende billede. **`movie.ll.lan` er retired** (Jan, 2026-08-29: *"movie.ll.lan skal ikke være en del af dns mere da vi er gået i prod med movie.laces.dk"*) — den interne DNS-post er fjernet, hostnavnet indgår ikke længere i `CORS_ORIGINS`, og Caddyfilens `movie.ll.lan`-site-block er fjernet (udført 2026-08-29 via backup→swap→`caddy validate`→`systemctl reload caddy`; backup ligger som `/etc/caddy/Caddyfile.bak-tlsinternal`). Verificeret efter reload: `10.1.130.10` og `movie.laces.dk` svarer begge korrekt på `/api/health`, mens en request med `Host: movie.ll.lan` nu får Caddys tomme-200-fallback og intet certifikat — hostnavnet matcher altså intet site-block længere. Se "TLS-certifikat"-afsnittet nedenfor for den historiske baggrund. |
 | Hypervisor | Kører som **gæste-VM under Synology Virtual Machine Manager** på `ds5.ll.lan`/`10.1.1.17` — ikke bare metal. "Native" i denne fils overskrift betyder fortsat *ingen Docker inde i gæsten*, ikke at gæsten selv kører uden virtualisering. Se feature #152/FEATURES.md for en genanvendelig VM-skabelon af denne stack til import i VMM. |
 | Bruger | `jgl` (har **kun** snæver passwordless sudo til to specifikke kommandoer, via `/etc/sudoers.d/jgl-deploy-ota` — se "Opdatere produktion" nedenfor) |
 | Repo | klonet til `/opt/moviedb` fra `main`-branchen, via en **read-only deploy key** (ikke en personlig adgangstoken) — se GitHub repo → Settings → Deploy keys, "moviedb-prod-server" |
@@ -20,6 +24,8 @@ Siden 2026-08-09 er appen desuden nået fra det åbne internet via `movie.laces.
 
 **Vigtigt for enhver langvarig/streaming-respons (SSE, chunked)**: denne nginx-VM's `location /`-blok manglede oprindeligt `proxy_http_version 1.1;`, hvilket fik nginx til at tale HTTP/1.0 med Caddy og reelt buffere hele svaret til forbindelsen lukkede — for en uendelig strøm (fx AVM70-diagnostikken, BUGS.md #82) betød det at intet nogensinde nåede klienten. Rettet 2026-08-21 (`proxy_http_version 1.1;` + `proxy_buffering off;` tilføjet). En hvilken som helst FREMTIDIG SSE-/streaming-endpoint arves automatisk af rettelsen, da den ikke er sti-specifik — men vær opmærksom på at et fremtidigt genetableret proxy-VM (se runbook'ens afsnit 7) skal have samme to linjer med, hvis genetableringstrinene deri ikke allerede er opdateret til at inkludere dem.
 
+**Vigtigt for `CORS_ORIGINS`**: appserverens `.env` skal indeholde ALLE hostnavne appen reelt tilgås under (`https://10.1.130.10`, `https://movie.laces.dk`) — ikke kun de(t) der er nødvendige for selve CORS-håndhævelsen (som kun rammer ægte cross-origin-kald; movie.laces.dk er same-origin via nginx-proxyen og krævede derfor aldrig CORS-tilladelse for at *virke*). `auth_service.resolve_reset_base_url` (feature #205, BUGS.md #92) bruger DENNE liste til at afgøre hvilket domæne der skal stå i en "glemt adgangskode"-mails link — mangler et domæne i listen, falder den tilbage til `CORS_ORIGINS`s FØRSTE indgang, uanset hvilket domæne brugeren rent faktisk kom ind fra. `https://movie.laces.dk` manglede fuldstændig i produktionens `CORS_ORIGINS` (kun `https://10.1.130.10` stod der) frem til 2026-08-29, hvilket fik alle reset-links fra movie.laces.dk til fejlagtigt at pege på IP-adressen. Rettet ved at tilføje `https://movie.laces.dk` til listen — `movie.ll.lan` blev bevidst IKKE tilføjet, da hostnavnet blev retired (se "Host" ovenfor) samme dag. **Enhver fremtidig ny adgangsvej til appen skal tilføjes her**, ikke kun i nginx/Caddy.
+
 ## Komponenter
 
 | Komponent | Hvordan | Port/binding |
@@ -29,14 +35,16 @@ Siden 2026-08-09 er appen desuden nået fra det åbne internet via `movie.laces.
 | Frontend | `npm run build` → statiske filer i `/opt/moviedb/frontend/dist`, serveret af Caddy | — |
 | Reverse proxy / TLS | Caddy 2, `/etc/caddy/Caddyfile` | `:443` (HTTPS), `:80` (redirect til HTTPS) |
 
-Kun port 22 (SSH), 80 og 443 er åbne udefra (`ufw`). MongoDB og backend er kun tilgængelige på `localhost` — nås udelukkende via Caddys reverse proxy.
+`ufw` er default-deny indgående; 80/443 er åbne og SSH er begrænset til transport-subnettet. Bemærk at "åben" her kun betyder åben *på transport-subnettet* — der er ingen routet vej ind i segmentet fra hjemme-LAN'et, så i praksis er proxyen den eneste der kan nå portene (se "Host" ovenfor). MongoDB og backend lytter kun på `127.0.0.1` og nås udelukkende via Caddys reverse proxy.
 
 ### TLS-certifikat (se BUGS.md #23)
 
-Sitet serveres nu på to adresser med to forskellige certifikater (Caddyfile har to site-blocks, der deler handler-logik via en `(common)`-snippet):
+**RETIRED 2026-08-29** (Jan: *"movie.ll.lan skal ikke være en del af dns mere da vi er gået i prod med movie.laces.dk"*): den interne DNS-post er fjernet OG Caddyfilens `movie.ll.lan`-site-block er fjernet samme dag, så Caddyfilen nu kun har ét site-block (`10.1.130.10, movie.laces.dk { tls internal; import common }`). Selve certifikat-filerne (`/etc/caddy/certs/movie.ll.lan.{crt,key}`) ligger stadig på serveren, men refereres ikke længere af nogen config — de kan slettes ved lejlighed. `10.1.130.10` bruger fortsat Caddys egen selvsignerede `tls internal` (samme rotations-svaghed som beskrevet i BUGS.md #23), men det certifikat ses **aldrig af en klient**: det er udelukkende transportkryptering på det andet TLS-hop, mellem nginx-proxyen og Caddy inde på det isolerede transport-subnet, og proxyen validerer det ikke (`proxy_pass https://...` uden verifikation — det er et lukket segment, ikke en tillidskæde). Klienter møder kun Let's Encrypt-certifikatet på proxyen. Se `INFRASTRUCTURE.md` afsnit 3 ("To TLS-hops, ikke passthrough"). Resten af dette afsnit er bevaret som historisk baggrund for hvordan `movie.ll.lan`-certifikatet blev sat op — relevant hvis et lignende internt AD CA-udstedt certifikat til et fremtidigt LAN-hostnavn nogensinde bliver aktuelt igen, men ikke længere aktivt i drift.
 
-- **`https://movie.ll.lan`** (primær, anbefalet adresse) — rigtigt certifikat udstedt af Jans **interne Windows AD CS-CA** (`ll-AD-CA`, allerede betroet på hans enheder), gyldigt 2 år (2026-08-02 → 2028-08-01), fil: `/etc/caddy/certs/movie.ll.lan.{crt,key}` (root:caddy, 640). Kræver en intern DNS-post for `movie.ll.lan` → `10.1.130.10`. Ingen certifikat-advarsler, ingen manuel per-enhed import nødvendig (enhederne stoler allerede på `ll-AD-CA`).
-- **`https://10.1.130.10`** (midlertidig fallback, IP-baseret) — stadig Caddys egen selvsignerede `tls internal`, med samme rotations-svaghed som beskrevet i BUGS.md #23 (leaf roterer hver 12. time, intermediate hver 7. dag). Bevaret bevidst under overgangen, så eksisterende bogmærker/PWA-ikoner ikke brækker akut — udfases når alle enheder er skiftet til `movie.ll.lan`.
+Sitet blev tidligere serveret på to adresser med to forskellige certifikater (Caddyfile havde to site-blocks, der delte handler-logik via en `(common)`-snippet):
+
+- **`https://movie.ll.lan`** (tidligere primær, anbefalet adresse — nu retired) — rigtigt certifikat udstedt af Jans **interne Windows AD CS-CA** (`ll-AD-CA`, allerede betroet på hans enheder), gyldigt 2 år (2026-08-02 → 2028-08-01), fil: `/etc/caddy/certs/movie.ll.lan.{crt,key}` (root:caddy, 640). Krævede en intern DNS-post for `movie.ll.lan` → `10.1.130.10`. Ingen certifikat-advarsler, ingen manuel per-enhed import nødvendig (enhederne stolede allerede på `ll-AD-CA`).
+- **`https://10.1.130.10`** (dengang en ægte LAN-adresse for klienter; i dag kun proxyens interne destination) — stadig Caddys egen selvsignerede `tls internal`, med samme rotations-svaghed som beskrevet i BUGS.md #23 (leaf roterer hver 12. time, intermediate hver 7. dag). Svagheden er uden praktisk betydning nu, da ingen klient længere møder det certifikat.
 
 **Sådan blev certifikatet udstedt** (manuel CSR-signering, ikke ACME — Jans interne CA understøtter ikke automatisk udstedelse): en ECDSA P-256-nøgle + CSR (CN+SAN=`movie.ll.lan`) blev genereret direkte på serveren (nøglen forlod aldrig serveren), CSR'en blev signeret af Jans interne CA via Windows-certifikatanmodning, det signerede certifikat (`certnew.cer`, DER-format) og CA-rodcertifikatet (`CA.cer`) blev konverteret til PEM og verificeret (public key-hash) til at matche den lokale private nøgle, før det blev installeret.
 
@@ -49,6 +57,8 @@ Sitet serveres nu på to adresser med to forskellige certifikater (Caddyfile har
 **Den tidligere manuelle sudoers-regel er ikke længere nødvendig**: `/etc/sudoers.d/jgl-tls-cert-install` (snævert scopet til install/`caddy validate`/`systemctl reload caddy`) blev brugt til at lade Claude installere det *oprindelige* certifikat via SSH. Feature #73's `moviedb-cert-install`-systemd-unit (se nedenfor) overtager denne rolle uden sudo overhovedet — reglen kan fjernes (`sudo rm /etc/sudoers.d/jgl-tls-cert-install`) når/hvis den nye unit er sat op og afprøvet.
 
 ### TLS-certifikat via appen (feature #73)
+
+**Status 2026-08-29**: dette maskineri blev bygget til at forny/installere `movie.ll.lan`-certifikatet, som nu er retired (se ovenfor). Der er i øjeblikket intet certifikat der administreres via denne vej — `10.1.130.10` bruger Caddys egen `tls internal`, og den offentlige `movie.laces.dk`-adgang håndteres af Let's Encrypt på nginx-proxyen, uden for denne app. Beholdt som fungerende infrastruktur til en fremtidig situation med et nyt, rigtigt LAN-certifikat, ikke fjernet — men ikke aktivt i brug lige nu.
 
 Samme ikke-sudo-trigger-arkitektur som OTA-opdatering (se `## Opdatere produktion` nedenfor og ARCHITECTURE.md's note): `moviedb-backend` kan aldrig skrive til `/etc/caddy/certs/` eller bruge sudo, så den lægger et nyt cert+nøgle i `/opt/moviedb/certs/pending/` (indenfor sine egne `ReadWritePaths`) og rører en trigger-fil; en separat, root-ejet systemd path-unit opdager den og udfører selve installationen.
 
@@ -80,9 +90,11 @@ ReadWritePaths=/opt/moviedb /opt/moviedb-deploy.log
 
 **HTTP/3 er slået fra** (`servers { protocols h1 h2 }` i Caddyfile'ens globale block). Caddy annoncerer ellers HTTP/3 (QUIC/**UDP** 443) via en `Alt-Svc`-header, men `ufw` åbner kun **TCP** 443 — browseren forsøger så at opgradere til QUIC, det fejler stille mod den lukkede UDP-port, og det viste sig i Firefox som `SSL_ERROR_INTERNAL_ERROR_ALERT` i stedet for det forventede "usikker forbindelse, fortsæt alligevel"-varsel. Løsningen er enten at slå HTTP/3 fra (valgt her — unødvendigt for en lille LAN-app) eller at åbne UDP 443 i firewallen også.
 
-### Offentligt domæne + automatisk Let's Encrypt-certifikat (feature #74)
+### Offentligt domæne + automatisk Let's Encrypt-certifikat (feature #74) — SUPERSEDET, aldrig udført
 
-Både `movie.ll.lan` og `10.1.130.10` er **kun** nåbare fra hjemmenetværket (intern DNS hhv. ingen router-portviderledning udefra) — hverken Let's Encrypt eller nogen anden public CA kan udstede til et privat IP eller et internt-kun-navn under alle omstændigheder. Jans ønske (2026-08-03) om ægte adgang udefra kræver derfor et **rigtigt, offentligt domænenavn** (DNS hos one.com/Larsen Data, fast offentlig IP bekræftet) og et **tredje** Caddy site-block — helt adskilt fra de to LAN-certifikater ovenfor, som forbliver uændrede.
+**Denne plan blev aldrig udført og er nu erstattet af den faktisk implementerede løsning**: reel offentlig adgang blev i stedet opnået 2026-08-09 via en separat nginx-reverse-proxy-VM (se "Offentlig adgang" øverst i denne fil, samt `movie-laces-dk-runbook.md`) — IKKE via et tredje Caddy site-block på appserveren selv, som denne sektion oprindeligt lagde op til. Bevaret som historisk kontekst for hvorfor og hvordan beslutningen faldt anderledes ud, men de konkrete kommandoer nedenfor skal IKKE følges.
+
+Både `movie.ll.lan` (nu retired) og `10.1.130.10` var **kun** nåbare fra hjemmenetværket (intern DNS hhv. ingen router-portviderledning udefra) — hverken Let's Encrypt eller nogen anden public CA kan udstede til et privat IP eller et internt-kun-navn under alle omstændigheder. Jans ønske (2026-08-03) om ægte adgang udefra kræver derfor et **rigtigt, offentligt domænenavn** (DNS hos one.com/Larsen Data, fast offentlig IP bekræftet) og et **tredje** Caddy site-block — helt adskilt fra de to LAN-certifikater ovenfor, som forbliver uændrede.
 
 **Hvorfor HTTP-01 (Caddys indbyggede automatiske HTTPS), ikke DNS-01**: en DNS-01-udfordring ville kræve et Caddy DNS-plugin til one.com (findes ikke som et etableret `caddy-dns`-modul, ville kræve en custom Caddy-build via `xcaddy`), uden nogen fordel her — port 80/443 skal alligevel åbnes udefra for at selve appen kan nås. Caddy 2 (allerede installeret) understøtter HTTP-01/automatisk udstedelse+fornyelse **indbygget uden plugins**: den eneste kode-ændring er at bruge det rigtige domænenavn som site-adresse i stedet for `tls internal` — ingen af feature #73's CSR/PKCS12/trigger-maskineri er involveret, Caddy passer sig selv resten af certifikatets liv (fornyer automatisk ~30 dage før hvert 90-dages Let's Encrypt-certifikat udløber).
 
@@ -112,7 +124,24 @@ Udsteder skal vise `Let's Encrypt`, ikke `Caddy Local Authority`. Test bagefter 
 
 ## `.env` (produktion)
 
-Ligger i `/opt/moviedb/backend/.env` (git-ignoreret, `chmod 600`, ejes af `jgl`). Indeholder en **unik** `JWT_SECRET_KEY` genereret direkte på serveren (ikke genbrugt fra dev), `TMDB_API_TOKEN`, og `COOKIE_SECURE=true` (rigtig HTTPS i produktion). `DISCOGS_TOKEN` er tom (Discogs-opslag virker uden token, bare med lavere rate-limit — se MOVIE_API_REFERENCE.md).
+Ligger i `/opt/moviedb/backend/.env` (git-ignoreret, `chmod 600`, ejes af `jgl`). Indeholder en **unik** `JWT_SECRET_KEY` genereret direkte på serveren (ikke genbrugt fra dev), `TMDB_API_TOKEN`, og `COOKIE_SECURE=true` (rigtig HTTPS i produktion). `DISCOGS_TOKEN` er tom (Discogs-opslag virker uden token, bare med lavere rate-limit — se MOVIE_API_REFERENCE.md). `RESEND_API_KEY`/`EMAIL_FROM_ADDRESS` (feature #197) er som udgangspunkt **også** tomme her — den anbefalede vej er admin-UI'et, se næste afsnit. `CORS_ORIGINS` (siden 2026-08-29): `https://10.1.130.10,https://movie.laces.dk` — se "Vigtigt for `CORS_ORIGINS`" under "Offentlig adgang" ovenfor for hvorfor begge skal stå der, ikke kun det/de der teknisk kræves for selve CORS-håndhævelsen.
+
+## E-mail (Resend) — opsætning (feature #197)
+
+Appen sender udgående notifikations-mails (ønske godkendt/afvist/bestilt/flyttet, forvisnings-svar, admin-broadcasts m.fl.) via **Resend** (`https://resend.com`), en transaktions-mail-udbyder med et rent HTTP-API — valgt fremfor SMTP-relæ eller egen postserver, da appen ikke har (og ikke skal have) sin egen mailserver. Se FEATURES.md #197 for den fulde begrundelse.
+
+**Kontoopsætning hos Resend** (én gang, uden for selve appen):
+
+1. Opret en Resend-konto (gratis niveau: 3.000 mails/måned, 100/dag — rigeligt til en husstands-portal, men værd at kende hvis notifikationsvolumen nogensinde vokser).
+2. **Verificér et afsender-domæne** under *Domains* i Resend-dashboardet — brug et rigtigt (sub)domæne appen allerede kontrollerer DNS'en for (fx `mail.laces.dk`), ikke selve `laces.dk` hvis andre systemer (fx almindelig e-mail) allerede bruger den. Resend viser de nødvendige DNS-records (SPF, DKIM, og en valgfri men anbefalet DMARC) — de tilføjes hos domænets DNS-udbyder, ikke på serveren. Verifikation tager typisk minutter til et par timer afhængig af DNS-propagering. **Uden et verificeret domæne** kan der kun sendes fra Resends eget `onboarding@resend.dev` og kun til kontoens egen, bekræftede e-mail — fint til en hurtig test, ikke brugbart i produktion.
+3. Opret en API-nøgle under *API Keys* — vælg scope **"Sending access"** (Resends mindst-privilegerede, anbefalede type), ikke "Full access". Denne nøgletype kan ikke læse domæne-/kontooplysninger tilbage (`email_client.test_connection()` i koden håndterer eksplicit dens karakteristiske 401 `restricted_api_key`-svar på `GET /api-keys` som "nøglen virker", ikke som en fejl — se BUGS.md-mønsteret dokumenteret i koden).
+4. Vælg en afsenderadresse **på det verificerede domæne** (fx `noreply@mail.laces.dk`) — det er værdien der skal i `EMAIL_FROM_ADDRESS`.
+
+**I appen** (admin-only, Indstillinger → Eksterne API-nøgler → E-mail-notifikationer, feature #198): indsæt den nye API-nøgle i **Resend API-nøgle** og afsenderadressen fra trin 4 i **E-mail-afsenderadresse**. Aktiveres med det samme, ingen genstart nødvendig (samme mønster som TMDb/Discogs/Plex-nøglerne). Brug **"Test forbindelse"** for at bekræfte selve nøglen er gyldig, og **"Send testmail"** (feature #199) for at bekræfte en rigtig mail rent faktisk bliver leveret til en valgfri modtageradresse — de to knapper tester forskellige ting, se #199's begrundelse hvis kun den ene virker.
+
+**`.env` som fallback**: `RESEND_API_KEY`/`EMAIL_FROM_ADDRESS` kan i stedet sættes i `/opt/moviedb/backend/.env` (samme to variabelnavne som `backend/.env.example`) hvis man foretrækker at undgå at have nøglen i databasen — en værdi sat i admin-UI'et overstyrer altid `.env`, som kun bruges hvis UI'et ikke har en værdi sat. Kræver backend-genstart for at slå igennem, i modsætning til UI-vejen.
+
+**Uden konfiguration**: hverken nøgle eller afsenderadresse sat = e-mail-afsendelse er et rent, ulogget no-op — alle notifikationer fortsætter med at virke som in-app-beskeder i portalen, kun selve e-mail-delen udebliver. Ingen fejl, intet der stopper appen.
 
 ## Opdatere produktion til en ny version
 
@@ -373,33 +402,72 @@ Verificeret at hele stien til `dist/` var læsbar for `caddy`-systembrugeren (`n
 
 ### 10. Caddy-konfiguration
 
-`/etc/caddy/Caddyfile`:
+`/etc/caddy/Caddyfile` — **den aktuelle, kørende konfiguration** (opdateret 2026-08-29 med cache-headers, BUGS.md #94):
 
 ```caddyfile
 {
-    servers {
-        protocols h1 h2
-    }
+	servers {
+		protocols h1 h2
+	}
 }
 
-10.1.130.10 {
-    tls internal
+(common) {
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8000
+	}
 
-    handle /api/* {
-        reverse_proxy 127.0.0.1:8000
-    }
+	handle {
+		root * /opt/moviedb/frontend/dist
 
-    handle {
-        root * /opt/moviedb/frontend/dist
-        file_server
-        try_files {path} /index.html
-    }
+		# BUGS.md #94 — se "Cache-styring" nedenfor for hvorfor alle tre lag
+		# er nødvendige.
+		@hashed path /assets/*
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+
+		@media path /cinema/*
+		header @media Cache-Control "public, max-age=86400"
+
+		@entry not path /assets/* /cinema/*
+		header @entry Cache-Control "no-cache"
+
+		file_server
+		try_files {path} /index.html
+	}
+}
+
+10.1.130.10, movie.laces.dk {
+	tls internal
+	import common
 }
 ```
 
-Valideret før brug (`sudo caddy validate --config /etc/caddy/Caddyfile`), derefter `sudo systemctl enable --now caddy`.
+Valideret før brug (`sudo caddy validate --config /etc/caddy/Caddyfile`), derefter `sudo systemctl enable --now caddy` (eller `reload` ved ændringer).
 
-Den globale `protocols h1 h2`-block blev tilføjet **efter** første opsætning, som en rettelse — se `SSL_ERROR_INTERNAL_ERROR_ALERT`-noten under "Komponenter" ovenfor.
+**Ændringshistorik for denne fil** (alle tilføjet efter første opsætning, som rettelser):
+- Den globale `protocols h1 h2`-block — se `SSL_ERROR_INTERNAL_ERROR_ALERT`-noten under "Komponenter" ovenfor.
+- `movie.laces.dk` tilføjet til site-block'en (2026-08-09) da den offentlige adgang blev sat op — uden det matchende hostnavn svarede Caddy tomt `200 OK` på alt med `Host: movie.laces.dk`.
+- `(common)`-snippet'en indført da der midlertidigt var to site-blocks (`movie.ll.lan` + IP'en); `movie.ll.lan`-blokken er siden fjernet igen (2026-08-29), men snippet-strukturen er beholdt.
+- Cache-headers (2026-08-29, BUGS.md #94) — se næste afsnit.
+
+### Cache-styring (BUGS.md #94)
+
+Caddys `file_server` sætter som standard **ingen** `Cache-Control` — kun `ETag` og `Last-Modified`. Det er ikke neutralt: mangler `Cache-Control`/`Expires`, falder browsere tilbage på *heuristisk* caching (RFC 9111 §4.2.2) og gætter selv en holdbarhed, konventionelt ~10% af tiden siden `Last-Modified`. En `index.html` der er en uge gammel kan derfor betragtes som frisk i timevis uden at browseren overhovedet kontakter serveren — og den cachede `index.html` peger på de gamle, content-hashede bundles. Resultatet var at brugere først så nye versioner efter et manuelt hard reload.
+
+De tre lag i konfigurationen ovenfor:
+
+| Sti | Header | Hvorfor |
+|---|---|---|
+| `/assets/*` | `public, max-age=31536000, immutable` | Filnavnet indeholder en content-hash (`index-KziPAHxq.js`), så indholdet kan per definition aldrig blive forældet under samme navn. Permanent cache er både sikkert og hurtigere end det heuristiske gætværk det erstatter. |
+| `/cinema/*` | `public, max-age=86400` | Billeder/PDF/video der ændres sjældent og får nyt filnavn når de gør. Et døgn sparer revaliderings-rundture på mobil uden nævneværdig risiko for forældet indhold. |
+| Alt andet | `no-cache` | Gælder `index.html`, `sw.js`, `manifest.webmanifest` og ikoner. `no-cache` betyder **revalidér altid**, ikke "hent alt igen" — med den eksisterende `ETag` bliver et uændret svar et `304 Not Modified` uden body (verificeret: 0 bytes overført mod 996 ved fuld hentning). |
+
+`/api/*` rammes ikke af reglerne — den `handle`-blok går til `reverse_proxy`, så backendens egne svar er upåvirkede.
+
+**Samspil med service workeren**: frontendens PWA-lag (feature #190) er uafhængigt og verificeret korrekt — `registerType: 'autoUpdate'` får `vite-plugin-pwa` til at kalde `window.location.reload()` når en ny service worker aktiveres, og `src/pwa.js` tjekker for nye versioner hvert 20. minut. Testet mod produktion (Playwright, 2026-08-29): sikker kontekst, SW registreret og `activated`, kontrollerer siden efter reload, precache populeret. Da al klienttrafik går gennem nginx-proxyen med et offentligt betroet Let's Encrypt-certifikat, gælder det **alle** brugere.
+
+> **Ærligt forbehold om årsagskæden**: cache-headerne retter en reel, målt defekt (heuristisk caching var mulig og er nu udelukket), men de forklarer ikke fuldt ud hvorfor brugere med en fungerende service worker oprindeligt skulle hard reloade. En tidligere version af dette afsnit påstod at brugere tilgik `10.1.130.10` direkte og dér manglede en SW — **det er forkert**, den adgangsvej findes ikke (se "Host" ovenfor). Den mest sandsynlige resterende forklaring er iOS Safaris kendte upålidelighed omkring SW-opdatering for en hjemmeskærms-PWA i baggrunden, men det er en **ubekræftet hypotese**. Se BUGS.md #94.
+
+**Ved fremtidige ændringer**: tilføjes en ny mappe med statisk indhold under `frontend/public/`, så overvej hvilket af de tre lag den hører til. Standarden (`no-cache`) er altid det sikre valg; de to andre er optimeringer.
 
 ### 11. Firewall
 

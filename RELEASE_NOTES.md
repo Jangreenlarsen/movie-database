@@ -1,5 +1,72 @@
 # Release Notes
 
+## v0.185.0 (build 0265) — 2026-08-29
+
+- **"Test forbindelse" til Anthem AVM70** i Indstillinger → Eksterne API-nøgler, på samme vilkår som de øvrige API-nøgler.
+
+## v0.184.0 (build 0264) — 2026-08-29
+
+- **Rettet: forkert link i "glemt adgangskode"-mail på movie.laces.dk** — produktionens `CORS_ORIGINS` manglede domænet, rettet direkte på serveren. Der logges nu en advarsel, hvis noget lignende sker igen. **Kræver stadig en backend-genstart fra Jan for at slå igennem.**
+- **`movie.ll.lan` er retired** som adgangsvej — `movie.laces.dk` er nu den primære produktionsadgang.
+
+## v0.184.0 (build 0263) — 2026-08-29
+
+- **"Presse Nyt" fik en dropdown** til at vælge mellem numrene, og det nyeste nummer har nu to rigtige skærmbilleder af de nye funktioner.
+
+## v0.183.0 (build 0262) — 2026-08-29
+
+- **"Presse Nyt" har nu to numre** — det nyeste, om afstemning og de nye e-mail-nyheder, vises som standard, med et link ned til det oprindelige åbnings-nummer.
+
+## v0.182.0 (build 0261) — 2026-08-29
+
+- **Afstemninger forsvinder nu automatisk** fra Voldby BIO-oversigten, når filmen har haft premiære — eller når som helst manuelt via en ny "Fjern"-knap for admin.
+
+## v0.181.0 (build 0260) — 2026-08-29
+
+- **Afstemninger kan nu have en dato** — vises på afstemningskortet og foreslås automatisk videre når vinderen skal planlægges som en rigtig visning.
+
+## v0.180.0 (build 0259) — 2026-08-29
+
+- **Ny afstemningsside i Voldby BIO** — admin udvælger kandidat-film/-serier, alle kan stemme (én stemme, du kan skifte mening mens den er åben), admin lukker afstemningen og planlægger vinderen som en rigtig visning. Alle der stemte får besked når afstemningen afgøres, og igen når vinderen bliver planlagt.
+
+## v0.179.0 (build 0258) — 2026-08-29
+
+- **Ny "Glemt din adgangskode?"-link på login-siden** — indtast din e-mail, og du får et link til selv at vælge en ny adgangskode. Ingen admin-hjælp nødvendig mere, medmindre din konto ikke har en e-mail sat.
+- **Admin kan nu redigere andre brugeres e-mail** direkte fra Indstillinger → Brugere.
+
+## v0.178.0 (build 0257) — 2026-08-29
+
+- **Rigtige HTML-mails med filmplakat og hilsen** når du får svar på et ønske eller en forvisnings-anmodning (godkendt/afvist/bestilt/flyttet/afvist forvisning/planlagt visning) — i stedet for ren tekst.
+
+## v0.177.0 (build 0256) — 2026-08-29
+
+- **Gæster ser nu en "Bestilt"-badge** på et ønske-kort (og i detaljevisningen) når posten er bestilt — uden at afsløre hvor den er bestilt.
+
+## v0.176.0 (build 0255) — 2026-08-28
+
+- **Admin får nu besked (portal + e-mail) når en bruger opretter et nyt ønske på indkøbslisten eller et nyt ønske om visning i Voldby BIO.**
+- **Brugeren bag et forvisnings-ønske får nu selv besked igen** når admin afviser eller planlægger den ønskede titel — samme "portal + e-mail hvis konfigureret"-princip som resten af beskedsystemet.
+
+## v0.175.0 (build 0254) — 2026-08-23
+
+- **"Del af samlingen:"-listen på en films detaljekort viser nu om en ejet del er fysisk eller digital** — ikke kun at den er ejet.
+
+## v0.174.1 (build 0253) — 2026-08-23
+
+- E-mail-feltet ved oprettelse af ny bruger er nu obligatorisk i formularen.
+
+## v0.174.0 (build 0252) — 2026-08-23
+
+- **Ny bruger kan nu sætte sin e-mail direkte ved oprettelse** (både i appen og på den offentlige /bio-side) i stedet for kun bagefter i Indstillinger → Konto. Valgfrit, som fuldt navn.
+
+## v0.173.0 (build 0251) — 2026-08-23
+
+- **Ny "Send testmail"-knap** i Indstillinger → Eksterne API-nøgler → E-mail-notifikationer. Sender en rigtig e-mail til en adresse du selv vælger, så du kan bekræfte at Resend-opsætningen reelt virker — ikke kun at nøglen er gyldig.
+
+## v0.172.0 (build 0250) — 2026-08-23
+
+- **Indstillinger → Eksterne API-nøgler er nu opdelt i overskuelige grupper** (Metadata, Stregkode-opslag, Vurderinger, Plex, Anthem AVM 70, E-mail) i stedet for én lang liste af felter.
+
 ## v0.171.0 (build 0249) — 2026-08-23
 
 - **Udgående e-mail-notifikationer.** Sæt din e-mail i Indstillinger → Konto, så får du fremover også en mail når fx et ønske godkendes eller flyttes til biblioteket — ikke kun en besked inde i appen. Helt valgfrit; ingen mails uden en adresse sat. Admin sætter Resend-nøglen og afsenderadressen op i Indstillinger → Eksterne API-nøgler.

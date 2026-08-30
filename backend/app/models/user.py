@@ -189,6 +189,14 @@ class UserRegister(BaseModel):
     # feltet) ikke brydes — det er et identitets-/oplysningsfelt, ikke et
     # sikkerhedsfelt. Tomt/kun-mellemrum normaliseres til None.
     full_name: str | None = Field(default=None, max_length=100)
+    # Feature #199-opfølgning (Jan: "opret ny user tager ikke en email adr.,
+    # skal vi lige have den del af system til at gøre") — valgfri, så man
+    # kan sætte sin e-mail med det samme ved oprettelse i stedet for at
+    # skulle huske det bagefter i Indstillinger → Konto (UserEmailUpdate,
+    # feature #197). Samme trim/tom-til-None-mønster som full_name_clean
+    # nedenfor, kørt FØR selve EmailStr-formatvalideringen (mode="before"),
+    # så et tomt felt tolkes som "intet sat", ikke som en 422-fejl.
+    email: EmailStr | None = Field(default=None, max_length=254)
     # Feature #97 — sproget valgt i login-boksen, så en ny konto starter på
     # det sprog brugeren allerede har valgt frem for altid på dansk.
     # Valgfrit: ældre klienter og API-kald uden feltet får kildesproget.
@@ -200,6 +208,14 @@ class UserRegister(BaseModel):
         if value is None:
             return None
         return value.strip() or None
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def email_blank_to_none(cls, value):
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
 
     @field_validator("username")
     @classmethod
@@ -248,6 +264,37 @@ class PasswordChange(BaseModel):
     @classmethod
     def new_password_bcrypt_length(cls, value: str) -> str:
         return _validate_bcrypt_byte_length(value)
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Feature #205 — selvbetjent password-reset via e-mail."""
+
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    # Samme politik/bcrypt-grænse som PasswordChange.new_password ovenfor —
+    # en nulstillet adgangskode skal opfylde nøjagtig samme krav som en
+    # almindeligt skiftet.
+    new_password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def new_password_policy(cls, value: str) -> str:
+        return validate_password_policy(value)
+
+    @field_validator("new_password")
+    @classmethod
+    def new_password_bcrypt_length(cls, value: str) -> str:
+        return _validate_bcrypt_byte_length(value)
+
+
+class ForgotPasswordResponse(BaseModel):
+    """Bevidst ÉN fast besked uanset om e-mailen rent faktisk findes i
+    systemet (anti-enumerering) — se auth_service.request_password_reset."""
+
+    message: str
 
 
 class PasswordResetResult(BaseModel):

@@ -1135,6 +1135,16 @@ export default function Library({
                     </span>
                   </div>
                 )}
+                {/* Feature #203 — gæster ser en forenklet "Bestilt"-badge
+                    (uden bestillingskilde) når ønsket rent faktisk er
+                    bestilt; "ikke bestilt" vises fortsat aldrig for gæster,
+                    jf. #116's begrundelse om at de ikke skal møde
+                    order-status-begrebet i det hele taget. */}
+                {movie.is_wishlist && isGuest && movie.order_status && (
+                  <div className="movie-tags">
+                    <span className="movie-order-badge">{t("orderStatus.ordered")}</span>
+                  </div>
+                )}
                 {visibleFields.tags && movie.tags.length > 0 && (
                   <div className="movie-tags">
                     {movie.tags.map((tag) => (
@@ -1711,6 +1721,13 @@ export function MovieDetailModal({
                   <p>{movie.order_status || t("orderStatus.notOrdered")}</p>
                 </div>
               )}
+              {/* Feature #203 — se den identiske note ved kort-badgen ovenfor. */}
+              {movie.is_wishlist && isGuest && movie.order_status && (
+                <div>
+                  <div className="modal-section-label">{t("field.orderStatus")}</div>
+                  <p>{t("orderStatus.ordered")}</p>
+                </div>
+              )}
               <div>
                 <div className="modal-section-label">{t("field.personalNote")}</div>
                 <p>{movie.personal_note || "—"}</p>
@@ -2068,7 +2085,11 @@ function CollectionSection({ movie, onChanged }) {
                 </span>
                 {part.owned ? (
                   <span className="muted">
-                    {t(part.owned_is_wishlist ? "collection.onWishlist" : "collection.owned")}
+                    {part.owned_is_wishlist
+                      ? t("collection.onWishlist")
+                      : part.owned_media_type
+                        ? t("collection.ownedWithType", { type: part.owned_media_type })
+                        : t("collection.owned")}
                   </span>
                 ) : (
                   <button

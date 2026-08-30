@@ -17,6 +17,7 @@ from app.models.settings import (
     SystemSettingsStatus,
     SystemSettingsUpdate,
     TestableApiKey,
+    TestEmailRequest,
 )
 from app.services import audit_log_service, movie_service, system_settings_service
 
@@ -95,6 +96,19 @@ async def test_system_setting(key: TestableApiKey):
     FastAPI selv afviser (422) ethvert andet felt-navn end de fem der
     faktisk har et testkald bag sig."""
     return await system_settings_service.test_connection(key)
+
+
+@router.post(
+    "/system/test-email",
+    response_model=ApiKeyTestResult,
+    dependencies=[Depends(require_admin)],
+)
+async def send_test_email(payload: TestEmailRequest):
+    """Feature #199 — ægte ende-til-ende-afsendelse til en valgfri adresse
+    (ikke nødvendigvis kalderens egen), adskilt fra test_system_setting
+    ovenfor. Delt `ApiKeyTestResult`-svarform, samme UX-mønster som "Test
+    forbindelse"."""
+    return await system_settings_service.send_test_email(payload.to)
 
 
 @router.get(

@@ -28,6 +28,28 @@ async def test_send_email_returns_true_on_success(monkeypatch):
     assert await email_client.send_email(to="mig@example.com", subject="Emne", text="Krop") is True
 
 
+async def test_send_email_includes_html_when_given(monkeypatch):
+    """Feature #204 — `html` er valgfri og lægges kun i payloaden når den
+    rent faktisk er sat, så en almindelig ren-tekst-besked (fx en admin-
+    broadcast) ikke sender et tomt/None `html`-felt til Resend."""
+
+    async def fake_post(self, url, headers=None, json=None):
+        assert json == {
+            "from": "Voldby BIO <noreply@laces.dk>",
+            "to": ["mig@example.com"],
+            "subject": "Emne",
+            "text": "Krop",
+            "html": "<p>Krop</p>",
+        }
+        return httpx.Response(200, json={"id": "abc123"}, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+    assert (
+        await email_client.send_email(to="mig@example.com", subject="Emne", text="Krop", html="<p>Krop</p>")
+        is True
+    )
+
+
 async def test_send_email_returns_false_on_rejected(monkeypatch):
     async def fake_post(self, url, headers=None, json=None):
         return httpx.Response(422, json={"message": "invalid"}, request=httpx.Request("POST", url))

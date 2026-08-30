@@ -1,6 +1,7 @@
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import ENV_DEFAULT_API_KEYS, settings
+from app.core.errors import EmailRateLimitedError
 from app.integrations import (
     discogs_client,
     ean_search_client,
@@ -23,7 +24,7 @@ from app.models.settings import (
     TestableApiKey,
 )
 from app.repositories import system_settings_repository
-from app.services import plex_service
+from app.services import anthem_service, plex_service
 
 KEYS = system_settings_repository.OVERRIDABLE_KEYS
 
@@ -38,6 +39,9 @@ _TEST_CONNECTION_CLIENTS = {
     "ean_search_api_key": ean_search_client,
     "omdb_api_key": omdb_client,
     "resend_api_key": email_client,
+    # Feature #212 — anthem_service, ikke anthem_client selv: skal tjekke
+    # den aktive diagnostik-session først (se anthem_service.test_connection).
+    "anthem_host": anthem_service,
 }
 
 # Rendered as a masked ApiKeyStatus (configured/source only) in GET responses
@@ -139,6 +143,38 @@ async def test_connection(key: TestableApiKey) -> ApiKeyTestResult:
     praksis — se BUGS.md #34/#36-tråden."""
     ok, message = await _TEST_CONNECTION_CLIENTS[key].test_connection()
     return ApiKeyTestResult(ok=ok, message=message)
+
+
+async def send_test_email(to: str) -> ApiKeyTestResult:
+    """Feature #199 (Jan: "lave også en email test funktion") — en ægte
+    ende-til-ende-afsendelse, adskilt fra test_connection() ovenfor: den
+    bekræfter kun at NØGLEN er gyldig (og for en "sending access"-nøgle kan
+    den slet ikke bekræfte mere end det, se email_client.test_connection's
+    egen kommentar) — ikke at en mail rent faktisk kan afleveres."""
+    if not settings.resend_api_key or not settings.email_from_address:
+        return ApiKeyTestResult(
+            ok=False, message="Resend-nøgle og/eller e-mail-afsenderadresse mangler"
+        )
+    try:
+        ok = await email_client.send_email(
+            to=to,
+            subject="Testmail fra Film & TV-databasen",
+            text=(
+                "Denne mail bekræfter at jeres Resend-opsætning virker. "
+                "Ingen handling nødvendig."
+            ),
+        )
+    except EmailRateLimitedError:
+        return ApiKeyTestResult(ok=False, message="Resend rate-limit ramt (429) — prøv igen om lidt")
+
+    return ApiKeyTestResult(
+        ok=ok,
+        message=(
+            "Testmail sendt — tjek indbakken (og evt. spam-mappen)"
+            if ok
+            else "Resend afviste afsendelsen — se serverens log for detaljer"
+        ),
+    )
 
 
 def _password_policy_from_settings() -> PasswordPolicy:

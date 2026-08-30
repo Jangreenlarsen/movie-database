@@ -294,3 +294,57 @@ async def test_sse_stream_stops_when_the_client_disconnects():
         chunks.append(chunk)
 
     assert chunks == [": heartbeat\n\n"]  # ét heartbeat, saa opdages disconnect og streamen slutter
+
+
+# --- test_connection (feature #212) ------------------------------------------
+
+
+async def test_test_connection_fails_clearly_when_not_configured(monkeypatch):
+    monkeypatch.setattr(settings, "anthem_host", "")
+
+    ok, message = await anthem_service.test_connection()
+
+    assert ok is False
+    assert "ikke sat" in message
+
+
+async def test_test_connection_succeeds_and_closes_the_connection(monkeypatch):
+    _configure(monkeypatch)
+    fake_conn = _FakeConnection()
+
+    async def fake_open_connection(update_callback):
+        return fake_conn
+
+    monkeypatch.setattr(anthem_client, "open_connection", fake_open_connection)
+
+    ok, message = await anthem_service.test_connection()
+
+    assert ok is True
+    assert "192.168.1.60" in message
+    assert fake_conn.closed is True
+
+
+async def test_test_connection_reports_a_connection_failure(monkeypatch):
+    _configure(monkeypatch)
+
+    async def fake_open_connection(update_callback):
+        raise OSError("Connection refused")
+
+    monkeypatch.setattr(anthem_client, "open_connection", fake_open_connection)
+
+    ok, message = await anthem_service.test_connection()
+
+    assert ok is False
+    assert "Connection refused" in message
+
+
+async def test_test_connection_refuses_while_a_diagnostics_session_is_active(monkeypatch):
+    _configure(monkeypatch)
+    anthem_service.begin_session()
+    try:
+        ok, message = await anthem_service.test_connection()
+    finally:
+        anthem_service._end_session()
+
+    assert ok is False
+    assert "allerede i gang" in message

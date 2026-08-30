@@ -180,3 +180,109 @@ describe("CollectionSection — tilføj serie-del til ønskelisten (feature #196
     expect(screen.getByText("På indkøbslisten")).toBeInTheDocument();
   });
 });
+
+describe("CollectionSection — viser medietype for ejede dele (feature #201)", () => {
+  beforeEach(() => {
+    vi.spyOn(api, "recordVisit").mockResolvedValue({});
+    vi.spyOn(api, "myScreeningRequests").mockResolvedValue([]);
+    vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({ require_preferred_at: false });
+  });
+
+  it("viser '✓ Ejer (Fysisk)'/'✓ Ejer (Digital)' i stedet for bare '✓ Ejer' når backend oplyser medietypen", async () => {
+    vi.spyOn(api, "getCollection").mockResolvedValue({
+      id: 99,
+      name: "Test-trilogien",
+      poster_url: null,
+      parts: [
+        {
+          tmdb_id: 1,
+          title: "Del Én",
+          year: 2019,
+          poster_url: null,
+          owned: true,
+          owned_movie_id: "m1",
+          owned_is_wishlist: false,
+          owned_media_type: "Fysisk",
+        },
+        {
+          tmdb_id: 2,
+          title: "Del To",
+          year: 2020,
+          poster_url: null,
+          owned: true,
+          owned_movie_id: "m2",
+          owned_is_wishlist: false,
+          owned_media_type: "Digital",
+        },
+      ],
+    });
+
+    const movie = {
+      ...baseMovie,
+      is_wishlist: false,
+      media_type: "Fysisk",
+      format: "F-DVD",
+      collection_id: 99,
+      collection_name: "Test-trilogien",
+    };
+    renderModal(movie);
+
+    await userEvent.click(screen.getByText(/Del af samlingen: Test-trilogien/));
+
+    expect(await screen.findByText("✓ Ejer (Fysisk)")).toBeInTheDocument();
+    expect(screen.getByText("✓ Ejer (Digital)")).toBeInTheDocument();
+    // Aldrig den generiske "✓ Ejer" uden medietype, når backend rent
+    // faktisk oplyste den.
+    expect(screen.queryByText("✓ Ejer")).not.toBeInTheDocument();
+  });
+});
+
+describe("MovieDetailModal — 'Bestilt'-badge for gæster (feature #203)", () => {
+  function renderAsGuest(movie) {
+    return render(
+      <MovieDetailModal
+        movie={movie}
+        user={{ username: "guest1", role: "guest" }}
+        allTags={[]}
+        allOwners={[]}
+        allLocations={[]}
+        attributeOptions={attributeOptions}
+        serialPaddingWidth={0}
+        plex={basePlex}
+        onClose={() => {}}
+        onChanged={() => {}}
+        onFilterByPerson={() => {}}
+      />
+    );
+  }
+
+  beforeEach(() => {
+    vi.spyOn(api, "recordVisit").mockResolvedValue({});
+    vi.spyOn(api, "myScreeningRequests").mockResolvedValue([]);
+    vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({ require_preferred_at: false });
+  });
+
+  it("viser en forenklet 'Bestilt'-badge for en gæst, uden bestillingskilden", async () => {
+    const movie = { ...baseMovie, order_status: "Bestilt ved iMusic" };
+    renderAsGuest(movie);
+
+    expect(await screen.findByText("Bestilt")).toBeInTheDocument();
+    expect(screen.queryByText("Bestilt ved iMusic")).not.toBeInTheDocument();
+  });
+
+  it("viser fortsat intet bestillings-felt for en gæst når ønsket ikke er bestilt", async () => {
+    const movie = { ...baseMovie, order_status: null };
+    renderAsGuest(movie);
+
+    await screen.findByText(movie.title);
+    expect(screen.queryByText("Bestilt")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ikke bestilt")).not.toBeInTheDocument();
+  });
+
+  it("viser fortsat den fulde bestillingsstatus (med kilde) for en admin", async () => {
+    const movie = { ...baseMovie, order_status: "Bestilt ved iMusic" };
+    renderModal(movie);
+
+    expect(await screen.findByText("Bestilt ved iMusic")).toBeInTheDocument();
+  });
+});

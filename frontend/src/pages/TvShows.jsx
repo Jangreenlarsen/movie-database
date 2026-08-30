@@ -1032,6 +1032,12 @@ export default function TvShows({
                     </span>
                   </div>
                 )}
+                {/* Feature #203 — se den identiske note i Library.jsx. */}
+                {show.is_wishlist && isGuest && show.order_status && (
+                  <div className="movie-tags">
+                    <span className="movie-order-badge">{t("orderStatus.ordered")}</span>
+                  </div>
+                )}
                 {visibleFields.tags && show.tags.length > 0 && (
                   <div className="movie-tags">
                     {show.tags.map((tag) => (
@@ -1493,6 +1499,13 @@ export function TvShowDetailModal({
                 <div>
                   <div className="modal-section-label">{t("field.orderStatus")}</div>
                   <p>{show.order_status || t("orderStatus.notOrdered")}</p>
+                </div>
+              )}
+              {/* Feature #203 — se den identiske note i Library.jsx. */}
+              {show.is_wishlist && isGuest && show.order_status && (
+                <div>
+                  <div className="modal-section-label">{t("field.orderStatus")}</div>
+                  <p>{t("orderStatus.ordered")}</p>
                 </div>
               )}
               <div>

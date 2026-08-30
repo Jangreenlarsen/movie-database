@@ -147,6 +147,23 @@
   margin-right: 2px;
 }
 
+/* Feature #206 — e-mail-visning/redigering pr. brugerrække. Egen lille
+   input-styling (kun .btn/select fik det ovenfor — ikke input, som denne
+   feature er den første til at bruge i selve rækken). */
+.user-row-email,
+.user-row-email-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.user-row-email-edit input {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  min-width: 180px;
+}
+
 @media (max-width: 640px) {
   .user-row {
     gap: 6px;

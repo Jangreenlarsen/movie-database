@@ -19,6 +19,7 @@ import {
   PlexImportSection,
   PlexShieldSettingsRow,
   ScreeningRequestPolicySection,
+  SendTestEmailRow,
   SerialNumberSection,
   SystemSettingsSection,
   UsersSection,
@@ -194,6 +195,82 @@ describe("UsersSection — adgangskode-nulstilling (feature #171)", () => {
 
     await screen.findByText("Serverfejl");
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+  });
+});
+
+/**
+ * Feature #206 (#197's afgrænsede "senere"-punkt: admin kan nu redigere en
+ * ANDEN brugers e-mail, ikke kun sin egen). Det testværdige (regel 19): en
+ * gemt ændring skal rent faktisk kalde det rigtige endpoint med den
+ * indtastede værdi og genindlæse listen, og backendens specifikke fejl skal
+ * vises.
+ */
+describe("UsersSection — admin redigerer en brugers e-mail (feature #206)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  function mockUserWithEmail(email) {
+    vi.spyOn(api, "listUsers").mockResolvedValue([
+      {
+        id: "u1",
+        username: "hasmail",
+        full_name: null,
+        email,
+        role: "standard",
+        status: "active",
+        settings: {},
+        created_at: "2026-01-01T00:00:00Z",
+      },
+    ]);
+  }
+
+  it("viser 'Ingen e-mail' når feltet er tomt", async () => {
+    mockUserWithEmail(null);
+    render(<UsersSection currentUserId="admin1" />);
+    expect(await screen.findByText("Ingen e-mail")).toBeInTheDocument();
+  });
+
+  it("gemmer den nye adresse og genindlæser listen", async () => {
+    mockUserWithEmail(null);
+    const updateSpy = vi.spyOn(api, "updateMyEmail").mockResolvedValue({});
+    const user = userEvent.setup();
+
+    render(<UsersSection currentUserId="admin1" />);
+    await user.click(await screen.findByRole("button", { name: "Redigér e-mail" }));
+    await user.type(screen.getByPlaceholderText("din@e-mail.dk"), "hasmail@example.com");
+    await user.click(screen.getByRole("button", { name: "Gem" }));
+
+    await waitFor(() =>
+      expect(updateSpy).toHaveBeenCalledWith("u1", "hasmail@example.com")
+    );
+  });
+
+  it("annullér lukker redigeringen uden at kalde API'et", async () => {
+    mockUserWithEmail("hasmail@example.com");
+    const updateSpy = vi.spyOn(api, "updateMyEmail");
+    const user = userEvent.setup();
+
+    render(<UsersSection currentUserId="admin1" />);
+    await user.click(await screen.findByRole("button", { name: "Redigér e-mail" }));
+    await user.click(screen.getByRole("button", { name: "Annullér" }));
+
+    expect(updateSpy).not.toHaveBeenCalled();
+    expect(screen.getByText("hasmail@example.com")).toBeInTheDocument();
+  });
+
+  it("viser backendens specifikke fejlbesked ved en fejlet gemning", async () => {
+    mockUserWithEmail(null);
+    vi.spyOn(api, "updateMyEmail").mockRejectedValue(new Error("Ugyldig e-mailadresse"));
+    const user = userEvent.setup();
+
+    render(<UsersSection currentUserId="admin1" />);
+    await user.click(await screen.findByRole("button", { name: "Redigér e-mail" }));
+    await user.type(screen.getByPlaceholderText("din@e-mail.dk"), "not-an-email");
+    await user.click(screen.getByRole("button", { name: "Gem" }));
+
+    expect(await screen.findByText("Ugyldig e-mailadresse")).toBeInTheDocument();
   });
 });
 
@@ -998,6 +1075,73 @@ describe("SystemSettingsSection — Resend/e-mail (feature #197)", () => {
 });
 
 /**
+ * Feature #212 (Jan: "kan vi ikke lige få en test funktion ind i api config
+ * for AVM70 også sådan at vi kan testet den på samme hvilkor som api
+ * keys"). Det testværdige (regel 19): knappen skal rent faktisk kalde
+ * `testSystemSetting("anthem_host")` (ikke en anden nøgle ved en
+ * kopiér-fejl) og vise backendens resultat-besked, både ved succes og fejl.
+ */
+describe("AnthemTestConnectionRow (feature #212)", () => {
+  const fullStatus = {
+    tmdb_api_token: { configured: false, source: "unset" },
+    discogs_token: { configured: false, source: "unset" },
+    upcdatabase_token: { configured: false, source: "unset" },
+    ean_search_api_key: { configured: false, source: "unset" },
+    omdb_api_key: { configured: false, source: "unset" },
+    plex_token: { configured: false, source: "unset" },
+    plex_server_url: "",
+    primary_barcode_source: "upcitemdb",
+    plex_shield_client_identifier: "",
+    anthem_host: "192.168.1.60",
+    anthem_port: 14999,
+    resend_api_key: { configured: false, source: "unset" },
+    email_from_address: "",
+  };
+
+  beforeEach(() => {
+    vi.spyOn(api, "getSystemSettings").mockResolvedValue(fullStatus);
+  });
+
+  // Flere rækker på siden deler samme "Test forbindelse"-knaptekst (TMDb,
+  // Discogs, Resend, ...) — skop til netop Anthem-kortet via dets egen
+  // overskrift, så testen ikke ved et tilfælde rammer en anden nøgles knap.
+  async function anthemSection() {
+    const heading = await screen.findByRole("heading", { name: "Anthem AVM 70" });
+    return within(heading.closest(".settings-section"));
+  }
+
+  it("kalder testSystemSetting med anthem_host og viser succes-beskeden", async () => {
+    const testSpy = vi
+      .spyOn(api, "testSystemSetting")
+      .mockResolvedValue({ ok: true, message: "Forbundet til Anthem-enheden på 192.168.1.60:14999" });
+    render(<SystemSettingsSection />);
+
+    const section = await anthemSection();
+    await userEvent.click(section.getByRole("button", { name: "Test forbindelse" }));
+
+    expect(testSpy).toHaveBeenCalledWith("anthem_host");
+    expect(
+      await section.findByText(/Forbundet til Anthem-enheden på 192\.168\.1\.60:14999/)
+    ).toBeInTheDocument();
+  });
+
+  it("viser den specifikke fejlbesked ved en mislykket test", async () => {
+    vi.spyOn(api, "testSystemSetting").mockResolvedValue({
+      ok: false,
+      message: "Kunne ikke forbinde til 192.168.1.60:14999 (Connection refused)",
+    });
+    render(<SystemSettingsSection />);
+
+    const section = await anthemSection();
+    await userEvent.click(section.getByRole("button", { name: "Test forbindelse" }));
+
+    expect(
+      await section.findByText(/Kunne ikke forbinde til 192\.168\.1\.60:14999 \(Connection refused\)/)
+    ).toBeInTheDocument();
+  });
+});
+
+/**
  * Feature #197 — brugerens egen e-mail (Indstillinger → Konto), kun brugt
  * til udgående notifikationer. Det testværdige (regel 19): en vellykket
  * gemning skal give den opdaterede bruger videre til `onSettingsChanged`
@@ -1048,5 +1192,45 @@ describe("AccountSection — e-mail (feature #197)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Gem e-mail" }));
 
     await waitFor(() => expect(updateSpy).toHaveBeenCalledWith("u1", null));
+  });
+});
+
+/**
+ * Feature #199 (Jan: "lave også en email test funktion") — knappen der
+ * sender en ægte testmail, adskilt fra "Test forbindelse" (som kun
+ * bekræfter nøglens gyldighed). Det testværdige (regel 19): den indtastede
+ * adresse skal rent faktisk sendes med, og et succes-/fejlsvar skal vises
+ * korrekt — ellers ved en admin ikke om Resend-opsætningen reelt virker.
+ */
+describe("SendTestEmailRow (feature #199)", () => {
+  it("sender testmailen til den indtastede adresse og viser succes-beskeden", async () => {
+    const sendSpy = vi
+      .spyOn(api, "sendTestEmail")
+      .mockResolvedValue({ ok: true, message: "Testmail sendt — tjek indbakken (og evt. spam-mappen)" });
+    render(<SendTestEmailRow />);
+
+    await userEvent.type(screen.getByLabelText(/Send en testmail til/), "jan@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Send testmail" }));
+
+    await waitFor(() => expect(sendSpy).toHaveBeenCalledWith("jan@example.com"));
+    expect(await screen.findByText(/Testmail sendt/)).toBeInTheDocument();
+  });
+
+  it("viser den specifikke fejlbesked når Resend afviser afsendelsen", async () => {
+    vi.spyOn(api, "sendTestEmail").mockResolvedValue({
+      ok: false,
+      message: "Resend-nøgle og/eller e-mail-afsenderadresse mangler",
+    });
+    render(<SendTestEmailRow />);
+
+    await userEvent.type(screen.getByLabelText(/Send en testmail til/), "jan@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Send testmail" }));
+
+    expect(await screen.findByText(/nøgle og\/eller e-mail-afsenderadresse mangler/)).toBeInTheDocument();
+  });
+
+  it("knappen er deaktiveret uden en indtastet adresse", () => {
+    render(<SendTestEmailRow />);
+    expect(screen.getByRole("button", { name: "Send testmail" })).toBeDisabled();
   });
 });

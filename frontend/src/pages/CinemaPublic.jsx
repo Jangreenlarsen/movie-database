@@ -253,11 +253,62 @@ export function GuestLoginBanner({ onOpenLogin }) {
 // i stedet, og "Vis som PDF" er nu en sekundær, eksplicit fravalgt handling
 // for den der vil have originalens layout/print.
 // Feature #191 — se GuestLoginBanner's kommentar ovenfor.
+// Feature #210 — "Presse Nyt" udvidet fra ét fast nummer til en lille
+// arkiv-liste, Jans ønske efter portal-opdateringen med afstemning/e-mail
+// ("sæt den ind på presse nyt siden i portal og giv den en dato"). Nummer 2
+// (nyeste) vises som standard — det er jo det de fleste kommer for at læse.
+// Feature #211 — Jan bad om at kunne vælge numre fra en dropdown i stedet
+// for et enkelt frem/tilbage-link ("presse nyt må godt være en dropdown
+// list hvor man vælger de forskelige presse opslag fra") — skalerer bedre
+// end et binært toggle-link, når der en dag kommer et tredje nummer. Samme
+// besked bad også om billeder i selve det nye nummer ("der skal billeder
+// med i den ny presse nyhed") — kun nummer 2 har `images`, det oprindelige
+// nummer er urørt ren tekst.
+function usePressIssues(t) {
+  return [
+    {
+      key: "issue2",
+      mastheadIssue: t("public.press2MastheadIssue"),
+      shortDate: t("public.press2ShortDate"),
+      headline: t("public.press2Headline"),
+      subheadline: t("public.press2Subheadline"),
+      intro: t("public.press2Intro"),
+      heading1: t("public.press2Heading1"),
+      body1: t("public.press2Body1"),
+      heading2: t("public.press2Heading2"),
+      body2: t("public.press2Body2"),
+      hasPdf: false,
+      images: [
+        { src: "/cinema/press2-poll.jpg", alt: t("public.press2PollImageAlt") },
+        { src: "/cinema/press2-email.jpg", alt: t("public.press2EmailImageAlt") },
+      ],
+    },
+    {
+      key: "issue1",
+      mastheadIssue: t("public.pressMastheadIssue"),
+      shortDate: t("public.pressShortDate"),
+      headline: t("public.pressHeadline"),
+      subheadline: t("public.pressSubheadline"),
+      intro: t("public.pressIntro"),
+      heading1: t("public.pressHeading1"),
+      body1: t("public.pressPremiere"),
+      heading2: t("public.pressHeading2"),
+      body2: t("public.pressClosing"),
+      hasPdf: true,
+      images: [],
+    },
+  ];
+}
+
 export function PressModal({ onClose }) {
   const t = useT();
-  const introParagraphs = t("public.pressIntro").split("\n\n");
-  const premiereParagraphs = t("public.pressPremiere").split("\n\n");
-  const closingParagraphs = t("public.pressClosing").split("\n\n");
+  const issues = usePressIssues(t);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const issue = issues[activeIndex];
+
+  const introParagraphs = issue.intro.split("\n\n");
+  const body1Paragraphs = issue.body1.split("\n\n");
+  const body2Paragraphs = issue.body2.split("\n\n");
 
   return (
     <div
@@ -274,14 +325,28 @@ export function PressModal({ onClose }) {
           <button type="button" className="cinema-public-gallery-back" onClick={onClose}>
             ← {t("common.back")}
           </button>
-          <a
-            className="cinema-public-press-newtab"
-            href={PRESS_PDF_HREF}
-            target="_blank"
-            rel="noreferrer"
+          <select
+            className="cinema-public-press-issue-select"
+            aria-label={t("public.pressSelectIssue")}
+            value={activeIndex}
+            onChange={(e) => setActiveIndex(Number(e.target.value))}
           >
-            {t("public.pressOpenNewTab")}
-          </a>
+            {issues.map((iss, index) => (
+              <option key={iss.key} value={index}>
+                {iss.headline} ({iss.shortDate})
+              </option>
+            ))}
+          </select>
+          {issue.hasPdf && (
+            <a
+              className="cinema-public-press-newtab"
+              href={PRESS_PDF_HREF}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t("public.pressOpenNewTab")}
+            </a>
+          )}
         </div>
         <article className="cinema-public-press-article">
           <header className="cinema-public-press-masthead">
@@ -291,25 +356,37 @@ export function PressModal({ onClose }) {
             </p>
             <div className="cinema-public-press-masthead-rule">
               <span>{t("public.pressMastheadSince")}</span>
-              <span>{t("public.pressMastheadIssue")}</span>
+              <span>{issue.mastheadIssue}</span>
             </div>
           </header>
 
-          <h1 className="cinema-public-press-headline">{t("public.pressHeadline")}</h1>
-          <p className="cinema-public-press-subheadline">{t("public.pressSubheadline")}</p>
+          <h1 className="cinema-public-press-headline">{issue.headline}</h1>
+          <p className="cinema-public-press-subheadline">{issue.subheadline}</p>
 
           <div className="cinema-public-press-body">
             {introParagraphs.map((paragraph, index) => (
               <p key={`intro-${index}`}>{paragraph}</p>
             ))}
-            <h3>{t("public.pressHeading1")}</h3>
-            {premiereParagraphs.map((paragraph, index) => (
-              <p key={`premiere-${index}`}>{paragraph}</p>
+            <h3>{issue.heading1}</h3>
+            {body1Paragraphs.map((paragraph, index) => (
+              <p key={`body1-${index}`}>{paragraph}</p>
             ))}
-            <h3>{t("public.pressHeading2")}</h3>
-            {closingParagraphs.map((paragraph, index) => (
-              <p key={`closing-${index}`}>{paragraph}</p>
+            {issue.images[0] && (
+              <figure className="cinema-public-press-photo">
+                <img src={issue.images[0].src} alt={issue.images[0].alt} />
+                <figcaption>{issue.images[0].alt}</figcaption>
+              </figure>
+            )}
+            <h3>{issue.heading2}</h3>
+            {body2Paragraphs.map((paragraph, index) => (
+              <p key={`body2-${index}`}>{paragraph}</p>
             ))}
+            {issue.images[1] && (
+              <figure className="cinema-public-press-photo">
+                <img src={issue.images[1].src} alt={issue.images[1].alt} />
+                <figcaption>{issue.images[1].alt}</figcaption>
+              </figure>
+            )}
           </div>
         </article>
       </div>
@@ -530,8 +607,12 @@ export function PublicLoginPanel({ language, onClose }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  // Feature #205 — se den identiske note i Login.jsx.
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotMessage, setForgotMessage] = useState(null);
 
   function switchMode(nextMode) {
     setMode(nextMode);
@@ -550,12 +631,28 @@ export function PublicLoginPanel({ language, onClose }) {
         // "afventer godkendelse"-siden efter navigationen, præcis som når
         // man registrerer fra forsiden. Derfor samme redirect i begge
         // tilstande frem for en særskilt kvitteringsbesked her.
-        // Feature #97 — se den identiske note i Login.jsx.
-        await api.register(username, password, language, fullName);
+        // Feature #97 — se den identiske note i Login.jsx. Feature #199-
+        // opfølgning — valgfri e-mail, samme mønster.
+        await api.register(username, password, language, fullName, email);
       }
       window.location.assign("/");
     } catch (err) {
       setError(err.message);
+      setSubmitting(false);
+    }
+  }
+
+  async function handleForgotPassword(event) {
+    event.preventDefault();
+    setError(null);
+    setForgotMessage(null);
+    setSubmitting(true);
+    try {
+      const result = await api.forgotPassword(forgotEmail);
+      setForgotMessage(result.message);
+    } catch (err) {
+      setError(err.message);
+    } finally {
       setSubmitting(false);
     }
   }
@@ -570,6 +667,38 @@ export function PublicLoginPanel({ language, onClose }) {
       {/* stopPropagation: klik inde i selve dialogen må ikke lukke den — kun
           klik på det mørke backdrop udenom (eller Annullér-knappen). */}
       <div className="cinema-public-login-panel" onClick={(e) => e.stopPropagation()}>
+        {mode === "forgot" ? (
+          <form className="auth-form" onSubmit={handleForgotPassword}>
+            <p className="auth-hint">{t("auth.forgotPasswordIntro")}</p>
+            <label>
+              {t("account.email")}
+              <input
+                type="email"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                autoComplete="email"
+                placeholder={t("account.emailPlaceholder")}
+                required
+                autoFocus
+              />
+            </label>
+            {error && <div className="banner banner-error">{error}</div>}
+            {forgotMessage && <div className="banner banner-info">{forgotMessage}</div>}
+            <div className="cinema-public-login-actions">
+              <button type="button" className="btn" onClick={onClose} disabled={submitting}>
+                {t("common.cancel")}
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? t("auth.submitting") : t("auth.sendResetLink")}
+              </button>
+            </div>
+            <div className="auth-switch">
+              <button type="button" onClick={() => switchMode("login")}>
+                {t("auth.backToLogin")}
+              </button>
+            </div>
+          </form>
+        ) : (
         <form className="auth-form" onSubmit={handleSubmit}>
         {/* Feature #140 — obligatorisk fuldt navn ved oprettelse (kun i
             opret-tilstand), så en admin kan se hvem der beder om adgang. */}
@@ -581,6 +710,21 @@ export function PublicLoginPanel({ language, onClose }) {
               onChange={(e) => setFullName(e.target.value)}
               autoComplete="name"
               placeholder={t("auth.fullNamePlaceholder")}
+              required
+            />
+          </label>
+        )}
+        {/* Feature #199-opfølgning — se den identiske note i Login.jsx:
+            `required` i formularen, backend-modellen forbliver valgfri. */}
+        {mode === "register" && (
+          <label>
+            {t("account.email")}
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              placeholder={t("account.emailPlaceholder")}
               required
             />
           </label>
@@ -626,6 +770,14 @@ export function PublicLoginPanel({ language, onClose }) {
             )}
           </button>
         </div>
+        {/* Feature #205 — se den identiske note i Login.jsx. */}
+        {mode === "login" && (
+          <p className="auth-hint">
+            <button type="button" className="auth-link" onClick={() => switchMode("forgot")}>
+              {t("auth.forgotPasswordLink")}
+            </button>
+          </p>
+        )}
         <div className="auth-switch">
           {mode === "login" ? (
             <>
@@ -644,6 +796,7 @@ export function PublicLoginPanel({ language, onClose }) {
           )}
         </div>
         </form>
+        )}
       </div>
     </div>
   );

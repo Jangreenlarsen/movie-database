@@ -1,3 +1,6 @@
+import re
+from datetime import datetime
+
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -125,6 +128,15 @@ async def list_all(db: AsyncIOMotorDatabase) -> list[dict]:
     return await cursor.to_list(length=1000)
 
 
+async def list_active_admins(db: AsyncIOMotorDatabase) -> list[dict]:
+    """Feature #202 — bruges til at rundsende en notifikation specifikt til
+    admin-rollen (nyt ønske/ny forvisnings-anmodning oprettet), i modsætning
+    til message_service.send()s eksisterende `recipient_user_id=None`-gren,
+    som rammer ALLE aktive brugere uanset rolle."""
+    cursor = db[COLLECTION].find({"role": "admin", "status": "active"})
+    return await cursor.to_list(length=1000)
+
+
 async def find_all_raw(db: AsyncIOMotorDatabase) -> list[dict]:
     """Unbounded, includes `password_hash` — backs the full system backup
     (feature #61). A hash isn't the plaintext password (that's the whole
@@ -173,6 +185,51 @@ async def set_email(db: AsyncIOMotorDatabase, user_id: str, email: str | None) -
         return None
     await db[COLLECTION].update_one({"_id": ObjectId(user_id)}, {"$set": {"email": email}})
     return await db[COLLECTION].find_one({"_id": ObjectId(user_id)})
+
+
+async def find_by_email(db: AsyncIOMotorDatabase, email: str) -> dict | None:
+    """Feature #205 — case-insensitive (langt de fleste brugere forventer
+    at 'Navn@Foo.dk' og 'navn@foo.dk' er samme konto, og `email` har ingen
+    normaliseret søster-kolonne som `username_normalized`). `email` er
+    allerede `EmailStr`-valideret/afgrænset af kalderen før den når hertil,
+    så et regex-opslag her er hverken injicerbart eller et reelt ReDoS-mål
+    (fast, kort, forankret mønster)."""
+    pattern = f"^{re.escape(email)}$"
+    return await db[COLLECTION].find_one({"email": {"$regex": pattern, "$options": "i"}})
+
+
+async def set_reset_token(
+    db: AsyncIOMotorDatabase, user_id: str, token_hash: str, expires_at: datetime
+) -> None:
+    """Feature #205 — selvbetjent password-reset. Kun ÉT aktivt token pr.
+    bruger ad gangen: en ny anmodning overskriver automatisk et evt.
+    tidligere (ubrugt) token, som dermed holder op med at virke."""
+    if not ObjectId.is_valid(user_id):
+        return
+    await db[COLLECTION].update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"reset_token_hash": token_hash, "reset_token_expires_at": expires_at}},
+    )
+
+
+async def find_by_reset_token_hash(db: AsyncIOMotorDatabase, token_hash: str) -> dict | None:
+    return await db[COLLECTION].find_one({"reset_token_hash": token_hash})
+
+
+async def consume_reset_token(db: AsyncIOMotorDatabase, user_id: str, password_hash: str) -> None:
+    """Sætter den nye adgangskode og fjerner token-felterne i samme atomiske
+    skrivning — et token kan derfor aldrig genbruges til at sætte en anden
+    adgangskode bagefter, uanset om noget skulle gå galt undervejs et andet
+    sted i kaldskæden."""
+    if not ObjectId.is_valid(user_id):
+        return
+    await db[COLLECTION].update_one(
+        {"_id": ObjectId(user_id)},
+        {
+            "$set": {"password_hash": password_hash, "must_change_password": False},
+            "$unset": {"reset_token_hash": "", "reset_token_expires_at": ""},
+        },
+    )
 
 
 async def set_password_hash(

@@ -47,8 +47,10 @@
   color: var(--text-muted);
 }
 
-/* Feature #171 — permanent hjælpetekst, ikke en handling, derfor lidt
-   mindre/dæmpet end .auth-switch (som indeholder en klikbar knap). */
+/* Hjælpetekst under formularen — mindre/dæmpet end .auth-switch. Feature
+   #205 gjorde login-varianten til et rigtigt klikbart link (.auth-link
+   nedenfor), men klassen bruges også til ren, ikke-klikbar hjælpetekst i
+   "glemt adgangskode"-formularen ovenfor. */
 .auth-hint {
   text-align: center;
   font-size: 0.78rem;
@@ -56,7 +58,8 @@
   margin: -6px 0 0;
 }
 
-.auth-switch button {
+.auth-switch button,
+.auth-link {
   background: none;
   border: none;
   color: var(--accent);

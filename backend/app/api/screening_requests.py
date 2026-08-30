@@ -71,7 +71,7 @@ async def update_request(
 ):
     # Only "declined" is accepted by ScreeningRequestUpdate — becoming
     # "scheduled" only happens as a side effect of POST /api/screenings.
-    updated = await screening_service.decline_request(db, request_id)
+    updated = await screening_service.decline_request(db, request_id, current_user)
     await audit_log_service.record(
         db, current_user["username"], "screening_request.declined", updated.title
     )

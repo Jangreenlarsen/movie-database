@@ -2,6 +2,136 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.185.0 build 0265] — 2026-08-29 — feature: "Test forbindelse" for Anthem AVM70 (FEATURES.md #212)
+
+Jan, efter BUGS.md #93 var løst: *"kan vi ikke lige få en test funktion ind i api config for AVM70 også sådan at vi kan testet den på samme hvilkor som api keys"*.
+
+Ny `anthem_service.test_connection()` — genbruger `anthem_client.open_connection` til en kortvarig, ægte TCP-forbindelse, tjekker først om en diagnostik-session allerede er aktiv (AVM70 tillader kun én netværksklient). Wired ind i den eksisterende `TestableApiKey`/`_TEST_CONNECTION_CLIENTS`-dispatch (samme `POST /api/settings/system/test/{key}` som TMDb/Discogs/Resend m.fl.). Ny frontend-komponent `AnthemTestConnectionRow` genbruger samme knap/banner-mønster som de øvrige testbare nøgler.
+
+Berørte filer: `backend/app/services/anthem_service.py`, `backend/app/services/system_settings_service.py`, `backend/app/models/settings.py`, `frontend/src/pages/Settings.jsx`. Ikke visuelt verificeret i browser (uafhængigt test-miljø-problem, se FEATURES.md #212) — dækket af automatiserede tests i stedet. Fuld backend-suite (928) + frontend (202) grøn.
+
+## [0.184.0 build 0264] — 2026-08-29 — debug: forkert domæne i password-reset-link rettet på produktionsserveren + `movie.ll.lan` retired (BUGS.md #92)
+
+Jan rapporterede efter en rigtig live-test af feature #205: reset-mailen fra `movie.laces.dk` linkede til IP'en `10.1.130.10` i stedet. Bekræftet direkte på produktionsserveren (SSH via nginx-proxyen, med Jans eksplicitte lov): `CORS_ORIGINS` indeholdt kun `https://10.1.130.10` — `resolve_reset_base_url` faldt derfor tilbage til den, uanset hvilket domæne brugeren rent faktisk kom ind fra. Rettet direkte i `/opt/moviedb/backend/.env` (backup taget først) til `https://10.1.130.10,https://movie.laces.dk`.
+
+Samtidig: Jan besluttede at retire `movie.ll.lan` helt (*"movie.ll.lan skal ikke være en del af dns mere da vi er gået i prod med movie.laces.dk"*) — hostnavnet er derfor bevidst UDELADT af den nye `CORS_ORIGINS`, og Caddyfilens `movie.ll.lan`-site-block er fjernet (staged i `/home/jgl/moviedb-tls/Caddyfile.new`, klar til den forhåndsgodkendte backup→swap→validate→reload-sekvens). DEPLOYMENT.md og `movie-laces-dk-runbook.md` opdateret til at afspejle `movie.laces.dk` som primær produktionsadgang og markere `movie.ll.lan`-relateret indhold som historisk/retired. FEATURES.md #74 (det oprindeligt planlagte "tredje Caddy site-block" til offentlig adgang) markeret som opnået via en anden mekanisme (nginx-proxyen, 2026-08-09) i stedet.
+
+**Afventer Jan**: `sudo systemctl restart moviedb-backend` (for at CORS_ORIGINS-ændringen slår igennem) og Caddyfile-swap-sekvensen — begge blokeret for Claude af Claude Code's auto-mode-klassifikator (sudo over SSH mod produktion).
+
+Tilføjet uafhængigt af selve rettelsen: `resolve_reset_base_url` logger nu en tydelig advarsel hver gang fallback'en rammes, så en fremtidig manglende CORS_ORIGINS-post opdages i logs med det samme.
+
+Berørte filer: `backend/app/services/auth_service.py`, `DEPLOYMENT.md`, `FEATURES.md`, `BUGS.md`, produktionens `.env` og `Caddyfile` (uden for repoet). Fuld backend-suite (923) grøn.
+
+## [0.184.0 build 0263] — 2026-08-29 — feature: "Presse Nyt" dropdown + skærmbilleder (FEATURES.md #211)
+
+Jan, direkte efter #210: *"presse nyt må godt være en dropdown list hvor man vælger de forskelige presse opslag fra"*, fulgt op med *"og der skal billeder med i den ny presse nyhed"*.
+
+#210's frem/tilbage-link erstattet af en `<select>`-dropdown i header-rækken der lister alle numre — skalerer bedre end et binært link. Det nye nummer fik to ægte skærmbilleder (afstemningssiden + en e-mail-notifikation), hver med billedtekst, indsat ved det afsnit de illustrerer. Afstemnings-billedet er taget mod en midlertidig test-database med to rigtige TMDb-film og en ikke-admin bruger (så admin-kun knapper ikke optræder); e-mail-billedet er et beskåret uddrag af et eksisterende #204-verifikationsskærmbillede.
+
+Berørte filer: `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `frontend/public/cinema/press2-poll.jpg` (ny), `frontend/public/cinema/press2-email.jpg` (ny). Ingen backend-ændring. Tests: `PressModal.test.jsx` omskrevet til dropdown-interaktion (3). Fuld backend-suite (923, uændret) + frontend (200) grøn.
+
+## [0.183.0 build 0262] — 2026-08-29 — feature: "Presse Nyt" udvidet til to numre (FEATURES.md #210)
+
+Jan, efter social-medie-udkastet om afstemning/e-mail-nyhederne: *"prefekt sæt den ind på presse nyt siden i portal og giv den en dato"*.
+
+`PressModal` havde ét hårdkodet nummer (feature #163). Ny `usePressIssues(t)`-hook returnerer begge numre som data (nyeste "Nu bestemmer biografgæsterne selv", dateret 29. august 2026, vises som standard); et diskret link nederst skifter mellem numrene begge veje. Kun det oprindelige nummer har en ægte PDF bag sig, så "Vis som PDF ↗" vises nu betinget (`issue.hasPdf`). Det nye nummer forklarer afstemnings-flowet (ønske → admin samler forslag → afstemning) og de nye e-mail-svar, i samme lokalavis-stemme som resten af featuren.
+
+Berørte filer: `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/CinemaPublic.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Ingen backend-ændring. Tests: ny `PressModal.test.jsx` (4). Fuld backend-suite (923, uændret) + frontend (201) grøn.
+
+## [0.182.0 build 0261] — 2026-08-29 — feature: afstemninger forsvinder efter premiære eller manuelt (FEATURES.md #209)
+
+Jan: *"hvornår forsvinder afstemings resultaterne så fra users bio oversigt"* → *"de skal forsvinder efter film har haft premiæer"* → *"eller adm vælger at de skal forsvinde"*.
+
+To mekanismer: (1) en `scheduled`-afstemning udelades automatisk af `GET /api/polls` så snart dens fremvisnings `scheduled_at` er passeret — slået op live mod `screenings`, aldrig et gemt tidspunkt (som kunne komme ud af trit hvis fremvisningen redigeres). (2) ny `DELETE /api/polls/{id}` (admin) fjerner en afstemning manuelt til enhver tid, uden at røre en evt. tilknyttet fremvisning. Ny "Fjern"-knap på afstemningskortet.
+
+Berørte filer: `backend/app/repositories/poll_repository.py`, `backend/app/services/poll_service.py`, `backend/app/api/polls.py`, `frontend/src/api/client.js`, `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Cinema.css`, i18n, `ARCHITECTURE.md`. Tests: `test_polls.py` +7, `Cinema.test.jsx` +3. Fuld backend-suite (923) + frontend (197) grøn.
+
+## [0.181.0 build 0260] — 2026-08-29 — feature: dato på afstemning (FEATURES.md #208)
+
+Jan, direkte efter #207: *"afstemming skal kunne sættes en dato på til de film vi stemmer om til forvisning"*.
+
+`Poll`/`PollCreate` fik et nyt valgfrit `target_date` — hvilken aften der stemmes om, uden klokkeslæt (det vælges først ved selve programsætningen). Vises på afstemningskortet, og foreslås videre ind i planlægnings-formularen (dato forudfyldt, tid forudfyldt til 20:00) når admin planlægger vinderen.
+
+Berørte filer: `backend/app/models/poll.py`, `backend/app/services/poll_service.py`, `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Cinema.css`, i18n, `ARCHITECTURE.md`. Tests: `test_polls.py` +2, `Cinema.test.jsx` +2. Fuld backend-suite (916) + frontend (194) grøn.
+
+## [0.180.0 build 0259] — 2026-08-29 — feature: afstemningsside for filmvalg (FEATURES.md #207)
+
+Jan: *"Kunne man lave en afstemning side hvor man kunne stemme på nogen udvalgte film hvor den/dem så blev vist på en given dato?"* (registreret som #162, taget op igen efter fire afklarende spørgsmål: én stemme pr. bruger/ombestemmelig, stemmetal synlige undervejs, kun admin opretter, uafgjort løses manuelt af admin).
+
+Ny `polls`-collection: admin udvælger kandidat-film/-serier, alle roller inkl. gæster kan stemme (genbruger #72's princip), stemmetal og vinder(e) beregnes live (aldrig gemt). Planlægning genbruger `POST /api/screenings` med et nyt valgfrit `poll_id` (samme mønster som `request_id`) — markerer afstemningen `scheduled` og sender besked (portal + e-mail) til alle der stemte, både ved lukning og ved planlægning (genbruger #204's HTML-skabelon). Ny `PollsSection` i Voldby BIO-fanen, synlig for alle roller. Regel 20: `polls` tilføjet til backup/restore og til biblioteks-reset (kandidat-referencer ville ellers dingle).
+
+Berørte filer: `backend/app/models/poll.py` (ny), `backend/app/repositories/poll_repository.py` (ny), `backend/app/services/poll_service.py` (ny), `backend/app/api/polls.py` (ny), `backend/app/core/errors.py`, `backend/app/main.py`, `backend/app/models/backup.py`, `backend/app/models/screening.py`, `backend/app/services/message_service.py`, `backend/app/services/screening_service.py`, `backend/app/services/system_backup_service.py`, `frontend/src/api/client.js`, `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Cinema.css`, i18n, `ARCHITECTURE.md`. Tests: ny `test_polls.py` (+16), `test_system_backup.py`/`test_database_reset.py` udvidet, `Cinema.test.jsx` +12. Set i browser: fuld admin-flow (opret → stem → luk → planlæg) verificeret ende-til-ende mod en midlertidig test-database. Fuld backend-suite (914) + frontend (192) grøn.
+
+## [0.179.0 build 0258] — 2026-08-29 — feature: selvbetjent "glemt adgangskode" + admin kan redigere andres e-mail (FEATURES.md #205, #206)
+
+Jan: *"1 og 2 og så lad os se på #162"* (efter selv at have foreslået selvbetjent password-reset som naturligt næste skridt, nu hvor e-mail-infrastrukturen fra #197 findes).
+
+**#205**: To nye login-frie endpoints, `POST /api/auth/forgot-password`/`reset-password`. Anti-enumerering (samme svar uanset om e-mailen findes), 256-bit engangs-token (kun SHA-256-hash gemt, 1 times udløb, fjernes atomisk ved brug). Nulstillings-linkets domæne valideres mod den eksisterende `cors_origin_list`-allowlist (ikke et hardkodet domæne, og ikke en ubekræftet Origin-header — forhindrer kontoovertagelse via en forfalsket nulstil-side). #171's admin-assisterede vej forbliver uændret, som fallback for konti uden e-mail. Login.jsx og CinemaPublic.jsx fik begge et "Glemt din adgangskode?"-link; ny `ResetPassword.jsx`-side.
+
+**#206**: Admin kan nu redigere en ANDEN brugers e-mail direkte i Indstillinger → Brugere (backend understøttede det allerede — ren frontend-tilføjelse, genbruger `PATCH /api/users/{id}/email`).
+
+Berørte filer: `backend/app/models/user.py`, `backend/app/core/errors.py`, `backend/app/repositories/user_repository.py`, `backend/app/services/auth_service.py`, `backend/app/api/auth.py`, `backend/app/integrations/email_templates.py`, `backend/app/main.py`, `frontend/src/api/client.js`, `frontend/src/pages/Login.jsx`, `frontend/src/pages/CinemaPublic.jsx`, `frontend/src/pages/ResetPassword.jsx` (ny), `frontend/src/pages/Settings.jsx`, `frontend/src/App.jsx`, i18n, `ARCHITECTURE.md`. Tests: ny `test_password_reset.py` (+15), ny `Login.test.jsx`/`ResetPassword.test.jsx`/`PublicLoginPanel.test.jsx` (+10), `Settings.test.jsx` (+4). Fuld backend + frontend (183) grøn.
+
+## [0.178.0 build 0257] — 2026-08-29 — feature: rigtige HTML-svar-mails med poster og inspirerende tekst (FEATURES.md #204)
+
+Jan: *"vi skal have lavet en fede svar email til users når de få svar fra movie portal med billeder og indspirerende tekst"*.
+
+De seks admin→bruger-svar-notifikationer (ønske godkendt/afvist/bestilt/flyttet, forvisnings-anmodning afvist/planlagt) sender nu en pæn HTML-mail ved siden af den uændrede rene tekst: ny `email_templates.render_notification_email()` bygger en tabel-baseret mail med mørk header + rav-accent, filmens/seriens TMDb-poster (udeladt når ukendt), en kort headline + inspirerende tagline pr. begivenhed. Afvisnings-typer får en dæmpet grå accent i stedet for rav. `email_client.send_email()` fik et nyt valgfrit `html`-parameter; `message_service.send()` fik et internt (ikke API-eksponeret) `email_html`-parameter, så en admin-broadcast forbliver ren tekst. Alle interpolerede tekstfelter HTML-escapes eksplicit.
+
+Berørte filer: `backend/app/integrations/email_templates.py` (ny), `backend/app/integrations/email_client.py`, `backend/app/services/message_service.py`, `backend/app/services/screening_service.py`. Tests: ny `test_email_templates.py` (+6), `test_email_client.py` (+1), ny `test_reply_email_html.py` (+7). Fuld backend-suite (883) + frontend (169, uændret) grøn.
+
+## [0.177.0 build 0256] — 2026-08-29 — feature: "Bestilt"-badge for gæster (FEATURES.md #203)
+
+Jan: *"hvis en film/tv er bestilt så skal guest users se en badge hvor der står 'bestilt'"*.
+
+Feature #116 skjulte hele order-status-begrebet for gæster. Nu ser en gæst en forenklet, generisk "Bestilt"-badge (ny i18n-nøgle `orderStatus.ordered`) på ønske-kortet og i detaljevisningen — men kun når `order_status` rent faktisk er sat, og uden den fulde tekst (bestillingskilde, fx "Bestilt ved iMusic") som admin/standard ser. "Ikke bestilt" forbliver skjult for gæster, uændret fra #116.
+
+Berørte filer: `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Tests: ny `TvShows.test.jsx` (+3), `Library.test.jsx` (+3). Fuld frontend-suite (169) grøn. Ren frontend, ingen backend-ændring.
+
+## [0.176.0 build 0255] — 2026-08-28 — feature: besked-notifikationer for ønsker/forvisninger, begge retninger (FEATURES.md #202)
+
+Jan: *"besked system skal kunne sende hvis user opretter ønsker til forvisning og ønskeliste og svar skal sendes return hvis adm lave forandring for de ønsker/forvisninger, besked skal sendes i email samt på portal for user, email skal kun sendes hvis email er config på user konto"*.
+
+Ny bruger→admin-retning: `notify_admins_new_wishlist`/`notify_admins_new_screening_request` sender til hver aktiv admin (ny `user_repository.list_active_admins`) når en bruger opretter et ønske eller en forvisnings-anmodning — kun ved en genuin ny anmodning, ikke et gentaget ønske fra samme bruger. Ny admin→bruger-retning for forvisninger: `notify_screening_request_declined`/`notify_screening_request_scheduled` sender til HVER bruger bag en delt anmodning ved afvisning/planlægning (`decline_request`/`create_screening` udvidet til at modtage det fulde admin-dict). E-mail-delen ("kun hvis email er config") krævede ingen ny kode — dækket af feature #197's eksisterende `_send_emails`-infrastruktur, som allerede no-op'er stille pr. modtager uden en e-mail.
+
+Berørte filer: `backend/app/repositories/user_repository.py`, `backend/app/services/message_service.py`, `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`, `backend/app/services/screening_service.py`, `backend/app/api/screening_requests.py`, `backend/app/api/screenings.py`. Tests: ny `backend/tests/test_screening_notifications.py` (+10). Fuld backend-suite (870) grøn.
+
+## [0.175.0 build 0254] — 2026-08-23 — feature: "Del af samlingen:" viser medietype for ejede dele (FEATURES.md #201)
+
+Jan: *"i edit detajle af film og i 'Del af samlingen:' skal fremgå om ... den er i digital eller fysiske version"*.
+
+`CollectionPart` fik `owned_media_type`, udfyldt fra det allerede-hentede ejer-dokument i `get_collection_info` — ingen ekstra databaseforespørgsel. `CollectionSection`s "✓ Ejer" bliver til "✓ Ejer (Fysisk)"/"✓ Ejer (Digital)" når typen kendes.
+
+Berørte filer: `backend/app/models/movie.py`, `backend/app/services/movie_service.py`, `frontend/src/pages/Library.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`. Tests: backend `test_collections.py` (+2 assertions, +1 ny), frontend `Library.test.jsx` (+1). Fuld suite + frontend (163) grøn.
+
+## [0.174.1 build 0253] — 2026-08-23 — fix: e-mail obligatorisk i registrerings-formularerne (FEATURES.md #200)
+
+Jan, opfølgning: *"e-mail-felt skal være opligatorisk"*. `required` tilføjet til e-mail-inputtet i begge registrerings-formularer (Login.jsx + CinemaPublic.jsx's PublicLoginPanel) — samme håndhævelses-niveau som fuldt navn (kun i UI'et; backend-modellen forbliver teknisk valgfri, Jans eget valg, for ikke at bryde den eksisterende API-kontrakt/testsuite, som registrerer test-brugere uden e-mail på tværs af snesevis af filer). Ingen backend-ændring. Frontend-suite (162) uændret grøn.
+
+## [0.174.0 build 0252] — 2026-08-23 — feature: valgfrit e-mail-felt ved registrering (FEATURES.md #200)
+
+Jan: *"opret ny user tager ikke en email adr., skal vi lige have den del af system til at gøre"*.
+
+`UserRegister` fik `email: EmailStr | None`, samme trim/tomt-til-None-normalisering som `full_name`. Begge registrerings-formularer (app'ens `Login.jsx` og den offentlige `/bio`-sides `PublicLoginPanel`) fik et nyt, valgfrit e-mail-felt mellem Fuldt navn og Brugernavn. En bruger der udfylder den ved oprettelse kan modtage notifikationer (feature #197) med det samme, uden en ekstra tur til Indstillinger → Konto bagefter — bekræftet med en ende-til-ende-test.
+
+Berørte filer: `backend/app/models/user.py`, `backend/app/services/auth_service.py`, `frontend/src/api/client.js`, `frontend/src/pages/Login.jsx`, `frontend/src/pages/CinemaPublic.jsx`, `ARCHITECTURE.md`. Tests: backend ny `test_registration_email.py` (+5). Set i browser: begge formularer bekræftet korrekte. Fuld backend-suite + frontend (162) grøn.
+
+## [0.173.0 build 0251] — 2026-08-23 — feature: ægte "Send testmail"-funktion (FEATURES.md #199)
+
+Jan, efter at have bekræftet at Resends `{"name":"restricted_api_key","message":"This API key is restricted to only send emails","statusCode":401}` netop er den forventede reaktion fra en sending-access-nøgle på `GET /api-keys`: *"lave også en email test funktion"*.
+
+Den eksisterende "Test forbindelse" bekræfter kun nøglens gyldighed — for en sending-access-nøgle kan den ikke bekræfte mere end det. Ny `POST /api/settings/system/test-email` sender en RIGTIG mail via `email_client.send_email` til en valgfri adresse, med samme `{ok, message}`-svarform. Ny `SendTestEmailRow`-komponent i E-mail-notifikationer-kortet.
+
+Berørte filer: `backend/app/models/settings.py`, `backend/app/api/settings.py`, `backend/app/services/system_settings_service.py`, `frontend/src/pages/Settings.jsx`, `frontend/src/api/client.js`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`. Tests: backend +6, frontend +3 (162 i alt). Se FEATURES.md #199 for fuld detalje.
+
+## [0.172.0 build 0250] — 2026-08-23 — feature: gruppér Eksterne API-nøgler i selvstændige kort (FEATURES.md #198)
+
+Jan, efter feature #197: *"få lige orginaseret den config side at det hele ikke kommer i en lang smøre"*.
+
+`SystemSettingsSection` havde ~13 rækker stablet i ét enkelt, ugrupperet kort. Opdelt i 6 kort efter formål: Film- & TV-metadata (TMDb), Stregkode-opslag (primær kilde + Discogs/UPCDatabase/EAN-search), Vurderinger (OMDb), Plex, Anthem AVM 70, E-mail-notifikationer (Resend) — samme mønster resten af Indstillinger-siden allerede bruger. Ren frontend, ingen data-/logik-ændring, samme genbrugte row-komponenter.
+
+Berørte filer: `frontend/src/pages/Settings.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Ingen nye tests nødvendige (regel 19 — rent visuel omgruppering). Set i browser (regel 18): DOM-geometri + skærmbilleder bekræftede korrekt, ikke-overlappende opdeling hele vejen ned. Fuld frontend-suite (159) grøn.
+
 ## [0.171.0 build 0249] — 2026-08-23 — feature: udgående e-mail-notifikationer via Resend (FEATURES.md #197)
 
 Jan: *"vil det være muligt at integrare et email besked system, og hvordan gøre vi lige med email server access"*, opfulgt: *"hvordan får vi afsendt vores emails fra system, hvis vi som udgangspunkt ikke har en privat email server"* — valgte en transaktions-mail-udbyder (Resend, HTTP-API) over SMTP-relæ eller egen postserver.

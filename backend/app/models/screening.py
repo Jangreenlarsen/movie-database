@@ -79,6 +79,10 @@ class ScreeningCreate(BaseModel):
     # If set, the referenced pending request is marked "scheduled" as part
     # of the same action instead of being left dangling in the queue.
     request_id: str | None = None
+    # Feature #162 — se den identiske note ved request_id: en åben
+    # afstemning markeres "scheduled" og alle der stemte får besked, i
+    # stedet for at afstemningen bare bliver stående uændret for evigt.
+    poll_id: str | None = None
     # Feature #170 — Jan: en visning kan sættes som et privat arrangement,
     # så gæst-rollen (feature #72) ikke kan booke sæder på den. Håndhæves i
     # backend (reservation_service.reserve_seats), ikke kun ved at skjule

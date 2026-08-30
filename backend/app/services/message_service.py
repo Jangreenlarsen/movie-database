@@ -7,8 +7,9 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
 from app.core.errors import EmailRateLimitedError, MessageNotFoundError, NoRecipientsError, UserNotFoundError
-from app.integrations import email_client
+from app.integrations import email_client, email_templates
 from app.models.message import InboxMessage, Message, MessageCreate, MessageRecipient
+from app.models.poll import Poll, PollCandidateResult
 from app.models.user import UserStatus
 from app.repositories import message_repository, user_repository
 
@@ -75,7 +76,9 @@ async def _resolve_recipients(
     ]
 
 
-async def _send_emails(recipients: list[dict], subject: str, body: str) -> None:
+async def _send_emails(
+    recipients: list[dict], subject: str, body: str, html: str | None = None
+) -> None:
     """Feature #197 — best-effort side-kanal, kaldes fra `send()` EFTER selve
     in-app-beskeden er skrevet. Rent, ulogget fravalg (ikke engang forsøgt)
     når Resend slet ikke er konfigureret — samme "unconfigured" vs. "error"-
@@ -84,7 +87,11 @@ async def _send_emails(recipients: list[dict], subject: str, body: str) -> None:
     en ekstern API skal ikke blive ved med at ramme en allerede rate-limitet
     tjeneste). Kaster aldrig selv ud af sig selv, men kaldes alligevel kun
     fra callere der allerede pakker `send()` i try/except (notify_wishlist_*
-    nedenfor) — én ekstra sikkerhedslinje, ikke den eneste."""
+    nedenfor) — én ekstra sikkerhedslinje, ikke den eneste.
+
+    Feature #204 — `html` er en valgfri, rigere version af samme besked
+    (poster-billede + inspirerende tagline), sat af de admin→bruger-svar-
+    funktioner nedenfor. `body` (ren tekst) sendes altid, uanset `html`."""
     if not settings.resend_api_key or not settings.email_from_address:
         return
     for recipient in recipients:
@@ -92,7 +99,7 @@ async def _send_emails(recipients: list[dict], subject: str, body: str) -> None:
         if not email:
             continue
         try:
-            ok = await email_client.send_email(to=email, subject=subject, text=body)
+            ok = await email_client.send_email(to=email, subject=subject, text=body, html=html)
             if not ok:
                 logger.warning("E-mail-notifikation fejlede for %s (%r)", recipient["username"], subject)
         except EmailRateLimitedError:
@@ -105,8 +112,17 @@ async def _send_emails(recipients: list[dict], subject: str, body: str) -> None:
 
 
 async def send(
-    db: AsyncIOMotorDatabase, payload: MessageCreate, sender: dict
+    db: AsyncIOMotorDatabase,
+    payload: MessageCreate,
+    sender: dict,
+    email_html: str | None = None,
 ) -> Message:
+    """`email_html` (feature #204) er bevidst IKKE en del af `MessageCreate` —
+    den er kun tilgængelig for interne kaldere (de admin→bruger-svar-
+    funktioner nedenfor), aldrig noget en admin kan sætte via den offentlige
+    "send besked"-API'en. Portal-beskeden (`payload.body`) er uændret ren
+    tekst i begge tilfælde — `email_html` er udelukkende en rigere
+    E-MAIL-repræsentation af samme indhold."""
     sender_id = str(sender["_id"])
     resolved = await _resolve_recipients(db, payload, sender_id)
     if not resolved:
@@ -130,7 +146,7 @@ async def send(
         "is_broadcast": payload.recipient_user_id is None,
     }
     message = _to_model(await message_repository.insert(db, document))
-    await _send_emails(resolved, message.subject, message.body)
+    await _send_emails(resolved, message.subject, message.body, html=email_html)
     return message
 
 
@@ -156,16 +172,28 @@ async def notify_wishlist_moved(
         return
     kind = "serie" if is_tv else "film"
     display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or kind
+    body = (
+        f'Den {kind} du satte på indkøbslisten — "{display_title}" — er nu købt '
+        "og lagt i biblioteket. 🎬"
+    )
     payload = MessageCreate(
         subject=f"Din ønskede {kind} er nu i biblioteket",
-        body=(
-            f'Den {kind} du satte på indkøbslisten — "{display_title}" — er nu købt '
-            "og lagt i biblioteket. 🎬"
-        ),
+        body=body,
         recipient_user_id=str(owner["_id"]),
     )
     try:
-        await send(db, payload, mover)
+        await send(
+            db,
+            payload,
+            mover,
+            email_html=email_templates.render_notification_email(
+                headline="Nu står den på hylden!",
+                tagline=f'"{display_title}" er købt og klar til filmaften.',
+                body_text=body,
+                poster_url=wishlist_doc.get("poster_url"),
+                accent="gold",
+            ),
+        )
     except Exception:
         pass
 
@@ -191,16 +219,28 @@ async def notify_wishlist_approved(
         return
     kind = "serie" if is_tv else "film"
     display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or kind
+    body = (
+        f'Den {kind} du ønskede — "{display_title}" — er nu godkendt og '
+        "står på indkøbslisten. 🎬"
+    )
     payload = MessageCreate(
         subject=f'Dit ønske "{display_title}" er godkendt',
-        body=(
-            f'Den {kind} du ønskede — "{display_title}" — er nu godkendt og '
-            "står på indkøbslisten. 🎬"
-        ),
+        body=body,
         recipient_user_id=str(owner["_id"]),
     )
     try:
-        await send(db, payload, admin)
+        await send(
+            db,
+            payload,
+            admin,
+            email_html=email_templates.render_notification_email(
+                headline="Dit ønske er godkendt!",
+                tagline=f'"{display_title}" er nu godkendt og på vej til samlingen.',
+                body_text=body,
+                poster_url=wishlist_doc.get("poster_url"),
+                accent="gold",
+            ),
+        )
     except Exception:
         pass
 
@@ -229,13 +269,25 @@ async def notify_wishlist_ordered(
         return
     kind = "serie" if is_tv else "film"
     display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or kind
+    body = f'Den {kind} du ønskede — "{display_title}" — er nu bestilt. 🎬'
     payload = MessageCreate(
         subject=f'Dit ønske "{display_title}" er bestilt',
-        body=f'Den {kind} du ønskede — "{display_title}" — er nu bestilt. 🎬',
+        body=body,
         recipient_user_id=str(owner["_id"]),
     )
     try:
-        await send(db, payload, admin)
+        await send(
+            db,
+            payload,
+            admin,
+            email_html=email_templates.render_notification_email(
+                headline="Bestilt!",
+                tagline=f'"{display_title}" er nu bestilt — snart klar til filmaften.',
+                body_text=body,
+                poster_url=wishlist_doc.get("poster_url"),
+                accent="gold",
+            ),
+        )
     except Exception:
         pass
 
@@ -274,9 +326,269 @@ async def notify_wishlist_rejected(
         recipient_user_id=str(owner["_id"]),
     )
     try:
-        await send(db, payload, admin)
+        await send(
+            db,
+            payload,
+            admin,
+            email_html=email_templates.render_notification_email(
+                headline="Om dit ønske",
+                tagline=f'"{display_title}" blev desværre ikke til noget denne gang.',
+                body_text=body,
+                poster_url=wishlist_doc.get("poster_url"),
+                accent="muted",
+            ),
+        )
     except Exception:
         pass
+
+
+async def notify_admins_new_wishlist(
+    db: AsyncIOMotorDatabase,
+    wisher: dict,
+    title: str | None,
+    is_tv: bool,
+) -> None:
+    """Feature #202 — Jan: "besked system skal kunne sende hvis user
+    opretter ønsker til ... ønskeliste". Modparten til de fire
+    notify_wishlist_*-funktioner ovenfor (som går admin→bruger): her går
+    beskeden bruger→ALLE aktive admins, så de opdager et nyt ønske uden selv
+    at skulle tjekke biblioteket først. Springer den enkelte admin over hvis
+    de selv er ønskeren (ingen grund til en besked om sin egen handling)."""
+    admins = await user_repository.list_active_admins(db)
+    if not admins:
+        return
+    kind = "serie" if is_tv else "film"
+    display_title = title or kind
+    for admin_doc in admins:
+        if admin_doc.get("username") == wisher.get("username"):
+            continue
+        payload = MessageCreate(
+            subject="Nyt ønske på indkøbslisten",
+            body=f'{wisher.get("username")} har tilføjet "{display_title}" ({kind}) til ønskelisten.',
+            recipient_user_id=str(admin_doc["_id"]),
+        )
+        try:
+            await send(db, payload, wisher)
+        except Exception:
+            pass
+
+
+async def notify_admins_new_screening_request(
+    db: AsyncIOMotorDatabase,
+    requester: dict,
+    title: str | None,
+    is_tv: bool,
+) -> None:
+    """Feature #202 — Jan: "... og forvisning". Samme bruger→admin-retning
+    som notify_admins_new_wishlist ovenfor, for et nyt (eller et yderligere,
+    fra en anden bruger) ønske om at se en titel i Voldby BIO."""
+    admins = await user_repository.list_active_admins(db)
+    if not admins:
+        return
+    kind = "serie" if is_tv else "film"
+    display_title = title or kind
+    for admin_doc in admins:
+        if admin_doc.get("username") == requester.get("username"):
+            continue
+        payload = MessageCreate(
+            subject="Nyt ønske om visning i Voldby BIO",
+            body=f'{requester.get("username")} ønsker at se "{display_title}" ({kind}) i Voldby BIO.',
+            recipient_user_id=str(admin_doc["_id"]),
+        )
+        try:
+            await send(db, payload, requester)
+        except Exception:
+            pass
+
+
+async def notify_screening_request_declined(
+    db: AsyncIOMotorDatabase,
+    request_doc: dict,
+    admin: dict,
+    title: str | None,
+    poster_url: str | None = None,
+) -> None:
+    """Feature #202 — Jan: "svar skal sendes return hvis adm lave
+    forandring for de ønsker/forvisninger". Flere brugere kan stå bag samme
+    forvisnings-ønske (feature #62/#85s delte requested_by-liste) — hver af
+    dem får deres egen besked, samme "én send() pr. modtager"-mønster som de
+    fire notify_wishlist_*-funktioner ovenfor bruger for én bruger ad
+    gangen. Feature #204 — `poster_url` er valgfri, da `request_doc` (det
+    rå dokument) ikke selv bærer den; kalderen (screening_service) sender
+    den allerede-opslåede værdi fra den resolvede model."""
+    requesters = request_doc.get("requested_by", [])
+    if not requesters:
+        return
+    display_title = title or "titlen"
+    body = f'Dit ønske om at se "{display_title}" i Voldby BIO er desværre ikke blevet til noget.'
+    for entry in requesters:
+        username = entry.get("username")
+        if not username or username == admin.get("username"):
+            continue
+        requester = await user_repository.find_by_username_normalized(db, username.lower())
+        if requester is None:
+            continue
+        payload = MessageCreate(
+            subject=f'Dit ønske om at se "{display_title}" blev afvist',
+            body=body,
+            recipient_user_id=str(requester["_id"]),
+        )
+        try:
+            await send(
+                db,
+                payload,
+                admin,
+                email_html=email_templates.render_notification_email(
+                    headline="Om din forvisnings-anmodning",
+                    tagline=f'Visningen af "{display_title}" blev desværre ikke til noget denne gang.',
+                    body_text=body,
+                    poster_url=poster_url,
+                    accent="muted",
+                ),
+            )
+        except Exception:
+            pass
+
+
+async def notify_screening_request_scheduled(
+    db: AsyncIOMotorDatabase,
+    request_doc: dict,
+    admin: dict,
+    title: str | None,
+    scheduled_at: datetime | None,
+    poster_url: str | None = None,
+) -> None:
+    """Feature #202 — modparten til notify_screening_request_declined
+    ovenfor: ønsket blev til en rigtig, planlagt visning i stedet for
+    afvist. Feature #204 — se den identiske note om `poster_url` ovenfor."""
+    requesters = request_doc.get("requested_by", [])
+    if not requesters:
+        return
+    display_title = title or "titlen"
+    when = f" d. {scheduled_at.strftime('%d/%m/%Y kl. %H:%M')}" if scheduled_at else ""
+    body = f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}. 🎬'
+    for entry in requesters:
+        username = entry.get("username")
+        if not username or username == admin.get("username"):
+            continue
+        requester = await user_repository.find_by_username_normalized(db, username.lower())
+        if requester is None:
+            continue
+        payload = MessageCreate(
+            subject=f'Din ønskede visning "{display_title}" er planlagt!',
+            body=body,
+            recipient_user_id=str(requester["_id"]),
+        )
+        try:
+            await send(
+                db,
+                payload,
+                admin,
+                email_html=email_templates.render_notification_email(
+                    headline="Biografen venter!",
+                    tagline=f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}.',
+                    body_text=body,
+                    poster_url=poster_url,
+                    accent="gold",
+                ),
+            )
+        except Exception:
+            pass
+
+
+async def notify_poll_closed(
+    db: AsyncIOMotorDatabase, poll_document: dict, poll_model: Poll, admin: dict
+) -> None:
+    """Feature #162 — svar til hver bruger der stemte, når admin lukker
+    afstemningen. Samme "én send() pr. modtager"-mønster som de øvrige
+    svar-funktioner ovenfor. Ét enkelt topscorer-resultat får en fest-tone
+    med vinderens poster; et uafgjort resultat får samme rav-farve (det er
+    stadig gode nyheder, bare ikke endeligt afgjort endnu) uden noget
+    bestemt poster-billede."""
+    voters = {vote["username"] for vote in poll_document.get("votes", [])} - {admin.get("username")}
+    if not voters:
+        return
+
+    winners = [poll_model.candidates[i] for i in poll_model.winner_indices]
+    if len(winners) == 1:
+        winner = winners[0]
+        display_title = winner.title or "titlen"
+        tagline = f'"{display_title}" vandt afstemningen!'
+        poster_url = winner.poster_url
+    else:
+        titles = ", ".join(w.title or "en titel" for w in winners)
+        tagline = f"Uafgjort mellem {titles} — admin vælger snart hvilken der bliver til noget."
+        poster_url = None
+    body = tagline
+
+    for username in voters:
+        voter = await user_repository.find_by_username_normalized(db, username.lower())
+        if voter is None:
+            continue
+        payload = MessageCreate(
+            subject="Afstemningen er afgjort",
+            body=body,
+            recipient_user_id=str(voter["_id"]),
+        )
+        try:
+            await send(
+                db,
+                payload,
+                admin,
+                email_html=email_templates.render_notification_email(
+                    headline="Afstemningen er afgjort!",
+                    tagline=tagline,
+                    body_text=body,
+                    poster_url=poster_url,
+                    accent="gold",
+                ),
+            )
+        except Exception:
+            pass
+
+
+async def notify_poll_scheduled(
+    db: AsyncIOMotorDatabase,
+    poll_document: dict,
+    winner: PollCandidateResult,
+    admin: dict,
+    scheduled_at: datetime | None,
+) -> None:
+    """Feature #162 — modparten til notify_poll_closed: den vindende titel
+    er nu rent faktisk programsat (screening_service.create_screening med
+    `poll_id` sat)."""
+    voters = {vote["username"] for vote in poll_document.get("votes", [])} - {admin.get("username")}
+    if not voters:
+        return
+
+    display_title = winner.title or "titlen"
+    when = f" d. {scheduled_at.strftime('%d/%m/%Y kl. %H:%M')}" if scheduled_at else ""
+    body = f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}. 🎬'
+
+    for username in voters:
+        voter = await user_repository.find_by_username_normalized(db, username.lower())
+        if voter is None:
+            continue
+        payload = MessageCreate(
+            subject=f'Afstemningens vinder "{display_title}" er planlagt!',
+            body=body,
+            recipient_user_id=str(voter["_id"]),
+        )
+        try:
+            await send(
+                db,
+                payload,
+                admin,
+                email_html=email_templates.render_notification_email(
+                    headline="Biografen venter!",
+                    tagline=f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}.',
+                    body_text=body,
+                    poster_url=winner.poster_url,
+                    accent="gold",
+                ),
+            )
+        except Exception:
+            pass
 
 
 async def list_sent(db: AsyncIOMotorDatabase) -> list[Message]:

@@ -1445,99 +1445,134 @@ export function SystemSettingsSection() {
   useEffect(load, []);
 
   return (
-    <div className="card settings-section">
-      <h2>{t("sys.heading")}</h2>
-      <p className="muted">{t("sys.description")}</p>
+    <>
+      <div className="card settings-section">
+        <h2>{t("sys.heading")}</h2>
+        <p className="muted">{t("sys.description")}</p>
 
-      {loadStatus === "loading" && <p className="muted">{t("common.loading")}</p>}
-      {loadStatus === "error" && (
-        <div className="banner banner-error">{t("sys.statusError")}</div>
-      )}
+        {loadStatus === "loading" && <p className="muted">{t("common.loading")}</p>}
+        {loadStatus === "error" && (
+          <div className="banner banner-error">{t("sys.statusError")}</div>
+        )}
+      </div>
 
       {loadStatus === "ready" && statusData && (
         <>
-          <PrimaryBarcodeSourceRow
-            currentValue={statusData.primary_barcode_source}
-            onSaved={load}
-          />
-          <ApiKeyRow
-            label="TMDb API-token"
-            field="tmdb_api_token"
-            status={statusData.tmdb_api_token}
-            onSaved={load}
-          />
-          <ApiKeyRow
-            label="Discogs-token"
-            field="discogs_token"
-            status={statusData.discogs_token}
-            onSaved={load}
-          />
-          <ApiKeyRow
-            label="UPCDatabase-token"
-            field="upcdatabase_token"
-            status={statusData.upcdatabase_token}
-            onSaved={load}
-          />
-          <ApiKeyRow
-            label="EAN-Search.org-token"
-            field="ean_search_api_key"
-            status={statusData.ean_search_api_key}
-            onSaved={load}
-          />
-          <ApiKeyRow
-            label={t("sys.omdbKey")}
-            field="omdb_api_key"
-            status={statusData.omdb_api_key}
-            onSaved={load}
-          />
-          <PlainSettingRow
-            label={t("sys.plexServerUrl")}
-            field="plex_server_url"
-            hint={t("sys.plexServerUrlHint")}
-            currentValue={statusData.plex_server_url}
-            onSaved={load}
-          />
-          <ApiKeyRow
-            label={t("sys.plexToken")}
-            field="plex_token"
-            status={statusData.plex_token}
-            onSaved={load}
-            testable={false}
-          />
-          <PlexShieldSettingsRow
-            currentValue={statusData.plex_shield_client_identifier}
-            onSaved={load}
-          />
-          <PlainSettingRow
-            label={t("sys.anthemHost")}
-            field="anthem_host"
-            hint={t("sys.anthemHostHint")}
-            currentValue={statusData.anthem_host}
-            onSaved={load}
-          />
-          <PlainSettingRow
-            label={t("sys.anthemPort")}
-            field="anthem_port"
-            hint={t("sys.anthemPortHint")}
-            currentValue={statusData.anthem_port}
-            onSaved={load}
-          />
-          <ApiKeyRow
-            label={t("sys.resendKey")}
-            field="resend_api_key"
-            status={statusData.resend_api_key}
-            onSaved={load}
-          />
-          <PlainSettingRow
-            label={t("sys.emailFromAddress")}
-            field="email_from_address"
-            hint={t("sys.emailFromAddressHint")}
-            currentValue={statusData.email_from_address}
-            onSaved={load}
-          />
+          {/* Feature #197-opfølgning (Jan: "få lige orginaseret den config
+              side at det hele ikke kommer i en lang smøre") — de ~13 rækker
+              stod tidligere i ét langt, ugrupperet kort. Opdelt i selvstændige
+              kort efter FORMÅL (samme mønster resten af Indstillinger-siden
+              allerede bruger — hvert kort er sin egen afgrænsede ting), ikke
+              alfabetisk eller efter hvornår nøglen blev tilføjet. */}
+          <div className="card settings-section">
+            <h2>{t("sys.groupMetadata")}</h2>
+            <ApiKeyRow
+              label="TMDb API-token"
+              field="tmdb_api_token"
+              status={statusData.tmdb_api_token}
+              onSaved={load}
+            />
+          </div>
+
+          <div className="card settings-section">
+            <h2>{t("sys.groupBarcode")}</h2>
+            <p className="muted">{t("sys.groupBarcodeDescription")}</p>
+            <PrimaryBarcodeSourceRow
+              currentValue={statusData.primary_barcode_source}
+              onSaved={load}
+            />
+            <ApiKeyRow
+              label="Discogs-token"
+              field="discogs_token"
+              status={statusData.discogs_token}
+              onSaved={load}
+            />
+            <ApiKeyRow
+              label="UPCDatabase-token"
+              field="upcdatabase_token"
+              status={statusData.upcdatabase_token}
+              onSaved={load}
+            />
+            <ApiKeyRow
+              label="EAN-Search.org-token"
+              field="ean_search_api_key"
+              status={statusData.ean_search_api_key}
+              onSaved={load}
+            />
+          </div>
+
+          <div className="card settings-section">
+            <h2>{t("sys.groupRatings")}</h2>
+            <ApiKeyRow
+              label={t("sys.omdbKey")}
+              field="omdb_api_key"
+              status={statusData.omdb_api_key}
+              onSaved={load}
+            />
+          </div>
+
+          <div className="card settings-section">
+            <h2>{t("sys.groupPlex")}</h2>
+            <PlainSettingRow
+              label={t("sys.plexServerUrl")}
+              field="plex_server_url"
+              hint={t("sys.plexServerUrlHint")}
+              currentValue={statusData.plex_server_url}
+              onSaved={load}
+            />
+            <ApiKeyRow
+              label={t("sys.plexToken")}
+              field="plex_token"
+              status={statusData.plex_token}
+              onSaved={load}
+              testable={false}
+            />
+            <PlexShieldSettingsRow
+              currentValue={statusData.plex_shield_client_identifier}
+              onSaved={load}
+            />
+          </div>
+
+          <div className="card settings-section">
+            <h2>{t("sys.groupAnthem")}</h2>
+            <PlainSettingRow
+              label={t("sys.anthemHost")}
+              field="anthem_host"
+              hint={t("sys.anthemHostHint")}
+              currentValue={statusData.anthem_host}
+              onSaved={load}
+            />
+            <PlainSettingRow
+              label={t("sys.anthemPort")}
+              field="anthem_port"
+              hint={t("sys.anthemPortHint")}
+              currentValue={statusData.anthem_port}
+              onSaved={load}
+            />
+            <AnthemTestConnectionRow />
+          </div>
+
+          <div className="card settings-section">
+            <h2>{t("sys.groupEmail")}</h2>
+            <p className="muted">{t("sys.groupEmailDescription")}</p>
+            <ApiKeyRow
+              label={t("sys.resendKey")}
+              field="resend_api_key"
+              status={statusData.resend_api_key}
+              onSaved={load}
+            />
+            <PlainSettingRow
+              label={t("sys.emailFromAddress")}
+              field="email_from_address"
+              hint={t("sys.emailFromAddressHint")}
+              currentValue={statusData.email_from_address}
+              onSaved={load}
+            />
+            <SendTestEmailRow />
+          </div>
         </>
       )}
-    </div>
+    </>
   );
 }
 
@@ -2463,6 +2498,98 @@ function ApiKeyRow({ label, field, status, onSaved, testable = true }) {
   );
 }
 
+// Feature #212 (Jan: "kan vi ikke lige få en test funktion ind i api config
+// for AVM70 også sådan at vi kan testet den på samme hvilkor som api
+// keys") — anthem_host/anthem_port er PLAIN felter (PlainSettingRow, ikke
+// ApiKeyRow, da IP/port ikke er en hemmelighed), som ikke selv har noget
+// testbegreb. I stedet for at gøre PlainSettingRow generisk testbar for et
+// behov kun Anthem har lige nu, er dette en lille, dedikeret række der
+// genbruger samme "Test forbindelse"-knap/banner-mønster som ApiKeyRow.
+function AnthemTestConnectionRow() {
+  const t = useT();
+  const [testStatus, setTestStatus] = useState("idle");
+  const [testResult, setTestResult] = useState(null);
+
+  async function testConnection() {
+    setTestStatus("testing");
+    setTestResult(null);
+    try {
+      const result = await api.testSystemSetting("anthem_host");
+      setTestResult(result);
+    } catch (err) {
+      setTestResult({ ok: false, message: err.message });
+    } finally {
+      setTestStatus("idle");
+    }
+  }
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      {testResult && (
+        <div className={`banner ${testResult.ok ? "banner-info" : "banner-error"}`}>
+          {testResult.ok ? "✓" : "✗"} {testResult.message}
+        </div>
+      )}
+      <button type="button" className="btn" onClick={testConnection} disabled={testStatus === "testing"}>
+        {t(testStatus === "testing" ? "sys.testing" : "sys.testConnection")}
+      </button>
+    </div>
+  );
+}
+
+// Feature #199 (Jan: "lave også en email test funktion") — ægte ende-til-
+// ende-afsendelse, adskilt fra Resend-rækkens "Test forbindelse"-knap
+// (ApiKeyRow, testable=true ovenfor), som kun bekræfter selve nøglens
+// gyldighed — for en "sending access"-nøgle (Resends anbefalede, mindst
+// privilegerede type) kan den slet ikke bekræfte mere end det. Egen
+// modtager-adresse i stedet for automatisk at bruge admins egen e-mail, så
+// den kan bruges før man overhovedet har sat en selv.
+export function SendTestEmailRow() {
+  const t = useT();
+  const [to, setTo] = useState("");
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState(null);
+
+  async function submit(event) {
+    event.preventDefault();
+    setSending(true);
+    setResult(null);
+    try {
+      const outcome = await api.sendTestEmail(to);
+      setResult(outcome);
+    } catch (err) {
+      setResult({ ok: false, message: err.message });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <form className="serial-config-form" style={{ marginTop: 16 }} onSubmit={submit}>
+      <label>
+        {t("sys.testEmailTo")}
+        <input
+          type="email"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          placeholder={t("account.emailPlaceholder")}
+          required
+        />
+      </label>
+
+      {result && (
+        <div className={`banner ${result.ok ? "banner-info" : "banner-error"}`}>
+          {result.ok ? "✓" : "✗"} {result.message}
+        </div>
+      )}
+
+      <button type="submit" className="btn" disabled={sending || !to}>
+        {t(sending ? "sys.testEmailSending" : "sys.testEmailSend")}
+      </button>
+    </form>
+  );
+}
+
 // Feature #154 — CPU/RAM/disk/tjeneste-status + genstart, under Drift-fanen.
 export function formatUptime(seconds) {
   if (seconds == null) return "—";
@@ -2847,6 +2974,12 @@ export function UsersSection({ currentUserId }) {
   // ved næste nulstilling, sideskift eller genindlæsning.
   const [resetResult, setResetResult] = useState(null);
   const [passwordCopied, setPasswordCopied] = useState(false);
+  // Feature #206 (#197's afgrænsede "senere"-punkt: "admin redigerer en
+  // ANDEN brugers e-mail") — egen lille redigerings-tilstand pr. række,
+  // adskilt fra `updatingId` (som dækker rolle/status/nulstilling), da
+  // e-mail-redigering har sin egen inputværdi at holde styr på.
+  const [editingEmailId, setEditingEmailId] = useState(null);
+  const [emailDraft, setEmailDraft] = useState("");
   // BUGS.md #74 — banneret (nedenfor) renderes øverst i sektionen, over
   // bruger-listen. Med mange brugere er admin typisk scrollet langt ned for
   // overhovedet at kunne se/klikke den række der udløste handlingen, så
@@ -2945,6 +3078,32 @@ export function UsersSection({ currentUserId }) {
       .catch(() => {});
   }
 
+  function startEditEmail(targetUser) {
+    setEditingEmailId(targetUser.id);
+    setEmailDraft(targetUser.email ?? "");
+    setError(null);
+  }
+
+  function cancelEditEmail() {
+    setEditingEmailId(null);
+    setEmailDraft("");
+  }
+
+  async function saveEmail(targetUser) {
+    setUpdatingId(targetUser.id);
+    setError(null);
+    try {
+      await api.updateMyEmail(targetUser.id, emailDraft.trim() || null);
+      setEditingEmailId(null);
+      setEmailDraft("");
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
   async function deleteUser(targetUser) {
     if (!window.confirm(t("users.confirmDelete", { username: targetUser.username }))) {
       return;
@@ -3018,6 +3177,38 @@ export function UsersSection({ currentUserId }) {
                 {u.full_name && <span className="muted"> · {u.full_name}</span>}
                 {u.id === currentUserId && <span className="muted">{t("users.you")}</span>}
               </span>
+              {/* Feature #206 — admin kan redigere en ANDEN brugers e-mail
+                  (backend understøtter det allerede, self-eller-admin, se
+                  auth_service._assert_can_edit_email fra feature #197). */}
+              {editingEmailId === u.id ? (
+                <span className="user-row-email-edit">
+                  <input
+                    type="email"
+                    value={emailDraft}
+                    onChange={(e) => setEmailDraft(e.target.value)}
+                    placeholder={t("account.emailPlaceholder")}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={updatingId === u.id}
+                    onClick={() => saveEmail(u)}
+                  >
+                    {t("common.save")}
+                  </button>
+                  <button type="button" className="btn" onClick={cancelEditEmail}>
+                    {t("common.cancel")}
+                  </button>
+                </span>
+              ) : (
+                <span className="muted user-row-email">
+                  {u.email || t("users.noEmail")}{" "}
+                  <button type="button" className="auth-link" onClick={() => startEditEmail(u)}>
+                    {t("users.editEmail")}
+                  </button>
+                </span>
+              )}
               {u.status === "pending" && (
                 <span className="role-badge">{t("users.statusPending")}</span>
               )}

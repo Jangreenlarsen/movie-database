@@ -10,8 +10,14 @@ export default function Login({ onAuthenticated, language, onLanguageChange }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  // Feature #205 — selvbetjent "glemt adgangskode", tredje tilstand ved
+  // siden af login/register. Egen lille e-mail-feltværdi og bekræftelses-
+  // besked, adskilt fra login-formularens felter ovenfor.
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotMessage, setForgotMessage] = useState(null);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -22,9 +28,26 @@ export default function Login({ onAuthenticated, language, onLanguageChange }) {
         mode === "login"
           ? await api.login(username, password)
           // Feature #97 — sprogvalget følger med, så en ny konto starter på
-          // det sprog brugeren allerede har valgt her. Feature #140 — fuldt navn.
-          : await api.register(username, password, language, fullName);
+          // det sprog brugeren allerede har valgt her. Feature #140 — fuldt
+          // navn. Feature #199-opfølgning — valgfri e-mail, så man ikke
+          // skal huske at sætte den bagefter i Indstillinger → Konto.
+          : await api.register(username, password, language, fullName, email);
       onAuthenticated(user);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleForgotPassword(event) {
+    event.preventDefault();
+    setError(null);
+    setForgotMessage(null);
+    setSubmitting(true);
+    try {
+      const result = await api.forgotPassword(forgotEmail);
+      setForgotMessage(result.message);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -50,6 +73,31 @@ export default function Login({ onAuthenticated, language, onLanguageChange }) {
           )}
         </div>
 
+        {/* Feature #205 — egen lille formular, adskilt fra login/register
+            ovenfor (ingen brugernavn/adgangskode-felter giver mening her). */}
+        {mode === "forgot" ? (
+          <form className="auth-form" onSubmit={handleForgotPassword}>
+            <p className="auth-hint">{t("auth.forgotPasswordIntro")}</p>
+            <label>
+              {t("account.email")}
+              <input
+                type="email"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                autoComplete="email"
+                placeholder={t("account.emailPlaceholder")}
+                required
+              />
+            </label>
+
+            {error && <div className="banner banner-error">{error}</div>}
+            {forgotMessage && <div className="banner banner-info">{forgotMessage}</div>}
+
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? t("auth.submitting") : t("auth.sendResetLink")}
+            </button>
+          </form>
+        ) : (
         <form className="auth-form" onSubmit={handleSubmit}>
           {/* Feature #140 — obligatorisk fuldt navn ved oprettelse, så en admin
               kan se hvem der beder om adgang. Vises kun i opret-tilstand. */}
@@ -61,6 +109,27 @@ export default function Login({ onAuthenticated, language, onLanguageChange }) {
                 onChange={(e) => setFullName(e.target.value)}
                 autoComplete="name"
                 placeholder={t("auth.fullNamePlaceholder")}
+                required
+              />
+            </label>
+          )}
+          {/* Feature #199-opfølgning (Jan: "opret ny user tager ikke en
+              email adr., skal vi lige have den del af system til at gøre",
+              fulgt af "e-mail-felt skal være opligatorisk") — `required`
+              her, samme håndhævelses-niveau som fuldt navn ovenfor: kun i
+              selve FORMULAREN. Backend-modellen (UserRegister.email) holder
+              bevidst feltet teknisk valgfrit — Jans eget valg, for ikke at
+              bryde den eksisterende API-kontrakt/testsuite, som stort set
+              hele vejen igennem registrerer test-brugere uden e-mail. */}
+          {mode === "register" && (
+            <label>
+              {t("account.email")}
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                placeholder={t("account.emailPlaceholder")}
                 required
               />
             </label>
@@ -103,15 +172,26 @@ export default function Login({ onAuthenticated, language, onLanguageChange }) {
                 : t("auth.register")}
           </button>
         </form>
+        )}
 
-        {/* Feature #171 — intet e-mail-baseret "glemt adgangskode"-system
-            findes; kun en admin kan nulstille (Jan eller Lis, Jans eget
-            ønske). Vises kun ved login — ved oprettelse er der intet at
-            genskabe endnu. */}
-        {mode === "login" && <p className="auth-hint">{t("auth.passwordRecoveryHint")}</p>}
+        {/* Feature #205 — erstatter #171's statiske "kontakt Jan/Lis"-tekst
+            med et rigtigt selvbetjent link, nu hvor e-mail-infrastrukturen
+            (#197) findes. Vises kun ved login — hverken ved oprettelse eller
+            i selve "glemt adgangskode"-formularen giver den mening. */}
+        {mode === "login" && (
+          <p className="auth-hint">
+            <button type="button" className="auth-link" onClick={() => setMode("forgot")}>
+              {t("auth.forgotPasswordLink")}
+            </button>
+          </p>
+        )}
 
         <div className="auth-switch">
-          {mode === "login" ? (
+          {mode === "forgot" ? (
+            <button type="button" onClick={() => setMode("login")}>
+              {t("auth.backToLogin")}
+            </button>
+          ) : mode === "login" ? (
             <>
               {t("auth.noAccount")}{" "}
               <button type="button" onClick={() => setMode("register")}>

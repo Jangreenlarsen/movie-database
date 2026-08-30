@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from app.models.scan import BarcodeSource
 
@@ -51,7 +51,9 @@ class ApiKeyStatus(BaseModel):
 
 # De eneste nøgler der har et rigtigt eksternt testkald bag sig (feature #75)
 # — Plex har sin egen tilgængeligheds-tjek pr. film og er bevidst udeladt
-# her, for ikke at duplikere den mekanisme.
+# her, for ikke at duplikere den mekanisme. `anthem_host` (feature #212) er
+# ikke en hemmelighed (samme som `plex_server_url`), men "test forbindelse"
+# giver lige så god mening for en LAN-enhedsadresse som for en API-nøgle.
 TestableApiKey = Literal[
     "tmdb_api_token",
     "discogs_token",
@@ -59,12 +61,21 @@ TestableApiKey = Literal[
     "ean_search_api_key",
     "omdb_api_key",
     "resend_api_key",
+    "anthem_host",
 ]
 
 
 class ApiKeyTestResult(BaseModel):
     ok: bool
     message: str
+
+
+class TestEmailRequest(BaseModel):
+    """Feature #199 — modtageradresse for en ægte testmail, adskilt fra
+    `test_connection` ovenfor (som kun bekræfter nøglens gyldighed, ikke at
+    en mail rent faktisk kan afleveres end-to-end)."""
+
+    to: EmailStr
 
 
 class SystemSettingsStatus(BaseModel):

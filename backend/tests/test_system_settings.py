@@ -301,3 +301,110 @@ async def test_test_connection_dispatches_to_the_email_client(client, monkeypatc
     response = await client.post("/api/settings/system/test/resend_api_key")
     assert response.status_code == 200
     assert response.json() == {"ok": True, "message": "Virker (fuld adgang)"}
+
+
+# Feature #212 — "Test forbindelse" for Anthem AVM70 (Jan: "kan vi ikke lige
+# få en test funktion ind i api config for AVM70 også sådan at vi kan
+# testet den på samme hvilkor som api keys"). anthem_host er en plain
+# (ikke-hemmelig) nøgle, men dispatches på nøjagtig samme måde som de
+# øvrige testbare nøgler ovenfor.
+
+
+async def test_test_connection_dispatches_to_anthem_service(client, monkeypatch):
+    from app.services import anthem_service
+
+    async def fake_test_connection():
+        return True, "Forbundet til Anthem-enheden på 192.168.1.60:14999"
+
+    monkeypatch.setattr(anthem_service, "test_connection", fake_test_connection)
+
+    response = await client.post("/api/settings/system/test/anthem_host")
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "message": "Forbundet til Anthem-enheden på 192.168.1.60:14999"}
+
+
+# Feature #199 — ægte ende-til-ende testmail, adskilt fra "Test forbindelse"
+# ovenfor.
+
+
+async def test_send_test_email_calls_the_client_with_the_given_address(client, monkeypatch):
+    from app.integrations import email_client
+
+    monkeypatch.setattr(settings, "resend_api_key", "test-key")
+    monkeypatch.setattr(settings, "email_from_address", "Voldby BIO <noreply@laces.dk>")
+
+    calls = []
+
+    async def fake_send_email(to, subject, text):
+        calls.append((to, subject, text))
+        return True
+
+    monkeypatch.setattr(email_client, "send_email", fake_send_email)
+
+    response = await client.post("/api/settings/system/test-email", json={"to": "jan@example.com"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    assert calls[0][0] == "jan@example.com"
+
+
+async def test_send_test_email_reports_failure_when_resend_rejects_it(client, monkeypatch):
+    from app.integrations import email_client
+
+    monkeypatch.setattr(settings, "resend_api_key", "test-key")
+    monkeypatch.setattr(settings, "email_from_address", "Voldby BIO <noreply@laces.dk>")
+
+    async def fake_send_email(to, subject, text):
+        return False
+
+    monkeypatch.setattr(email_client, "send_email", fake_send_email)
+
+    response = await client.post("/api/settings/system/test-email", json={"to": "jan@example.com"})
+    assert response.status_code == 200
+    assert response.json()["ok"] is False
+
+
+async def test_send_test_email_reports_rate_limit_without_raising(client, monkeypatch):
+    from app.core.errors import EmailRateLimitedError
+    from app.integrations import email_client
+
+    monkeypatch.setattr(settings, "resend_api_key", "test-key")
+    monkeypatch.setattr(settings, "email_from_address", "Voldby BIO <noreply@laces.dk>")
+
+    async def fake_send_email(to, subject, text):
+        raise EmailRateLimitedError()
+
+    monkeypatch.setattr(email_client, "send_email", fake_send_email)
+
+    response = await client.post("/api/settings/system/test-email", json={"to": "jan@example.com"})
+    assert response.status_code == 200
+    assert response.json()["ok"] is False
+
+
+async def test_send_test_email_fails_cleanly_when_resend_is_not_configured(client, monkeypatch):
+    monkeypatch.setattr(settings, "resend_api_key", "")
+    monkeypatch.setattr(settings, "email_from_address", "")
+
+    response = await client.post("/api/settings/system/test-email", json={"to": "jan@example.com"})
+    assert response.status_code == 200
+    assert response.json()["ok"] is False
+
+
+async def test_send_test_email_rejects_a_malformed_address(client, monkeypatch):
+    monkeypatch.setattr(settings, "resend_api_key", "test-key")
+    monkeypatch.setattr(settings, "email_from_address", "Voldby BIO <noreply@laces.dk>")
+
+    response = await client.post("/api/settings/system/test-email", json={"to": "not-an-email"})
+    assert response.status_code == 422
+
+
+async def test_send_test_email_requires_admin(client):
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as standard_client:
+        await standard_client.post(
+            "/api/auth/register", json={"username": "notadmin4", "password": "testpassword123"}
+        )
+        response = await standard_client.post(
+            "/api/settings/system/test-email", json={"to": "jan@example.com"}
+        )
+        assert response.status_code == 403

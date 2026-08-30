@@ -1,6 +1,8 @@
+import hashlib
+import logging
 import secrets
 import string
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
@@ -9,13 +11,16 @@ from app.core.config import settings
 from app.core.errors import (
     CannotTargetSelfError,
     InvalidCredentialsError,
+    InvalidResetTokenError,
     InvalidUserStatusTransitionError,
     LastAdminError,
     NotAuthorizedError,
+    PasswordResetUnavailableError,
     UserNotFoundError,
     UsernameTakenError,
 )
 from app.core.security import hash_password, verify_password
+from app.integrations import email_client, email_templates
 from app.models.user import (
     PasswordChange,
     User,
@@ -27,6 +32,13 @@ from app.models.user import (
     UserStatus,
 )
 from app.repositories import user_repository
+
+logger = logging.getLogger("moviedb")
+
+# Feature #205 — 1 time er rigelig tid til at nå at klikke et link i sin
+# indbakke, men kort nok til at et gammelt, ubrugt token i en backup/logfil
+# ikke forbliver reelt brugbart ret længe.
+RESET_TOKEN_TTL = timedelta(hours=1)
 
 
 def to_user_model(document: dict) -> User:
@@ -76,6 +88,9 @@ async def register(db: AsyncIOMotorDatabase, payload: UserRegister) -> User:
         "username_normalized": _normalize_username(payload.username),
         # Feature #140 — trimmet/None-normaliseret af UserRegister.full_name_clean.
         "full_name": payload.full_name,
+        # Feature #199-opfølgning — samme trim/tom-til-None-normalisering,
+        # se UserRegister.email_blank_to_none.
+        "email": payload.email,
         "password_hash": hash_password(payload.password),
         "role": UserRole.ADMIN if is_first_user else UserRole.GUEST,
         "status": UserStatus.ACTIVE if is_first_user else UserStatus.PENDING,
@@ -188,16 +203,21 @@ def _generate_temporary_password() -> str:
 
 async def admin_reset_password(db: AsyncIOMotorDatabase, user_id: str) -> tuple[str, str]:
     """Feature #171 — en admin nulstiller en anden brugers adgangskode til
-    en tilfældig, midlertidig værdi (ingen e-mail-baseret "glemt adgangskode"
-    findes, jf. Jans ønske) og relæer den til brugeren selv, uden om appen
-    (telefon, chat, personligt). Returnerer (username, ny_adgangskode) —
-    adgangskoden gemmes/logges aldrig i klartekst noget sted efter dette
+    en tilfældig, midlertidig værdi og relæer den til brugeren selv, uden om
+    appen (telefon, chat, personligt). Returnerer (username, ny_adgangskode)
+    — adgangskoden gemmes/logges aldrig i klartekst noget sted efter dette
     kald returnerer (heller ikke i audit-loggen, kun AT det skete).
 
     Feature #172 (Jans udtrykkelige krav, "det skal være udfravigeligt") —
     sætter samtidig must_change_password, så den midlertidige kode kun kan
     bruges til selve login'et: `api.deps.get_current_user` blokerer alt
-    andet indtil brugeren selv har sat en ny adgangskode."""
+    andet indtil brugeren selv har sat en ny adgangskode.
+
+    Feature #205 tilføjede en selvbetjent e-mail-baseret vej
+    (`request_password_reset`/`reset_password_with_token` nedenfor) ved
+    siden af denne — ikke i stedet for. Denne forbliver den ENESTE vej for
+    en konto der slet ikke har en e-mail sat (feltet er stadig valgfrit,
+    feature #200)."""
     target = await user_repository.find_by_id(db, user_id)
     if target is None:
         raise UserNotFoundError(user_id)
@@ -206,6 +226,119 @@ async def admin_reset_password(db: AsyncIOMotorDatabase, user_id: str) -> tuple[
         db, user_id, hash_password(new_password), must_change_password=True
     )
     return target["username"], new_password
+
+
+def _hash_reset_token(token: str) -> str:
+    """Et nulstillings-token er 256 bit kryptografisk tilfældighed (aldrig
+    et menneske-valgt, lav-entropi hemmelighed som en adgangskode), så en
+    hurtig hash er både tilstrækkelig og korrekt her — `hash_password`s
+    bevidst LANGSOMME bcrypt findes for at forsvare mod offline-gætning af
+    netop lav-entropi hemmeligheder, en trussel der ikke findes for et
+    token ingen nogensinde kunne gætte sig til i første omgang."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def resolve_reset_base_url(origin_header: str | None, fallback_base_url: str) -> str:
+    """Feature #205 — bygger nulstillings-linkets domæne ud fra requestens
+    egen `Origin`-header, valideret mod den ALLEREDE eksisterende
+    `cors_origin_list` (samme liste CORS-middlewaren selv stoler på), i
+    stedet for et hardkodet domæne. Appen er bevidst nåbar via flere
+    forskellige hostnavne på samme tid (movie.ll.lan/10.1.130.10/
+    movie.laces.dk, se DEPLOYMENT.md), og et hardkodet domæne ville enten
+    bryde de to andre eller kræve en ny, dupliceret konfigurationsnøgle.
+
+    Uden validering kunne en angriber selv sætte `Origin` til et vilkårligt
+    domæne og få systemet til at maile et EGTE, gyldigt reset-link til et
+    offer med det domæne i linket — offeret ville se en tilsyneladende
+    legitim automatisk mail og kunne narres til at klikke, hvorefter
+    angriberens side kunne opsnappe token'et fra URL'en og selv fuldføre
+    nulstillingen (kontoovertagelse). Et `Origin` der ikke matcher noget
+    kendt værtsnavn falder derfor tilbage til det første konfigurerede
+    (aldrig til den ubekræftede værdi selv)."""
+    if origin_header and origin_header in settings.cors_origin_list:
+        return origin_header
+    # BUGS.md #92 — et Origin der ikke matcher noget kendt værtsnavn er ikke
+    # nødvendigvis et angreb: det sker også helt legitimt hvis en gyldig
+    # adgangsvej (fx movie.laces.dk) ganske enkelt mangler i CORS_ORIGINS.
+    # Fallback'en er stadig sikker (aldrig den ubekræftede værdi selv), men
+    # giver et forkert link i det tilfælde — log derfor tydeligt, så en
+    # manglende CORS_ORIGINS-post opdages i logs i stedet for først når en
+    # bruger rapporterer et forkert nulstillings-link.
+    logger.warning(
+        "Password-reset: Origin '%s' matcher ingen CORS_ORIGINS-post — falder tilbage til '%s'",
+        origin_header,
+        settings.cors_origin_list[0] if settings.cors_origin_list else fallback_base_url.rstrip("/"),
+    )
+    if settings.cors_origin_list:
+        return settings.cors_origin_list[0]
+    return fallback_base_url.rstrip("/")
+
+
+async def request_password_reset(db: AsyncIOMotorDatabase, email: str, base_url: str) -> None:
+    """Feature #205 — Jan: "vi skal have selvbetjent password reset nu hvor
+    vi har e-mail-infrastruktur". Svaret er BEVIDST identisk uanset om
+    `email` rent faktisk findes, tilhører en konto uden e-mail sat, eller en
+    konto der ikke kan logge ind (pending/rejected/disabled) — enhver
+    forskel i svaret ville lade en angriber bruge endpointet til at afsløre
+    hvilke e-mailadresser der er registreret i systemet (kontoenumerering).
+    Rejser kun `PasswordResetUnavailableError` hvis Resend slet ikke er
+    konfigureret SYSTEMET OVER (ikke pr. konto) — det er sikkert at sige
+    ærligt, det afslører intet om den konkrete e-mailadresse."""
+    if not settings.resend_api_key or not settings.email_from_address:
+        raise PasswordResetUnavailableError()
+
+    user = await user_repository.find_by_email(db, email)
+    if user is None or user.get("status") != UserStatus.ACTIVE.value:
+        return
+
+    token = secrets.token_urlsafe(32)
+    await user_repository.set_reset_token(
+        db, str(user["_id"]), _hash_reset_token(token), datetime.now(timezone.utc) + RESET_TOKEN_TTL
+    )
+
+    reset_url = f"{base_url}/reset-password?token={token}"
+    html = email_templates.render_notification_email(
+        headline="Nulstil din adgangskode",
+        tagline="Du (eller nogen der kender din e-mail) har bedt om at nulstille adgangskoden til Filmportalen.",
+        body_text=(
+            "Klik knappen nedenfor for at vælge en ny adgangskode. Linket virker i 1 time og "
+            "kan kun bruges én gang. Har du ikke selv bedt om dette, kan du roligt ignorere mailen "
+            "— din nuværende adgangskode er stadig uændret."
+        ),
+        accent="gold",
+        cta_url=reset_url,
+        cta_label="Nulstil adgangskode",
+    )
+    try:
+        await email_client.send_email(
+            to=user["email"],
+            subject="Nulstil din adgangskode til Filmportalen",
+            text=(
+                "Du har bedt om at nulstille din adgangskode til Filmportalen. "
+                f"Åbn dette link for at vælge en ny (gyldigt i 1 time, kan kun bruges én gang): {reset_url}\n\n"
+                "Har du ikke selv bedt om dette, kan du roligt ignorere denne mail."
+            ),
+            html=html,
+        )
+    except Exception:
+        # Best-effort, samme filosofi som message_service._send_emails — men
+        # her ER selve mailen hele pointen med kaldet (ikke en sidekanal til
+        # en allerede-gemt in-app-besked), så en fejl logges eksplicit i
+        # stedet for at forsvinde stille, selvom svaret til brugeren
+        # stadig ikke må afsløre noget (regel 16's "vis fejlen" gælder
+        # over for admin/loggen her, ikke over for den uautentificerede
+        # kalder — anti-enumerering vejer tungere for netop dette endpoint).
+        logger.exception("Kunne ikke sende password-reset-mail til bruger %s", user["username"])
+
+
+async def reset_password_with_token(db: AsyncIOMotorDatabase, token: str, new_password: str) -> None:
+    user = await user_repository.find_by_reset_token_hash(db, _hash_reset_token(token))
+    if user is None:
+        raise InvalidResetTokenError()
+    expires_at = user.get("reset_token_expires_at")
+    if expires_at is None or expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+        raise InvalidResetTokenError()
+    await user_repository.consume_reset_token(db, str(user["_id"]), hash_password(new_password))
 
 
 async def verify_current_password(db: AsyncIOMotorDatabase, user_id: str, current_password: str) -> None:

@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.188.0 build 0268] — 2026-08-30 — feature: valgfri stemme-frist på en afstemning, lukker automatisk ved udløb (FEATURES.md #215)
+
+Jan, direkte efter #213: *"og så skal vi have en tidsfrest på også"*, uddybet til "deadline for stemmeafgivning — automatisk lukning".
+
+Ny `voting_deadline` på en afstemning, adskilt fra `target_date` (hvilken aften der stemmes om). Ingen baggrundsjob — en udløbet frist opdages og lukkes lazily ved næste opslag/stemme-forsøg (`poll_service._auto_close_if_expired`, samme "computed on read"-princip som `_has_premiered`). Delt `_perform_close`-helper sikrer admins manuelle lukning og den automatiske deadline-lukning opfører sig identisk (samme vinder-beregning, samme voter-notifikation). `PollCreate` afviser en frist der allerede ligger i fortiden (422).
+
+Fandt og rettede en visuel bug under regel 18-tjekket: det nye "Frist"-felt (bredere `DateTime24Input`-widget end `target_date`s rene dato-felt) fik label-teksten til at brække midt i ordet — rettet med `flex-wrap`/`white-space: nowrap` på `.cinema-poll-date-label` og en kortere labeltekst.
+
+Berørte filer: `backend/app/models/poll.py`, `backend/app/services/poll_service.py`, `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Cinema.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Set i browser (regel 18) — både formular og kort-visning, før og efter CSS-rettelsen. Fuld backend-suite (951) + frontend (213) grøn.
+
 ## [0.187.0 build 0267] — 2026-08-30 — feature: skjul "Filtrér dine ønsker"-rækken under "Tilføre film på title" (FEATURES.md #214)
 
 Jan, midt i #213's implementering: *"vi skal have en funktion på portal der fjener 'filter dine ønske' funktion når man trykker på tilføre film på title"*.

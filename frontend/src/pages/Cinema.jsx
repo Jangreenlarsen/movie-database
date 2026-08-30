@@ -725,6 +725,11 @@ function PollCreateForm({ isAdmin, onCreated, onCancel }) {
   // vi stemmer om til forvisning") — hvilken aften der stemmes om, ikke et
   // klokkeslæt (det vælges først når vinderen rent faktisk planlægges).
   const [targetDate, setTargetDate] = useState("");
+  // Feature #215 (Jan: "og så skal vi have en tidsfrest på også") —
+  // valgfri deadline for selve stemmeafgivningen, adskilt fra targetDate
+  // (hvilken aften der stemmes om). DateTime24Input, samme widget som
+  // fremvisnings-planlægningen bruger (BUGS.md #38 — undgår AM/PM-visning).
+  const [votingDeadline, setVotingDeadline] = useState("");
   const [candidates, setCandidates] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -745,6 +750,7 @@ function PollCreateForm({ isAdmin, onCreated, onCancel }) {
       await api.createPoll({
         title: title.trim() || null,
         target_date: targetDate || null,
+        voting_deadline: votingDeadline || null,
         candidates: candidates.map((c) => ({
           media_kind: c.media_kind,
           movie_id: c.media_kind === "movie" ? c.id : null,
@@ -768,6 +774,10 @@ function PollCreateForm({ isAdmin, onCreated, onCancel }) {
       <label className="cinema-poll-date-label">
         {t("polls.targetDate")}
         <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+      </label>
+      <label className="cinema-poll-date-label">
+        {t("polls.votingDeadline")}
+        <DateTime24Input value={votingDeadline} onChange={setVotingDeadline} />
       </label>
 
       <CandidatePicker candidates={candidates} onAdd={addCandidate} onRemove={removeCandidate} />
@@ -957,6 +967,15 @@ export function PollCard({ poll, isAdmin, onChanged }) {
       {/* Feature #208 — hvilken aften der stemmes om, ikke et klokkeslæt. */}
       {poll.target_date && (
         <p className="muted">{t("polls.targetDateLine", { date: formatShortDate(poll.target_date, locale) })}</p>
+      )}
+      {/* Feature #215 — stemme-fristen, uafhængig af target_date ovenfor. */}
+      {poll.voting_deadline && (
+        <p className="muted">
+          {t("polls.votingDeadlineLine", {
+            date: formatShortDate(poll.voting_deadline, locale),
+            time: formatTime(poll.voting_deadline, locale),
+          })}
+        </p>
       )}
       {isTie && <p className="muted">{t("polls.tieHint")}</p>}
 

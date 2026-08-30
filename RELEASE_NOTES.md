@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.188.0 (build 0268) — 2026-08-30
+
+- **Afstemninger kan nu have en valgfri stemme-frist**: sæt en dato/tid for hvornår afstemningen senest skal afgøres — når fristen er overskredet lukkes afstemningen automatisk, med samme resultat som når admin trykker "Luk afstemning" (vinderen findes, og alle der stemte får besked).
+
 ## v0.187.0 (build 0267) — 2026-08-30
 
 - **Ryddet op på Ønskelisten**: "Filtrér dine ønsker"-feltet skjules nu mens du tilføjer en film/serie via "Tilføre film på title", så det ikke forveksles med søgefeltet i selve tilføjelsesformularen.

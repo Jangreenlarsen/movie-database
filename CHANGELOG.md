@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.187.0 build 0267] — 2026-08-30 — feature: skjul "Filtrér dine ønsker"-rækken under "Tilføre film på title" (FEATURES.md #214)
+
+Jan, midt i #213's implementering: *"vi skal have en funktion på portal der fjener 'filter dine ønske' funktion når man trykker på tilføre film på title"*.
+
+Ønskelistens filter-række sad lige over `MovieLookupForm`s eget søgefelt når "Tilføre film på title" var åben — to søgefelter oven i hinanden. Rækken skjules nu (`!(wishlist && addMode === "manual")`) mens formularen er åben; scan-tilføjelse og selve bibliotekets almindelige søgning er upåvirket. Samme rettelse i `Library.jsx` og `TvShows.jsx` (regel 16).
+
+Berørte filer: `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`. Nye tests: `Library.wishlistFilter.test.jsx`, `TvShows.wishlistFilter.test.jsx`. Set i browser (regel 18) på begge underfaner. Fuld backend-suite (942, uændret) + frontend (211) grøn.
+
 ## [0.186.0 build 0266] — 2026-08-30 — feature: gæste-foreslåede afstemninger med admin-godkendelse (FEATURES.md #213)
 
 Jan: *"det jeg forstiller mig er at guest kan opret en afsteming med x antal film til afsteming men det er en adm som skal godkende at afsteming skal gøre global for alle efter følgende og det er også adm som kan tilret listen som en guest vil laveafsteming på"*.

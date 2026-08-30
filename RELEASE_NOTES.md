@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.187.0 (build 0267) — 2026-08-30
+
+- **Ryddet op på Ønskelisten**: "Filtrér dine ønsker"-feltet skjules nu mens du tilføjer en film/serie via "Tilføre film på title", så det ikke forveksles med søgefeltet i selve tilføjelsesformularen.
+
 ## v0.186.0 (build 0266) — 2026-08-30
 
 - **Gæster og alle roller kan nu foreslå en afstemning** under Voldby BIO — forslaget er skjult for andre end forslagsstilleren selv, indtil en admin godkender det og gør det synligt/stemme-bart for alle. Admin kan redigere kandidatlisten inden godkendelse, eller afvise forslaget.

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
@@ -52,11 +52,29 @@ class PollCreate(BaseModel):
     # `watched_at` allerede bruger (MongoDB/BSON har ingen ren dato-type).
     # Valgfri, som title.
     target_date: datetime | None = None
+    # Feature #215 (Jan: "og så skal vi have en tidsfrest på også") — hvornår
+    # stemmeafgivning senest skal ske. Beregnes ALDRIG til at lukke sig selv
+    # (intet baggrundsjob i denne app) — poll_service._auto_close_if_expired
+    # tjekker og lukker den lazily ved næste opslag/stemme, samme "computed
+    # on read"-mønster som _has_premiered ovenfor. Adskilt fra target_date
+    # (hvilken AFTEN der stemmes om) — de to kan ligge helt uafhængigt af
+    # hinanden.
+    voting_deadline: datetime | None = None
     candidates: list[PollCandidateCreate]
 
     @model_validator(mode="after")
     def check_candidates(self) -> "PollCreate":
         _check_candidate_list(self.candidates)
+        return self
+
+    @model_validator(mode="after")
+    def check_voting_deadline(self) -> "PollCreate":
+        if self.voting_deadline is not None:
+            deadline = self.voting_deadline
+            if deadline.tzinfo is None:
+                deadline = deadline.replace(tzinfo=timezone.utc)
+            if deadline <= datetime.now(timezone.utc):
+                raise ValueError("Stemme-fristen skal ligge i fremtiden")
         return self
 
 
@@ -98,6 +116,8 @@ class Poll(BaseModel):
     id: str
     title: str | None = None
     target_date: datetime | None = None
+    # Feature #215 — se PollCreate ovenfor.
+    voting_deadline: datetime | None = None
     status: PollStatus
     candidates: list[PollCandidateResult]
     total_votes: int

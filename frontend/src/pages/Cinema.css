@@ -542,10 +542,17 @@
 /* Feature #208 — dato-feltet i "Opret afstemning"-formularen. */
 .cinema-poll-date-label {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   font-size: 0.85rem;
   color: var(--text-muted);
+  /* Feature #215 — den nye Frist-rækkes DateTime24Input (dato + to
+     select'er) er bredere end target_date's rene dato-input; uden dette
+     brækkede selve label-teksten midt i ordet ("Stemme-" / "frist
+     (valgfri)") i stedet for at lade hele input-gruppen falde ned på sin
+     egen linje. */
+  white-space: nowrap;
 }
 
 /* Feature #208-opfølgning — "Fjern"-knappen skubbes til højre i kortets

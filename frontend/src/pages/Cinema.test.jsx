@@ -322,6 +322,23 @@ describe("PollCard (feature #162)", () => {
     expect(await screen.findByText(/5\. sep/i)).toBeInTheDocument();
   });
 
+  it("viser afstemningens stemme-frist på kortet, uafhængigt af dato (feature #215)", async () => {
+    render(
+      <PollCard
+        poll={_poll({ target_date: "2099-09-05T00:00:00Z", voting_deadline: "2099-09-01T20:00:00Z" })}
+        isAdmin={false}
+        onChanged={() => {}}
+      />
+    );
+    expect(await screen.findByText(/Stem senest.*1\. sep/i)).toBeInTheDocument();
+  });
+
+  it("skjuler stemme-frist-linjen når ingen frist er sat", async () => {
+    render(<PollCard poll={_poll()} isAdmin={false} onChanged={() => {}} />);
+    await screen.findByText(/Dune/);
+    expect(screen.queryByText(/Stem senest/)).not.toBeInTheDocument();
+  });
+
   it("foreslår afstemningens dato i planlægnings-formularen (feature #208)", async () => {
     const user = userEvent.setup();
     render(

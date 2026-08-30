@@ -22,6 +22,14 @@ from app.models.poll import Poll, PollCandidateCreate, PollCandidateResult, Poll
 from app.repositories import poll_repository, screening_repository
 from app.services import message_service, screening_service
 
+# Feature #215 — "aktøren" bag en automatisk deadline-lukning. message_
+# service.send() kræver et rigtigt _id/username (bruges bl.a. som
+# document["sent_by"]) — et tomt dict ville kaste en KeyError, som ellers
+# ville blive tavst slugt af _perform_close's try/except og efterlade ingen
+# notifikation overhovedet. "system" er ikke et rigtigt brugernavn og slås
+# aldrig op mod users-collection'en (sent_by er ren visningstekst).
+_SYSTEM_ACTOR = {"_id": "system", "username": "system"}
+
 
 def _can_view_pending(document: dict, viewer: dict) -> bool:
     """Feature #213 — en 'pending' afstemning (en ikke-admins forslag, endnu
@@ -75,6 +83,7 @@ async def _to_poll_model(db: AsyncIOMotorDatabase, document: dict, viewer_userna
         id=str(document["_id"]),
         title=document.get("title"),
         target_date=document.get("target_date"),
+        voting_deadline=document.get("voting_deadline"),
         status=document["status"],
         candidates=candidates,
         total_votes=len(votes),
@@ -101,6 +110,7 @@ async def create_poll(db: AsyncIOMotorDatabase, payload: PollCreate, creator: di
     document = {
         "title": payload.title,
         "target_date": payload.target_date,
+        "voting_deadline": payload.voting_deadline,
         "candidates": [c.model_dump() for c in payload.candidates],
         "votes": [],
         "status": "open" if is_admin else "pending",
@@ -180,7 +190,7 @@ async def _has_premiered(db: AsyncIOMotorDatabase, document: dict) -> bool:
 
 
 async def list_polls(db: AsyncIOMotorDatabase, status: str | None, viewer: dict) -> list[Poll]:
-    documents = await poll_repository.find_all(db, status)
+    documents = [await _auto_close_if_expired(db, doc) for doc in await poll_repository.find_all(db, status)]
     visible = [
         doc
         for doc in documents
@@ -223,6 +233,7 @@ async def get_poll(db: AsyncIOMotorDatabase, poll_id: str, viewer: dict) -> Poll
     document = await poll_repository.find_by_id(db, poll_id)
     if document is None or not _can_view_pending(document, viewer):
         raise PollNotFoundError(poll_id)
+    document = await _auto_close_if_expired(db, document)
     return await _to_poll_model(db, document, viewer["username"])
 
 
@@ -230,6 +241,7 @@ async def cast_vote(db: AsyncIOMotorDatabase, poll_id: str, candidate_index: int
     document = await poll_repository.find_by_id(db, poll_id)
     if document is None:
         raise PollNotFoundError(poll_id)
+    document = await _auto_close_if_expired(db, document)
     if document["status"] != "open":
         raise PollNotOpenError()
     if not 0 <= candidate_index < len(document["candidates"]):
@@ -241,6 +253,25 @@ async def cast_vote(db: AsyncIOMotorDatabase, poll_id: str, candidate_index: int
     return await _to_poll_model(db, updated, voter["username"])
 
 
+async def _perform_close(db: AsyncIOMotorDatabase, document: dict, actor: dict) -> dict:
+    """Delt lukke-logik for admins manuelle 'Luk afstemning' (close_poll) og
+    den automatiske lukning når en sat stemme-frist er overskredet
+    (_auto_close_if_expired, feature #215) — samme skrivning og
+    notifikation, uanset hvad der udløste den. `actor` er _SYSTEM_ACTOR ved
+    automatisk lukning (ingen menneskelig aktør — notify_poll_closed
+    udelader den fra modtagerlisten på samme måde som en rigtig admin,
+    blot under brugernavnet "system", som ingen rigtig bruger kan hedde)."""
+    updated = await poll_repository.set_status(db, str(document["_id"]), "closed", datetime.now(timezone.utc))
+    model = await _to_poll_model(db, updated, actor.get("username", ""))
+    # Best-effort, samme mønster som notify_screening_request_*: en fejl her
+    # må aldrig vælte selve lukningen, som allerede er gennemført.
+    try:
+        await message_service.notify_poll_closed(db, updated, model, actor)
+    except Exception:
+        pass
+    return updated
+
+
 async def close_poll(db: AsyncIOMotorDatabase, poll_id: str, admin: dict) -> Poll:
     document = await poll_repository.find_by_id(db, poll_id)
     if document is None:
@@ -248,12 +279,21 @@ async def close_poll(db: AsyncIOMotorDatabase, poll_id: str, admin: dict) -> Pol
     if document["status"] != "open":
         raise PollNotOpenError()
 
-    updated = await poll_repository.set_status(db, poll_id, "closed", datetime.now(timezone.utc))
-    model = await _to_poll_model(db, updated, admin["username"])
-    # Best-effort, samme mønster som notify_screening_request_*: en fejl her
-    # må aldrig vælte selve lukningen, som allerede er gennemført.
-    try:
-        await message_service.notify_poll_closed(db, updated, model, admin)
-    except Exception:
-        pass
-    return model
+    updated = await _perform_close(db, document, admin)
+    return await _to_poll_model(db, updated, admin["username"])
+
+
+async def _auto_close_if_expired(db: AsyncIOMotorDatabase, document: dict) -> dict:
+    """Feature #215 — ingen baggrundsjob i denne app; en overskredet
+    stemme-frist opdages og lukkes lazily ved næste opslag/stemme-forsøg,
+    samme "computed on read"-princip som _has_premiered ovenfor."""
+    if document["status"] != "open":
+        return document
+    deadline = document.get("voting_deadline")
+    if deadline is None:
+        return document
+    if deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=timezone.utc)
+    if datetime.now(timezone.utc) < deadline:
+        return document
+    return await _perform_close(db, document, _SYSTEM_ACTOR)

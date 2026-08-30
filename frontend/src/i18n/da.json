@@ -346,6 +346,8 @@
   "polls.titlePlaceholder": "Overskrift (valgfri, fx \"Fredag aften\")",
   "polls.targetDate": "Dato (valgfri)",
   "polls.targetDateLine": "Der stemmes om {date}",
+  "polls.votingDeadline": "Frist (valgfri)",
+  "polls.votingDeadlineLine": "Stem senest {date} kl. {time}",
   "polls.remove": "Fjern",
   "polls.removing": "Fjerner...",
   "polls.confirmRemove": "Fjern denne afstemning? Selve stemmerne kan ikke genskabes bagefter.",

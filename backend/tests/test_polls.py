@@ -4,6 +4,9 @@ given dato?"). Scope afklaret 2026-08-29 via fire spørgsmål: én stemme pr.
 bruger (ombestembelig), stemmetal synlige undervejs, kun admin opretter,
 uafgjort løses ved at admin vælger manuelt blandt topscorerne."""
 
+from datetime import datetime, timedelta, timezone
+
+from bson import ObjectId
 from httpx import ASGITransport, AsyncClient
 
 from app.core.config import settings
@@ -31,12 +34,14 @@ async def _create_movie(client, title):
     return created.json()["id"]
 
 
-async def _create_poll(client, candidate_movie_ids, title=None):
+async def _create_poll(client, candidate_movie_ids, title=None, voting_deadline=None):
     payload = {
         "candidates": [{"media_kind": "movie", "movie_id": mid} for mid in candidate_movie_ids]
     }
     if title:
         payload["title"] = title
+    if voting_deadline:
+        payload["voting_deadline"] = voting_deadline
     response = await client.post("/api/polls", json=payload)
     return response
 
@@ -638,3 +643,147 @@ async def test_deleting_an_already_decided_poll_does_not_notify_anyone(client, m
     await client.delete(f"/api/polls/{poll['id']}")
 
     assert len(calls) == 0
+
+
+# Feature #215 (Jan: "og så skal vi have en tidsfrest på også") — valgfri
+# stemme-frist. PollCreate afviser en frist der allerede ligger i fortiden
+# (testet nedenfor), så "allerede udløbet" i de øvrige tests opnås ved
+# direkte at rykke en allerede-oprettet afstemnings frist bagud i databasen
+# via `db`-fixturet — samme situation som blot at vente til fristen
+# passerer, uden at testen selv skal sove.
+
+
+async def test_creating_a_poll_with_a_past_voting_deadline_is_rejected(client):
+    a = await _create_movie(client, "Frist Fortid A")
+    b = await _create_movie(client, "Frist Fortid B")
+
+    response = await _create_poll(client, [a, b], voting_deadline="2020-01-01T20:00:00")
+    assert response.status_code == 422
+
+
+async def test_poll_shows_its_voting_deadline_when_set(client):
+    a = await _create_movie(client, "Frist Fremtid A")
+    b = await _create_movie(client, "Frist Fremtid B")
+    future = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:00")
+
+    response = await _create_poll(client, [a, b], voting_deadline=future)
+    assert response.status_code == 201
+    assert response.json()["voting_deadline"] is not None
+
+
+async def test_a_poll_without_a_voting_deadline_never_auto_closes(client):
+    a = await _create_movie(client, "Ingen Frist A")
+    b = await _create_movie(client, "Ingen Frist B")
+    poll = (await _create_poll(client, [a, b])).json()
+
+    polls = (await client.get("/api/polls")).json()
+    updated = next(p for p in polls if p["id"] == poll["id"])
+    assert updated["status"] == "open"
+
+
+async def test_open_poll_auto_closes_once_its_voting_deadline_has_passed(client, db):
+    a = await _create_movie(client, "Udløbet A")
+    b = await _create_movie(client, "Udløbet B")
+    poll = (await _create_poll(client, [a, b])).json()  # admin-oprettet, 'open'
+    await db["polls"].update_one(
+        {"_id": ObjectId(poll["id"])},
+        {"$set": {"voting_deadline": datetime(2020, 1, 1, tzinfo=timezone.utc)}},
+    )
+
+    polls = (await client.get("/api/polls")).json()
+    updated = next(p for p in polls if p["id"] == poll["id"])
+    assert updated["status"] == "closed"
+
+
+async def test_a_single_expired_poll_can_still_be_fetched_directly_by_id(client, db):
+    a = await _create_movie(client, "Udløbet Direkte A")
+    b = await _create_movie(client, "Udløbet Direkte B")
+    poll = (await _create_poll(client, [a, b])).json()
+    await db["polls"].update_one(
+        {"_id": ObjectId(poll["id"])},
+        {"$set": {"voting_deadline": datetime(2020, 1, 1, tzinfo=timezone.utc)}},
+    )
+
+    response = await client.get(f"/api/polls/{poll['id']}")
+    assert response.status_code == 200
+    assert response.json()["status"] == "closed"
+
+
+async def test_expired_poll_computes_a_winner_once_auto_closed(client, db):
+    voter1 = await _member(client, "poll_autoclose_v1")
+    voter2 = await _member(client, "poll_autoclose_v2")
+    a = await _create_movie(client, "Autovinder A")
+    b = await _create_movie(client, "Autovinder B")
+    poll = (await _create_poll(client, [a, b])).json()
+    await voter1.post(f"/api/polls/{poll['id']}/vote", json={"candidate_index": 0})
+    await voter2.post(f"/api/polls/{poll['id']}/vote", json={"candidate_index": 0})
+    await db["polls"].update_one(
+        {"_id": ObjectId(poll["id"])},
+        {"$set": {"voting_deadline": datetime(2020, 1, 1, tzinfo=timezone.utc)}},
+    )
+
+    response = await client.get(f"/api/polls/{poll['id']}")
+    body = response.json()
+    assert body["status"] == "closed"
+    assert body["winner_indices"] == [0]
+    await voter1.aclose()
+    await voter2.aclose()
+
+
+async def test_voting_after_the_deadline_is_rejected_and_closes_the_poll(client, db):
+    a = await _create_movie(client, "Sen Stemme A")
+    b = await _create_movie(client, "Sen Stemme B")
+    poll = (await _create_poll(client, [a, b])).json()
+    await db["polls"].update_one(
+        {"_id": ObjectId(poll["id"])},
+        {"$set": {"voting_deadline": datetime(2020, 1, 1, tzinfo=timezone.utc)}},
+    )
+
+    response = await client.post(f"/api/polls/{poll['id']}/vote", json={"candidate_index": 0})
+    assert response.status_code == 409
+
+    poll_after = (await client.get(f"/api/polls/{poll['id']}")).json()
+    assert poll_after["status"] == "closed"
+
+
+async def test_auto_closing_notifies_every_voter(client, db, monkeypatch):
+    """Samme notifikation som en admins manuelle 'Luk afstemning'
+    (test_closing_a_poll_notifies_every_voter ovenfor) — voteren skal ikke
+    kunne se forskel på at admin lukkede den og at fristen udløb."""
+    _configure_resend(monkeypatch)
+    calls = _capture_email(monkeypatch)
+    voter = await _member(client, "poll_notify_autoclose")
+    a = await _create_movie(client, "Autoluk Besked A")
+    b = await _create_movie(client, "Autoluk Besked B")
+    poll = (await _create_poll(client, [a, b])).json()
+    await voter.post(f"/api/polls/{poll['id']}/vote", json={"candidate_index": 0})
+    await db["polls"].update_one(
+        {"_id": ObjectId(poll["id"])},
+        {"$set": {"voting_deadline": datetime(2020, 1, 1, tzinfo=timezone.utc)}},
+    )
+
+    await client.get(f"/api/polls/{poll['id']}")  # udløser den lazy auto-lukning
+
+    inbox = (await voter.get("/api/messages/inbox")).json()
+    assert any(m["subject"] == "Afstemningen er afgjort" for m in inbox)
+    assert len(calls) == 1
+    await voter.aclose()
+
+
+async def test_a_closed_poll_cannot_be_auto_closed_again(client, db):
+    """En allerede lukket afstemning (manuelt eller ved en tidligere udløbet
+    frist) må aldrig sende en ny 'afgjort'-notifikation ved efterfølgende
+    opslag — _auto_close_if_expired skal ikke røre en afstemning der ikke
+    længere er 'open'."""
+    a = await _create_movie(client, "Dobbelt Auto A")
+    b = await _create_movie(client, "Dobbelt Auto B")
+    poll = (await _create_poll(client, [a, b])).json()
+    await db["polls"].update_one(
+        {"_id": ObjectId(poll["id"])},
+        {"$set": {"voting_deadline": datetime(2020, 1, 1, tzinfo=timezone.utc)}},
+    )
+    await client.get(f"/api/polls/{poll['id']}")  # første opslag lukker den
+
+    response = await client.get(f"/api/polls/{poll['id']}")
+    assert response.json()["status"] == "closed"
+    assert response.json()["closed_at"] is not None

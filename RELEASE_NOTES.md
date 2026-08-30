@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.188.1 (build 0269) — 2026-08-30
+
+- **Tydeligere tekst på afstemningskortet**: "Der stemmes om {dato}" hedder nu "Der stemmes forvisning i BIO til dagen den {dato}".
+
 ## v0.188.0 (build 0268) — 2026-08-30
 
 - **Afstemninger kan nu have en valgfri stemme-frist**: sæt en dato/tid for hvornår afstemningen senest skal afgøres — når fristen er overskredet lukkes afstemningen automatisk, med samme resultat som når admin trykker "Luk afstemning" (vinderen findes, og alle der stemte får besked).

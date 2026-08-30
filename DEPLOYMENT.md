@@ -398,33 +398,70 @@ Verificeret at hele stien til `dist/` var læsbar for `caddy`-systembrugeren (`n
 
 ### 10. Caddy-konfiguration
 
-`/etc/caddy/Caddyfile`:
+`/etc/caddy/Caddyfile` — **den aktuelle, kørende konfiguration** (opdateret 2026-08-29 med cache-headers, BUGS.md #94):
 
 ```caddyfile
 {
-    servers {
-        protocols h1 h2
-    }
+	servers {
+		protocols h1 h2
+	}
 }
 
-10.1.130.10 {
-    tls internal
+(common) {
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8000
+	}
 
-    handle /api/* {
-        reverse_proxy 127.0.0.1:8000
-    }
+	handle {
+		root * /opt/moviedb/frontend/dist
 
-    handle {
-        root * /opt/moviedb/frontend/dist
-        file_server
-        try_files {path} /index.html
-    }
+		# BUGS.md #94 — se "Cache-styring" nedenfor for hvorfor alle tre lag
+		# er nødvendige.
+		@hashed path /assets/*
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+
+		@media path /cinema/*
+		header @media Cache-Control "public, max-age=86400"
+
+		@entry not path /assets/* /cinema/*
+		header @entry Cache-Control "no-cache"
+
+		file_server
+		try_files {path} /index.html
+	}
+}
+
+10.1.130.10, movie.laces.dk {
+	tls internal
+	import common
 }
 ```
 
-Valideret før brug (`sudo caddy validate --config /etc/caddy/Caddyfile`), derefter `sudo systemctl enable --now caddy`.
+Valideret før brug (`sudo caddy validate --config /etc/caddy/Caddyfile`), derefter `sudo systemctl enable --now caddy` (eller `reload` ved ændringer).
 
-Den globale `protocols h1 h2`-block blev tilføjet **efter** første opsætning, som en rettelse — se `SSL_ERROR_INTERNAL_ERROR_ALERT`-noten under "Komponenter" ovenfor.
+**Ændringshistorik for denne fil** (alle tilføjet efter første opsætning, som rettelser):
+- Den globale `protocols h1 h2`-block — se `SSL_ERROR_INTERNAL_ERROR_ALERT`-noten under "Komponenter" ovenfor.
+- `movie.laces.dk` tilføjet til site-block'en (2026-08-09) da den offentlige adgang blev sat op — uden det matchende hostnavn svarede Caddy tomt `200 OK` på alt med `Host: movie.laces.dk`.
+- `(common)`-snippet'en indført da der midlertidigt var to site-blocks (`movie.ll.lan` + IP'en); `movie.ll.lan`-blokken er siden fjernet igen (2026-08-29), men snippet-strukturen er beholdt.
+- Cache-headers (2026-08-29, BUGS.md #94) — se næste afsnit.
+
+### Cache-styring (BUGS.md #94)
+
+Caddys `file_server` sætter som standard **ingen** `Cache-Control` — kun `ETag` og `Last-Modified`. Det er ikke neutralt: mangler `Cache-Control`/`Expires`, falder browsere tilbage på *heuristisk* caching (RFC 9111 §4.2.2) og gætter selv en holdbarhed, konventionelt ~10% af tiden siden `Last-Modified`. En `index.html` der er en uge gammel kan derfor betragtes som frisk i timevis uden at browseren overhovedet kontakter serveren — og den cachede `index.html` peger på de gamle, content-hashede bundles. Resultatet var at brugere først så nye versioner efter et manuelt hard reload.
+
+De tre lag i konfigurationen ovenfor:
+
+| Sti | Header | Hvorfor |
+|---|---|---|
+| `/assets/*` | `public, max-age=31536000, immutable` | Filnavnet indeholder en content-hash (`index-KziPAHxq.js`), så indholdet kan per definition aldrig blive forældet under samme navn. Permanent cache er både sikkert og hurtigere end det heuristiske gætværk det erstatter. |
+| `/cinema/*` | `public, max-age=86400` | Billeder/PDF/video der ændres sjældent og får nyt filnavn når de gør. Et døgn sparer revaliderings-rundture på mobil uden nævneværdig risiko for forældet indhold. |
+| Alt andet | `no-cache` | Gælder `index.html`, `sw.js`, `manifest.webmanifest` og ikoner. `no-cache` betyder **revalidér altid**, ikke "hent alt igen" — med den eksisterende `ETag` bliver et uændret svar et `304 Not Modified` uden body (verificeret: 0 bytes overført mod 996 ved fuld hentning). |
+
+`/api/*` rammes ikke af reglerne — den `handle`-blok går til `reverse_proxy`, så backendens egne svar er upåvirkede.
+
+**Samspil med service workeren**: frontendens PWA-lag (feature #190) er uafhængigt og allerede korrekt — `registerType: 'autoUpdate'` får `vite-plugin-pwa` til at kalde `window.location.reload()` når en ny service worker aktiveres, og `src/pwa.js` tjekker for nye versioner hvert 20. minut. Men en service worker registreres kun i en **betroet** secure context, så brugere på `https://10.1.130.10` (Caddys selvsignerede `tls internal`) får typisk slet ingen SW og kører rent på HTTP-cache — for dem er cache-headerne ovenfor den eneste beskyttelse mod at sidde fast på en gammel version.
+
+**Ved fremtidige ændringer**: tilføjes en ny mappe med statisk indhold under `frontend/public/`, så overvej hvilket af de tre lag den hører til. Standarden (`no-cache`) er altid det sikre valg; de to andre er optimeringer.
 
 ### 11. Firewall
 

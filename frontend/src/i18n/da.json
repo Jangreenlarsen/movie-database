@@ -345,7 +345,7 @@
   "polls.confirmCreate": "Opret afstemning",
   "polls.titlePlaceholder": "Overskrift (valgfri, fx \"Fredag aften\")",
   "polls.targetDate": "Dato (valgfri)",
-  "polls.targetDateLine": "Der stemmes om {date}",
+  "polls.targetDateLine": "Der stemmes forvisning i BIO til dagen den {date}",
   "polls.votingDeadline": "Frist (valgfri)",
   "polls.votingDeadlineLine": "Stem senest {date} kl. {time}",
   "polls.remove": "Fjern",

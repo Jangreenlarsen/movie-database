@@ -345,7 +345,7 @@
   "polls.confirmCreate": "Create poll",
   "polls.titlePlaceholder": "Title (optional, e.g. \"Friday night\")",
   "polls.targetDate": "Date (optional)",
-  "polls.targetDateLine": "Voting for {date}",
+  "polls.targetDateLine": "Voting for a screening at BIO on {date}",
   "polls.votingDeadline": "Deadline (optional)",
   "polls.votingDeadlineLine": "Vote by {date} at {time}",
   "polls.remove": "Remove",

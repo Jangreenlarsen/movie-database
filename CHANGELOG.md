@@ -2,7 +2,13 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
-## [0.188.0 build 0268] — 2026-08-30 — feature: valgfri stemme-frist på en afstemning, lukker automatisk ved udløb (FEATURES.md #215)
+## [0.188.1 build 0269] — 2026-08-30 — juster: tydeligere ordlyd på afstemningens dato-linje
+
+Jan: *"ændring i portal 'Der stemmes om 1. sep.' til 'Der stemmes forvisning i BIO til dagen den 1. sep.'"*.
+
+`polls.targetDateLine` ændret fra "Der stemmes om {date}" til "Der stemmes forvisning i BIO til dagen den {date}" — gør det tydeligt fra selve afstemningskortet at datoen gælder en forvisning i BIO, ikke bare "en dato" generelt. Kun i18n-værdier (begge kataloger); ingen logikændring.
+
+Berørte filer: `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Set i browser (regel 18 — teksten er markant længere): bekræftet på både desktop (én linje) og mobil-bredde (ombryder pænt til to linjer, intet layout-brud). Fuld backend-suite (951, uændret) + frontend (213, uændret) grøn.
 
 Jan, direkte efter #213: *"og så skal vi have en tidsfrest på også"*, uddybet til "deadline for stemmeafgivning — automatisk lukning".
 

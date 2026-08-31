@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.189.0 (build 0270) — 2026-08-30
+
+- **Slettes en afstemning mens den stadig er åben, får alle der har stemt nu besked** — med en munter, tilfældig "aflyst"-besked (fx "aflyst af biografens bestyrelse, bestående af de 7 små dværge") i stedet for at afstemningen bare forsvinder.
+
 ## v0.188.1 (build 0269) — 2026-08-30
 
 - **Tydeligere tekst på afstemningskortet**: "Der stemmes om {dato}" hedder nu "Der stemmes forvisning i BIO til dagen den {dato}".

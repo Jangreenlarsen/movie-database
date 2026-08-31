@@ -1,6 +1,7 @@
 """Beskeder fra admin til brugerne (feature #100)."""
 
 import logging
+import random
 from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -570,6 +571,62 @@ async def notify_poll_closed(
                     body_text=body,
                     poster_url=poster_url,
                     accent="gold",
+                ),
+            )
+        except Exception:
+            pass
+
+
+# Feature #216 (Jan: "når man sletter en afstemning så få users ikke notet
+# om det, lan en besked som forklar at afstemings filmen er desvære aflyst
+# af biograffens bestyrelse destående af de 7 små dværge, eller noget andet
+# sjovt lave eventuelt en rotation med 5 forskeling besked typer med samme
+# mening") — samme spøgefulde "Voldby Dagblad"-tone som resten af biograf-
+# lore'en (feature #163/#210/#211's fiktive lokalavis-univers). Ren
+# tilfældig udvælgelse pr. afsendelse, ikke en gemt round-robin-tilstand —
+# simplest mulige tolkning af "en rotation", uden ny state at holde styr på.
+_POLL_CANCELLED_MESSAGES = [
+    "Afstemningen er desværre aflyst af biografens bestyrelse, bestående af de 7 små dværge.",
+    "Filmaftenen er trukket tilbage efter et lynindkaldt nødmøde i popcornmaskinens fagforening.",
+    "Biografdirektøren — en talende kattekilling med gode kontakter — har underkendt afstemningen uden yderligere forklaring.",
+    "Projektoren har nedlagt arbejdet i protest mod kandidatlisten, og afstemningen er derfor aflyst.",
+    "Voldby BIOs hemmelige filmråd har trukket afstemningen tilbage. Ingen kommentarer til pressen.",
+]
+
+
+async def notify_poll_cancelled(db: AsyncIOMotorDatabase, poll_document: dict, admin: dict) -> None:
+    """Feature #216 — svar til hver bruger der stemte, når admin sletter en
+    ENDNU ÅBEN afstemning (poll_service.delete_poll kalder kun denne når
+    status var 'open' — en allerede afgjort afstemning rammer stadig ingen,
+    jf. delete_poll's egen docstring). Samme "én send() pr. modtager"-
+    mønster som notify_poll_closed, blot med en tilfældigt valgt besked fra
+    en fast pulje i stedet for ét fast budskab."""
+    voters = {vote["username"] for vote in poll_document.get("votes", [])} - {admin.get("username")}
+    if not voters:
+        return
+
+    body = random.choice(_POLL_CANCELLED_MESSAGES)
+
+    for username in voters:
+        voter = await user_repository.find_by_username_normalized(db, username.lower())
+        if voter is None:
+            continue
+        payload = MessageCreate(
+            subject="Afstemningen er aflyst",
+            body=body,
+            recipient_user_id=str(voter["_id"]),
+        )
+        try:
+            await send(
+                db,
+                payload,
+                admin,
+                email_html=email_templates.render_notification_email(
+                    headline="Afstemningen er aflyst",
+                    tagline=body,
+                    body_text=body,
+                    poster_url=None,
+                    accent="muted",
                 ),
             )
         except Exception:

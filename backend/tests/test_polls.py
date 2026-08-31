@@ -631,14 +631,96 @@ async def test_creating_a_pending_poll_notifies_admins(client):
 
 
 async def test_deleting_an_already_decided_poll_does_not_notify_anyone(client, monkeypatch):
-    """Kun en fjernet 'pending' afstemning tolkes som en afvisning — en
-    allerede afgjort afstemning der ryddes op er ikke en overraskelse for
-    nogen (alle involverede har allerede set udfaldet)."""
+    """Kun en fjernet 'pending' afstemning tolkes som en afvisning, og kun
+    en fjernet ENDNU ÅBEN afstemning udløser feature #216's aflysnings-
+    besked (se testene nedenfor) — en allerede afgjort (lukket) afstemning
+    der ryddes op er ikke en overraskelse for nogen (alle involverede har
+    allerede set udfaldet, via notify_poll_closed ved selve lukningen)."""
     _configure_resend(monkeypatch)
     calls = _capture_email(monkeypatch)
+    voter = await _member(client, "poll_decided_cleanup")
     a = await _create_movie(client, "Oprydning A")
     b = await _create_movie(client, "Oprydning B")
     poll = (await _create_poll(client, [a, b])).json()  # admin-oprettet, 'open'
+    await voter.post(f"/api/polls/{poll['id']}/vote", json={"candidate_index": 0})
+    await client.post(f"/api/polls/{poll['id']}/close")
+    calls.clear()  # selve lukningen sender allerede sin egen "afgjort"-besked
+
+    await client.delete(f"/api/polls/{poll['id']}")
+
+    assert len(calls) == 0
+    await voter.aclose()
+
+
+# Feature #216 (Jan: "når man sletter en afstemning så få users ikke notet
+# om det, lan en besked som forklar at afstemings filmen er desvære aflyst
+# af biograffens bestyrelse destående af de 7 små dværge, eller noget andet
+# sjovt lave eventuelt en rotation med 5 forskeling besked typer med samme
+# mening").
+
+
+async def test_deleting_an_open_poll_notifies_every_voter(client, monkeypatch):
+    _configure_resend(monkeypatch)
+    calls = _capture_email(monkeypatch)
+    voter1 = await _member(client, "poll_cancel_v1")
+    voter2 = await _member(client, "poll_cancel_v2")
+    a = await _create_movie(client, "Aflyst A")
+    b = await _create_movie(client, "Aflyst B")
+    poll = (await _create_poll(client, [a, b])).json()  # admin-oprettet, 'open'
+    await voter1.post(f"/api/polls/{poll['id']}/vote", json={"candidate_index": 0})
+    await voter2.post(f"/api/polls/{poll['id']}/vote", json={"candidate_index": 1})
+
+    response = await client.delete(f"/api/polls/{poll['id']}")
+    assert response.status_code == 204
+
+    inbox1 = (await voter1.get("/api/messages/inbox")).json()
+    inbox2 = (await voter2.get("/api/messages/inbox")).json()
+    assert any(m["subject"] == "Afstemningen er aflyst" for m in inbox1)
+    assert any(m["subject"] == "Afstemningen er aflyst" for m in inbox2)
+    assert len(calls) == 2
+    await voter1.aclose()
+    await voter2.aclose()
+
+
+async def test_cancelled_poll_message_is_one_of_the_five_rotating_variants(client, monkeypatch):
+    from app.services.message_service import _POLL_CANCELLED_MESSAGES
+
+    assert len(_POLL_CANCELLED_MESSAGES) == 5
+    _configure_resend(monkeypatch)
+    _capture_email(monkeypatch)
+    voter = await _member(client, "poll_cancel_variant")
+    a = await _create_movie(client, "Variant A")
+    b = await _create_movie(client, "Variant B")
+    poll = (await _create_poll(client, [a, b])).json()
+    await voter.post(f"/api/polls/{poll['id']}/vote", json={"candidate_index": 0})
+
+    await client.delete(f"/api/polls/{poll['id']}")
+
+    inbox = (await voter.get("/api/messages/inbox")).json()
+    message = next(m for m in inbox if m["subject"] == "Afstemningen er aflyst")
+    assert message["body"] in _POLL_CANCELLED_MESSAGES
+    await voter.aclose()
+
+
+async def test_deleting_an_open_poll_with_no_votes_notifies_no_one(client, monkeypatch):
+    _configure_resend(monkeypatch)
+    calls = _capture_email(monkeypatch)
+    a = await _create_movie(client, "Ingen Stemmer A")
+    b = await _create_movie(client, "Ingen Stemmer B")
+    poll = (await _create_poll(client, [a, b])).json()  # admin-oprettet, 'open', ingen stemmer
+
+    await client.delete(f"/api/polls/{poll['id']}")
+
+    assert len(calls) == 0
+
+
+async def test_admin_deleting_an_open_poll_they_voted_on_does_not_notify_themselves(client, monkeypatch):
+    _configure_resend(monkeypatch)
+    calls = _capture_email(monkeypatch)
+    a = await _create_movie(client, "Admin Egen A")
+    b = await _create_movie(client, "Admin Egen B")
+    poll = (await _create_poll(client, [a, b])).json()
+    await client.post(f"/api/polls/{poll['id']}/vote", json={"candidate_index": 0})
 
     await client.delete(f"/api/polls/{poll['id']}")
 

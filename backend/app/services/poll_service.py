@@ -213,11 +213,19 @@ async def delete_poll(db: AsyncIOMotorDatabase, poll_id: str, admin: dict) -> No
     der fjerner en endnu-ikke-godkendt afstemning MENER reelt at afvise
     forslaget. Forslagsstilleren får besked i det tilfælde (ikke ved
     fjernelse af en allerede afgjort afstemning, hvor alle involverede
-    allerede har set udfaldet)."""
+    allerede har set udfaldet).
+
+    Feature #216 (Jan: "når man sletter en afstemning så få users ikke
+    notet om det") — det manglende tilfælde var en ENDNU ÅBEN afstemning:
+    hverken 'pending'-grenen ovenfor (ingen forslagsstiller-besked, den er
+    jo allerede godkendt) eller den bevidste tavshed for en afgjort
+    afstemning (allerede set udfaldet) dækkede den. Voterne på en 'open'
+    afstemning får nu en munter aflysnings-besked (notify_poll_cancelled)."""
     document = await poll_repository.find_by_id(db, poll_id)
     if document is None:
         raise PollNotFoundError(poll_id)
     was_pending = document["status"] == "pending"
+    was_open = document["status"] == "open"
 
     if not await poll_repository.delete(db, poll_id):
         raise PollNotFoundError(poll_id)
@@ -225,6 +233,11 @@ async def delete_poll(db: AsyncIOMotorDatabase, poll_id: str, admin: dict) -> No
     if was_pending and document["created_by"] != admin.get("username"):
         try:
             await message_service.notify_poll_suggestion_rejected(db, document, admin)
+        except Exception:
+            pass
+    elif was_open:
+        try:
+            await message_service.notify_poll_cancelled(db, document, admin)
         except Exception:
             pass
 

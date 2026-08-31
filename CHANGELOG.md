@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.189.0 build 0270] — 2026-08-30 — feature: voterne får besked når admin sletter en endnu åben afstemning, sjov "aflyst"-besked fra 5 varianter (FEATURES.md #216)
+
+Jan: *"når man sletter en afstemning så få users ikke notet om det, lan en besked som forklar at afstemings filmen er desvære aflyst af biograffens bestyrelse destående af de 7 små dværge, eller noget andet sjovt lave eventuelt en rotation med 5 forskeling besked typer med samme mening"*.
+
+`delete_poll` havde et reelt hul: en pending-afstemning gav forslagsstilleren besked, en allerede afgjort gav bevidst ingen besked — men en ENDNU ÅBEN afstemning med aktive stemmer forsvandt sporløst uden nogen besked til dem der havde stemt. Ny `message_service.notify_poll_cancelled` (samme "én send() pr. voter"-mønster som `notify_poll_closed`) sender nu en tilfældigt valgt besked fra en pulje på 5 varianter, alle i samme spøgefulde "Voldby Dagblad"-tone — Jans eget forslag om "de 7 små dværge" er variant #1.
+
+Berørte filer: `backend/app/services/message_service.py`, `backend/app/services/poll_service.py`. Ingen frontend-ændring — beskeden løber gennem det eksisterende, generiske besked-/indbakke-system. Fuld backend-suite (955) + frontend (213, uændret) grøn.
+
 ## [0.188.1 build 0269] — 2026-08-30 — juster: tydeligere ordlyd på afstemningens dato-linje
 
 Jan: *"ændring i portal 'Der stemmes om 1. sep.' til 'Der stemmes forvisning i BIO til dagen den 1. sep.'"*.

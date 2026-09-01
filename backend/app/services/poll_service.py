@@ -10,15 +10,24 @@ en almindelig visnings-anmodning)."""
 
 from datetime import datetime, timezone
 
+from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.errors import (
+    DuplicatePollCandidateError,
     InvalidPollCandidateError,
+    PollCandidateSuggestionNotFoundError,
     PollNotFoundError,
     PollNotOpenError,
     PollNotPendingError,
 )
-from app.models.poll import Poll, PollCandidateCreate, PollCandidateResult, PollCreate
+from app.models.poll import (
+    PendingCandidateResult,
+    Poll,
+    PollCandidateCreate,
+    PollCandidateResult,
+    PollCreate,
+)
 from app.repositories import poll_repository, screening_repository
 from app.services import message_service, screening_service
 
@@ -79,6 +88,25 @@ async def _to_poll_model(db: AsyncIOMotorDatabase, document: dict, viewer_userna
         top = max(counts)
         winner_indices = [i for i, c in enumerate(counts) if c == top]
 
+    # Feature #218 — samme enrich-ved-læsning-mønster som candidates ovenfor.
+    pending_candidates = []
+    for suggestion in document.get("pending_candidates", []):
+        display = await screening_service._resolve_display_info(
+            db, suggestion["media_kind"], suggestion.get("movie_id"), suggestion.get("tv_show_id")
+        )
+        pending_candidates.append(
+            PendingCandidateResult(
+                suggestion_id=str(suggestion["suggestion_id"]),
+                media_kind=suggestion["media_kind"],
+                movie_id=suggestion.get("movie_id"),
+                tv_show_id=suggestion.get("tv_show_id"),
+                title=display.get("title"),
+                year=display.get("year"),
+                poster_url=display.get("poster_url"),
+                suggested_by=suggestion["suggested_by"],
+            )
+        )
+
     return Poll(
         id=str(document["_id"]),
         title=document.get("title"),
@@ -86,6 +114,7 @@ async def _to_poll_model(db: AsyncIOMotorDatabase, document: dict, viewer_userna
         voting_deadline=document.get("voting_deadline"),
         status=document["status"],
         candidates=candidates,
+        pending_candidates=pending_candidates,
         total_votes=len(votes),
         my_vote=my_vote,
         winner_indices=winner_indices,
@@ -169,6 +198,138 @@ async def approve_poll(db: AsyncIOMotorDatabase, poll_id: str, admin: dict) -> P
     return model
 
 
+def _assert_not_duplicate_candidate(document: dict, payload: PollCandidateCreate) -> None:
+    """Feature #218 — den foreslåede titel må hverken allerede være en rigtig
+    kandidat, eller allerede stå og afvente godkendelse som et andet
+    forslag (to gæster der uafhængigt foreslår samme film)."""
+    key = (payload.media_kind, payload.movie_id, payload.tv_show_id)
+    existing = {
+        (c["media_kind"], c.get("movie_id"), c.get("tv_show_id"))
+        for c in document.get("candidates", [])
+    }
+    pending = {
+        (s["media_kind"], s.get("movie_id"), s.get("tv_show_id"))
+        for s in document.get("pending_candidates", [])
+    }
+    if key in existing or key in pending:
+        raise DuplicatePollCandidateError()
+
+
+async def suggest_candidate(
+    db: AsyncIOMotorDatabase, poll_id: str, payload: PollCandidateCreate, actor: dict
+) -> Poll:
+    """Feature #218 (Jan: "andre guester skal kun indsætte ny film forslag
+    til afsteming i en relateret kørende afsteming, en adm skal dog
+    godkende at ændring er ok, adm skal selvfølgelig også kunne laver
+    samme tilretning som guester men skal dog ikke godkendes af en anden
+    adm") — kun en 'open' (kørende) afstemning kan modtage forslag; en
+    'pending' afstemning er slet ikke synlig for andre end forslagsstilleren
+    og admin (_can_view_pending ovenfor), så "andre gæster" kan pr.
+    definition ikke se den endnu og altså heller ikke foreslå noget til den.
+
+    Admin (uanset om admin selv er den oprindelige forslagsstiller) går
+    direkte i candidates, uden godkendelse. Alle andre — INKLUSIV
+    afstemningens egen oprindelige forslagsstiller — går i
+    pending_candidates og kræver admin-godkendelse (Jans eksplicitte svar
+    på et opklarende spørgsmål: ingen særbehandling af "sin egen"
+    afstemning, samme regel for alle ikke-admins)."""
+    document = await poll_repository.find_by_id(db, poll_id)
+    if document is None:
+        raise PollNotFoundError(poll_id)
+    if document["status"] != "open":
+        raise PollNotOpenError()
+    _assert_not_duplicate_candidate(document, payload)
+
+    candidate_dict = payload.model_dump()
+    if actor.get("role") == "admin":
+        updated = await poll_repository.add_candidate(db, poll_id, candidate_dict)
+    else:
+        suggestion = {
+            "suggestion_id": ObjectId(),
+            **candidate_dict,
+            "suggested_by": actor["username"],
+            "suggested_at": datetime.now(timezone.utc),
+        }
+        updated = await poll_repository.add_pending_candidate(db, poll_id, suggestion)
+        try:
+            display = await screening_service._resolve_display_info(
+                db, payload.media_kind, payload.movie_id, payload.tv_show_id
+            )
+            await message_service.notify_admins_new_candidate_suggestion(
+                db, actor, updated, display.get("title")
+            )
+        except Exception:
+            pass
+    return await _to_poll_model(db, updated, actor["username"])
+
+
+def _find_pending_candidate(document: dict, suggestion_id: str) -> dict:
+    suggestion = next(
+        (
+            s
+            for s in document.get("pending_candidates", [])
+            if str(s["suggestion_id"]) == suggestion_id
+        ),
+        None,
+    )
+    if suggestion is None:
+        raise PollCandidateSuggestionNotFoundError(suggestion_id)
+    return suggestion
+
+
+async def approve_candidate_suggestion(
+    db: AsyncIOMotorDatabase, poll_id: str, suggestion_id: str, admin: dict
+) -> Poll:
+    """Feature #218 — admin godkender en foreslået kandidat-tilføjelse:
+    flyttes fra pending_candidates ind i den rigtige candidates-liste."""
+    document = await poll_repository.find_by_id(db, poll_id)
+    if document is None:
+        raise PollNotFoundError(poll_id)
+    suggestion = _find_pending_candidate(document, suggestion_id)
+
+    candidate_dict = {
+        "media_kind": suggestion["media_kind"],
+        "movie_id": suggestion.get("movie_id"),
+        "tv_show_id": suggestion.get("tv_show_id"),
+    }
+    await poll_repository.add_candidate(db, poll_id, candidate_dict)
+    updated = await poll_repository.remove_pending_candidate(db, poll_id, suggestion["suggestion_id"])
+    try:
+        display = await screening_service._resolve_display_info(
+            db, suggestion["media_kind"], suggestion.get("movie_id"), suggestion.get("tv_show_id")
+        )
+        await message_service.notify_poll_candidate_approved(
+            db, suggestion, display.get("title"), updated, admin
+        )
+    except Exception:
+        pass
+    return await _to_poll_model(db, updated, admin["username"])
+
+
+async def reject_candidate_suggestion(
+    db: AsyncIOMotorDatabase, poll_id: str, suggestion_id: str, admin: dict
+) -> Poll:
+    """Feature #218 — admin afviser en foreslået kandidat-tilføjelse: fjernes
+    fra pending_candidates uden nogensinde at røre den rigtige candidates-
+    liste."""
+    document = await poll_repository.find_by_id(db, poll_id)
+    if document is None:
+        raise PollNotFoundError(poll_id)
+    suggestion = _find_pending_candidate(document, suggestion_id)
+
+    updated = await poll_repository.remove_pending_candidate(db, poll_id, suggestion["suggestion_id"])
+    try:
+        display = await screening_service._resolve_display_info(
+            db, suggestion["media_kind"], suggestion.get("movie_id"), suggestion.get("tv_show_id")
+        )
+        await message_service.notify_poll_candidate_rejected(
+            db, suggestion, display.get("title"), document, admin
+        )
+    except Exception:
+        pass
+    return await _to_poll_model(db, updated, admin["username"])
+
+
 async def _has_premiered(db: AsyncIOMotorDatabase, document: dict) -> bool:
     """Feature #208-opfølgning (Jan: "de skal forsvinde efter film har haft
     premiære") — en planlagt afstemning forsvinder fra oversigten så snart
@@ -213,11 +374,19 @@ async def delete_poll(db: AsyncIOMotorDatabase, poll_id: str, admin: dict) -> No
     der fjerner en endnu-ikke-godkendt afstemning MENER reelt at afvise
     forslaget. Forslagsstilleren får besked i det tilfælde (ikke ved
     fjernelse af en allerede afgjort afstemning, hvor alle involverede
-    allerede har set udfaldet)."""
+    allerede har set udfaldet).
+
+    Feature #216 (Jan: "når man sletter en afstemning så få users ikke
+    notet om det") — det manglende tilfælde var en ENDNU ÅBEN afstemning:
+    hverken 'pending'-grenen ovenfor (ingen forslagsstiller-besked, den er
+    jo allerede godkendt) eller den bevidste tavshed for en afgjort
+    afstemning (allerede set udfaldet) dækkede den. Voterne på en 'open'
+    afstemning får nu en munter aflysnings-besked (notify_poll_cancelled)."""
     document = await poll_repository.find_by_id(db, poll_id)
     if document is None:
         raise PollNotFoundError(poll_id)
     was_pending = document["status"] == "pending"
+    was_open = document["status"] == "open"
 
     if not await poll_repository.delete(db, poll_id):
         raise PollNotFoundError(poll_id)
@@ -225,6 +394,11 @@ async def delete_poll(db: AsyncIOMotorDatabase, poll_id: str, admin: dict) -> No
     if was_pending and document["created_by"] != admin.get("username"):
         try:
             await message_service.notify_poll_suggestion_rejected(db, document, admin)
+        except Exception:
+            pass
+    elif was_open:
+        try:
+            await message_service.notify_poll_cancelled(db, document, admin)
         except Exception:
             pass
 

@@ -280,6 +280,10 @@ export const api = {
   getPlexAutoImportPolicy: () => request("/settings/plex-auto-import"),
   updatePlexAutoImportPolicy: (payload) =>
     request("/settings/plex-auto-import", { method: "PATCH", body: JSON.stringify(payload) }),
+  // Feature #217 — når slået til sendes hverken e-mails eller in-app-beskeder.
+  getTestModePolicy: () => request("/settings/test-mode"),
+  updateTestModePolicy: (payload) =>
+    request("/settings/test-mode", { method: "PATCH", body: JSON.stringify(payload) }),
   // Feature #100 — beskeder fra admin.
   // Feature #148 — besked-pollen (hvert 20. sek, #135) markeres som baggrund,
   // så den ikke tæller som aktivitet og holder en uovervåget session i live.
@@ -400,6 +404,15 @@ export const api = {
   approvePoll: (id) => request(`/polls/${id}/approve`, { method: "POST" }),
   updatePollCandidates: (id, candidates) =>
     request(`/polls/${id}/candidates`, { method: "PATCH", body: JSON.stringify({ candidates }) }),
+  // Feature #218 — foreslå/godkend/afvis én kandidat-tilføjelse til en
+  // allerede kørende afstemning (admins egen tilføjelse går direkte ind,
+  // se poll_service.suggest_candidate).
+  suggestPollCandidate: (id, candidate) =>
+    request(`/polls/${id}/candidates/suggest`, { method: "POST", body: JSON.stringify(candidate) }),
+  approveCandidateSuggestion: (id, suggestionId) =>
+    request(`/polls/${id}/pending-candidates/${suggestionId}/approve`, { method: "POST" }),
+  rejectCandidateSuggestion: (id, suggestionId) =>
+    request(`/polls/${id}/pending-candidates/${suggestionId}`, { method: "DELETE" }),
 
   // Feature #133 — sæde-reservation til Voldby BIO.
   getSeatMap: (screeningId) => request(`/screenings/${screeningId}/seats`),

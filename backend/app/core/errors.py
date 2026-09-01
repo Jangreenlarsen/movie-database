@@ -233,6 +233,25 @@ class PollNotPendingError(Exception):
         super().__init__("Denne handling kræver at afstemningen stadig afventer godkendelse.")
 
 
+class DuplicatePollCandidateError(Exception):
+    """Feature #218 — den foreslåede titel er allerede kandidat, eller
+    allerede foreslået og afventer godkendelse, i denne afstemning."""
+
+    def __init__(self):
+        super().__init__("Denne titel er allerede kandidat i afstemningen.")
+
+
+class PollCandidateSuggestionNotFoundError(Exception):
+    """Feature #218 — forsøg på at godkende/afvise et kandidat-forslag der
+    enten aldrig har eksisteret, eller allerede er godkendt/afvist af en
+    tidligere handling (fx to admin-faner der begge forsøger at afgøre
+    samme forslag)."""
+
+    def __init__(self, suggestion_id: str):
+        self.suggestion_id = suggestion_id
+        super().__init__(f"Kandidat-forslag ikke fundet: {suggestion_id}")
+
+
 class InvalidResetTokenError(Exception):
     """Feature #205 — dækker både 'findes slet ikke', 'allerede brugt' (token
     fjernes atomisk ved brug, se user_repository.consume_reset_token) og
@@ -339,6 +358,20 @@ class NoRecipientsError(Exception):
 
     def __init__(self):
         super().__init__("Der er ingen aktive brugere at sende beskeden til")
+
+
+class TestModeActiveError(Exception):
+    """Feature #217 (Jan: "email og beskeder ikke sendes ud af system i
+    test mode") — message_service.send() er det ENESTE sted en besked
+    nogensinde oprettes, så et kast her FØR noget som helst gemmes/sendes
+    dækker automatisk alle notify_*-funktioner (deres eksisterende
+    try/except sluger den tavst, samme som enhver anden fejl) OG admins
+    egen manuelle "send besked"-formular (POST /api/messages), som i stedet
+    får en tydelig, ærlig fejl fremfor et stille no-op der ser ud som en
+    succes."""
+
+    def __init__(self):
+        super().__init__("Beskeder kan ikke sendes mens test-tilstand er aktiv")
 
 
 class EmailRateLimitedError(Exception):

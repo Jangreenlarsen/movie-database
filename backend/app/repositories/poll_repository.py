@@ -75,6 +75,42 @@ async def set_candidates(db: AsyncIOMotorDatabase, poll_id: str, candidates: lis
     return await find_by_id(db, poll_id)
 
 
+async def add_candidate(db: AsyncIOMotorDatabase, poll_id: str, candidate: dict) -> dict | None:
+    """Feature #218 — tilføj ÉN kandidat direkte til den rigtige
+    candidates-liste: enten admins egen tilføjelse til en kørende
+    afstemning, eller en tidligere foreslået kandidat der lige er
+    godkendt. `$push` — de øvrige kandidater/stemmer er urørte."""
+    if not ObjectId.is_valid(poll_id):
+        return None
+    await db[COLLECTION].update_one({"_id": ObjectId(poll_id)}, {"$push": {"candidates": candidate}})
+    return await find_by_id(db, poll_id)
+
+
+async def add_pending_candidate(db: AsyncIOMotorDatabase, poll_id: str, suggestion: dict) -> dict | None:
+    """Feature #218 — en ikke-admins forslag om at tilføje én kandidat til
+    en kørende afstemning, afventende admin-godkendelse. `suggestion` bærer
+    sit eget `suggestion_id` (ObjectId), sat af service-laget."""
+    if not ObjectId.is_valid(poll_id):
+        return None
+    await db[COLLECTION].update_one(
+        {"_id": ObjectId(poll_id)}, {"$push": {"pending_candidates": suggestion}}
+    )
+    return await find_by_id(db, poll_id)
+
+
+async def remove_pending_candidate(db: AsyncIOMotorDatabase, poll_id: str, suggestion_id: ObjectId) -> dict | None:
+    """Feature #218 — fjerner ét forslag fra pending_candidates, uanset om
+    det blev godkendt (og dermed allerede tilføjet via add_candidate) eller
+    afvist."""
+    if not ObjectId.is_valid(poll_id):
+        return None
+    await db[COLLECTION].update_one(
+        {"_id": ObjectId(poll_id)},
+        {"$pull": {"pending_candidates": {"suggestion_id": suggestion_id}}},
+    )
+    return await find_by_id(db, poll_id)
+
+
 async def set_scheduled(db: AsyncIOMotorDatabase, poll_id: str, screening_id: str) -> dict | None:
     if not ObjectId.is_valid(poll_id):
         return None

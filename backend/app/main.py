@@ -45,6 +45,7 @@ from app.core.errors import (
     InvalidBackupError,
     ClassificationRequiredError,
     DuplicateBarcodeError,
+    DuplicatePollCandidateError,
     InvalidCredentialsError,
     InvalidResetTokenError,
     InvalidUserStatusTransitionError,
@@ -63,6 +64,7 @@ from app.core.errors import (
     PasswordResetUnavailableError,
     Pkcs12ImportError,
     PlexFilterUnavailableError,
+    PollCandidateSuggestionNotFoundError,
     PollNotFoundError,
     PollNotOpenError,
     PollNotPendingError,
@@ -72,6 +74,7 @@ from app.core.errors import (
     SerialNumberConflictError,
     ScreeningNotFoundError,
     ScreeningRequestNotFoundError,
+    TestModeActiveError,
     TmdbNotFoundError,
     TmdbRateLimitedError,
     TmdbUnavailableError,
@@ -224,6 +227,20 @@ async def invalid_poll_candidate_handler(request: Request, exc: InvalidPollCandi
 @app.exception_handler(PollNotPendingError)
 async def poll_not_pending_handler(request: Request, exc: PollNotPendingError) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(DuplicatePollCandidateError)
+async def duplicate_poll_candidate_handler(
+    request: Request, exc: DuplicatePollCandidateError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(PollCandidateSuggestionNotFoundError)
+async def poll_candidate_suggestion_not_found_handler(
+    request: Request, exc: PollCandidateSuggestionNotFoundError
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
 @app.exception_handler(PreferredAtRequiredError)
@@ -402,6 +419,11 @@ async def message_not_found_handler(request: Request, exc: MessageNotFoundError)
 
 @app.exception_handler(NoRecipientsError)
 async def no_recipients_handler(request: Request, exc: NoRecipientsError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(TestModeActiveError)
+async def test_mode_active_handler(request: Request, exc: TestModeActiveError) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 

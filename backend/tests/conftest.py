@@ -84,6 +84,15 @@ def _pin_plex_auto_import_policy(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _pin_test_mode(monkeypatch):
+    """Feature #217 — same isolation concern as `_pin_password_policy`
+    above: pinned to the code default (`False`) so a test that turns test
+    mode on doesn't silently swallow every message/email assertion in every
+    other test file that happens to run afterward in the same process."""
+    monkeypatch.setattr(settings, "test_mode", False)
+
+
+@pytest.fixture(autouse=True)
 def _reset_anthem_session_state(monkeypatch):
     """Feature #183 — `anthem_service._session_active` is a plain module
     global (see its own docstring for why it's a bool, not an

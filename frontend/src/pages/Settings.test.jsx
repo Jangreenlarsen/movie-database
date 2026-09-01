@@ -22,6 +22,7 @@ import {
   SendTestEmailRow,
   SerialNumberSection,
   SystemSettingsSection,
+  TestModeSection,
   UsersSection,
   formatUptime,
 } from "./Settings";
@@ -409,6 +410,60 @@ describe("PasswordPolicySection (feature #174)", () => {
  * begrundelse som PasswordPolicySection ovenfor: den indlæste værdi skal
  * reelt afspejles, og gem/fejl skal vises.
  */
+describe("TestModeSection (feature #217)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("indlæser og viser den nuværende tilstand", async () => {
+    vi.spyOn(api, "getTestModePolicy").mockResolvedValue({ test_mode: true });
+    render(<TestModeSection />);
+
+    expect(await screen.findByRole("checkbox", { name: "Test-tilstand aktiv" })).toBeChecked();
+    expect(
+      screen.getByText("Test-tilstand er aktiv — ingen e-mails eller beskeder bliver sendt lige nu.")
+    ).toBeInTheDocument();
+  });
+
+  it("skjuler advarslen når tilstanden er slået fra", async () => {
+    vi.spyOn(api, "getTestModePolicy").mockResolvedValue({ test_mode: false });
+    render(<TestModeSection />);
+
+    await screen.findByRole("checkbox", { name: "Test-tilstand aktiv" });
+    expect(
+      screen.queryByText("Test-tilstand er aktiv — ingen e-mails eller beskeder bliver sendt lige nu.")
+    ).not.toBeInTheDocument();
+  });
+
+  it("gemmer ændringer og bekræfter det", async () => {
+    vi.spyOn(api, "getTestModePolicy").mockResolvedValue({ test_mode: false });
+    const updateSpy = vi.spyOn(api, "updateTestModePolicy").mockResolvedValue({ test_mode: true });
+    const user = userEvent.setup();
+
+    render(<TestModeSection />);
+    const checkbox = await screen.findByRole("checkbox", { name: "Test-tilstand aktiv" });
+    expect(checkbox).not.toBeChecked();
+
+    await user.click(checkbox);
+    await user.click(screen.getByRole("button", { name: "Gem" }));
+
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith({ test_mode: true }));
+    expect(await screen.findByText("Gemt!")).toBeInTheDocument();
+  });
+
+  it("viser backend-fejlbeskeden ved en mislykket gemning", async () => {
+    vi.spyOn(api, "getTestModePolicy").mockResolvedValue({ test_mode: false });
+    vi.spyOn(api, "updateTestModePolicy").mockRejectedValue(new Error("Serverfejl"));
+    const user = userEvent.setup();
+
+    render(<TestModeSection />);
+    await screen.findByRole("checkbox", { name: "Test-tilstand aktiv" });
+    await user.click(screen.getByRole("button", { name: "Gem" }));
+
+    expect(await screen.findByText("Serverfejl")).toBeInTheDocument();
+  });
+});
+
 describe("ScreeningRequestPolicySection (feature #177/#186)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();

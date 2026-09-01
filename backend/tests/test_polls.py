@@ -631,14 +631,96 @@ async def test_creating_a_pending_poll_notifies_admins(client):
 
 
 async def test_deleting_an_already_decided_poll_does_not_notify_anyone(client, monkeypatch):
-    """Kun en fjernet 'pending' afstemning tolkes som en afvisning — en
-    allerede afgjort afstemning der ryddes op er ikke en overraskelse for
-    nogen (alle involverede har allerede set udfaldet)."""
+    """Kun en fjernet 'pending' afstemning tolkes som en afvisning, og kun
+    en fjernet ENDNU ÅBEN afstemning udløser feature #216's aflysnings-
+    besked (se testene nedenfor) — en allerede afgjort (lukket) afstemning
+    der ryddes op er ikke en overraskelse for nogen (alle involverede har
+    allerede set udfaldet, via notify_poll_closed ved selve lukningen)."""
     _configure_resend(monkeypatch)
     calls = _capture_email(monkeypatch)
+    voter = await _member(client, "poll_decided_cleanup")
     a = await _create_movie(client, "Oprydning A")
     b = await _create_movie(client, "Oprydning B")
     poll = (await _create_poll(client, [a, b])).json()  # admin-oprettet, 'open'
+    await voter.post(f"/api/polls/{poll['id']}/vote", json={"candidate_index": 0})
+    await client.post(f"/api/polls/{poll['id']}/close")
+    calls.clear()  # selve lukningen sender allerede sin egen "afgjort"-besked
+
+    await client.delete(f"/api/polls/{poll['id']}")
+
+    assert len(calls) == 0
+    await voter.aclose()
+
+
+# Feature #216 (Jan: "når man sletter en afstemning så få users ikke notet
+# om det, lan en besked som forklar at afstemings filmen er desvære aflyst
+# af biograffens bestyrelse destående af de 7 små dværge, eller noget andet
+# sjovt lave eventuelt en rotation med 5 forskeling besked typer med samme
+# mening").
+
+
+async def test_deleting_an_open_poll_notifies_every_voter(client, monkeypatch):
+    _configure_resend(monkeypatch)
+    calls = _capture_email(monkeypatch)
+    voter1 = await _member(client, "poll_cancel_v1")
+    voter2 = await _member(client, "poll_cancel_v2")
+    a = await _create_movie(client, "Aflyst A")
+    b = await _create_movie(client, "Aflyst B")
+    poll = (await _create_poll(client, [a, b])).json()  # admin-oprettet, 'open'
+    await voter1.post(f"/api/polls/{poll['id']}/vote", json={"candidate_index": 0})
+    await voter2.post(f"/api/polls/{poll['id']}/vote", json={"candidate_index": 1})
+
+    response = await client.delete(f"/api/polls/{poll['id']}")
+    assert response.status_code == 204
+
+    inbox1 = (await voter1.get("/api/messages/inbox")).json()
+    inbox2 = (await voter2.get("/api/messages/inbox")).json()
+    assert any(m["subject"] == "Afstemningen er aflyst" for m in inbox1)
+    assert any(m["subject"] == "Afstemningen er aflyst" for m in inbox2)
+    assert len(calls) == 2
+    await voter1.aclose()
+    await voter2.aclose()
+
+
+async def test_cancelled_poll_message_is_one_of_the_five_rotating_variants(client, monkeypatch):
+    from app.services.message_service import _POLL_CANCELLED_MESSAGES
+
+    assert len(_POLL_CANCELLED_MESSAGES) == 5
+    _configure_resend(monkeypatch)
+    _capture_email(monkeypatch)
+    voter = await _member(client, "poll_cancel_variant")
+    a = await _create_movie(client, "Variant A")
+    b = await _create_movie(client, "Variant B")
+    poll = (await _create_poll(client, [a, b])).json()
+    await voter.post(f"/api/polls/{poll['id']}/vote", json={"candidate_index": 0})
+
+    await client.delete(f"/api/polls/{poll['id']}")
+
+    inbox = (await voter.get("/api/messages/inbox")).json()
+    message = next(m for m in inbox if m["subject"] == "Afstemningen er aflyst")
+    assert message["body"] in _POLL_CANCELLED_MESSAGES
+    await voter.aclose()
+
+
+async def test_deleting_an_open_poll_with_no_votes_notifies_no_one(client, monkeypatch):
+    _configure_resend(monkeypatch)
+    calls = _capture_email(monkeypatch)
+    a = await _create_movie(client, "Ingen Stemmer A")
+    b = await _create_movie(client, "Ingen Stemmer B")
+    poll = (await _create_poll(client, [a, b])).json()  # admin-oprettet, 'open', ingen stemmer
+
+    await client.delete(f"/api/polls/{poll['id']}")
+
+    assert len(calls) == 0
+
+
+async def test_admin_deleting_an_open_poll_they_voted_on_does_not_notify_themselves(client, monkeypatch):
+    _configure_resend(monkeypatch)
+    calls = _capture_email(monkeypatch)
+    a = await _create_movie(client, "Admin Egen A")
+    b = await _create_movie(client, "Admin Egen B")
+    poll = (await _create_poll(client, [a, b])).json()
+    await client.post(f"/api/polls/{poll['id']}/vote", json={"candidate_index": 0})
 
     await client.delete(f"/api/polls/{poll['id']}")
 
@@ -787,3 +869,274 @@ async def test_a_closed_poll_cannot_be_auto_closed_again(client, db):
     response = await client.get(f"/api/polls/{poll['id']}")
     assert response.json()["status"] == "closed"
     assert response.json()["closed_at"] is not None
+
+
+# Feature #218 (Jan: "andre guester skal kun indsætte ny film forslag til
+# afsteming i en relateret kørende afsteming, en adm skal dog godkende at
+# ændring er ok, adm skal selvfølgelig også kunne laver samme tilretning
+# som guester men skal dog ikke godkendes af en anden adm").
+
+
+async def test_nonadmin_suggesting_a_candidate_goes_to_pending_candidates(client):
+    guest = await _member(client, "poll_suggest_v1")
+    a = await _create_movie(client, "Forslag A")
+    b = await _create_movie(client, "Forslag B")
+    c = await _create_movie(client, "Forslag C")
+    poll = (await _create_poll(client, [a, b])).json()  # admin-oprettet, 'open'
+
+    response = await guest.post(
+        f"/api/polls/{poll['id']}/candidates/suggest",
+        json={"media_kind": "movie", "movie_id": c},
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert len(body["candidates"]) == 2
+    assert len(body["pending_candidates"]) == 1
+    assert body["pending_candidates"][0]["movie_id"] == c
+    assert body["pending_candidates"][0]["suggested_by"] == "poll_suggest_v1"
+    assert body["pending_candidates"][0]["title"] == "Forslag C"
+    await guest.aclose()
+
+
+async def test_admin_suggesting_a_candidate_is_added_directly(client):
+    a = await _create_movie(client, "Direkte A")
+    b = await _create_movie(client, "Direkte B")
+    c = await _create_movie(client, "Direkte C")
+    poll = (await _create_poll(client, [a, b])).json()
+
+    response = await client.post(
+        f"/api/polls/{poll['id']}/candidates/suggest",
+        json={"media_kind": "movie", "movie_id": c},
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert len(body["candidates"]) == 3
+    assert body["pending_candidates"] == []
+
+
+async def test_the_original_poll_creator_still_needs_approval_for_further_candidates(client):
+    """Jan, ved et opklarende spørgsmål: den oprindelige forslagsstiller er
+    IKKE undtaget — samme regel som alle andre ikke-admins, selv for deres
+    egen (nu godkendte, kørende) afstemning."""
+    creator = await _member(client, "poll_own_creator")
+    a = await _create_movie(client, "Egen A")
+    b = await _create_movie(client, "Egen B")
+    c = await _create_movie(client, "Egen C")
+    created = (await _create_poll(creator, [a, b])).json()
+    assert created["status"] == "pending"
+    poll_id = created["id"]
+    await client.post(f"/api/polls/{poll_id}/approve")
+
+    response = await creator.post(
+        f"/api/polls/{poll_id}/candidates/suggest",
+        json={"media_kind": "movie", "movie_id": c},
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert len(body["candidates"]) == 2
+    assert len(body["pending_candidates"]) == 1
+    await creator.aclose()
+
+
+async def test_suggesting_a_candidate_requires_an_open_poll(client):
+    guest = await _member(client, "poll_suggest_notopen")
+    a = await _create_movie(client, "Ikke Åben A")
+    b = await _create_movie(client, "Ikke Åben B")
+    c = await _create_movie(client, "Ikke Åben C")
+    poll = (await _create_poll(client, [a, b])).json()
+    await client.post(f"/api/polls/{poll['id']}/close")
+
+    response = await guest.post(
+        f"/api/polls/{poll['id']}/candidates/suggest",
+        json={"media_kind": "movie", "movie_id": c},
+    )
+    assert response.status_code == 409
+    await guest.aclose()
+
+
+async def test_suggesting_an_already_existing_candidate_is_rejected(client):
+    a = await _create_movie(client, "Dubleret A")
+    b = await _create_movie(client, "Dubleret B")
+    poll = (await _create_poll(client, [a, b])).json()
+
+    response = await client.post(
+        f"/api/polls/{poll['id']}/candidates/suggest",
+        json={"media_kind": "movie", "movie_id": a},
+    )
+    assert response.status_code == 409
+
+
+async def test_suggesting_an_already_pending_candidate_is_rejected(client):
+    guest1 = await _member(client, "poll_suggest_dup1")
+    guest2 = await _member(client, "poll_suggest_dup2")
+    a = await _create_movie(client, "Dobbeltforslag A")
+    b = await _create_movie(client, "Dobbeltforslag B")
+    c = await _create_movie(client, "Dobbeltforslag C")
+    poll = (await _create_poll(client, [a, b])).json()
+    await guest1.post(
+        f"/api/polls/{poll['id']}/candidates/suggest", json={"media_kind": "movie", "movie_id": c}
+    )
+
+    response = await guest2.post(
+        f"/api/polls/{poll['id']}/candidates/suggest", json={"media_kind": "movie", "movie_id": c}
+    )
+    assert response.status_code == 409
+    await guest1.aclose()
+    await guest2.aclose()
+
+
+async def test_admin_can_approve_a_candidate_suggestion(client):
+    guest = await _member(client, "poll_approve_suggest")
+    a = await _create_movie(client, "Godkend A")
+    b = await _create_movie(client, "Godkend B")
+    c = await _create_movie(client, "Godkend C")
+    poll = (await _create_poll(client, [a, b])).json()
+    suggested = (
+        await guest.post(
+            f"/api/polls/{poll['id']}/candidates/suggest", json={"media_kind": "movie", "movie_id": c}
+        )
+    ).json()
+    suggestion_id = suggested["pending_candidates"][0]["suggestion_id"]
+
+    response = await client.post(f"/api/polls/{poll['id']}/pending-candidates/{suggestion_id}/approve")
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["candidates"]) == 3
+    assert body["pending_candidates"] == []
+    await guest.aclose()
+
+
+async def test_admin_can_reject_a_candidate_suggestion(client):
+    guest = await _member(client, "poll_reject_suggest")
+    a = await _create_movie(client, "Afvis A")
+    b = await _create_movie(client, "Afvis B")
+    c = await _create_movie(client, "Afvis C")
+    poll = (await _create_poll(client, [a, b])).json()
+    suggested = (
+        await guest.post(
+            f"/api/polls/{poll['id']}/candidates/suggest", json={"media_kind": "movie", "movie_id": c}
+        )
+    ).json()
+    suggestion_id = suggested["pending_candidates"][0]["suggestion_id"]
+
+    response = await client.delete(f"/api/polls/{poll['id']}/pending-candidates/{suggestion_id}")
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["candidates"]) == 2
+    assert body["pending_candidates"] == []
+    await guest.aclose()
+
+
+async def test_nonadmin_cannot_approve_or_reject_a_suggestion(client):
+    guest = await _member(client, "poll_no_approve")
+    a = await _create_movie(client, "Ej Godkend A")
+    b = await _create_movie(client, "Ej Godkend B")
+    c = await _create_movie(client, "Ej Godkend C")
+    poll = (await _create_poll(client, [a, b])).json()
+    suggested = (
+        await guest.post(
+            f"/api/polls/{poll['id']}/candidates/suggest", json={"media_kind": "movie", "movie_id": c}
+        )
+    ).json()
+    suggestion_id = suggested["pending_candidates"][0]["suggestion_id"]
+
+    approve_response = await guest.post(
+        f"/api/polls/{poll['id']}/pending-candidates/{suggestion_id}/approve"
+    )
+    assert approve_response.status_code == 403
+    reject_response = await guest.delete(f"/api/polls/{poll['id']}/pending-candidates/{suggestion_id}")
+    assert reject_response.status_code == 403
+    await guest.aclose()
+
+
+async def test_approving_an_unknown_suggestion_id_404s(client):
+    a = await _create_movie(client, "Ukendt A")
+    b = await _create_movie(client, "Ukendt B")
+    poll = (await _create_poll(client, [a, b])).json()
+
+    response = await client.post(f"/api/polls/{poll['id']}/pending-candidates/{ObjectId()}/approve")
+    assert response.status_code == 404
+
+
+async def test_a_newly_approved_candidate_can_immediately_be_voted_on(client):
+    guest = await _member(client, "poll_vote_new_candidate")
+    a = await _create_movie(client, "Ny Stem A")
+    b = await _create_movie(client, "Ny Stem B")
+    c = await _create_movie(client, "Ny Stem C")
+    poll = (await _create_poll(client, [a, b])).json()
+    suggested = (
+        await guest.post(
+            f"/api/polls/{poll['id']}/candidates/suggest", json={"media_kind": "movie", "movie_id": c}
+        )
+    ).json()
+    suggestion_id = suggested["pending_candidates"][0]["suggestion_id"]
+    await client.post(f"/api/polls/{poll['id']}/pending-candidates/{suggestion_id}/approve")
+
+    response = await guest.post(f"/api/polls/{poll['id']}/vote", json={"candidate_index": 2})
+    assert response.status_code == 200
+    assert response.json()["candidates"][2]["vote_count"] == 1
+    await guest.aclose()
+
+
+async def test_admin_is_notified_of_a_new_candidate_suggestion(client):
+    """Samme in-app-only afprøvning som de øvrige notify_admins_new_*-tests
+    — admin-fixturen har ingen e-mail sat."""
+    guest = await _member(client, "poll_notify_suggest_admin")
+    a = await _create_movie(client, "Meld Kandidat A")
+    b = await _create_movie(client, "Meld Kandidat B")
+    c = await _create_movie(client, "Meld Kandidat C")
+    poll = (await _create_poll(client, [a, b])).json()
+
+    await guest.post(
+        f"/api/polls/{poll['id']}/candidates/suggest", json={"media_kind": "movie", "movie_id": c}
+    )
+
+    admin_inbox = (await client.get("/api/messages/inbox")).json()
+    assert any(m["subject"] == "Nyt kandidat-forslag afventer godkendelse" for m in admin_inbox)
+    await guest.aclose()
+
+
+async def test_suggester_is_notified_when_their_candidate_is_approved(client, monkeypatch):
+    _configure_resend(monkeypatch)
+    calls = _capture_email(monkeypatch)
+    guest = await _member(client, "poll_notify_approved_suggest")
+    a = await _create_movie(client, "Godkend Besked A")
+    b = await _create_movie(client, "Godkend Besked B")
+    c = await _create_movie(client, "Godkend Besked C")
+    poll = (await _create_poll(client, [a, b])).json()
+    suggested = (
+        await guest.post(
+            f"/api/polls/{poll['id']}/candidates/suggest", json={"media_kind": "movie", "movie_id": c}
+        )
+    ).json()
+    suggestion_id = suggested["pending_candidates"][0]["suggestion_id"]
+
+    await client.post(f"/api/polls/{poll['id']}/pending-candidates/{suggestion_id}/approve")
+
+    inbox = (await guest.get("/api/messages/inbox")).json()
+    assert any(m["subject"] == "Dit kandidat-forslag er godkendt" for m in inbox)
+    assert len(calls) == 1
+    await guest.aclose()
+
+
+async def test_suggester_is_notified_when_their_candidate_is_rejected(client, monkeypatch):
+    _configure_resend(monkeypatch)
+    calls = _capture_email(monkeypatch)
+    guest = await _member(client, "poll_notify_rejected_suggest")
+    a = await _create_movie(client, "Afvis Besked A")
+    b = await _create_movie(client, "Afvis Besked B")
+    c = await _create_movie(client, "Afvis Besked C")
+    poll = (await _create_poll(client, [a, b])).json()
+    suggested = (
+        await guest.post(
+            f"/api/polls/{poll['id']}/candidates/suggest", json={"media_kind": "movie", "movie_id": c}
+        )
+    ).json()
+    suggestion_id = suggested["pending_candidates"][0]["suggestion_id"]
+
+    await client.delete(f"/api/polls/{poll['id']}/pending-candidates/{suggestion_id}")
+
+    inbox = (await guest.get("/api/messages/inbox")).json()
+    assert any(m["subject"] == "Om dit kandidat-forslag" for m in inbox)
+    assert len(calls) == 1
+    await guest.aclose()

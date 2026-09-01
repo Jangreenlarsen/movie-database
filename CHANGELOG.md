@@ -2,6 +2,40 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.191.0 build 0273] — 2026-09-01 — feature: kandidat-forslag til en kørende afstemning, kræver admin-godkendelse (FEATURES.md #218)
+
+Jan: *"andre guester skal kun indsætte ny film forslag til afsteming i en relerede kørende afsteming, en adm skal dog godkende at ændring er ok, adm skal selvfølgelig også kunne laver samme tilretning som guester men skal dog ikke godkendes af en anden adm"* — uddybet: den oprindelige forslagsstiller er IKKE undtaget fra godkendelseskravet.
+
+Ny `pending_candidates[]` på poll-dokumentet, adskilt fra den rigtige `candidates[]`. `POST /api/polls/{id}/candidates/suggest` er ét fælles endpoint for alle roller — rolle-forgreningen ligger i service-laget: admins egen tilføjelse går direkte ind, alle andres afventer godkendelse (`POST .../approve` / `DELETE .../pending-candidates/{id}`, begge admin-only). Tre nye notifikationer spejler #213's etablerede mønstre.
+
+Frontend: ny `SuggestCandidateForm` genbruger `CandidatePicker` uændret; `PollCard` viser en "Foreslåede kandidater"-sektion synlig for alle, med Godkend/Afvis kun for admin.
+
+Berørte filer: `backend/app/core/errors.py`, `backend/app/main.py`, `backend/app/models/poll.py`, `backend/app/repositories/poll_repository.py`, `backend/app/services/poll_service.py`, `backend/app/services/message_service.py`, `backend/app/api/polls.py`, `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Cinema.css`, `frontend/src/api/client.js`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`. Set i browser (regel 18) — hele flowet fra forslag til godkendelse. Fuld backend-suite (976) + frontend (228) grøn.
+
+## [0.190.1 build 0272] — 2026-09-01 — juster: skjul søge/filter-rækken under "Tilføre film på title" også uden for Ønskelisten (FEATURES.md #214-opfølgning)
+
+Jan: *"feature: 214 Skjul 'Filtrér dine ønsker'-rækken under 'Tilføre film på title' skal også gælde for film og tv serie sektioner også"*.
+
+#214's betingelse var scopet for snævert til kun `wishlist && addMode === "manual"`. Samme to-søgefelter-forveksling gælder Film-/TV-bibliotekets egen generelle søgning — forenklet til `addMode !== "manual"` i `Library.jsx`/`TvShows.jsx`, rammer nu uanset `wishlist`.
+
+Set i browser (regel 18) på Film-siden uden for ønskelisten. Fuld frontend-suite (219) grøn.
+
+## [0.190.0 build 0271] — 2026-09-01 — feature: "Test-tilstand" i Indstillinger → Drift, stopper al udgående besked/e-mail (FEATURES.md #217)
+
+Jan: *"vi skal have en funktion for adm i settings hvor vi kan sætte at 'test' tilstand som primæret vil betyde at email og beskeder ikke sendes ud af system i test mode"* — uddybet: begge kanaler skal stoppes helt.
+
+Ny `settings.test_mode`, samme "typed policy"-mønster som `require_preferred_at`/`plex_auto_import_enabled`. `message_service.send()` er det ENESTE sted en besked oprettes — en ny `TestModeActiveError` kastes der som det allerførste når test-tilstand er aktiv, FØR databasen eller Resend røres. Dækker automatisk alle `notify_*`-funktioner (deres try/except sluger fejlen); admins manuelle "send besked" får i stedet en tydelig 409-fejl. Bevidst udeladt fra backup/restore (operationel afbryder, samme kategori som `plex_auto_import_enabled`).
+
+Berørte filer: `backend/app/core/config.py`, `backend/app/core/errors.py`, `backend/app/main.py`, `backend/app/models/settings.py`, `backend/app/repositories/system_settings_repository.py`, `backend/app/services/system_settings_service.py`, `backend/app/services/message_service.py`, `backend/app/api/settings.py`, `frontend/src/pages/Settings.jsx`, `frontend/src/api/client.js`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`. Set i browser (regel 18). Fuld backend-suite (962) + frontend (217) grøn.
+
+## [0.189.0 build 0270] — 2026-08-30 — feature: voterne får besked når admin sletter en endnu åben afstemning, sjov "aflyst"-besked fra 5 varianter (FEATURES.md #216)
+
+Jan: *"når man sletter en afstemning så få users ikke notet om det, lan en besked som forklar at afstemings filmen er desvære aflyst af biograffens bestyrelse destående af de 7 små dværge, eller noget andet sjovt lave eventuelt en rotation med 5 forskeling besked typer med samme mening"*.
+
+`delete_poll` havde et reelt hul: en pending-afstemning gav forslagsstilleren besked, en allerede afgjort gav bevidst ingen besked — men en ENDNU ÅBEN afstemning med aktive stemmer forsvandt sporløst uden nogen besked til dem der havde stemt. Ny `message_service.notify_poll_cancelled` (samme "én send() pr. voter"-mønster som `notify_poll_closed`) sender nu en tilfældigt valgt besked fra en pulje på 5 varianter, alle i samme spøgefulde "Voldby Dagblad"-tone — Jans eget forslag om "de 7 små dværge" er variant #1.
+
+Berørte filer: `backend/app/services/message_service.py`, `backend/app/services/poll_service.py`. Ingen frontend-ændring — beskeden løber gennem det eksisterende, generiske besked-/indbakke-system. Fuld backend-suite (955) + frontend (213, uændret) grøn.
+
 ## [0.188.1 build 0269] — 2026-08-30 — juster: tydeligere ordlyd på afstemningens dato-linje
 
 Jan: *"ændring i portal 'Der stemmes om 1. sep.' til 'Der stemmes forvisning i BIO til dagen den 1. sep.'"*.

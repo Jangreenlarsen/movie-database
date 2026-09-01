@@ -1,12 +1,19 @@
 """Beskeder fra admin til brugerne (feature #100)."""
 
 import logging
+import random
 from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
-from app.core.errors import EmailRateLimitedError, MessageNotFoundError, NoRecipientsError, UserNotFoundError
+from app.core.errors import (
+    EmailRateLimitedError,
+    MessageNotFoundError,
+    NoRecipientsError,
+    TestModeActiveError,
+    UserNotFoundError,
+)
 from app.integrations import email_client, email_templates
 from app.models.message import InboxMessage, Message, MessageCreate, MessageRecipient
 from app.models.poll import Poll, PollCandidateResult
@@ -122,7 +129,19 @@ async def send(
     funktioner nedenfor), aldrig noget en admin kan sætte via den offentlige
     "send besked"-API'en. Portal-beskeden (`payload.body`) er uændret ren
     tekst i begge tilfælde — `email_html` er udelukkende en rigere
-    E-MAIL-repræsentation af samme indhold."""
+    E-MAIL-repræsentation af samme indhold.
+
+    Feature #217 — `send()` er det ENESTE sted en Message nogensinde
+    oprettes (verificeret ved grep), så et kast her FØR noget som helst
+    rører databasen eller Resend dækker automatisk EVERY notify_*-funktion
+    i denne fil, uden at hver af dem selv skal tjekke `settings.test_mode`.
+    Deres eksisterende `try/except: pass` sluger den tavst, ligesom enhver
+    anden uventet fejl. `POST /api/messages` (admins manuelle "send besked")
+    lader den derimod boble op til en registreret exception-handler (409) —
+    en tydelig fejl er bedre end et stille no-op der ser ud som en succes
+    for en handling admin bevidst udførte."""
+    if settings.test_mode:
+        raise TestModeActiveError()
     sender_id = str(sender["_id"])
     resolved = await _resolve_recipients(db, payload, sender_id)
     if not resolved:
@@ -430,6 +449,126 @@ async def notify_admins_new_poll_suggestion(
             pass
 
 
+async def notify_admins_new_candidate_suggestion(
+    db: AsyncIOMotorDatabase, suggester: dict, poll_document: dict, candidate_title: str | None
+) -> None:
+    """Feature #218 (Jan: "andre guester skal kun indsætte ny film forslag
+    til afsteming i en relateret kørende afsteming, en adm skal dog
+    godkende") — samme bruger→admin-retning som
+    notify_admins_new_poll_suggestion ovenfor, men for et foreslået
+    KANDIDAT-tilføjelse til en allerede kørende afstemning, ikke en helt ny
+    afstemning."""
+    admins = await user_repository.list_active_admins(db)
+    if not admins:
+        return
+    poll_title = poll_document.get("title") or "en afstemning"
+    display_title = candidate_title or "en titel"
+    for admin_doc in admins:
+        if admin_doc.get("username") == suggester.get("username"):
+            continue
+        payload = MessageCreate(
+            subject="Nyt kandidat-forslag afventer godkendelse",
+            body=(
+                f'{suggester.get("username")} har foreslået at tilføje "{display_title}" til '
+                f'afstemningen "{poll_title}" — godkend eller afvis den under Voldby BIO.'
+            ),
+            recipient_user_id=str(admin_doc["_id"]),
+        )
+        try:
+            await send(db, payload, suggester)
+        except Exception:
+            pass
+
+
+async def notify_poll_candidate_approved(
+    db: AsyncIOMotorDatabase,
+    suggestion: dict,
+    candidate_title: str | None,
+    poll_document: dict,
+    admin: dict,
+) -> None:
+    """Feature #218 — svar til den der foreslog kandidaten, når admin
+    godkender forslaget og gør den til en rigtig, stemme-bar kandidat.
+    Samme "kort bekræftelse, ingen poster endnu" tone som
+    notify_poll_approved ovenfor."""
+    suggester_username = suggestion.get("suggested_by")
+    if not suggester_username or suggester_username == admin.get("username"):
+        return
+    suggester = await user_repository.find_by_username_normalized(db, suggester_username.lower())
+    if suggester is None:
+        return
+
+    poll_title = poll_document.get("title") or "afstemningen"
+    display_title = candidate_title or "titlen"
+    body = (
+        f'Dit forslag om at tilføje "{display_title}" til "{poll_title}" er godkendt — '
+        "den er nu en rigtig kandidat, klar til at få stemmer."
+    )
+    payload = MessageCreate(
+        subject="Dit kandidat-forslag er godkendt",
+        body=body,
+        recipient_user_id=str(suggester["_id"]),
+    )
+    try:
+        await send(
+            db,
+            payload,
+            admin,
+            email_html=email_templates.render_notification_email(
+                headline="Dit kandidat-forslag er godkendt!",
+                tagline=body,
+                body_text=body,
+                poster_url=None,
+                accent="gold",
+            ),
+        )
+    except Exception:
+        pass
+
+
+async def notify_poll_candidate_rejected(
+    db: AsyncIOMotorDatabase,
+    suggestion: dict,
+    candidate_title: str | None,
+    poll_document: dict,
+    admin: dict,
+) -> None:
+    """Feature #218 — modparten til notify_poll_candidate_approved: admin
+    afviste forslaget i stedet. Samme dæmpede tone som
+    notify_poll_suggestion_rejected ovenfor — det er ikke en fejl, bare et
+    nej."""
+    suggester_username = suggestion.get("suggested_by")
+    if not suggester_username or suggester_username == admin.get("username"):
+        return
+    suggester = await user_repository.find_by_username_normalized(db, suggester_username.lower())
+    if suggester is None:
+        return
+
+    poll_title = poll_document.get("title") or "afstemningen"
+    display_title = candidate_title or "titlen"
+    body = f'Dit forslag om at tilføje "{display_title}" til "{poll_title}" blev desværre ikke godkendt denne gang.'
+    payload = MessageCreate(
+        subject="Om dit kandidat-forslag",
+        body=body,
+        recipient_user_id=str(suggester["_id"]),
+    )
+    try:
+        await send(
+            db,
+            payload,
+            admin,
+            email_html=email_templates.render_notification_email(
+                headline="Om dit kandidat-forslag",
+                tagline=body,
+                body_text=body,
+                poster_url=None,
+                accent="muted",
+            ),
+        )
+    except Exception:
+        pass
+
+
 async def notify_screening_request_declined(
     db: AsyncIOMotorDatabase,
     request_doc: dict,
@@ -570,6 +709,62 @@ async def notify_poll_closed(
                     body_text=body,
                     poster_url=poster_url,
                     accent="gold",
+                ),
+            )
+        except Exception:
+            pass
+
+
+# Feature #216 (Jan: "når man sletter en afstemning så få users ikke notet
+# om det, lan en besked som forklar at afstemings filmen er desvære aflyst
+# af biograffens bestyrelse destående af de 7 små dværge, eller noget andet
+# sjovt lave eventuelt en rotation med 5 forskeling besked typer med samme
+# mening") — samme spøgefulde "Voldby Dagblad"-tone som resten af biograf-
+# lore'en (feature #163/#210/#211's fiktive lokalavis-univers). Ren
+# tilfældig udvælgelse pr. afsendelse, ikke en gemt round-robin-tilstand —
+# simplest mulige tolkning af "en rotation", uden ny state at holde styr på.
+_POLL_CANCELLED_MESSAGES = [
+    "Afstemningen er desværre aflyst af biografens bestyrelse, bestående af de 7 små dværge.",
+    "Filmaftenen er trukket tilbage efter et lynindkaldt nødmøde i popcornmaskinens fagforening.",
+    "Biografdirektøren — en talende kattekilling med gode kontakter — har underkendt afstemningen uden yderligere forklaring.",
+    "Projektoren har nedlagt arbejdet i protest mod kandidatlisten, og afstemningen er derfor aflyst.",
+    "Voldby BIOs hemmelige filmråd har trukket afstemningen tilbage. Ingen kommentarer til pressen.",
+]
+
+
+async def notify_poll_cancelled(db: AsyncIOMotorDatabase, poll_document: dict, admin: dict) -> None:
+    """Feature #216 — svar til hver bruger der stemte, når admin sletter en
+    ENDNU ÅBEN afstemning (poll_service.delete_poll kalder kun denne når
+    status var 'open' — en allerede afgjort afstemning rammer stadig ingen,
+    jf. delete_poll's egen docstring). Samme "én send() pr. modtager"-
+    mønster som notify_poll_closed, blot med en tilfældigt valgt besked fra
+    en fast pulje i stedet for ét fast budskab."""
+    voters = {vote["username"] for vote in poll_document.get("votes", [])} - {admin.get("username")}
+    if not voters:
+        return
+
+    body = random.choice(_POLL_CANCELLED_MESSAGES)
+
+    for username in voters:
+        voter = await user_repository.find_by_username_normalized(db, username.lower())
+        if voter is None:
+            continue
+        payload = MessageCreate(
+            subject="Afstemningen er aflyst",
+            body=body,
+            recipient_user_id=str(voter["_id"]),
+        )
+        try:
+            await send(
+                db,
+                payload,
+                admin,
+                email_html=email_templates.render_notification_email(
+                    headline="Afstemningen er aflyst",
+                    tagline=body,
+                    body_text=body,
+                    poster_url=None,
+                    accent="muted",
                 ),
             )
         except Exception:

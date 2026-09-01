@@ -165,6 +165,18 @@ class ScreeningRequestPolicyUpdate(BaseModel):
     require_preferred_at: bool | None = None
 
 
+# Feature #217 (Jan: "vi skal have en funktion for adm i settings hvor vi
+# kan sætte at 'test' tilstand som primæret vil betyde at email og beskeder
+# ikke sendes ud af system i test mode"). Samme lille model-familie-mønster
+# som ScreeningRequestPolicy ovenfor.
+class TestModePolicy(BaseModel):
+    test_mode: bool
+
+
+class TestModePolicyUpdate(BaseModel):
+    test_mode: bool | None = None
+
+
 # Feature #181 — automatisk periodisk scan af Plex for nye film/serier
 # (Jan: "jeg tro tilgengæld at vi skal have en automatisk scan af plex
 # media server for ny film og tv serie, i dag er det en manual funktion").

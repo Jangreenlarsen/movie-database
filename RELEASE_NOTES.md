@@ -1,5 +1,21 @@
 # Release Notes
 
+## v0.191.0 (build 0273) — 2026-09-01
+
+- **Du kan nu foreslå en kandidat til en allerede kørende afstemning i Voldby BIO**: "+ Foreslå en kandidat" åbner en søgning, og forslaget skal godkendes af en admin før det bliver en rigtig, stemme-bar kandidat. Admin kan tilføje direkte, uden at skulle godkende sig selv.
+
+## v0.190.1 (build 0272) — 2026-09-01
+
+- **Søge-/filter-rækken skjules nu også på selve Film- og TV-siderne** (ikke kun Ønskelisten) mens du tilføjer via "Tilføre film på title".
+
+## v0.190.0 (build 0271) — 2026-09-01
+
+- **Ny "Test-tilstand" i Indstillinger → Drift (admin)**: når slået til bliver hverken e-mails eller in-app-beskeder sendt til nogen — praktisk når man vil afprøve funktioner uden at forstyrre rigtige brugere.
+
+## v0.189.0 (build 0270) — 2026-08-30
+
+- **Slettes en afstemning mens den stadig er åben, får alle der har stemt nu besked** — med en munter, tilfældig "aflyst"-besked (fx "aflyst af biografens bestyrelse, bestående af de 7 små dværge") i stedet for at afstemningen bare forsvinder.
+
 ## v0.188.1 (build 0269) — 2026-08-30
 
 - **Tydeligere tekst på afstemningskortet**: "Der stemmes om {dato}" hedder nu "Der stemmes forvisning i BIO til dagen den {dato}".

@@ -123,6 +123,7 @@ export default function Settings({ user, onSettingsChanged }) {
 
       {activeTab === "drift" && isAdmin && (
         <>
+          <TestModeSection />
           <MonitorSection />
           <DeploySection />
           <TlsCertSection />
@@ -3420,6 +3421,75 @@ export function PlexAutoImportSection() {
               onChange={(e) => setIntervalMinutes(Number(e.target.value))}
             />
           </label>
+
+          {error && <div className="banner banner-error">{error}</div>}
+          {saved && <div className="banner banner-info">{t("serial.saved")}</div>}
+
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            {t(saving ? "common.saving" : "common.save")}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+// Feature #217 (Jan: "vi skal have en funktion for adm i settings hvor vi
+// kan sætte at 'test' tilstand som primæret vil betyde at email og
+// beskeder ikke sendes ud af system i test mode"). Samme lille formular-
+// mønster som ScreeningRequestPolicySection nedenfor.
+export function TestModeSection() {
+  const t = useT();
+  const [loadStatus, setLoadStatus] = useState("loading");
+  const [testMode, setTestMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState(null);
+
+  function load() {
+    setLoadStatus("loading");
+    api
+      .getTestModePolicy()
+      .then((data) => {
+        setTestMode(data.test_mode);
+        setLoadStatus("ready");
+      })
+      .catch(() => setLoadStatus("error"));
+  }
+
+  useEffect(load, []);
+
+  async function submit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const updated = await api.updateTestModePolicy({ test_mode: testMode });
+      setTestMode(updated.test_mode);
+      setSaved(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="card settings-section">
+      <h2>{t("testMode.heading")}</h2>
+      <p className="muted">{t("testMode.description")}</p>
+
+      {loadStatus === "loading" && <p className="muted">{t("common.loading")}</p>}
+      {loadStatus === "error" && <div className="banner banner-error">{t("testMode.loadError")}</div>}
+
+      {loadStatus === "ready" && (
+        <form className="serial-config-form" onSubmit={submit}>
+          <label className="serial-reuse-toggle">
+            <input type="checkbox" checked={testMode} onChange={(e) => setTestMode(e.target.checked)} />
+            {t("testMode.toggle")}
+          </label>
+          {testMode && <div className="banner banner-info">{t("testMode.activeHint")}</div>}
 
           {error && <div className="banner banner-error">{error}</div>}
           {saved && <div className="banner banner-info">{t("serial.saved")}</div>}

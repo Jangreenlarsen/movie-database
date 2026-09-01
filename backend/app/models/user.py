@@ -89,22 +89,6 @@ class SortLevel(BaseModel):
     direction: Literal["asc", "desc"] = "asc"
 
 
-class SortPreset(BaseModel):
-    """A named, saveable "view" — sort levels plus the rest of the library's
-    filter state (feature #44). The filter fields are all optional/defaulted
-    so presets saved before this feature (sort-only) keep validating and
-    simply apply no extra filtering when re-selected."""
-
-    name: str
-    levels: list[SortLevel]
-    query: str | None = None
-    tags: list[str] = Field(default_factory=list)
-    formats: list[str] = Field(default_factory=list)
-    audio_types: list[str] = Field(default_factory=list)
-    media_types: list[str] = Field(default_factory=list)
-    watched: bool | None = None
-
-
 CardSize = Literal["small", "medium", "large"]
 
 # Feature #108 — grid (poster-kort, som hidtil) eller liste (kompakte
@@ -130,14 +114,12 @@ class UserSettings(BaseModel):
     sort_direction: str | None = None
     visible_fields: VisibleFields = Field(default_factory=VisibleFields)
     sort_levels: list[SortLevel] = Field(default_factory=list)
-    sort_presets: list[SortPreset] = Field(default_factory=list)
     # TV-serier har egne visnings-/sorterings-indstillinger, adskilt fra
     # filmenes (feature #52) — samme model-shapes genbruges (samme
-    # VisibleFields/SortLevel/SortPreset), kun opbevaringen er separat, da
-    # de to faners relevante felter/sorteringsmuligheder ikke er identiske.
+    # VisibleFields/SortLevel), kun opbevaringen er separat, da de to
+    # faners relevante felter/sorteringsmuligheder ikke er identiske.
     tv_visible_fields: VisibleFields = Field(default_factory=VisibleFields)
     tv_sort_levels: list[SortLevel] = Field(default_factory=list)
-    tv_sort_presets: list[SortPreset] = Field(default_factory=list)
     # Poster-kortstørrelse i biblioteksvisningerne (feature #59) — én fælles
     # indstilling for både Film- og TV-serie-fanen (Jans bekræftede valg
     # 2026-08-02), i modsætning til visible_fields/sort_* ovenfor som er
@@ -164,10 +146,8 @@ class UserSettingsUpdate(BaseModel):
     sort_direction: str | None = None
     visible_fields: VisibleFields | None = None
     sort_levels: list[SortLevel] | None = None
-    sort_presets: list[SortPreset] | None = None
     tv_visible_fields: VisibleFields | None = None
     tv_sort_levels: list[SortLevel] | None = None
-    tv_sort_presets: list[SortPreset] | None = None
     card_size: CardSize | None = None
     view_mode: ViewMode | None = None
     page_size: int | None = Field(default=None, ge=1, le=500)

@@ -622,7 +622,13 @@ function PollsSection({ user }) {
           </h3>
           <div className="cinema-polls">
             {pendingPolls.map((poll) => (
-              <PollCard key={poll.id} poll={poll} isAdmin={isAdmin} onChanged={refresh} />
+              <PollCard
+                key={poll.id}
+                poll={poll}
+                isAdmin={isAdmin}
+                currentUsername={user.username}
+                onChanged={refresh}
+              />
             ))}
           </div>
         </>
@@ -630,10 +636,22 @@ function PollsSection({ user }) {
 
       <div className="cinema-polls">
         {openPolls.map((poll) => (
-          <PollCard key={poll.id} poll={poll} isAdmin={isAdmin} onChanged={refresh} />
+          <PollCard
+            key={poll.id}
+            poll={poll}
+            isAdmin={isAdmin}
+            currentUsername={user.username}
+            onChanged={refresh}
+          />
         ))}
         {decidedPolls.map((poll) => (
-          <PollCard key={poll.id} poll={poll} isAdmin={isAdmin} onChanged={refresh} />
+          <PollCard
+            key={poll.id}
+            poll={poll}
+            isAdmin={isAdmin}
+            currentUsername={user.username}
+            onChanged={refresh}
+          />
         ))}
       </div>
     </div>
@@ -904,7 +922,7 @@ function PollCandidatesEditor({ poll, onSaved, onCancel }) {
   );
 }
 
-export function PollCard({ poll, isAdmin, onChanged }) {
+export function PollCard({ poll, isAdmin, currentUsername, onChanged }) {
   const t = useT();
   const locale = useLocale();
   const [busyIndex, setBusyIndex] = useState(null);
@@ -1012,6 +1030,13 @@ export function PollCard({ poll, isAdmin, onChanged }) {
   const isPending = poll.status === "pending";
   const isOpen = poll.status === "open";
   const isTie = poll.status !== "open" && poll.winner_indices.length > 1;
+  // Feature #219-opfølgning (Jan: "den som har lavet en afstemning skal
+  // være adm på den afstemning") — afstemningens egen opretter må godkende/
+  // afvise ANDRES kandidat-forslag til NETOP denne afstemning, samme
+  // afgrænsning som backend håndhæver (poll_service._assert_can_moderate_
+  // candidates). Rører ikke ved om opretteren selv kan tilføje uden
+  // godkendelse — det kan de fortsat ikke.
+  const canModerateCandidates = isAdmin || poll.created_by === currentUsername;
 
   return (
     <div className="cinema-poll-card">
@@ -1128,7 +1153,8 @@ export function PollCard({ poll, isAdmin, onChanged }) {
 
       {/* Feature #218 — kandidater foreslået af andre (eller admin selv)
           til en allerede kørende afstemning, endnu ikke godkendt. Vises
-          for alle (gennemsigtighed), men kun admin kan godkende/afvise. */}
+          for alle (gennemsigtighed), men kun admin ELLER afstemningens
+          egen opretter kan godkende/afvise (feature #219-opfølgning). */}
       {isOpen && poll.pending_candidates.length > 0 && (
         <>
           <h4 className="cinema-poll-pending-candidates-heading">
@@ -1149,7 +1175,7 @@ export function PollCard({ poll, isAdmin, onChanged }) {
                 </strong>
                 <p className="muted">{t("polls.suggestedBy", { username: suggestion.suggested_by })}</p>
               </div>
-              {isAdmin && (
+              {canModerateCandidates && (
                 <div className="cinema-request-actions">
                   <button
                     type="button"

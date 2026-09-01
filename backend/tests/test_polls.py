@@ -1049,6 +1049,93 @@ async def test_nonadmin_cannot_approve_or_reject_a_suggestion(client):
     await guest.aclose()
 
 
+# Feature #219-opfølgning (Jan: "den som har lavet en afstemning skal være
+# adm på den afstemning sådan at vedkommende kan godkende forslag som andre
+# laver til den afstemning").
+
+
+async def test_poll_creator_can_approve_a_suggestion_to_their_own_open_poll(client):
+    creator = await _member(client, "poll_owner_approve")
+    suggester = await _member(client, "poll_owner_approve_sugg")
+    a = await _create_movie(client, "Ejer Godkend A")
+    b = await _create_movie(client, "Ejer Godkend B")
+    c = await _create_movie(client, "Ejer Godkend C")
+    created = (await _create_poll(creator, [a, b])).json()
+    await client.post(f"/api/polls/{created['id']}/approve")  # kun en RIGTIG admin kan godkende SELVE afstemningen
+
+    suggested = (
+        await suggester.post(
+            f"/api/polls/{created['id']}/candidates/suggest", json={"media_kind": "movie", "movie_id": c}
+        )
+    ).json()
+    suggestion_id = suggested["pending_candidates"][0]["suggestion_id"]
+
+    response = await creator.post(f"/api/polls/{created['id']}/pending-candidates/{suggestion_id}/approve")
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["candidates"]) == 3
+    assert body["pending_candidates"] == []
+    await creator.aclose()
+    await suggester.aclose()
+
+
+async def test_poll_creator_can_reject_a_suggestion_to_their_own_open_poll(client):
+    creator = await _member(client, "poll_owner_reject")
+    suggester = await _member(client, "poll_owner_reject_sugg")
+    a = await _create_movie(client, "Ejer Afvis A")
+    b = await _create_movie(client, "Ejer Afvis B")
+    c = await _create_movie(client, "Ejer Afvis C")
+    created = (await _create_poll(creator, [a, b])).json()
+    await client.post(f"/api/polls/{created['id']}/approve")
+
+    suggested = (
+        await suggester.post(
+            f"/api/polls/{created['id']}/candidates/suggest", json={"media_kind": "movie", "movie_id": c}
+        )
+    ).json()
+    suggestion_id = suggested["pending_candidates"][0]["suggestion_id"]
+
+    response = await creator.delete(f"/api/polls/{created['id']}/pending-candidates/{suggestion_id}")
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["candidates"]) == 2
+    assert body["pending_candidates"] == []
+    await creator.aclose()
+    await suggester.aclose()
+
+
+async def test_a_third_party_still_cannot_moderate_someone_elses_poll(client):
+    """Ejerskabet er skopet til NETOP den afstemning creator selv lavede —
+    ikke en generel "enhver bruger kan godkende enhver afstemning"-regel."""
+    creator = await _member(client, "poll_owner_scope")
+    suggester = await _member(client, "poll_owner_scope_sugg")
+    bystander = await _member(client, "poll_owner_scope_bystander")
+    a = await _create_movie(client, "Scope A")
+    b = await _create_movie(client, "Scope B")
+    c = await _create_movie(client, "Scope C")
+    created = (await _create_poll(creator, [a, b])).json()
+    await client.post(f"/api/polls/{created['id']}/approve")
+
+    suggested = (
+        await suggester.post(
+            f"/api/polls/{created['id']}/candidates/suggest", json={"media_kind": "movie", "movie_id": c}
+        )
+    ).json()
+    suggestion_id = suggested["pending_candidates"][0]["suggestion_id"]
+
+    approve_response = await bystander.post(
+        f"/api/polls/{created['id']}/pending-candidates/{suggestion_id}/approve"
+    )
+    assert approve_response.status_code == 403
+    reject_response = await bystander.delete(
+        f"/api/polls/{created['id']}/pending-candidates/{suggestion_id}"
+    )
+    assert reject_response.status_code == 403
+    await creator.aclose()
+    await suggester.aclose()
+    await bystander.aclose()
+
+
 async def test_approving_an_unknown_suggestion_id_404s(client):
     a = await _create_movie(client, "Ukendt A")
     b = await _create_movie(client, "Ukendt B")

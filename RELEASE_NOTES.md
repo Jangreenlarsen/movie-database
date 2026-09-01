@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.193.0 (build 0275) — 2026-09-01
+
+- **Du kan nu godkende/afvise andres kandidat-forslag til din egen afstemning i Voldby BIO** — uden at skulle være admin, så længe det er en afstemning du selv har foreslået.
+
 ## v0.192.0 (build 0274) — 2026-09-01
 
 - **"Sortér"-panelet er blevet enklere**: "Gemte visninger"-sektionen (navngivne, gemte sorteringer/filtre) er fjernet fra både Film- og TV-siden.

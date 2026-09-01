@@ -163,7 +163,6 @@ async def test_new_user_has_default_settings(client):
     assert settings["visible_fields"]["year"] is True
     assert settings["visible_fields"]["rating"] is False
     assert settings["sort_levels"] == []
-    assert settings["sort_presets"] == []
     assert settings["card_size"] == "medium"
     # Feature #89 — dansk er kildesproget og dermed standarden.
     assert settings["language"] == "da"
@@ -225,7 +224,7 @@ async def test_theme_roundtrip_and_rejects_invalid_value(client):
     assert invalid.status_code == 422
 
 
-async def test_multi_level_sort_and_presets_roundtrip(client):
+async def test_multi_level_sort_roundtrip(client):
     """Regression test for FEATURES.md #17/#27."""
     levels = [
         {"field": "format", "direction": "asc"},
@@ -235,25 +234,6 @@ async def test_multi_level_sort_and_presets_roundtrip(client):
     assert response.status_code == 200
     assert response.json()["settings"]["sort_levels"] == levels
 
-    presets = [{"name": "Efter format", "levels": levels}]
-    response = await client.patch("/api/users/me/settings", json={"sort_presets": presets})
-    assert response.status_code == 200
-    # A preset sent without the feature #44 filter fields round-trips with
-    # them filled in as defaults (empty/None) — not absent.
-    assert response.json()["settings"]["sort_presets"] == [
-        {
-            "name": "Efter format",
-            "levels": levels,
-            "query": None,
-            "tags": [],
-            "formats": [],
-            "audio_types": [],
-            "media_types": [],
-            "watched": None,
-        }
-    ]
-
-    # sort_levels must survive a later update that only touches sort_presets.
     me = await client.get("/api/users/me")
     assert me.json()["settings"]["sort_levels"] == levels
 
@@ -261,7 +241,7 @@ async def test_multi_level_sort_and_presets_roundtrip(client):
 async def test_settings_updates_do_not_clobber_unrelated_keys(client):
     """Regression test: Library.jsx fires several `PATCH .../settings` calls
     in quick succession with no client-side queuing (e.g. adjusting sort
-    levels, then immediately saving a preset). The old implementation read
+    levels, then immediately the card size). The old implementation read
     the whole `settings` sub-document, merged in one field, and overwrote it
     wholesale — two such requests racing could silently lose whichever
     write landed first. `auth_service.update_settings` now applies only the
@@ -272,58 +252,12 @@ async def test_settings_updates_do_not_clobber_unrelated_keys(client):
         json={"visible_fields": {"year": True, "tags": True, "format": True, "audio_types": False, "rating": False}},
     )
     await client.patch("/api/users/me/settings", json={"sort_levels": [{"field": "title", "direction": "asc"}]})
-    response = await client.patch(
-        "/api/users/me/settings",
-        json={"sort_presets": [{"name": "By title", "levels": [{"field": "title", "direction": "asc"}]}]},
-    )
+    response = await client.patch("/api/users/me/settings", json={"card_size": "large"})
 
     settings = response.json()["settings"]
     assert settings["visible_fields"]["format"] is True
     assert settings["sort_levels"] == [{"field": "title", "direction": "asc"}]
-    assert settings["sort_presets"] == [
-        {
-            "name": "By title",
-            "levels": [{"field": "title", "direction": "asc"}],
-            "query": None,
-            "tags": [],
-            "formats": [],
-            "audio_types": [],
-            "media_types": [],
-            "watched": None,
-        }
-    ]
-
-
-async def test_preset_can_capture_full_filter_state(client):
-    """Regression test for FEATURES.md #44 — a saved "view" is more than
-    just sort order."""
-    preset = {
-        "name": "Ikke sete actionfilm",
-        "levels": [{"field": "title", "direction": "asc"}],
-        "query": "matrix",
-        "tags": ["favorit"],
-        "formats": ["F-BD"],
-        "audio_types": ["Atmos"],
-        "media_types": ["Fysisk"],
-        "watched": False,
-    }
-    response = await client.patch("/api/users/me/settings", json={"sort_presets": [preset]})
-    assert response.status_code == 200
-    assert response.json()["settings"]["sort_presets"] == [preset]
-
-
-async def test_preset_without_filter_fields_defaults_gracefully(client):
-    """A preset saved before feature #44 (sort-only) must still validate."""
-    old_style_preset = {"name": "Gammel preset", "levels": [{"field": "year", "direction": "desc"}]}
-    response = await client.patch(
-        "/api/users/me/settings", json={"sort_presets": [old_style_preset]}
-    )
-    assert response.status_code == 200
-    saved = response.json()["settings"]["sort_presets"][0]
-    assert saved["name"] == "Gammel preset"
-    assert saved["query"] is None
-    assert saved["tags"] == []
-    assert saved["watched"] is None
+    assert settings["card_size"] == "large"
 
 
 async def test_email_as_username_is_rejected_with_a_usable_message(raw_client):

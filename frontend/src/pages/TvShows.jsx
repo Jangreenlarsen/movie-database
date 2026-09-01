@@ -133,8 +133,6 @@ export default function TvShows({
   const [watchedFilter, setWatchedFilter] = useState(null);
   const [plexFilter, setPlexFilter] = useState(null);
   const [sortLevels, setSortLevels] = useState(() => initialSortLevels(user.settings));
-  const [presets, setPresets] = useState(user.settings.tv_sort_presets ?? []);
-  const [presetNameInput, setPresetNameInput] = useState("");
   const [shows, setShows] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -204,10 +202,6 @@ export default function TvShows({
 
   function persistSortLevels(nextLevels) {
     persistSettings({ tv_sort_levels: nextLevels });
-  }
-
-  function persistSortPresets(nextPresets) {
-    persistSettings({ tv_sort_presets: nextPresets });
   }
 
   useEffect(() => {
@@ -377,47 +371,6 @@ export default function TvShows({
       persistSortLevels(next);
       return next;
     });
-  }
-
-  function applyPreset(name) {
-    const preset = presets.find((p) => p.name === name);
-    if (!preset) return;
-    setSortLevels(preset.levels);
-    persistSortLevels(preset.levels);
-    setQuery(preset.query ?? "");
-    // Feature #156 — se den identiske note i Library.jsx.
-    setTagFilter({ included: preset.tags ?? [], excluded: [] });
-    setFormatFilter({ included: preset.formats ?? [], excluded: [] });
-    setAudioTypeFilter({ included: preset.audio_types ?? [], excluded: [] });
-    setMediaTypeFilter({ included: preset.media_types ?? [], excluded: [] });
-    setWatchedFilter(preset.watched ?? null);
-  }
-
-  function saveCurrentAsPreset() {
-    const name = presetNameInput.trim();
-    if (!name) return;
-    const next = [
-      ...presets.filter((p) => p.name !== name),
-      {
-        name,
-        levels: sortLevels,
-        query: query || null,
-        tags: tagFilter.included,
-        formats: formatFilter.included,
-        audio_types: audioTypeFilter.included,
-        media_types: mediaTypeFilter.included,
-        watched: watchedFilter,
-      },
-    ];
-    setPresets(next);
-    persistSortPresets(next);
-    setPresetNameInput("");
-  }
-
-  function deletePreset(name) {
-    const next = presets.filter((p) => p.name !== name);
-    setPresets(next);
-    persistSortPresets(next);
   }
 
   // Feature #86 — se Library.jsx' identiske blok.
@@ -636,52 +589,6 @@ export default function TvShows({
               </div>
             </div>
 
-            <div className="filter-group sort-preset-row">
-              <span className="filter-group-label">{t("lib.savedViews")}</span>
-              <select value="" onChange={(e) => e.target.value && applyPreset(e.target.value)}>
-                <option value="">{t("lib.selectSavedView")}</option>
-                {presets.map((preset) => (
-                  <option key={preset.name} value={preset.name}>
-                    {preset.name}
-                  </option>
-                ))}
-              </select>
-              <input
-                placeholder={t("lib.nameViewPlaceholder")}
-                value={presetNameInput}
-                onChange={(e) => setPresetNameInput(e.target.value)}
-                style={{ maxWidth: 160 }}
-              />
-              <button
-                type="button"
-                className="btn"
-                onClick={saveCurrentAsPreset}
-                disabled={!presetNameInput.trim()}
-              >
-                {t("lib.saveCurrentView")}
-              </button>
-            </div>
-            <p className="muted" style={{ margin: 0 }}>
-              {t("lib.savedViewHint")}
-            </p>
-
-            {presets.length > 0 && (
-              <div className="sort-preset-list">
-                {presets.map((preset) => (
-                  <span key={preset.name} className="sort-preset-item">
-                    {preset.name}
-                    <button
-                      type="button"
-                      className="sort-preset-remove"
-                      title={t("lib.deletePreset", { name: preset.name })}
-                      onClick={() => deletePreset(preset.name)}
-                    >
-                      ✕
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         )}
 

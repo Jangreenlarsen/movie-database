@@ -20,7 +20,6 @@ DEFAULT_SETTINGS = {
         "genres": False,
     },
     "sort_levels": [],
-    "sort_presets": [],
     "tv_visible_fields": {
         "year": True,
         "tags": True,
@@ -32,7 +31,6 @@ DEFAULT_SETTINGS = {
         "genres": False,
     },
     "tv_sort_levels": [],
-    "tv_sort_presets": [],
     "card_size": "medium",
     "page_size": 50,
 }
@@ -94,8 +92,9 @@ async def find_by_id(db: AsyncIOMotorDatabase, user_id: str) -> dict | None:
 async def update_settings(db: AsyncIOMotorDatabase, user_id: str, settings: dict) -> dict | None:
     """Updates only the given top-level `settings.*` keys via dotted-path
     `$set`s — atomic per-field, so concurrent requests touching different
-    keys (e.g. `sort_levels` vs `sort_presets`) can never race and lose one
-    another's write, unlike a read-whole-settings-then-overwrite approach."""
+    keys (e.g. `sort_levels` vs `visible_fields`) can never race and lose
+    one another's write, unlike a read-whole-settings-then-overwrite
+    approach."""
     if not ObjectId.is_valid(user_id):
         return None
     dotted_updates = {f"settings.{key}": value for key, value in settings.items()}

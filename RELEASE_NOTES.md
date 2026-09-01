@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.192.0 (build 0274) — 2026-09-01
+
+- **"Sortér"-panelet er blevet enklere**: "Gemte visninger"-sektionen (navngivne, gemte sorteringer/filtre) er fjernet fra både Film- og TV-siden.
+
 ## v0.191.0 (build 0273) — 2026-09-01
 
 - **Du kan nu foreslå en kandidat til en allerede kørende afstemning i Voldby BIO**: "+ Foreslå en kandidat" åbner en søgning, og forslaget skal godkendes af en admin før det bliver en rigtig, stemme-bar kandidat. Admin kan tilføje direkte, uden at skulle godkende sig selv.

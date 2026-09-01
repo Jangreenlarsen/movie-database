@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.192.0 build 0274] — 2026-09-01 — feature: forenklet "Sortér"-panel, "Gemte visninger"-sektionen fjernet (FEATURES.md #219)
+
+Jan: *"i 'sorter' funktion skal vi have gjort mere simple jeg tænker hele seksion med at kunne gemme sorteringer skal ud"*.
+
+Fjernet i sin helhed — UI (navngiv/gem/vælg/slet), state og handlere i både `Library.jsx` og `TvShows.jsx`. Selve sorteringsniveauerne er urørt. Fuld stack-oprydning: `SortPreset`-modellen og `sort_presets`/`tv_sort_presets` fjernet fra backend (`app/models/user.py`, `user_repository.py`) — ingen migration af eksisterende brugerdata, orphanede felter ignoreres harmløst af Pydantic. Ubrugte CSS-regler og i18n-nøgler fjernet.
+
+Berørte filer: `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/pages/Library.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `backend/app/models/user.py`, `backend/app/repositories/user_repository.py`, `backend/tests/test_auth.py`. Set i browser (regel 18) på begge sider. Fuld backend-suite (974) + frontend (228, uændret) grøn.
+
 ## [0.191.0 build 0273] — 2026-09-01 — feature: kandidat-forslag til en kørende afstemning, kræver admin-godkendelse (FEATURES.md #218)
 
 Jan: *"andre guester skal kun indsætte ny film forslag til afsteming i en relerede kørende afsteming, en adm skal dog godkende at ændring er ok, adm skal selvfølgelig også kunne laver samme tilretning som guester men skal dog ikke godkendes af en anden adm"* — uddybet: den oprindelige forslagsstiller er IKKE undtaget fra godkendelseskravet.

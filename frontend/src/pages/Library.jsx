@@ -640,10 +640,12 @@ export default function Library({
         {/* Ønskelisten demoter den generelle søgning (man filtrerer sjældent
             sine ønsker); Film-siden beholder den fremtrædende (Jans valg
             2026-08-12), da den bruges meget til at filtrere biblioteket.
-            Feature #214 — under "Søg titel"-tilføjelsen på Ønskelisten
-            skjules rækken helt: den sidder lige over MovieLookupForms eget
-            søgefelt og de to blev nemt forvekslet. */}
-        {!(wishlist && addMode === "manual") && (
+            Feature #214 — under "Søg titel"-tilføjelsen skjules rækken helt,
+            uanset wishlist eller ej (Jan, opfølgning: "skal også gælde for
+            film og tv serie sektioner også"): den sidder lige over
+            MovieLookupForms eget søgefelt og de to blev nemt forvekslet på
+            begge sider. */}
+        {addMode !== "manual" && (
           <div className={`search-row${wishlist ? " search-row-secondary" : ""}`}>
             {searchInputWrap(t(wishlist ? "lib.wishlistFilterPlaceholder" : "lib.searchPlaceholder"))}
             {sortFilterFieldButtons}

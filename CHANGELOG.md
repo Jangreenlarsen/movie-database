@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.190.1 build 0272] — 2026-09-01 — juster: skjul søge/filter-rækken under "Tilføre film på title" også uden for Ønskelisten (FEATURES.md #214-opfølgning)
+
+Jan: *"feature: 214 Skjul 'Filtrér dine ønsker'-rækken under 'Tilføre film på title' skal også gælde for film og tv serie sektioner også"*.
+
+#214's betingelse var scopet for snævert til kun `wishlist && addMode === "manual"`. Samme to-søgefelter-forveksling gælder Film-/TV-bibliotekets egen generelle søgning — forenklet til `addMode !== "manual"` i `Library.jsx`/`TvShows.jsx`, rammer nu uanset `wishlist`.
+
+Set i browser (regel 18) på Film-siden uden for ønskelisten. Fuld frontend-suite (219) grøn.
+
 ## [0.190.0 build 0271] — 2026-09-01 — feature: "Test-tilstand" i Indstillinger → Drift, stopper al udgående besked/e-mail (FEATURES.md #217)
 
 Jan: *"vi skal have en funktion for adm i settings hvor vi kan sætte at 'test' tilstand som primæret vil betyde at email og beskeder ikke sendes ud af system i test mode"* — uddybet: begge kanaler skal stoppes helt.

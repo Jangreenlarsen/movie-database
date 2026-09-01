@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.190.1 (build 0272) — 2026-09-01
+
+- **Søge-/filter-rækken skjules nu også på selve Film- og TV-siderne** (ikke kun Ønskelisten) mens du tilføjer via "Tilføre film på title".
+
 ## v0.190.0 (build 0271) — 2026-09-01
 
 - **Ny "Test-tilstand" i Indstillinger → Drift (admin)**: når slået til bliver hverken e-mails eller in-app-beskeder sendt til nogen — praktisk når man vil afprøve funktioner uden at forstyrre rigtige brugere.

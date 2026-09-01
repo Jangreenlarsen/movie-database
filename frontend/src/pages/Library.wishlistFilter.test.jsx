@@ -4,6 +4,10 @@
  * Ønskelisten sad "Filtrér dine ønsker..."-rækken lige over MovieLookupForms
  * eget søgefelt, når "Tilføre film på title" var åben, og de to blev nemt
  * forvekslet. Rækken skjules nu mens tilføjelsesformularen er åben.
+ *
+ * Opfølgning (Jan: "skal også gælde for film og tv serie sektioner også")
+ * — samme forvekslings-problem gælder biblioteket generelle søgning, ikke
+ * kun ønskelistens filter, så rækken skjules nu uanset wishlist eller ej.
  */
 
 import { render, screen, waitFor } from "@testing-library/react";
@@ -64,5 +68,30 @@ describe("Library — 'Filtrér dine ønsker' skjules under 'Tilføre film på t
     await uEvent.click(screen.getByRole("button", { name: /Tilføre film på title/i }));
 
     expect(screen.getByPlaceholderText("Filtrér dine ønsker...")).toBeInTheDocument();
+  });
+
+  it("skjuler den almindelige biblioteks-søgning (ikke kun ønskelistens) mens tilføjelsesformularen er åben", async () => {
+    render(
+      <Library
+        user={{ username: "standard1", role: "standard", settings: {} }}
+        onSettingsChanged={() => {}}
+        onGoToTvShows={() => {}}
+        onLibraryChanged={() => {}}
+      />
+    );
+
+    await waitFor(() => expect(api.listMovies).toHaveBeenCalled());
+    expect(screen.getByPlaceholderText("Søg på titel, skuespiller, genre, serienr...")).toBeInTheDocument();
+
+    const uEvent = userEvent.setup();
+    await uEvent.click(screen.getByRole("button", { name: /Tilføre film på title/i }));
+
+    expect(
+      screen.queryByPlaceholderText("Søg på titel, skuespiller, genre, serienr...")
+    ).not.toBeInTheDocument();
+
+    await uEvent.click(screen.getByRole("button", { name: /Tilføre film på title/i }));
+
+    expect(screen.getByPlaceholderText("Søg på titel, skuespiller, genre, serienr...")).toBeInTheDocument();
   });
 });

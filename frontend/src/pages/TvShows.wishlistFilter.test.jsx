@@ -1,7 +1,8 @@
 /**
  * Feature #214 — samme rettelse som Library.wishlistFilter.test.jsx, blot
  * for TV-siden (identisk kopieret mønster i TvShows.jsx, jf. CLAUDE.md regel
- * 16's "tjek de øvrige grene med det samme").
+ * 16's "tjek de øvrige grene med det samme"). Inkl. opfølgningen der
+ * udvidede skjulet til også at gælde uden for ønskelisten.
  */
 
 import { render, screen, waitFor } from "@testing-library/react";
@@ -62,5 +63,30 @@ describe("TvShows — 'Filtrér dine ønsker' skjules under 'Tilføre film på t
     await uEvent.click(screen.getByRole("button", { name: /Tilføre film på title/i }));
 
     expect(screen.getByPlaceholderText("Filtrér dine ønsker...")).toBeInTheDocument();
+  });
+
+  it("skjuler den almindelige TV-søgning (ikke kun ønskelistens) mens tilføjelsesformularen er åben", async () => {
+    render(
+      <TvShows
+        user={{ username: "standard1", role: "standard", settings: {} }}
+        onSettingsChanged={() => {}}
+        onGoToMovies={() => {}}
+        onLibraryChanged={() => {}}
+      />
+    );
+
+    await waitFor(() => expect(api.listTvShows).toHaveBeenCalled());
+    expect(screen.getByPlaceholderText("Søg på navn, skuespiller, genre, serienr...")).toBeInTheDocument();
+
+    const uEvent = userEvent.setup();
+    await uEvent.click(screen.getByRole("button", { name: /Tilføre film på title/i }));
+
+    expect(
+      screen.queryByPlaceholderText("Søg på navn, skuespiller, genre, serienr...")
+    ).not.toBeInTheDocument();
+
+    await uEvent.click(screen.getByRole("button", { name: /Tilføre film på title/i }));
+
+    expect(screen.getByPlaceholderText("Søg på navn, skuespiller, genre, serienr...")).toBeInTheDocument();
   });
 });

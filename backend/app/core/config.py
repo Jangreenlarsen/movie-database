@@ -77,6 +77,17 @@ class Settings(BaseSettings):
     # slår den fra. Læst dynamisk af `screening_service.enforce_preferred_at`.
     require_preferred_at: bool = True
 
+    # Feature #217 (Jan: "vi skal have en funktion for adm i settings hvor
+    # vi kan sætte at 'test' tilstand som primæret vil betyde at email og
+    # beskeder ikke sendes ud af system i test mode"). Ingen .env-modstykke,
+    # samme mønster som adgangskode-politikken — kun sat via
+    # PATCH /api/settings/test-mode. Default `false`: må aldrig glide stille
+    # igennem til produktion (CLAUDE.md regel 16's "usikre default-værdier
+    # skal advare/nægte" gælder i ånden også en tilstand der stille
+    # undertrykker rigtige notifikationer). Læst dynamisk af
+    # message_service.send() ved hvert kald.
+    test_mode: bool = False
+
     # Feature #181 (Jan: "jeg tro tilgengæld at vi skal have en automatisk
     # scan af plex media server for ny film og tv serie, i dag er det en
     # manual funktion"). Ingen .env-modstykke, samme mønster som

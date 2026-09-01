@@ -72,6 +72,7 @@ from app.core.errors import (
     SerialNumberConflictError,
     ScreeningNotFoundError,
     ScreeningRequestNotFoundError,
+    TestModeActiveError,
     TmdbNotFoundError,
     TmdbRateLimitedError,
     TmdbUnavailableError,
@@ -402,6 +403,11 @@ async def message_not_found_handler(request: Request, exc: MessageNotFoundError)
 
 @app.exception_handler(NoRecipientsError)
 async def no_recipients_handler(request: Request, exc: NoRecipientsError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(TestModeActiveError)
+async def test_mode_active_handler(request: Request, exc: TestModeActiveError) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 

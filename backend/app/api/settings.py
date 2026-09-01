@@ -18,6 +18,8 @@ from app.models.settings import (
     SystemSettingsUpdate,
     TestableApiKey,
     TestEmailRequest,
+    TestModePolicy,
+    TestModePolicyUpdate,
 )
 from app.services import audit_log_service, movie_service, system_settings_service
 
@@ -195,4 +197,28 @@ async def update_plex_auto_import_policy(
         await audit_log_service.record(
             db, current_user["username"], "plex_auto_import_policy.updated", detail
         )
+    return result
+
+
+@router.get("/test-mode", response_model=TestModePolicy, dependencies=[Depends(require_admin)])
+async def get_test_mode_policy(db: AsyncIOMotorDatabase = Depends(get_database)):
+    """Feature #217 (Jan: "vi skal have en funktion for adm i settings hvor
+    vi kan sætte at 'test' tilstand som primæret vil betyde at email og
+    beskeder ikke sendes ud af system i test mode"). Admin-only — det er en
+    operationel afbryder, ingen almindelig bruger har brug for at kende
+    tilstanden af (i modsætning til fx screening-request-policy)."""
+    return await system_settings_service.get_test_mode_policy(db)
+
+
+@router.patch("/test-mode", response_model=TestModePolicy, dependencies=[Depends(require_admin)])
+async def update_test_mode_policy(
+    payload: TestModePolicyUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    result = await system_settings_service.update_test_mode_policy(db, payload)
+    changes = payload.model_dump(exclude_unset=True)
+    if changes:
+        detail = ", ".join(f"{key}={value}" for key, value in changes.items())
+        await audit_log_service.record(db, current_user["username"], "test_mode_policy.updated", detail)
     return result

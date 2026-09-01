@@ -22,6 +22,8 @@ from app.models.settings import (
     SystemSettingsStatus,
     SystemSettingsUpdate,
     TestableApiKey,
+    TestModePolicy,
+    TestModePolicyUpdate,
 )
 from app.repositories import system_settings_repository
 from app.services import anthem_service, plex_service
@@ -77,6 +79,11 @@ async def apply_overrides_on_startup(db: AsyncIOMotorDatabase) -> None:
     # Feature #181 — samme sync, for auto-import-politikkens to felter.
     auto_import_overrides = await system_settings_repository.get_plex_auto_import_overrides(db)
     for key, value in auto_import_overrides.items():
+        setattr(settings, key, value)
+
+    # Feature #217 — samme sync, for test-tilstandens ene felt.
+    test_mode_overrides = await system_settings_repository.get_test_mode_overrides(db)
+    for key, value in test_mode_overrides.items():
         setattr(settings, key, value)
 
 
@@ -224,6 +231,29 @@ async def update_screening_request_policy(
     for key, value in updates.items():
         setattr(settings, key, value)
     return _screening_request_policy_from_settings()
+
+
+def _test_mode_policy_from_settings() -> TestModePolicy:
+    return TestModePolicy(test_mode=settings.test_mode)
+
+
+async def get_test_mode_policy(db: AsyncIOMotorDatabase) -> TestModePolicy:
+    return _test_mode_policy_from_settings()
+
+
+async def update_test_mode_policy(
+    db: AsyncIOMotorDatabase, payload: TestModePolicyUpdate
+) -> TestModePolicy:
+    """Feature #217 (Jan: "vi skal have en funktion for adm i settings hvor
+    vi kan sætte at 'test' tilstand..."). Samme skriv-og-synkronisér-mønster
+    som update_screening_request_policy ovenfor — message_service.send()
+    læser settings.test_mode direkte ved hvert kald, så en ændring her slår
+    igennem med det samme, uden genstart."""
+    updates = payload.model_dump(exclude_unset=True)
+    await system_settings_repository.apply_test_mode_update(db, updates)
+    for key, value in updates.items():
+        setattr(settings, key, value)
+    return _test_mode_policy_from_settings()
 
 
 def _plex_auto_import_policy_from_settings() -> PlexAutoImportPolicy:

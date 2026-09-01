@@ -7,7 +7,13 @@ from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
-from app.core.errors import EmailRateLimitedError, MessageNotFoundError, NoRecipientsError, UserNotFoundError
+from app.core.errors import (
+    EmailRateLimitedError,
+    MessageNotFoundError,
+    NoRecipientsError,
+    TestModeActiveError,
+    UserNotFoundError,
+)
 from app.integrations import email_client, email_templates
 from app.models.message import InboxMessage, Message, MessageCreate, MessageRecipient
 from app.models.poll import Poll, PollCandidateResult
@@ -123,7 +129,19 @@ async def send(
     funktioner nedenfor), aldrig noget en admin kan sætte via den offentlige
     "send besked"-API'en. Portal-beskeden (`payload.body`) er uændret ren
     tekst i begge tilfælde — `email_html` er udelukkende en rigere
-    E-MAIL-repræsentation af samme indhold."""
+    E-MAIL-repræsentation af samme indhold.
+
+    Feature #217 — `send()` er det ENESTE sted en Message nogensinde
+    oprettes (verificeret ved grep), så et kast her FØR noget som helst
+    rører databasen eller Resend dækker automatisk EVERY notify_*-funktion
+    i denne fil, uden at hver af dem selv skal tjekke `settings.test_mode`.
+    Deres eksisterende `try/except: pass` sluger den tavst, ligesom enhver
+    anden uventet fejl. `POST /api/messages` (admins manuelle "send besked")
+    lader den derimod boble op til en registreret exception-handler (409) —
+    en tydelig fejl er bedre end et stille no-op der ser ud som en succes
+    for en handling admin bevidst udførte."""
+    if settings.test_mode:
+        raise TestModeActiveError()
     sender_id = str(sender["_id"])
     resolved = await _resolve_recipients(db, payload, sender_id)
     if not resolved:

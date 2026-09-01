@@ -121,6 +121,24 @@ async def apply_screening_request_policy_update(db: AsyncIOMotorDatabase, update
     return await get_screening_request_policy_overrides(db)
 
 
+# Feature #217 — samme dokument, samme typede $set-only-mønster som
+# SCREENING_REQUEST_POLICY_KEYS ovenfor.
+TEST_MODE_KEYS = ("test_mode",)
+
+
+async def get_test_mode_overrides(db: AsyncIOMotorDatabase) -> dict:
+    doc = await db[COLLECTION].find_one({"_id": DOC_ID})
+    if doc is None:
+        return {}
+    return {key: doc[key] for key in TEST_MODE_KEYS if key in doc}
+
+
+async def apply_test_mode_update(db: AsyncIOMotorDatabase, updates: dict) -> dict:
+    if updates:
+        await db[COLLECTION].update_one({"_id": DOC_ID}, {"$set": updates}, upsert=True)
+    return await get_test_mode_overrides(db)
+
+
 async def migrate_screening_request_policy_field_rename(db: AsyncIOMotorDatabase) -> None:
     """Feature #186 (Jan: "angivning af dato/tid for forvisning skal gælde
     for alle roller og ikke kun guest") — `require_preferred_at_for_guests`

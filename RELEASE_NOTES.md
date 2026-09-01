@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.190.0 (build 0271) — 2026-09-01
+
+- **Ny "Test-tilstand" i Indstillinger → Drift (admin)**: når slået til bliver hverken e-mails eller in-app-beskeder sendt til nogen — praktisk når man vil afprøve funktioner uden at forstyrre rigtige brugere.
+
 ## v0.189.0 (build 0270) — 2026-08-30
 
 - **Slettes en afstemning mens den stadig er åben, får alle der har stemt nu besked** — med en munter, tilfældig "aflyst"-besked (fx "aflyst af biografens bestyrelse, bestående af de 7 små dværge") i stedet for at afstemningen bare forsvinder.

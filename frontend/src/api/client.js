@@ -280,6 +280,10 @@ export const api = {
   getPlexAutoImportPolicy: () => request("/settings/plex-auto-import"),
   updatePlexAutoImportPolicy: (payload) =>
     request("/settings/plex-auto-import", { method: "PATCH", body: JSON.stringify(payload) }),
+  // Feature #217 — når slået til sendes hverken e-mails eller in-app-beskeder.
+  getTestModePolicy: () => request("/settings/test-mode"),
+  updateTestModePolicy: (payload) =>
+    request("/settings/test-mode", { method: "PATCH", body: JSON.stringify(payload) }),
   // Feature #100 — beskeder fra admin.
   // Feature #148 — besked-pollen (hvert 20. sek, #135) markeres som baggrund,
   // så den ikke tæller som aktivitet og holder en uovervåget session i live.

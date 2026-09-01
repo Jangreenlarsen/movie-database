@@ -248,6 +248,8 @@ function _poll(overrides = {}) {
       { media_kind: "movie", movie_id: "m1", tv_show_id: null, title: "Dune", year: 2021, poster_url: null, vote_count: 2 },
       { media_kind: "movie", movie_id: "m2", tv_show_id: null, title: "Arrival", year: 2016, poster_url: null, vote_count: 1 },
     ],
+    // Feature #218
+    pending_candidates: [],
     ...overrides,
   };
 }
@@ -470,6 +472,136 @@ describe("PollCard — 'pending' afstemning (feature #213)", () => {
       { media_kind: "movie", movie_id: "m3", tv_show_id: null },
     ]);
     expect(onChanged).toHaveBeenCalled();
+  });
+});
+
+/**
+ * Feature #218 (Jan: "andre guester skal kun indsætte ny film forslag til
+ * afsteming i en relateret kørende afsteming, en adm skal dog godkende at
+ * ændring er ok, adm skal selvfølgelig også kunne laver samme tilretning
+ * som guester men skal dog ikke godkendes af en anden adm"). Det
+ * testværdige (regel 19): en ikke-admin skal se "Foreslå"-knappen (ikke
+ * "Tilføj"), foreslåede kandidater skal vise hvem der foreslog dem, og kun
+ * admin skal have Godkend/Afvis-knapper.
+ */
+describe("PollCard — kandidat-forslag til en kørende afstemning (feature #218)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function _pollWithPendingCandidate(overrides = {}) {
+    return _poll({
+      pending_candidates: [
+        {
+          suggestion_id: "sugg1",
+          media_kind: "movie",
+          movie_id: "m3",
+          tv_show_id: null,
+          title: "Blade Runner",
+          year: 1982,
+          poster_url: null,
+          suggested_by: "voldbygæst",
+        },
+      ],
+      ...overrides,
+    });
+  }
+
+  it("viser 'Foreslå en kandidat' (ikke 'Tilføj kandidat') for en ikke-admin", async () => {
+    render(<PollCard poll={_poll()} isAdmin={false} onChanged={() => {}} />);
+    expect(await screen.findByRole("button", { name: "+ Foreslå en kandidat" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "+ Tilføj kandidat" })).not.toBeInTheDocument();
+  });
+
+  it("viser 'Tilføj kandidat' for admin", async () => {
+    render(<PollCard poll={_poll()} isAdmin={true} onChanged={() => {}} />);
+    expect(await screen.findByRole("button", { name: "+ Tilføj kandidat" })).toBeInTheDocument();
+  });
+
+  it("skjuler foreslå-knappen når afstemningen ikke er åben", async () => {
+    render(<PollCard poll={_poll({ status: "closed" })} isAdmin={false} onChanged={() => {}} />);
+    await screen.findByText(/Dune/);
+    expect(screen.queryByRole("button", { name: "+ Foreslå en kandidat" })).not.toBeInTheDocument();
+  });
+
+  it("en gæst kan foreslå en ny kandidat", async () => {
+    vi.spyOn(api, "listMovies").mockResolvedValue({
+      items: [{ id: "m3", title: "Blade Runner", year: 1982, poster_url: null }],
+    });
+    vi.spyOn(api, "listTvShows").mockResolvedValue({ items: [] });
+    const suggestSpy = vi.spyOn(api, "suggestPollCandidate").mockResolvedValue(_poll());
+    const onChanged = vi.fn();
+    const user = userEvent.setup();
+
+    render(<PollCard poll={_poll()} isAdmin={false} onChanged={onChanged} />);
+    await user.click(await screen.findByRole("button", { name: "+ Foreslå en kandidat" }));
+    await user.type(screen.getByPlaceholderText("Søg i biblioteket..."), "Blade Runner");
+    await user.click(screen.getByRole("button", { name: "Søg" }));
+    await user.click(await screen.findByText(/Blade Runner/));
+
+    expect(suggestSpy).toHaveBeenCalledWith("poll1", {
+      media_kind: "movie",
+      movie_id: "m3",
+      tv_show_id: null,
+    });
+    expect(onChanged).toHaveBeenCalled();
+  });
+
+  it("viser hvem der foreslog en afventende kandidat", async () => {
+    render(<PollCard poll={_pollWithPendingCandidate()} isAdmin={true} onChanged={() => {}} />);
+    expect(await screen.findByText(/Blade Runner/)).toBeInTheDocument();
+    expect(screen.getByText("Foreslået af voldbygæst")).toBeInTheDocument();
+  });
+
+  it("kun admin ser Godkend/Afvis-knapper på et kandidat-forslag", async () => {
+    const { rerender } = render(
+      <PollCard poll={_pollWithPendingCandidate()} isAdmin={false} onChanged={() => {}} />
+    );
+    await screen.findByText(/Blade Runner/);
+    expect(screen.queryByRole("button", { name: "Godkend" })).not.toBeInTheDocument();
+
+    rerender(<PollCard poll={_pollWithPendingCandidate()} isAdmin={true} onChanged={() => {}} />);
+    expect(await screen.findByRole("button", { name: "Godkend" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Afvis" })).toBeInTheDocument();
+  });
+
+  it("admin kan godkende et kandidat-forslag", async () => {
+    const approveSpy = vi.spyOn(api, "approveCandidateSuggestion").mockResolvedValue(_poll());
+    const onChanged = vi.fn();
+    const user = userEvent.setup();
+
+    render(<PollCard poll={_pollWithPendingCandidate()} isAdmin={true} onChanged={onChanged} />);
+    await user.click(await screen.findByRole("button", { name: "Godkend" }));
+
+    expect(approveSpy).toHaveBeenCalledWith("poll1", "sugg1");
+    expect(onChanged).toHaveBeenCalled();
+  });
+
+  it("admin kan afvise et kandidat-forslag efter bekræftelse", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const rejectSpy = vi.spyOn(api, "rejectCandidateSuggestion").mockResolvedValue(_poll());
+    const onChanged = vi.fn();
+    const user = userEvent.setup();
+
+    render(<PollCard poll={_pollWithPendingCandidate()} isAdmin={true} onChanged={onChanged} />);
+    await user.click(await screen.findByRole("button", { name: "Afvis" }));
+
+    expect(window.confirm).toHaveBeenCalledWith(
+      "Afvis dette kandidat-forslag? Forslagsstilleren får besked."
+    );
+    expect(rejectSpy).toHaveBeenCalledWith("poll1", "sugg1");
+    expect(onChanged).toHaveBeenCalled();
+  });
+
+  it("annulleret bekræftelse afviser ikke kandidat-forslaget", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    const rejectSpy = vi.spyOn(api, "rejectCandidateSuggestion");
+    const user = userEvent.setup();
+
+    render(<PollCard poll={_pollWithPendingCandidate()} isAdmin={true} onChanged={() => {}} />);
+    await user.click(await screen.findByRole("button", { name: "Afvis" }));
+
+    expect(rejectSpy).not.toHaveBeenCalled();
   });
 });
 

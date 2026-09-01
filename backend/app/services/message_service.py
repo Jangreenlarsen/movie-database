@@ -449,6 +449,126 @@ async def notify_admins_new_poll_suggestion(
             pass
 
 
+async def notify_admins_new_candidate_suggestion(
+    db: AsyncIOMotorDatabase, suggester: dict, poll_document: dict, candidate_title: str | None
+) -> None:
+    """Feature #218 (Jan: "andre guester skal kun indsætte ny film forslag
+    til afsteming i en relateret kørende afsteming, en adm skal dog
+    godkende") — samme bruger→admin-retning som
+    notify_admins_new_poll_suggestion ovenfor, men for et foreslået
+    KANDIDAT-tilføjelse til en allerede kørende afstemning, ikke en helt ny
+    afstemning."""
+    admins = await user_repository.list_active_admins(db)
+    if not admins:
+        return
+    poll_title = poll_document.get("title") or "en afstemning"
+    display_title = candidate_title or "en titel"
+    for admin_doc in admins:
+        if admin_doc.get("username") == suggester.get("username"):
+            continue
+        payload = MessageCreate(
+            subject="Nyt kandidat-forslag afventer godkendelse",
+            body=(
+                f'{suggester.get("username")} har foreslået at tilføje "{display_title}" til '
+                f'afstemningen "{poll_title}" — godkend eller afvis den under Voldby BIO.'
+            ),
+            recipient_user_id=str(admin_doc["_id"]),
+        )
+        try:
+            await send(db, payload, suggester)
+        except Exception:
+            pass
+
+
+async def notify_poll_candidate_approved(
+    db: AsyncIOMotorDatabase,
+    suggestion: dict,
+    candidate_title: str | None,
+    poll_document: dict,
+    admin: dict,
+) -> None:
+    """Feature #218 — svar til den der foreslog kandidaten, når admin
+    godkender forslaget og gør den til en rigtig, stemme-bar kandidat.
+    Samme "kort bekræftelse, ingen poster endnu" tone som
+    notify_poll_approved ovenfor."""
+    suggester_username = suggestion.get("suggested_by")
+    if not suggester_username or suggester_username == admin.get("username"):
+        return
+    suggester = await user_repository.find_by_username_normalized(db, suggester_username.lower())
+    if suggester is None:
+        return
+
+    poll_title = poll_document.get("title") or "afstemningen"
+    display_title = candidate_title or "titlen"
+    body = (
+        f'Dit forslag om at tilføje "{display_title}" til "{poll_title}" er godkendt — '
+        "den er nu en rigtig kandidat, klar til at få stemmer."
+    )
+    payload = MessageCreate(
+        subject="Dit kandidat-forslag er godkendt",
+        body=body,
+        recipient_user_id=str(suggester["_id"]),
+    )
+    try:
+        await send(
+            db,
+            payload,
+            admin,
+            email_html=email_templates.render_notification_email(
+                headline="Dit kandidat-forslag er godkendt!",
+                tagline=body,
+                body_text=body,
+                poster_url=None,
+                accent="gold",
+            ),
+        )
+    except Exception:
+        pass
+
+
+async def notify_poll_candidate_rejected(
+    db: AsyncIOMotorDatabase,
+    suggestion: dict,
+    candidate_title: str | None,
+    poll_document: dict,
+    admin: dict,
+) -> None:
+    """Feature #218 — modparten til notify_poll_candidate_approved: admin
+    afviste forslaget i stedet. Samme dæmpede tone som
+    notify_poll_suggestion_rejected ovenfor — det er ikke en fejl, bare et
+    nej."""
+    suggester_username = suggestion.get("suggested_by")
+    if not suggester_username or suggester_username == admin.get("username"):
+        return
+    suggester = await user_repository.find_by_username_normalized(db, suggester_username.lower())
+    if suggester is None:
+        return
+
+    poll_title = poll_document.get("title") or "afstemningen"
+    display_title = candidate_title or "titlen"
+    body = f'Dit forslag om at tilføje "{display_title}" til "{poll_title}" blev desværre ikke godkendt denne gang.'
+    payload = MessageCreate(
+        subject="Om dit kandidat-forslag",
+        body=body,
+        recipient_user_id=str(suggester["_id"]),
+    )
+    try:
+        await send(
+            db,
+            payload,
+            admin,
+            email_html=email_templates.render_notification_email(
+                headline="Om dit kandidat-forslag",
+                tagline=body,
+                body_text=body,
+                poster_url=None,
+                accent="muted",
+            ),
+        )
+    except Exception:
+        pass
+
+
 async def notify_screening_request_declined(
     db: AsyncIOMotorDatabase,
     request_doc: dict,

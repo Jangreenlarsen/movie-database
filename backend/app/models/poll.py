@@ -112,6 +112,22 @@ class PollCandidateResult(BaseModel):
     vote_count: int = 0
 
 
+# Feature #218 (Jan: "andre guester skal kun indsætte ny film forslag til
+# afsteming i en relateret kørende afsteming, en adm skal dog godkende at
+# ændring er ok") — én foreslået tilføjelse til en allerede ÅBEN
+# afstemnings kandidatliste, afventende admin-godkendelse. Enriched ved
+# læsning ligesom PollCandidateResult ovenfor.
+class PendingCandidateResult(BaseModel):
+    suggestion_id: str
+    media_kind: MediaKind
+    movie_id: str | None = None
+    tv_show_id: str | None = None
+    title: str | None = None
+    year: int | None = None
+    poster_url: str | None = None
+    suggested_by: str
+
+
 class Poll(BaseModel):
     id: str
     title: str | None = None
@@ -120,6 +136,11 @@ class Poll(BaseModel):
     voting_deadline: datetime | None = None
     status: PollStatus
     candidates: list[PollCandidateResult]
+    # Feature #218 — kandidater foreslået af andre end admin til en allerede
+    # kørende afstemning, endnu ikke godkendt. Tom liste for alt andet end
+    # 'open' afstemninger (der findes ingen 'kørende' pending/closed/
+    # scheduled-afstemning at foreslå noget til).
+    pending_candidates: list[PendingCandidateResult] = Field(default_factory=list)
     total_votes: int
     # Hvilken kandidat-index DENNE bruger selv har stemt på, eller None —
     # aldrig andre brugeres individuelle stemmer (kun det aggregerede

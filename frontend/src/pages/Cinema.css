@@ -483,6 +483,14 @@
   color: var(--text-muted);
 }
 
+/* Feature #218 — samme lille overskrift-stil som ovenfor, men for
+   foreslåede KANDIDATER inde i et enkelt afstemningskort. */
+.cinema-poll-pending-candidates-heading {
+  margin: 14px 0 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
 .cinema-poll-card {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);

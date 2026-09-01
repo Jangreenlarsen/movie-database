@@ -3,7 +3,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.api.deps import get_current_user, require_admin
 from app.db import get_database
-from app.models.poll import Poll, PollCandidatesUpdate, PollCreate, PollVoteRequest
+from app.models.poll import Poll, PollCandidateCreate, PollCandidatesUpdate, PollCreate, PollVoteRequest
 from app.services import poll_service
 
 # Feature #162 — admin udvælger kandidater og lukker/afgør afstemningen
@@ -70,6 +70,47 @@ async def approve_poll(
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
     return await poll_service.approve_poll(db, poll_id, current_user)
+
+
+@router.post("/{poll_id}/candidates/suggest", response_model=Poll, status_code=201)
+async def suggest_candidate(
+    poll_id: str,
+    payload: PollCandidateCreate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """Feature #218 — enhver logget-ind rolle må foreslå en ny kandidat til
+    en allerede kørende (åben) afstemning; kun admins egen tilføjelse går
+    direkte ind uden godkendelse (se poll_service.suggest_candidate)."""
+    return await poll_service.suggest_candidate(db, poll_id, payload, current_user)
+
+
+@router.post(
+    "/{poll_id}/pending-candidates/{suggestion_id}/approve",
+    response_model=Poll,
+    dependencies=[Depends(require_admin)],
+)
+async def approve_candidate_suggestion(
+    poll_id: str,
+    suggestion_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    return await poll_service.approve_candidate_suggestion(db, poll_id, suggestion_id, current_user)
+
+
+@router.delete(
+    "/{poll_id}/pending-candidates/{suggestion_id}",
+    response_model=Poll,
+    dependencies=[Depends(require_admin)],
+)
+async def reject_candidate_suggestion(
+    poll_id: str,
+    suggestion_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    return await poll_service.reject_candidate_suggestion(db, poll_id, suggestion_id, current_user)
 
 
 @router.post("/{poll_id}/vote", response_model=Poll)

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.191.0 (build 0273) — 2026-09-01
+
+- **Du kan nu foreslå en kandidat til en allerede kørende afstemning i Voldby BIO**: "+ Foreslå en kandidat" åbner en søgning, og forslaget skal godkendes af en admin før det bliver en rigtig, stemme-bar kandidat. Admin kan tilføje direkte, uden at skulle godkende sig selv.
+
 ## v0.190.1 (build 0272) — 2026-09-01
 
 - **Søge-/filter-rækken skjules nu også på selve Film- og TV-siderne** (ikke kun Ønskelisten) mens du tilføjer via "Tilføre film på title".

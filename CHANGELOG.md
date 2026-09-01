@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.191.0 build 0273] — 2026-09-01 — feature: kandidat-forslag til en kørende afstemning, kræver admin-godkendelse (FEATURES.md #218)
+
+Jan: *"andre guester skal kun indsætte ny film forslag til afsteming i en relerede kørende afsteming, en adm skal dog godkende at ændring er ok, adm skal selvfølgelig også kunne laver samme tilretning som guester men skal dog ikke godkendes af en anden adm"* — uddybet: den oprindelige forslagsstiller er IKKE undtaget fra godkendelseskravet.
+
+Ny `pending_candidates[]` på poll-dokumentet, adskilt fra den rigtige `candidates[]`. `POST /api/polls/{id}/candidates/suggest` er ét fælles endpoint for alle roller — rolle-forgreningen ligger i service-laget: admins egen tilføjelse går direkte ind, alle andres afventer godkendelse (`POST .../approve` / `DELETE .../pending-candidates/{id}`, begge admin-only). Tre nye notifikationer spejler #213's etablerede mønstre.
+
+Frontend: ny `SuggestCandidateForm` genbruger `CandidatePicker` uændret; `PollCard` viser en "Foreslåede kandidater"-sektion synlig for alle, med Godkend/Afvis kun for admin.
+
+Berørte filer: `backend/app/core/errors.py`, `backend/app/main.py`, `backend/app/models/poll.py`, `backend/app/repositories/poll_repository.py`, `backend/app/services/poll_service.py`, `backend/app/services/message_service.py`, `backend/app/api/polls.py`, `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Cinema.css`, `frontend/src/api/client.js`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `ARCHITECTURE.md`. Set i browser (regel 18) — hele flowet fra forslag til godkendelse. Fuld backend-suite (976) + frontend (228) grøn.
+
 ## [0.190.1 build 0272] — 2026-09-01 — juster: skjul søge/filter-rækken under "Tilføre film på title" også uden for Ønskelisten (FEATURES.md #214-opfølgning)
 
 Jan: *"feature: 214 Skjul 'Filtrér dine ønsker'-rækken under 'Tilføre film på title' skal også gælde for film og tv serie sektioner også"*.

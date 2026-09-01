@@ -718,6 +718,50 @@ function CandidatePicker({ candidates, onAdd, onRemove }) {
   );
 }
 
+/**
+ * Feature #218 (Jan: "andre guester skal kun indsætte ny film forslag til
+ * afsteming i en relateret kørende afsteming, en adm skal dog godkende at
+ * ændring er ok, adm skal selvfølgelig også kunne laver samme tilretning
+ * som guester men skal dog ikke godkendes af en anden adm") — genbruger
+ * CandidatePicker uændret (samme søg/vælg-UI som ved oprettelse), men
+ * holder ALDRIG en lokal liste: `candidates={[]}` altid, og `onAdd` sender
+ * det valgte resultat direkte til backend med det samme. Rollen (admin vs.
+ * ikke-admin) afgør UDELUKKENDE backend-siden om det havner direkte i
+ * candidates eller i pending_candidates — samme knap/form for begge.
+ */
+function SuggestCandidateForm({ pollId, onSuggested, onCancel }) {
+  const t = useT();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function submit(candidate) {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.suggestPollCandidate(pollId, {
+        media_kind: candidate.media_kind,
+        movie_id: candidate.media_kind === "movie" ? candidate.id : null,
+        tv_show_id: candidate.media_kind === "tv" ? candidate.id : null,
+      });
+      onSuggested();
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="cinema-card-edit-form" style={{ marginTop: 10 }}>
+      <CandidatePicker candidates={[]} onAdd={submit} onRemove={() => {}} />
+      {busy && <p className="muted">{t("polls.suggestingCandidate")}</p>}
+      {error && <div className="banner banner-error">{error}</div>}
+      <button type="button" className="btn" onClick={onCancel} disabled={busy}>
+        {t("common.cancel")}
+      </button>
+    </div>
+  );
+}
+
 function PollCreateForm({ isAdmin, onCreated, onCancel }) {
   const t = useT();
   const [title, setTitle] = useState("");
@@ -871,6 +915,11 @@ export function PollCard({ poll, isAdmin, onChanged }) {
   // Feature #213
   const [approving, setApproving] = useState(false);
   const [editingCandidates, setEditingCandidates] = useState(false);
+  // Feature #218 — suggestingCandidate toggler SuggestCandidateForm;
+  // candidateActionBusy holder suggestion_id på det forslag der lige nu
+  // godkendes/afvises, så kun DEN rækkes knapper disables, ikke hele kortet.
+  const [suggestingCandidate, setSuggestingCandidate] = useState(false);
+  const [candidateActionBusy, setCandidateActionBusy] = useState(null);
 
   async function vote(index) {
     setBusyIndex(index);
@@ -929,6 +978,34 @@ export function PollCard({ poll, isAdmin, onChanged }) {
     } catch (err) {
       setError(err.message);
       setDeleting(false);
+    }
+  }
+
+  // Feature #218 — admin godkender/afviser et foreslået kandidat-tilføjelse.
+  async function approveCandidate(suggestionId) {
+    setCandidateActionBusy(suggestionId);
+    setError(null);
+    try {
+      await api.approveCandidateSuggestion(poll.id, suggestionId);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCandidateActionBusy(null);
+    }
+  }
+
+  async function rejectCandidate(suggestionId) {
+    if (!window.confirm(t("polls.confirmRejectCandidate"))) return;
+    setCandidateActionBusy(suggestionId);
+    setError(null);
+    try {
+      await api.rejectCandidateSuggestion(poll.id, suggestionId);
+      onChanged();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCandidateActionBusy(null);
     }
   }
 
@@ -1047,6 +1124,70 @@ export function PollCard({ poll, isAdmin, onChanged }) {
             </div>
           );
         })
+      )}
+
+      {/* Feature #218 — kandidater foreslået af andre (eller admin selv)
+          til en allerede kørende afstemning, endnu ikke godkendt. Vises
+          for alle (gennemsigtighed), men kun admin kan godkende/afvise. */}
+      {isOpen && poll.pending_candidates.length > 0 && (
+        <>
+          <h4 className="cinema-poll-pending-candidates-heading">
+            {t("polls.pendingCandidatesHeading")}
+          </h4>
+          {poll.pending_candidates.map((suggestion) => (
+            <div key={suggestion.suggestion_id} className="cinema-request-row cinema-poll-candidate-row">
+              <div className="cinema-request-poster">
+                {suggestion.poster_url ? (
+                  <img src={posterSrc(suggestion.poster_url, "w185")} alt="" />
+                ) : (
+                  <span>{suggestion.media_kind === "movie" ? "🎬" : "📺"}</span>
+                )}
+              </div>
+              <div className="cinema-request-info">
+                <strong>
+                  {suggestion.title ?? t("cinema.unknown")} {suggestion.year ? `(${suggestion.year})` : ""}
+                </strong>
+                <p className="muted">{t("polls.suggestedBy", { username: suggestion.suggested_by })}</p>
+              </div>
+              {isAdmin && (
+                <div className="cinema-request-actions">
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={candidateActionBusy !== null}
+                    onClick={() => approveCandidate(suggestion.suggestion_id)}
+                  >
+                    {t("polls.approve")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={candidateActionBusy !== null}
+                    onClick={() => rejectCandidate(suggestion.suggestion_id)}
+                  >
+                    {t("polls.reject")}
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </>
+      )}
+
+      {isOpen && !suggestingCandidate && (
+        <button type="button" className="btn" onClick={() => setSuggestingCandidate(true)}>
+          {t(isAdmin ? "polls.addCandidateDirect" : "polls.suggestCandidate")}
+        </button>
+      )}
+      {isOpen && suggestingCandidate && (
+        <SuggestCandidateForm
+          pollId={poll.id}
+          onSuggested={() => {
+            setSuggestingCandidate(false);
+            onChanged();
+          }}
+          onCancel={() => setSuggestingCandidate(false)}
+        />
       )}
 
       {error && <div className="banner banner-error">{error}</div>}

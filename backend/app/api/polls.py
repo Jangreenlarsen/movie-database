@@ -17,8 +17,18 @@ from app.services import poll_service
 # også åbent for enhver rolle (require_admin fjernet fra create_poll
 # herunder), men resultatet afhænger af hvem der opretter: kun en admins
 # afstemning starter synlig for alle med det samme (se
-# poll_service.create_poll). Godkendelse og kandidat-redigering af andres
-# forslag forbliver strengt admin-only.
+# poll_service.create_poll). Godkendelse af selve AFSTEMNINGEN
+# (approve_poll) og kandidat-redigering på en 'pending' afstemning
+# (update_poll_candidates) forbliver strengt admin-only.
+#
+# Feature #219-opfølgning (Jan: "den som har lavet en afstemning skal være
+# adm på den afstemning sådan at vedkommende kan godkende forslag som andre
+# laver til den afstemning") — GODKENDELSE AF KANDIDAT-FORSLAG til en
+# allerede kørende afstemning er en undtagelse: her må afstemningens egen
+# opretter også godkende/afvise (ikke kun en rigtig admin), se
+# poll_service._assert_can_moderate_candidates. Rører ikke ved om
+# opretteren selv kan tilføje en kandidat uden godkendelse — det kan de
+# fortsat ikke (poll_service.suggest_candidate).
 router = APIRouter(
     prefix="/api/polls", tags=["polls"], dependencies=[Depends(get_current_user)]
 )
@@ -88,7 +98,6 @@ async def suggest_candidate(
 @router.post(
     "/{poll_id}/pending-candidates/{suggestion_id}/approve",
     response_model=Poll,
-    dependencies=[Depends(require_admin)],
 )
 async def approve_candidate_suggestion(
     poll_id: str,
@@ -96,13 +105,17 @@ async def approve_candidate_suggestion(
     current_user: dict = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
+    """Feature #219-opfølgning (Jan: "den som har lavet en afstemning skal
+    være adm på den afstemning") — IKKE admin-only på router-niveau: en
+    rigtig admin ELLER afstemningens egen opretter må godkende. Selve
+    adgangs-tjekket (og et 403 for alle andre) ligger i service-laget, se
+    poll_service._assert_can_moderate_candidates."""
     return await poll_service.approve_candidate_suggestion(db, poll_id, suggestion_id, current_user)
 
 
 @router.delete(
     "/{poll_id}/pending-candidates/{suggestion_id}",
     response_model=Poll,
-    dependencies=[Depends(require_admin)],
 )
 async def reject_candidate_suggestion(
     poll_id: str,
@@ -110,6 +123,8 @@ async def reject_candidate_suggestion(
     current_user: dict = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
+    """Feature #219-opfølgning — samme afgrænsning som approve_candidate_
+    suggestion ovenfor: admin ELLER afstemningens egen opretter."""
     return await poll_service.reject_candidate_suggestion(db, poll_id, suggestion_id, current_user)
 
 

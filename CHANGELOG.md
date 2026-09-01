@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.193.0 build 0275] — 2026-09-01 — feature: afstemningens egen opretter kan godkende/afvise andres kandidat-forslag (FEATURES.md #220)
+
+Jan: *"den som har lavet en afstemning skal være adm på den afstemning sådan at vedkommende kan godkende forslag som andre laver til den afstemning"*.
+
+Feature #218 gjorde godkendelse af kandidat-forslag strengt admin-only; #220 tilføjer en poll-scopet undtagelse: afstemningens egen opretter må også godkende/afvise — men kun til NETOP deres egen afstemning. Ny `poll_service._assert_can_moderate_candidates`, samme "selv-eller-admin"-idiom som andre steder i appen. `require_admin` fjernet fra router-niveauet på de to endpoints, adgangs-tjekket flyttet til service-laget.
+
+Bevidst uændret: opretteren kan stadig ikke godkende sin egen afstemning, og kan stadig ikke tilføje en kandidat uden godkendelse — to forskellige spørgsmål med to forskellige svar.
+
+Berørte filer: `backend/app/services/poll_service.py`, `backend/app/api/polls.py`, `frontend/src/pages/Cinema.jsx`. Set i browser (regel 18) med tre adskilte identiteter (admin, opretter, forslagsstiller). Fuld backend-suite (977) + frontend (230) grøn.
+
 ## [0.192.0 build 0274] — 2026-09-01 — feature: forenklet "Sortér"-panel, "Gemte visninger"-sektionen fjernet (FEATURES.md #219)
 
 Jan: *"i 'sorter' funktion skal vi have gjort mere simple jeg tænker hele seksion med at kunne gemme sorteringer skal ud"*.

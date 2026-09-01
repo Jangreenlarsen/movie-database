@@ -565,6 +565,39 @@ describe("PollCard — kandidat-forslag til en kørende afstemning (feature #218
     expect(screen.getByRole("button", { name: "Afvis" })).toBeInTheDocument();
   });
 
+  /**
+   * Feature #219-opfølgning (Jan: "den som har lavet en afstemning skal
+   * være adm på den afstemning sådan at vedkommende kan godkende forslag
+   * som andre laver til den afstemning") — afstemningens egen opretter
+   * (ikke admin) skal også se Godkend/Afvis på ANDRES forslag til NETOP
+   * deres egen afstemning, men ikke på en andens.
+   */
+  it("afstemningens egen opretter (ikke admin) ser også Godkend/Afvis på et kandidat-forslag", async () => {
+    render(
+      <PollCard
+        poll={_pollWithPendingCandidate({ created_by: "voldbygæst" })}
+        isAdmin={false}
+        currentUsername="voldbygæst"
+        onChanged={() => {}}
+      />
+    );
+    expect(await screen.findByRole("button", { name: "Godkend" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Afvis" })).toBeInTheDocument();
+  });
+
+  it("en anden ikke-admin (ikke opretter) ser stadig ikke Godkend/Afvis", async () => {
+    render(
+      <PollCard
+        poll={_pollWithPendingCandidate({ created_by: "voldbygæst" })}
+        isAdmin={false}
+        currentUsername="en-anden-gæst"
+        onChanged={() => {}}
+      />
+    );
+    await screen.findByText(/Blade Runner/);
+    expect(screen.queryByRole("button", { name: "Godkend" })).not.toBeInTheDocument();
+  });
+
   it("admin kan godkende et kandidat-forslag", async () => {
     const approveSpy = vi.spyOn(api, "approveCandidateSuggestion").mockResolvedValue(_poll());
     const onChanged = vi.fn();

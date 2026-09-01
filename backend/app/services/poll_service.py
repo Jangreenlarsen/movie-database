@@ -16,6 +16,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.core.errors import (
     DuplicatePollCandidateError,
     InvalidPollCandidateError,
+    NotAuthorizedError,
     PollCandidateSuggestionNotFoundError,
     PollNotFoundError,
     PollNotOpenError,
@@ -277,14 +278,34 @@ def _find_pending_candidate(document: dict, suggestion_id: str) -> dict:
     return suggestion
 
 
+def _assert_can_moderate_candidates(document: dict, actor: dict) -> None:
+    """Feature #219-opfølgning (Jan: "den som har lavet en afstemning skal
+    være adm på den afstemning sådan at vedkommende kan godkende forslag
+    som andre laver til den afstemning") — samme selv-eller-admin-form som
+    auth_service._assert_can_edit_email/movie_service._assert_can_edit_
+    serial_number: en rigtig admin kan altid, og oveni det kan afstemningens
+    egen opretter godkende/afvise ANDRES kandidat-forslag til NETOP den
+    afstemning — men ikke til andres afstemninger. Rører IKKE ved om
+    opretteren selv kan tilføje en kandidat uden godkendelse (det kan de
+    stadig ikke, jf. suggest_candidate's docstring og Jans tidligere
+    eksplicitte afklaring) — dette er udelukkende om at MODERERE andres
+    forslag."""
+    is_admin = actor.get("role") == "admin"
+    is_creator = actor.get("username") == document.get("created_by")
+    if not (is_admin or is_creator):
+        raise NotAuthorizedError("Kun afstemningens opretter eller en admin kan godkende/afvise kandidat-forslag")
+
+
 async def approve_candidate_suggestion(
-    db: AsyncIOMotorDatabase, poll_id: str, suggestion_id: str, admin: dict
+    db: AsyncIOMotorDatabase, poll_id: str, suggestion_id: str, actor: dict
 ) -> Poll:
-    """Feature #218 — admin godkender en foreslået kandidat-tilføjelse:
-    flyttes fra pending_candidates ind i den rigtige candidates-liste."""
+    """Feature #218/#219-opfølgning — admin ELLER afstemningens egen
+    opretter godkender en foreslået kandidat-tilføjelse: flyttes fra
+    pending_candidates ind i den rigtige candidates-liste."""
     document = await poll_repository.find_by_id(db, poll_id)
     if document is None:
         raise PollNotFoundError(poll_id)
+    _assert_can_moderate_candidates(document, actor)
     suggestion = _find_pending_candidate(document, suggestion_id)
 
     candidate_dict = {
@@ -299,22 +320,24 @@ async def approve_candidate_suggestion(
             db, suggestion["media_kind"], suggestion.get("movie_id"), suggestion.get("tv_show_id")
         )
         await message_service.notify_poll_candidate_approved(
-            db, suggestion, display.get("title"), updated, admin
+            db, suggestion, display.get("title"), updated, actor
         )
     except Exception:
         pass
-    return await _to_poll_model(db, updated, admin["username"])
+    return await _to_poll_model(db, updated, actor["username"])
 
 
 async def reject_candidate_suggestion(
-    db: AsyncIOMotorDatabase, poll_id: str, suggestion_id: str, admin: dict
+    db: AsyncIOMotorDatabase, poll_id: str, suggestion_id: str, actor: dict
 ) -> Poll:
-    """Feature #218 — admin afviser en foreslået kandidat-tilføjelse: fjernes
-    fra pending_candidates uden nogensinde at røre den rigtige candidates-
+    """Feature #218/#219-opfølgning — admin ELLER afstemningens egen
+    opretter afviser en foreslået kandidat-tilføjelse: fjernes fra
+    pending_candidates uden nogensinde at røre den rigtige candidates-
     liste."""
     document = await poll_repository.find_by_id(db, poll_id)
     if document is None:
         raise PollNotFoundError(poll_id)
+    _assert_can_moderate_candidates(document, actor)
     suggestion = _find_pending_candidate(document, suggestion_id)
 
     updated = await poll_repository.remove_pending_candidate(db, poll_id, suggestion["suggestion_id"])
@@ -323,11 +346,11 @@ async def reject_candidate_suggestion(
             db, suggestion["media_kind"], suggestion.get("movie_id"), suggestion.get("tv_show_id")
         )
         await message_service.notify_poll_candidate_rejected(
-            db, suggestion, display.get("title"), document, admin
+            db, suggestion, display.get("title"), document, actor
         )
     except Exception:
         pass
-    return await _to_poll_model(db, updated, admin["username"])
+    return await _to_poll_model(db, updated, actor["username"])
 
 
 async def _has_premiered(db: AsyncIOMotorDatabase, document: dict) -> bool:

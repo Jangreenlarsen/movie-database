@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.194.2 (build 0278) — 2026-09-18
+
+- **Rettet**: "Send e-mail til anmodningsstiller(e)" ved planlægning i Voldby BIO sendte intet, hvis du selv både havde ønsket titlen og planlagde den (fx som test). Virker nu.
+
 ## v0.194.1 (build 0277) — 2026-09-18
 
 - Intern rettelse (ingen synlig ændring for dig): en enkelt backend-test havde en hardkodet dato der med tiden ville drifte ind i fortiden og fejle af sig selv — rettet til at regne 30 dage frem fra "nu" i stedet.

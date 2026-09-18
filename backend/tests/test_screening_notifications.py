@@ -151,6 +151,37 @@ async def test_requester_is_notified_when_their_request_is_scheduled(client):
     assert any("planlagt" in m["subject"].lower() for m in inbox)
 
 
+async def test_admin_is_notified_when_scheduling_their_own_request(client):
+    """BUGS.md #97 — før denne rettelse sprang notify_screening_request_scheduled
+    stiltiende en anmodningsstiller over hvis brugernavnet matchede den
+    planlæggende admin ("ingen besked om egen handling"). Usynligt så
+    længe planlægning altid sendte automatisk (#202); #221 gjorde det til
+    et EKSPLICIT flueben admin selv slår til, hvor det bevidste tilvalg
+    nu skal virke, også når admin selv er (ene) anmodningsstiller."""
+    movie_id = await _create_movie(client, "Egen Anmodning")
+
+    created = await client.post(
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": "2099-09-01T20:00:00"},
+    )
+    request_id = created.json()["id"]
+
+    scheduled = await client.post(
+        "/api/screenings",
+        json={
+            "media_kind": "movie",
+            "movie_id": movie_id,
+            "scheduled_at": "2099-09-01T20:00:00",
+            "request_id": request_id,
+            "notify_scope": "requesters",
+        },
+    )
+    assert scheduled.status_code == 201
+
+    inbox = (await client.get("/api/messages/inbox")).json()
+    assert any("Egen Anmodning" in m["body"] for m in inbox)
+
+
 async def test_requester_is_still_notified_when_notify_scope_is_explicitly_requesters(client):
     """Feature #221 — den eksplicitte "requesters"-værdi opfører sig
     identisk med at udelade feltet helt (default), ikke kun default selv."""

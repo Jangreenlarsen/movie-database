@@ -628,7 +628,21 @@ async def notify_screening_request_scheduled(
 ) -> None:
     """Feature #202 — modparten til notify_screening_request_declined
     ovenfor: ønsket blev til en rigtig, planlagt visning i stedet for
-    afvist. Feature #204 — se den identiske note om `poster_url` ovenfor."""
+    afvist. Feature #204 — se den identiske note om `poster_url` ovenfor.
+
+    BUGS.md #97 (Jan, efter at have testet #221s "Send e-mail til
+    anmodningsstiller(e)"-flueben mod sin egen anmodning: intet blev
+    sendt, og intet dukkede op i Indstillinger → Beskeder) — denne
+    funktion sprang tidligere altid en anmodningsstiller over hvis
+    vedkommendes brugernavn matchede den planlæggende admin ("man skal
+    ikke have besked om sin egen handling", samme mønster som resten af
+    besked-systemet). Det var usynligt så længe planlægning ALTID
+    notificerede automatisk (#202) — men #221 gjorde det til et
+    EKSPLICIT flueben admin selv slår til, og har (verificeret ved grep)
+    kun ét kaldested: screening_service.create_screening, netop når
+    dette flueben er valgt. Selv-skip giver derfor ikke længere mening
+    her — et bevidst tilvalgt "send til anmodningsstiller(e)" skal også
+    virke når admin selv er (ene) anmodningsstiller, ikke stille fejle."""
     requesters = request_doc.get("requested_by", [])
     if not requesters:
         return
@@ -637,7 +651,7 @@ async def notify_screening_request_scheduled(
     body = f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}. 🎬'
     for entry in requesters:
         username = entry.get("username")
-        if not username or username == admin.get("username"):
+        if not username:
             continue
         requester = await user_repository.find_by_username_normalized(db, username.lower())
         if requester is None:

@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.194.1 build 0277] — 2026-09-18 — fix: hardkodet, nu-passeret testdato i `test_updated_screening_still_matches_upcoming_filter` (BUGS.md #96)
+
+`scheduled_at` var hardkodet til `2026-09-01T20:00:00`, som drev ind i fortiden og fik testen til at fejle på sin egen forældede test-data — ikke en app-fejl. Rettet til `datetime.now(timezone.utc) + timedelta(days=30)`, så testen forbliver gyldig fremover. Gennemgået resten af filen for samme fejlklasse (regel 16) — ingen andre tests ramt.
+
+Berørt fil: `backend/tests/test_screenings.py`. Fuld backend-suite grøn.
+
 ## [0.194.0 build 0276] — 2026-09-18 — feature: notifikations-valg ved planlægning af en anmodning — alle brugere eller kun anmodningsstiller(e) (FEATURES.md #221)
 
 Jan: *"i forbindelse med planlæg skal vi nu have en mulighed for at tilvælge om man vil sende email notifikation ud til alle eller kun Anmodninger stiller, det vil sige 2 flueben i planlægnings vindue under på gældene film/tv som er i spil"*.

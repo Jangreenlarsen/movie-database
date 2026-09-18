@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
@@ -170,11 +172,19 @@ async def test_updated_screening_still_matches_upcoming_filter(client):
     test passes even with the bug reverted (verified by hand). It's kept as
     documentation/a basic sanity check; the actual fix was confirmed live
     against real MongoDB via Playwright, per CLAUDE.md's runtime-context
-    testing lesson (regel 16)."""
+    testing lesson (regel 16).
+
+    BUGS.md #96 — `scheduled_at` skal ligge i FREMTIDEN for at
+    `upcoming=true`-filteret nedenfor overhovedet kan matche den; en
+    hardkodet kalenderdato ("2026-09-01") drifter uundgåeligt ind i
+    fortiden med tiden (opdaget 2026-09-18, hvor testen fejlede uden at
+    have rørt selve app-koden). Relativt til `datetime.now()` i stedet,
+    så testen forbliver gyldig uanset hvornår den køres."""
     movie_id = await _create_movie(client)
+    future = (datetime.now(timezone.utc) + timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%S")
     created = await client.post(
         "/api/screenings",
-        json={"media_kind": "movie", "movie_id": movie_id, "scheduled_at": "2026-09-01T20:00:00"},
+        json={"media_kind": "movie", "movie_id": movie_id, "scheduled_at": future},
     )
     screening_id = created.json()["id"]
 

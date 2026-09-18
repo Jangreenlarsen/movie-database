@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.194.1 (build 0277) — 2026-09-18
+
+- Intern rettelse (ingen synlig ændring for dig): en enkelt backend-test havde en hardkodet dato der med tiden ville drifte ind i fortiden og fejle af sig selv — rettet til at regne 30 dage frem fra "nu" i stedet.
+
 ## v0.194.0 (build 0276) — 2026-09-18
 
 - **Ny valgmulighed når du planlægger en anmodning i Voldby BIO**: to flueben lader dig vælge om e-mail-notifikationen om den nye visning går til alle brugere, eller kun til den/de der har ønsket titlen (default, som hidtil).

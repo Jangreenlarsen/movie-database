@@ -7,7 +7,7 @@
  * besked (regel 16), og Luk-knappen skal rent faktisk lukke den igen.
  */
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -155,6 +155,78 @@ describe("RequestRow (feature #185)", () => {
     await user.click(screen.getByText("🎬"));
 
     expect(await screen.findByText("136 min")).toBeInTheDocument();
+  });
+});
+
+/**
+ * Feature #221 (Jan: "i forbindelse med planlæg skal vi nu have en
+ * mulighed for at tilvælge om man vil sende email notifikation ud til
+ * alle eller kun Anmodninger stiller, det vil sige 2 flueben i
+ * planlægnings vindue"). Det testværdige (regel 19): de to flueben skal
+ * reelt være gensidigt udelukkende (ikke begge afkrydsede ad gangen), have
+ * det rigtige default, og sende det valgte `notify_scope` med til
+ * api.createScreening.
+ */
+function fillScheduledAt(container) {
+  const dateInput = container.querySelector('input[type="date"]');
+  fireEvent.change(dateInput, { target: { value: "2099-09-01" } });
+  const [hourSelect, minuteSelect] = container.querySelectorAll("select");
+  fireEvent.change(hourSelect, { target: { value: "20" } });
+  fireEvent.change(minuteSelect, { target: { value: "00" } });
+}
+
+describe("RequestRow — notifikations-valg ved planlægning (feature #221)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("default er 'anmodningsstiller(e)', og de to flueben er gensidigt udelukkende", async () => {
+    const user = userEvent.setup();
+    render(<RequestRow request={_request()} onChanged={() => {}} />);
+
+    await user.click(screen.getByRole("button", { name: "Planlæg" }));
+
+    const requestersCheckbox = screen.getByRole("checkbox", {
+      name: "Send e-mail til anmodningsstiller(e)",
+    });
+    const allCheckbox = screen.getByRole("checkbox", { name: "Send e-mail til alle brugere" });
+    expect(requestersCheckbox).toBeChecked();
+    expect(allCheckbox).not.toBeChecked();
+
+    await user.click(allCheckbox);
+    expect(allCheckbox).toBeChecked();
+    expect(requestersCheckbox).not.toBeChecked();
+
+    await user.click(requestersCheckbox);
+    expect(requestersCheckbox).toBeChecked();
+    expect(allCheckbox).not.toBeChecked();
+  });
+
+  it("sender notify_scope: 'requesters' som default til api.createScreening", async () => {
+    const createSpy = vi.spyOn(api, "createScreening").mockResolvedValue({});
+    const user = userEvent.setup();
+    const { container } = render(<RequestRow request={_request()} onChanged={() => {}} />);
+
+    await user.click(screen.getByRole("button", { name: "Planlæg" }));
+    fillScheduledAt(container);
+    await user.click(screen.getByRole("button", { name: "Bekræft" }));
+
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ notify_scope: "requesters" })
+    );
+  });
+
+  it("sender notify_scope: 'all' når 'alle brugere' er valgt", async () => {
+    const createSpy = vi.spyOn(api, "createScreening").mockResolvedValue({});
+    const user = userEvent.setup();
+    const { container } = render(<RequestRow request={_request()} onChanged={() => {}} />);
+
+    await user.click(screen.getByRole("button", { name: "Planlæg" }));
+    await user.click(screen.getByRole("checkbox", { name: "Send e-mail til alle brugere" }));
+    fillScheduledAt(container);
+    await user.click(screen.getByRole("button", { name: "Bekræft" }));
+
+    expect(createSpy).toHaveBeenCalledWith(expect.objectContaining({ notify_scope: "all" }));
   });
 });
 

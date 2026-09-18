@@ -401,6 +401,8 @@
   "cinema.suggestionHint": "Pre-filled with the earliest requested time — change it freely.",
   "cinema.scheduling": "Scheduling...",
   "cinema.confirm": "Confirm",
+  "cinema.notifyRequesters": "Email the requester(s)",
+  "cinema.notifyAll": "Email all users",
   "cinema.addDirectly": "+ Add a screening directly",
   "cinema.addDirectlyHint": "Put a movie/TV show from the library straight onto the programme, without a prior request.",
   "cinema.searchLibraryPlaceholder": "Search the library...",

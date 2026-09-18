@@ -408,6 +408,12 @@ export function RequestRow({ request, onChanged }) {
   const [scheduledAt, setScheduledAt] = useState(suggestion);
   const [note, setNote] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
+  // Feature #221 — hvem der får e-mail-notifikationen når denne anmodning
+  // planlægges: kun anmodningsstiller(e) (default, bevarer #202's
+  // oprindelige adfærd) eller en rundsending til alle brugere. To flueben,
+  // gensidigt udelukkende (Jans eksplicitte ønske: checkbokse, ikke
+  // radio-knapper — udelukkelsen håndhæves i onChange nedenfor).
+  const [notifyScope, setNotifyScope] = useState("requesters");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   // Feature #185 (Jan: "i voldby bio kort vil det være fint hvis man kan
@@ -427,6 +433,7 @@ export function RequestRow({ request, onChanged }) {
         note: note || null,
         request_id: request.id,
         is_private: isPrivate,
+        notify_scope: notifyScope,
       });
       onChanged();
     } catch (err) {
@@ -523,6 +530,22 @@ export function RequestRow({ request, onChanged }) {
               onChange={(e) => setIsPrivate(e.target.checked)}
             />
             {t("cinema.privateEvent")}
+          </label>
+          <label className="cinema-private-toggle">
+            <input
+              type="checkbox"
+              checked={notifyScope === "requesters"}
+              onChange={() => setNotifyScope("requesters")}
+            />
+            {t("cinema.notifyRequesters")}
+          </label>
+          <label className="cinema-private-toggle">
+            <input
+              type="checkbox"
+              checked={notifyScope === "all"}
+              onChange={() => setNotifyScope("all")}
+            />
+            {t("cinema.notifyAll")}
           </label>
           <button type="button" className="btn btn-primary" onClick={schedule} disabled={!scheduledAt || busy}>
             {t(busy ? "cinema.scheduling" : "cinema.confirm")}

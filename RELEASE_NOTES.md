@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.194.0 (build 0276) — 2026-09-18
+
+- **Ny valgmulighed når du planlægger en anmodning i Voldby BIO**: to flueben lader dig vælge om e-mail-notifikationen om den nye visning går til alle brugere, eller kun til den/de der har ønsket titlen (default, som hidtil).
+
 ## v0.193.0 (build 0275) — 2026-09-01
 
 - **Du kan nu godkende/afvise andres kandidat-forslag til din egen afstemning i Voldby BIO** — uden at skulle være admin, så længe det er en afstemning du selv har foreslået.

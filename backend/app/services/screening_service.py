@@ -292,9 +292,18 @@ async def create_screening(
         # men `requested_by` ændres ikke af selve status-skiftet, så den er
         # stadig den rigtige modtagerliste. Feature #204 — model.poster_url
         # sendes med, se den identiske note ved decline_request.
-        await message_service.notify_screening_request_scheduled(
-            db, existing, admin, model.title, model.scheduled_at, poster_url=model.poster_url
-        )
+        #
+        # Feature #221 — admin vælger nu hvem der får beskeden: kun
+        # anmodningsstiller(e) (uændret default) eller en rundsending til
+        # ALLE aktive brugere. Gensidigt udelukkende, aldrig begge.
+        if payload.notify_scope == "all":
+            await message_service.notify_screening_scheduled_broadcast(
+                db, admin, model.title, model.scheduled_at, poster_url=model.poster_url
+            )
+        else:
+            await message_service.notify_screening_request_scheduled(
+                db, existing, admin, model.title, model.scheduled_at, poster_url=model.poster_url
+            )
 
     if payload.poll_id:
         await poll_repository.set_scheduled(db, payload.poll_id, model.id)

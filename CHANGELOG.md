@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.194.0 build 0276] — 2026-09-18 — feature: notifikations-valg ved planlægning af en anmodning — alle brugere eller kun anmodningsstiller(e) (FEATURES.md #221)
+
+Jan: *"i forbindelse med planlæg skal vi nu have en mulighed for at tilvælge om man vil sende email notifikation ud til alle eller kun Anmodninger stiller, det vil sige 2 flueben i planlægnings vindue under på gældene film/tv som er i spil"*.
+
+`create_screening`s `request_id`-gren sendte hidtil altid automatisk et svar til anmodningsstiller(e) (feature #202), uden noget valg for admin. Nu et eksplicit, gensidigt udelukkende valg i `RequestRow`s planlægningsform i Anmodninger-sektionen: "Send til anmodningsstiller(e)" (default) eller "Send til alle brugere" (ny rundsending). To almindelige checkbokse (Jans eksplicitte ønske, ikke radio-knapper) med radio-lignende gensidig udelukkelse i `onChange`.
+
+Nyt `ScreeningCreate.notify_scope: Literal["requesters", "all"] = "requesters"` — default bevarer eksisterende adfærd for enhver klient der ikke sender feltet (bl.a. poll-planlægning, som er urørt af denne feature). Ny `message_service.notify_screening_scheduled_broadcast` genbruger `send()`s eksisterende `recipient_user_id=None`-rundsendings-mekanisme (samme vej som admins manuelle "send besked"-API).
+
+Berørte filer: `backend/app/models/screening.py`, `backend/app/services/screening_service.py`, `backend/app/services/message_service.py`, `frontend/src/pages/Cinema.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Set i browser (regel 18) mod en midlertidig admin-bruger i en lokal test-database (oprettet og ryddet op igen) — bekræftede begge tilstande, gensidig udelukkelse, og at en planlægning med "alle brugere" reelt rammer en urelateret aktiv brugers indbakke, uden layout-brud. Fuld backend-suite (980, heraf 1 forudeksisterende/urelateret fejl — se BUGS.md #96) + frontend (233) grøn, lint ren, build ok.
+
 ## [0.193.0 build 0275] — 2026-09-01 — feature: afstemningens egen opretter kan godkende/afvise andres kandidat-forslag (FEATURES.md #220)
 
 Jan: *"den som har lavet en afstemning skal være adm på den afstemning sådan at vedkommende kan godkende forslag som andre laver til den afstemning"*.

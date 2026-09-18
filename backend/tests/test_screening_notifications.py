@@ -151,6 +151,121 @@ async def test_requester_is_notified_when_their_request_is_scheduled(client):
     assert any("planlagt" in m["subject"].lower() for m in inbox)
 
 
+async def test_requester_is_still_notified_when_notify_scope_is_explicitly_requesters(client):
+    """Feature #221 — den eksplicitte "requesters"-værdi opfører sig
+    identisk med at udelade feltet helt (default), ikke kun default selv."""
+    movie_id = await _create_movie(client, "Eksplicit Anmodningsstiller")
+    requester = await _second_user(client, "explicitscoperequester")
+
+    created = await requester.post(
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": "2099-09-01T20:00:00"},
+    )
+    request_id = created.json()["id"]
+
+    scheduled = await client.post(
+        "/api/screenings",
+        json={
+            "media_kind": "movie",
+            "movie_id": movie_id,
+            "scheduled_at": "2099-09-01T20:00:00",
+            "request_id": request_id,
+            "notify_scope": "requesters",
+        },
+    )
+    assert scheduled.status_code == 201
+
+    inbox = (await requester.get("/api/messages/inbox")).json()
+    assert any("Eksplicit Anmodningsstiller" in m["body"] for m in inbox)
+
+
+async def test_only_the_requester_is_notified_when_notify_scope_is_requesters(client):
+    """Feature #221 — en urelateret, aktiv bruger (der hverken ønskede
+    titlen eller planlægger den) skal IKKE få besked ved default-scope."""
+    movie_id = await _create_movie(client, "Snæver Anmodning")
+    requester = await _second_user(client, "narrowscoperequester")
+    bystander = await _second_user(client, "narrowscopebystander")
+
+    created = await requester.post(
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": "2099-09-01T20:00:00"},
+    )
+    request_id = created.json()["id"]
+
+    await client.post(
+        "/api/screenings",
+        json={
+            "media_kind": "movie",
+            "movie_id": movie_id,
+            "scheduled_at": "2099-09-01T20:00:00",
+            "request_id": request_id,
+        },
+    )
+
+    bystander_inbox = (await bystander.get("/api/messages/inbox")).json()
+    assert not any("Snæver Anmodning" in m["body"] for m in bystander_inbox)
+
+
+async def test_all_active_users_are_notified_when_notify_scope_is_all(client):
+    """Feature #221 (Jan: "en mulighed for at tilvælge om man vil sende
+    email notifikation ud til alle eller kun Anmodninger stiller") — en
+    urelateret, aktiv bruger skal få besked når admin vælger "all"."""
+    movie_id = await _create_movie(client, "Bred Anmodning")
+    requester = await _second_user(client, "broadscoperequester")
+    bystander = await _second_user(client, "broadscopebystander")
+
+    created = await requester.post(
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": "2099-09-01T20:00:00"},
+    )
+    request_id = created.json()["id"]
+
+    scheduled = await client.post(
+        "/api/screenings",
+        json={
+            "media_kind": "movie",
+            "movie_id": movie_id,
+            "scheduled_at": "2099-09-01T20:00:00",
+            "request_id": request_id,
+            "notify_scope": "all",
+        },
+    )
+    assert scheduled.status_code == 201
+
+    bystander_inbox = (await bystander.get("/api/messages/inbox")).json()
+    assert any("Bred Anmodning" in m["body"] for m in bystander_inbox)
+
+
+async def test_requester_gets_the_broadcast_not_the_targeted_reply_when_notify_scope_is_all(client):
+    """Feature #221 — de to notifikations-veje er gensidigt udelukkende:
+    ved "all" får anmodningsstilleren rundsendingen (som alle andre aktive
+    brugere), ikke OGSÅ den målrettede #202-svar-besked."""
+    movie_id = await _create_movie(client, "Kun Rundsendt")
+    requester = await _second_user(client, "onlybroadcastrequester")
+
+    created = await requester.post(
+        "/api/screening-requests",
+        json={"media_kind": "movie", "movie_id": movie_id, "preferred_at": "2099-09-01T20:00:00"},
+    )
+    request_id = created.json()["id"]
+
+    await client.post(
+        "/api/screenings",
+        json={
+            "media_kind": "movie",
+            "movie_id": movie_id,
+            "scheduled_at": "2099-09-01T20:00:00",
+            "request_id": request_id,
+            "notify_scope": "all",
+        },
+    )
+
+    inbox = (await requester.get("/api/messages/inbox")).json()
+    matching = [m for m in inbox if "Kun Rundsendt" in m["body"]]
+    assert len(matching) == 1
+    assert matching[0]["subject"] == '"Kun Rundsendt" er planlagt i Voldby BIO!'
+
+
 async def test_scheduling_without_a_request_id_does_not_notify_anyone(client):
     """Et direkte-tilføjet fremvisning (ingen tilknyttet ønske) har ingen
     ønsker at svare til — skal ikke fejle, og skal ikke sende noget."""

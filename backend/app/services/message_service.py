@@ -664,6 +664,47 @@ async def notify_screening_request_scheduled(
             pass
 
 
+async def notify_screening_scheduled_broadcast(
+    db: AsyncIOMotorDatabase,
+    admin: dict,
+    title: str | None,
+    scheduled_at: datetime | None,
+    poster_url: str | None = None,
+) -> None:
+    """Feature #221 — alternativet til notify_screening_request_scheduled
+    ovenfor: admin har valgt at rundsende planlægnings-notifikationen til
+    ALLE aktive brugere i stedet for kun anmodningsstiller(e). Genbruger
+    `send()`s eksisterende `recipient_user_id=None`-rundsendings-gren (samme
+    vej som admins manuelle "send besked"-API allerede bruger til at ramme
+    alle aktive brugere, afsenderen selv undtaget) — ingen ny udsendelses-
+    mekanisme. Gensidigt udelukkende med notify_screening_request_scheduled;
+    screening_service.create_screening kalder ALDRIG begge for samme
+    planlægning."""
+    display_title = title or "titlen"
+    when = f" d. {scheduled_at.strftime('%d/%m/%Y kl. %H:%M')}" if scheduled_at else ""
+    body = f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}. 🎬'
+    payload = MessageCreate(
+        subject=f'"{display_title}" er planlagt i Voldby BIO!',
+        body=body,
+        recipient_user_id=None,
+    )
+    try:
+        await send(
+            db,
+            payload,
+            admin,
+            email_html=email_templates.render_notification_email(
+                headline="Biografen venter!",
+                tagline=f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}.',
+                body_text=body,
+                poster_url=poster_url,
+                accent="gold",
+            ),
+        )
+    except Exception:
+        pass
+
+
 async def notify_poll_closed(
     db: AsyncIOMotorDatabase, poll_document: dict, poll_model: Poll, admin: dict
 ) -> None:

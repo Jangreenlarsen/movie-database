@@ -79,6 +79,12 @@ class ScreeningCreate(BaseModel):
     # If set, the referenced pending request is marked "scheduled" as part
     # of the same action instead of being left dangling in the queue.
     request_id: str | None = None
+    # Feature #221 — kun relevant sammen med request_id: hvem der får
+    # planlægnings-notifikationen. "requesters" (default) bevarer #202's
+    # oprindelige adfærd for enhver klient der ikke sender feltet (bl.a.
+    # poll-planlægning, som aldrig sætter det). Gensidigt udelukkende med
+    # sig selv, ikke et flag der kan slås til for begge dele på én gang.
+    notify_scope: Literal["requesters", "all"] = "requesters"
     # Feature #162 — se den identiske note ved request_id: en åben
     # afstemning markeres "scheduled" og alle der stemte får besked, i
     # stedet for at afstemningen bare bliver stående uændret for evigt.

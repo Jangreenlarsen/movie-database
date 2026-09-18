@@ -401,6 +401,8 @@
   "cinema.suggestionHint": "Forudfyldt med det tidligste ønskede tidspunkt — ret det frit.",
   "cinema.scheduling": "Planlægger...",
   "cinema.confirm": "Bekræft",
+  "cinema.notifyRequesters": "Send e-mail til anmodningsstiller(e)",
+  "cinema.notifyAll": "Send e-mail til alle brugere",
   "cinema.addDirectly": "+ Tilføj visning direkte",
   "cinema.addDirectlyHint": "Sæt en film/TV-serie fra biblioteket direkte på programmet, uden en forudgående anmodning.",
   "cinema.searchLibraryPlaceholder": "Søg i biblioteket...",

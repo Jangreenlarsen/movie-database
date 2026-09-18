@@ -2,6 +2,20 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.194.2 build 0278] — 2026-09-18 — fix: "Send e-mail til anmodningsstiller(e)" sendte intet når admin selv var (ene) anmodningsstiller (BUGS.md #97)
+
+Jan testede i produktion lige efter #221: oprettede selv en anmodning og planlagde den også selv som admin — ingen besked nogen steder, heller ikke i Indstillinger → Beskeder. `message_service.notify_screening_request_scheduled` sprang (fra feature #202, urørt af #221 selv) stiltiende enhver anmodningsstiller over hvis brugernavnet matchede den planlæggende admin ("ingen besked om egen handling", samme mønster som resten af besked-systemet) — usynligt så længe planlægning altid sendte automatisk, men #221 gjorde det til et eksplicit flueben admin selv slår til.
+
+Selv-skip-tjekket fjernet — funktionens eneste kaldested (verificeret ved grep) er nu netop dette eksplicitte flueben, så der er ingen anden adfærd at bevare. `notify_screening_scheduled_broadcast` ("send til alle brugere") er bevidst IKKE ændret — den ekskluderer fortsat afsenderen selv, som er korrekt for en rundsending.
+
+Berørt fil: `backend/app/services/message_service.py`. Ny test i `test_screening_notifications.py` bekræfter admin nu får beskeden ved planlægning af egen anmodning. Fuld backend-suite grøn.
+
+## [0.194.1 build 0277] — 2026-09-18 — fix: hardkodet, nu-passeret testdato i `test_updated_screening_still_matches_upcoming_filter` (BUGS.md #96)
+
+`scheduled_at` var hardkodet til `2026-09-01T20:00:00`, som drev ind i fortiden og fik testen til at fejle på sin egen forældede test-data — ikke en app-fejl. Rettet til `datetime.now(timezone.utc) + timedelta(days=30)`, så testen forbliver gyldig fremover. Gennemgået resten af filen for samme fejlklasse (regel 16) — ingen andre tests ramt.
+
+Berørt fil: `backend/tests/test_screenings.py`. Fuld backend-suite grøn.
+
 ## [0.194.0 build 0276] — 2026-09-18 — feature: notifikations-valg ved planlægning af en anmodning — alle brugere eller kun anmodningsstiller(e) (FEATURES.md #221)
 
 Jan: *"i forbindelse med planlæg skal vi nu have en mulighed for at tilvælge om man vil sende email notifikation ud til alle eller kun Anmodninger stiller, det vil sige 2 flueben i planlægnings vindue under på gældene film/tv som er i spil"*.

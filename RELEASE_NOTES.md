@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.195.0 (build 0279) — 2026-09-19
+
+- **Ny mulighed: annoncér en ny film/serie til alle brugere**. Når du tilføjer en film/TV-serie til biblioteket (eller flytter et ønske dertil), kan du nu afkrydse "Send besked til alle" — alle andre får en besked med link til Voldby BIO, så de kan anmode om en visning.
+
 ## v0.194.2 (build 0278) — 2026-09-18
 
 - **Rettet**: "Send e-mail til anmodningsstiller(e)" ved planlægning i Voldby BIO sendte intet, hvis du selv både havde ønsket titlen og planlagde den (fx som test). Virker nu.

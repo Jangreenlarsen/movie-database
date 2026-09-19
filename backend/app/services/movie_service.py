@@ -314,6 +314,20 @@ async def create_movie(
                     await message_service.notify_admins_new_wishlist(
                         db, wisher, model.title, is_tv=False
                     )
+            # Feature #222 — valgfri broadcast til alle brugere ved en RIGTIG
+            # (ikke-ønske) biblioteks-tilføjelse, styret af et flueben admin
+            # (eller enhver anden rolle der må tilføje til biblioteket) selv
+            # slår til pr. tilføjelse. Gensidigt udelukkende med
+            # ønske-grenen ovenfor — en ønske-post kan ikke også udløse
+            # denne, den har jo ikke ramt biblioteket endnu.
+            elif payload.notify_all:
+                creator = await user_repository.find_by_username_normalized(
+                    db, registered_by.lower()
+                )
+                if creator is not None:
+                    await message_service.notify_library_addition_broadcast(
+                        db, creator, model.title, is_tv=False, poster_url=model.poster_url
+                    )
             return model
         except DuplicateKeyError as exc:
             if _is_serial_collision(exc):
@@ -718,6 +732,9 @@ async def update_movie(
 
     requested_serial = fields.pop("serial_number", None)
     requested_wishlist = fields.pop("is_wishlist", None)
+    # Feature #222 — transient, aldrig gemt på dokumentet (regel 20 ikke
+    # relevant — se ScreeningCreate.notify_scope for det samme mønster).
+    notify_all = fields.pop("notify_all", False)
     requested_media_type = fields.get("media_type")
     requested_wishlist_status = fields.get("wishlist_status")
     requested_order_status = fields.get("order_status")
@@ -816,6 +833,19 @@ async def update_movie(
         await message_service.notify_wishlist_moved(
             db, current_doc, current_user, document.get("title"), is_tv=False
         )
+        # Feature #222 — valgfri broadcast til alle brugere når et ønske
+        # flyttes ind i biblioteket, sideordnet den personlige besked til
+        # ønskeren ovenfor (Jans eksplicitte valg: begge veje). Samme
+        # flueben-felt som ved oprettelse, blot på MovieUpdate i stedet
+        # for MovieCreate.
+        if notify_all:
+            await message_service.notify_library_addition_broadcast(
+                db,
+                current_user,
+                document.get("title"),
+                is_tv=False,
+                poster_url=document.get("poster_url"),
+            )
     # Feature #166 — modparten til #165's afvisnings-besked: godkendes et
     # afventende ønske, får opretteren også besked om det. `current_doc`s
     # status er den FØR skrivningen, så et allerede-godkendt ønske (fx et

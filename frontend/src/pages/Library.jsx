@@ -1191,6 +1191,12 @@ export function MovieDetailModal({
   const [deleting, setDeleting] = useState(false);
   const [moving, setMoving] = useState(false);
   const [error, setError] = useState(null);
+  // Feature #222 — valgfrit: send en broadcast-besked til alle brugere om
+  // denne tilføjelse ("ny fed titel i samlingen"). Relevant i to tilfælde:
+  // en helt ny (ikke-ønske) biblioteks-oprettelse, eller når et eksisterende
+  // ønske flyttes til biblioteket. Default fra (Jans ønske: et bevidst
+  // tilvalg, ikke noget der sker automatisk ved hver tilføjelse).
+  const [notifyAll, setNotifyAll] = useState(false);
 
   /** Feature #101 — kaster ændringer væk og går tilbage til læsevisningen.
    *  Sat lige efter alle useState-linjerne, så nulstillingen og
@@ -1349,6 +1355,7 @@ export function MovieDetailModal({
           barcode: movie.barcode,
           barcode_source: movie.barcode_source,
           is_wishlist: movie.is_wishlist,
+          notify_all: !movie.is_wishlist && notifyAll,
         });
         // Feature #147 — registrerer man til biblioteket (ikke ønskelisten) og
         // titlen allerede lå på ønskelisten, så tilbyd at fjerne ønsket derfra
@@ -1396,7 +1403,7 @@ export function MovieDetailModal({
     try {
       const payload = await buildPayload();
       if (!payload) return; // fortrudt byt-plads-bekræftelse — finally nulstiller moving
-      await api.updateMovie(movie.id, { ...payload, is_wishlist: false });
+      await api.updateMovie(movie.id, { ...payload, is_wishlist: false, notify_all: notifyAll });
       onChanged();
       onClose();
     } catch (err) {
@@ -1847,6 +1854,22 @@ export function MovieDetailModal({
           {error && <div className="banner banner-error">{error}</div>}
           {(missingClassification || (movie.is_wishlist && missingClassificationForMove)) && (
             <div className="banner banner-info">{t("detail.classificationRequired")}</div>
+          )}
+          {/* Feature #222 — valgfri broadcast til alle brugere, relevant enten
+              ved en helt ny (ikke-ønske) oprettelse eller når et eksisterende
+              ønske står til at blive flyttet til biblioteket. Egen række i
+              modal-body (IKKE inde i den højre-justerede knap-række i
+              modal-footer nedenfor) — regel 18 fangede at fluebenets lange
+              tekst ellers klemmes ned i en smal kolonne mellem knapperne. */}
+          {editing && ((!movie.id && !movie.is_wishlist) || (movie.id && movie.is_wishlist)) && (
+            <label className="notify-toggle">
+              <input
+                type="checkbox"
+                checked={notifyAll}
+                onChange={(e) => setNotifyAll(e.target.checked)}
+              />
+              {t(movie.id ? "detail.notifyAllMove" : "detail.notifyAllCreate")}
+            </label>
           )}
         </div>
 

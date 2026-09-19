@@ -719,6 +719,64 @@ async def notify_screening_scheduled_broadcast(
         pass
 
 
+async def notify_library_addition_broadcast(
+    db: AsyncIOMotorDatabase,
+    creator: dict,
+    title: str | None,
+    is_tv: bool,
+    poster_url: str | None = None,
+) -> None:
+    """Feature #222 (Jan: "hvis nye film/tv bliver adderet til database så
+    bliver der sendt en besked til alle at der er kommet en ny fede
+    film/tv til samlingen og at man nu kan anmode om bio tid ... lave
+    også et flueben ... om hvor vidt man vil sende besked til alle eller
+    ikke") — valgfri broadcast til ALLE aktive brugere (samme
+    `recipient_user_id=None`-mekanisme som #221s
+    `notify_screening_scheduled_broadcast`) når en rigtig (ikke-ønske)
+    film/serie tilføjes biblioteket, eller et ønske flyttes derind
+    (`movie_service`/`tv_show_service`s `moved_to_library`-gren).
+
+    Tilgængelig for enhver rolle der kan tilføje til biblioteket, ikke
+    kun admin (Jans eksplicitte valg, til forskel fra #221s admin-only
+    "send til alle") — `creator` er derfor den faktiske bruger der
+    tilføjede/flyttede titlen, som `send()` også bruger som afsender
+    (og dermed automatisk udelader fra selve rundsendingen).
+
+    `cta_url` peger på selve Voldby BIO-forsiden (`settings.public_site_url`)
+    — IKKE direkte på titlen selv, som Jan bekræftede ikke er muligt endnu
+    ("det vil selvfølgelig være fedt hvis vi kunne linke direkte ind til
+    filmmen i voldbybio portal men det kan vi ikke på nuværende
+    tidspunkt")."""
+    kind = "serie" if is_tv else "film"
+    display_title = title or f"En ny {kind}"
+    body = (
+        f'"{display_title}" er lige blevet en del af Voldby BIO-samlingen! 🎬 '
+        f"Log ind og anmod om en visning: {settings.public_site_url}"
+    )
+    payload = MessageCreate(
+        subject=f"Ny {kind} i samlingen: {display_title}!",
+        body=body,
+        recipient_user_id=None,
+    )
+    try:
+        await send(
+            db,
+            payload,
+            creator,
+            email_html=email_templates.render_notification_email(
+                headline="Ny i samlingen!",
+                tagline=f'"{display_title}" er nu en del af Voldby BIOs samling — anmod om en visning!',
+                body_text=body,
+                poster_url=poster_url,
+                accent="gold",
+                cta_url=settings.public_site_url,
+                cta_label="Gå til Voldby BIO",
+            ),
+        )
+    except Exception:
+        pass
+
+
 async def notify_poll_closed(
     db: AsyncIOMotorDatabase, poll_document: dict, poll_model: Poll, admin: dict
 ) -> None:

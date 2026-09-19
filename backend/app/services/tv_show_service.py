@@ -324,6 +324,15 @@ async def create_tv_show(
                     await message_service.notify_admins_new_wishlist(
                         db, wisher, model.name, is_tv=True
                     )
+            # Feature #222 — se den identiske note i movie_service.create_movie.
+            elif payload.notify_all:
+                creator = await user_repository.find_by_username_normalized(
+                    db, registered_by.lower()
+                )
+                if creator is not None:
+                    await message_service.notify_library_addition_broadcast(
+                        db, creator, model.name, is_tv=True, poster_url=model.poster_url
+                    )
             return model
         except DuplicateKeyError as exc:
             if _is_serial_collision(exc):
@@ -535,6 +544,8 @@ async def update_tv_show(
 
     requested_serial = fields.pop("serial_number", None)
     requested_wishlist = fields.pop("is_wishlist", None)
+    # Feature #222 — se den identiske note i movie_service.update_movie.
+    notify_all = fields.pop("notify_all", False)
     requested_media_type = fields.get("media_type")
     requested_wishlist_status = fields.get("wishlist_status")
     requested_order_status = fields.get("order_status")
@@ -616,6 +627,15 @@ async def update_tv_show(
         await message_service.notify_wishlist_moved(
             db, current_doc, current_user, document.get("name"), is_tv=True
         )
+        # Feature #222 — se den identiske note i movie_service.update_movie.
+        if notify_all:
+            await message_service.notify_library_addition_broadcast(
+                db,
+                current_user,
+                document.get("name"),
+                is_tv=True,
+                poster_url=document.get("poster_url"),
+            )
     # Feature #166 — se den identiske note i movie_service.update_movie.
     if (
         requested_wishlist_status == WishlistStatus.APPROVED.value

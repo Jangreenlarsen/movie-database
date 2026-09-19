@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.195.0 build 0279] — 2026-09-19 — feature: broadcast-besked til alle brugere ved ny biblioteks-tilføjelse (FEATURES.md #222)
+
+Jan: *"hvis nye film/tv bliver adderet til database så bliver der sendt en besked til alle at der er kommet en ny fede film/tv til samlingen og at man nu kan anmode om bio tid ... et flueben ... om hvor vidt man vil sende besked til alle eller ikke"*.
+
+Nyt, valgfrit flueben ved (1) en ny (ikke-ønske) biblioteks-oprettelse og (2) "Flyt til bibliotek" fra ønskelisten, tilgængeligt for enhver rolle der kan tilføje til biblioteket (ikke kun admin). Ny `message_service.notify_library_addition_broadcast` rundsender til alle aktive brugere med et link til `movie.laces.dk` (nyt `settings.public_site_url`, bevidst ikke afledt af CORS-listen — se BUGS.md #92). Plex bulk-import urørt (sætter aldrig fluebenet, ingen utilsigtet spam ved en synk).
+
+**Visuel bug fundet og rettet under regel 18-tjekket**: fluebenet klemte sig først ned i en smal kolonne i modal-footerens knap-række — flyttet til sin egen fulde-bredde række i modal-body.
+
+Berørte filer: `backend/app/core/config.py`, `backend/app/models/movie.py`, `backend/app/models/tv_show.py`, `backend/app/services/movie_service.py`, `backend/app/services/tv_show_service.py`, `backend/app/services/message_service.py`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/Library.css`, `frontend/src/pages/TvShows.jsx`. Tests: 9 nye i `test_library_addition_broadcast.py`, +8 i `Library.test.jsx`/`TvShows.test.jsx`. Set i browser (Playwright, FØR/EFTER layout-fix). Fuld backend-suite (991) + frontend (241) grøn.
+
 ## [0.194.2 build 0278] — 2026-09-18 — fix: "Send e-mail til anmodningsstiller(e)" sendte intet når admin selv var (ene) anmodningsstiller (BUGS.md #97)
 
 Jan testede i produktion lige efter #221: oprettede selv en anmodning og planlagde den også selv som admin — ingen besked nogen steder, heller ikke i Indstillinger → Beskeder. `message_service.notify_screening_request_scheduled` sprang (fra feature #202, urørt af #221 selv) stiltiende enhver anmodningsstiller over hvis brugernavnet matchede den planlæggende admin ("ingen besked om egen handling", samme mønster som resten af besked-systemet) — usynligt så længe planlægning altid sendte automatisk, men #221 gjorde det til et eksplicit flueben admin selv slår til.

@@ -533,6 +533,19 @@
   cursor: pointer;
 }
 
+/* Feature #222 — lille, tilbagelænet flueben-label (broadcast-valget ved en
+   ny biblioteks-tilføjelse/flyt-til-bibliotek), bevidst IKKE den store røde
+   .watched-toggle-boks ovenfor — den er lavet til "set"-status og ville
+   signalere det forkerte her. */
+.notify-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
 /* BUGS.md #78 (Jan: "afkrydsnings som i film/tv kort detajle i venstre
    hjørne er for lille skal være større", derefter opfølgning: "x skal være
    i størrelse med boks også, og boks farve rød"). `accent-color` alene

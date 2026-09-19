@@ -171,6 +171,10 @@ class MovieCreate(BaseModel):
     # Feature #114 — kun relevant for ønskeliste-poster; None = ikke bestilt.
     order_status: OrderStatus | None = None
     is_wishlist: bool = False
+    # Feature #222 — transient: styrer kun om en broadcast-besked ("ny titel
+    # i samlingen") sendes til alle brugere ved denne oprettelse. Aldrig
+    # gemt på selve dokumentet (samme mønster som ScreeningCreate.notify_scope).
+    notify_all: bool = False
 
     @model_validator(mode="after")
     def require_tmdb_id_or_title(self) -> "MovieCreate":
@@ -250,6 +254,10 @@ class MovieUpdate(BaseModel):
     subtitles: list[str] | None = None
     order_status: OrderStatus | None = None
     is_wishlist: bool | None = None
+    # Feature #222 — samme transiente felt som MovieCreate, men styrer her
+    # broadcasten ved "flyt til bibliotek" (ønske → ejet). Poppes ud af
+    # `fields` i update_movie, aldrig gemt på dokumentet.
+    notify_all: bool = False
     # Feature #144 — kun en admin må sætte denne (godkende); håndhæves i
     # service-laget (update_movie).
     wishlist_status: WishlistStatus | None = None

@@ -1056,6 +1056,8 @@ export function TvShowDetailModal({
   const [deleting, setDeleting] = useState(false);
   const [moving, setMoving] = useState(false);
   const [error, setError] = useState(null);
+  // Feature #222 — se den identiske note i Library.MovieDetailModal.
+  const [notifyAll, setNotifyAll] = useState(false);
   const isGuest = user.role === "guest";
   // Feature #101 — se den identiske note i Library.MovieDetailModal.
   const [editing, setEditing] = useState(!show.id);
@@ -1152,6 +1154,7 @@ export function TvShowDetailModal({
           barcode: show.barcode,
           barcode_source: show.barcode_source,
           is_wishlist: show.is_wishlist,
+          notify_all: !show.is_wishlist && notifyAll,
           ...(ownedSeasonNumbers.length > 0 ? { owned_seasons: ownedSeasonNumbers } : {}),
         });
         // Feature #147 — se den identiske logik i Library.jsx: registrerer man
@@ -1193,7 +1196,7 @@ export function TvShowDetailModal({
     setError(null);
     try {
       const payload = buildPayload();
-      await api.updateTvShow(show.id, { ...payload, is_wishlist: false });
+      await api.updateTvShow(show.id, { ...payload, is_wishlist: false, notify_all: notifyAll });
       onChanged();
       onClose();
     } catch (err) {
@@ -1644,6 +1647,19 @@ export function TvShowDetailModal({
           {error && <div className="banner banner-error">{error}</div>}
           {(missingClassification || (show.is_wishlist && missingClassificationForMove)) && (
             <div className="banner banner-info">{t("detail.classificationRequired")}</div>
+          )}
+          {/* Feature #222 — se den identiske note i Library.MovieDetailModal:
+              egen række i modal-body, ikke i den højre-justerede knap-række
+              i modal-footer (regel 18 fangede en klemt kolonne dér). */}
+          {editing && ((!show.id && !show.is_wishlist) || (show.id && show.is_wishlist)) && (
+            <label className="notify-toggle">
+              <input
+                type="checkbox"
+                checked={notifyAll}
+                onChange={(e) => setNotifyAll(e.target.checked)}
+              />
+              {t(show.id ? "detail.notifyAllMove" : "detail.notifyAllCreate")}
+            </label>
           )}
         </div>
 

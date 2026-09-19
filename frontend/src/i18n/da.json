@@ -156,6 +156,8 @@
   "detail.moveToLibrary": "Flyt til bibliotek",
   "detail.saveChanges": "Gem ændringer",
   "detail.create": "Opret",
+  "detail.notifyAllCreate": "Send besked til alle om denne nye tilføjelse",
+  "detail.notifyAllMove": "Send besked til alle når den flyttes til biblioteket",
   "collection.partOf": "Del af samlingen: {name}",
   "collection.ownedOf": "(ejer {owned} af {total})",
   "collection.loadError": "Kunne ikke hente samlingen fra TMDb.",

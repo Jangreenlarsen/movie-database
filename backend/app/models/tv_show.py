@@ -59,6 +59,8 @@ class TvShowCreate(BaseModel):
     # Feature #114 — se den identiske note i MovieCreate.
     order_status: OrderStatus | None = None
     is_wishlist: bool = False
+    # Feature #222 — se den identiske note i MovieCreate.
+    notify_all: bool = False
 
     @model_validator(mode="after")
     def require_tmdb_id_or_name(self) -> "TvShowCreate":
@@ -124,6 +126,8 @@ class TvShowUpdate(BaseModel):
     subtitles: list[str] | None = None
     order_status: OrderStatus | None = None
     is_wishlist: bool | None = None
+    # Feature #222 — se den identiske note i MovieUpdate.
+    notify_all: bool = False
     # Feature #144 — kun admin må godkende; håndhæves i update_tv_show.
     wishlist_status: WishlistStatus | None = None
     serial_number: int | None = Field(default=None, gt=0)

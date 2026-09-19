@@ -156,6 +156,8 @@
   "detail.moveToLibrary": "Move to library",
   "detail.saveChanges": "Save changes",
   "detail.create": "Create",
+  "detail.notifyAllCreate": "Notify everyone about this new addition",
+  "detail.notifyAllMove": "Notify everyone when it moves to the library",
   "collection.partOf": "Part of the collection: {name}",
   "collection.ownedOf": "(own {owned} of {total})",
   "collection.loadError": "Could not load the collection from TMDb.",

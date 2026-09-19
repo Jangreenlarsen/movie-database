@@ -138,6 +138,14 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     cors_origins: str = "http://localhost:5173"
 
+    # Feature #222 — den offentlige Voldby BIO-URL, brugt som CTA-link i
+    # broadcast-beskeder om nye biblioteks-tilføjelser ("log ind og anmod om
+    # en visning"). Bevidst IKKE afledt af `cors_origin_list[0]` (som
+    # BUGS.md #92 viste kan være en intern IP frem for det rigtige domæne,
+    # afhængig af rækkefølgen i CORS_ORIGINS) — dette er en fast, kendt
+    # offentlig adresse, ikke en sikkerhedsvalideret Origin.
+    public_site_url: str = "https://movie.laces.dk"
+
     jwt_secret_key: str = INSECURE_DEFAULT_JWT_SECRET
     jwt_algorithm: str = "HS256"
     # Feature #148 — 8 timers skydende idle-timeout (Jans ønske 2026-08-13): en

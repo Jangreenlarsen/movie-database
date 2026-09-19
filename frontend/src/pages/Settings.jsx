@@ -59,7 +59,12 @@ export default function Settings({ user, onSettingsChanged }) {
         </>
       )}
 
-      {activeTab === "beskeder" && isAdmin && <MessagesSection currentUserId={user.id} />}
+      {activeTab === "beskeder" && isAdmin && (
+        <>
+          <MessagesSection currentUserId={user.id} />
+          <MessagePreviewSection />
+        </>
+      )}
 
       {activeTab === "konto" && (
         <>
@@ -2203,6 +2208,108 @@ function MessagesSection({ currentUserId }) {
             </li>
           ))}
         </ul>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Feature #223 (Jan: "hvordan kan jeg se hvordan en besked se ud, kan vi
+ * lave en besked design editor hvor alle de besked typer som er i spil
+ * kan se og edit") — read-only katalog: vælg en besked-type i listen for
+ * at se hvordan den ser ud, både den korte tekst man ser i appen
+ * (banner/indbakke) og den rigere e-mail-udgave. Ingen redigering endnu
+ * (Jans eksplicitte valg ved et opklarende spørgsmål 2026-09-19) — kun
+ * visning. Hentet lazily første gang sektionen foldes ud, ikke ved hvert
+ * besøg på Indstillinger-siden.
+ */
+export function MessagePreviewSection() {
+  const t = useT();
+  const [expanded, setExpanded] = useState(false);
+  const [previews, setPreviews] = useState([]);
+  const [activeKey, setActiveKey] = useState(null);
+  const [status, setStatus] = useState("idle");
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!expanded || previews.length > 0) return;
+    setStatus("loading");
+    setError(null);
+    api
+      .listMessagePreviews()
+      .then((data) => {
+        setPreviews(data);
+        setActiveKey(data[0]?.key ?? null);
+        setStatus("idle");
+      })
+      .catch((err) => {
+        setError(err.message);
+        setStatus("error");
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded]);
+
+  const active = previews.find((p) => p.key === activeKey) ?? null;
+
+  return (
+    <div className="card settings-section">
+      <button
+        type="button"
+        className="message-preview-toggle"
+        onClick={() => setExpanded((prev) => !prev)}
+        aria-expanded={expanded}
+      >
+        <h2 style={{ margin: 0 }}>{t("messagePreview.heading")}</h2>
+        <span aria-hidden="true">{expanded ? "▾" : "▸"}</span>
+      </button>
+      <p className="muted">{t("messagePreview.description")}</p>
+
+      {expanded && (
+        <>
+          {status === "loading" && <p className="muted">{t("common.loading")}</p>}
+          {error && <div className="banner banner-error">{error}</div>}
+          {previews.length > 0 && (
+            <div className="message-preview-layout">
+              <ul className="message-preview-list">
+                {previews.map((preview) => (
+                  <li key={preview.key}>
+                    <button
+                      type="button"
+                      className={preview.key === activeKey ? "active" : ""}
+                      onClick={() => setActiveKey(preview.key)}
+                    >
+                      {preview.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {active && (
+                <div className="message-preview-detail">
+                  <p className="muted">{active.description}</p>
+
+                  <div className="message-preview-block">
+                    <div className="message-preview-label">{t("messagePreview.inAppLabel")}</div>
+                    <div className="message-preview-inapp">
+                      <strong>{active.subject}</strong>
+                      <p style={{ whiteSpace: "pre-wrap" }}>{active.body}</p>
+                    </div>
+                  </div>
+
+                  {active.html && (
+                    <div className="message-preview-block">
+                      <div className="message-preview-label">{t("messagePreview.emailLabel")}</div>
+                      <iframe
+                        title={active.name}
+                        srcDoc={active.html}
+                        className="message-preview-frame"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

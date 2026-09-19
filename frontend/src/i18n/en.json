@@ -865,6 +865,10 @@
   "messages.dismissing": "Closing...",
   "messages.dismissError": "The message could not be marked as read: {message}",
   "audit.action.messageSent": "Message sent",
+  "messagePreview.heading": "What the messages look like",
+  "messagePreview.description": "See how each message type looks, both in the app and as an email — with sample data, no real messages are sent. Read-only for now.",
+  "messagePreview.inAppLabel": "In the app (banner/inbox)",
+  "messagePreview.emailLabel": "As an email",
   "detail.edit": "Edit",
   "lib.clearSearch": "Clear search",
   "public.signAlt": "Voldby BIO — home cinema, where friends and good folk meet"

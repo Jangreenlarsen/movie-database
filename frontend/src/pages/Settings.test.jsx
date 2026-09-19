@@ -14,6 +14,7 @@ import {
   AccountSection,
   AnthemDiagnosticsSection,
   DeploySection,
+  MessagePreviewSection,
   PasswordPolicySection,
   PlexAutoImportSection,
   PlexImportSection,
@@ -461,6 +462,100 @@ describe("TestModeSection (feature #217)", () => {
     await user.click(screen.getByRole("button", { name: "Gem" }));
 
     expect(await screen.findByText("Serverfejl")).toBeInTheDocument();
+  });
+});
+
+/**
+ * Feature #223 (Jan: "hvordan kan jeg se hvordan en besked se ud, kan vi
+ * lave en besked design editor hvor alle de besked typer som er i spil
+ * kan se og edit"). Det testværdige (regel 19, tilstands-skift i et
+ * vindue): sektionen skal IKKE hente noget før den foldes ud (lazy), skal
+ * vise den valgte type korrekt (emne/brødtekst/e-mail-html), skal kunne
+ * skifte mellem typer, og skal håndtere de typer der IKKE har en
+ * e-mail-udgave (ingen iframe for dem).
+ */
+function _previews() {
+  return [
+    {
+      key: "wishlist_moved",
+      name: "Ønske flyttet til biblioteket",
+      description: "Til den der ønskede titlen, når den er købt.",
+      subject: "Din ønskede film er nu i biblioteket",
+      body: 'Den film du satte på indkøbslisten — "Dune: Part Two" — er nu købt og lagt i biblioteket. 🎬',
+      html: "<html><body>Preview-html for wishlist_moved</body></html>",
+    },
+    {
+      key: "admins_new_wishlist",
+      name: "Admin: nyt ønske",
+      description: "Til alle admins, når en bruger tilføjer en titel til ønskelisten.",
+      subject: "Nyt ønske på indkøbslisten",
+      body: 'anna har tilføjet "Dune: Part Two" (film) til ønskelisten.',
+      html: null,
+    },
+  ];
+}
+
+describe("MessagePreviewSection (feature #223)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("henter ikke besked-eksempler før sektionen foldes ud", async () => {
+    const spy = vi.spyOn(api, "listMessagePreviews").mockResolvedValue(_previews());
+    render(<MessagePreviewSection />);
+
+    await screen.findByText("Sådan ser beskederne ud");
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("folder ud, henter og viser listen af besked-typer med den første valgt", async () => {
+    vi.spyOn(api, "listMessagePreviews").mockResolvedValue(_previews());
+    const user = userEvent.setup();
+    render(<MessagePreviewSection />);
+
+    await user.click(screen.getByRole("button", { name: /Sådan ser beskederne ud/ }));
+
+    expect(await screen.findByRole("button", { name: "Ønske flyttet til biblioteket" })).toBeInTheDocument();
+    expect(screen.getByText("Din ønskede film er nu i biblioteket")).toBeInTheDocument();
+    expect(screen.getByText(/Den film du satte på indkøbslisten/)).toBeInTheDocument();
+  });
+
+  it("viser e-mail-udgaven som en iframe når typen har html", async () => {
+    vi.spyOn(api, "listMessagePreviews").mockResolvedValue(_previews());
+    const user = userEvent.setup();
+    render(<MessagePreviewSection />);
+
+    await user.click(screen.getByRole("button", { name: /Sådan ser beskederne ud/ }));
+    await screen.findByText("Din ønskede film er nu i biblioteket");
+
+    const frame = document.querySelector(".message-preview-frame");
+    expect(frame).toBeInTheDocument();
+    expect(frame.getAttribute("srcdoc")).toContain("Preview-html for wishlist_moved");
+  });
+
+  it("skifter til den valgte type ved klik i listen, uden iframe når typen ikke har html", async () => {
+    vi.spyOn(api, "listMessagePreviews").mockResolvedValue(_previews());
+    const user = userEvent.setup();
+    render(<MessagePreviewSection />);
+
+    await user.click(screen.getByRole("button", { name: /Sådan ser beskederne ud/ }));
+    await screen.findByText("Din ønskede film er nu i biblioteket");
+
+    await user.click(screen.getByRole("button", { name: "Admin: nyt ønske" }));
+
+    expect(await screen.findByText("Nyt ønske på indkøbslisten")).toBeInTheDocument();
+    expect(screen.queryByText("Din ønskede film er nu i biblioteket")).not.toBeInTheDocument();
+    expect(document.querySelector(".message-preview-frame")).not.toBeInTheDocument();
+  });
+
+  it("viser backendens specifikke fejlbesked hvis hentningen fejler", async () => {
+    vi.spyOn(api, "listMessagePreviews").mockRejectedValue(new Error("Kun admin kan se dette"));
+    const user = userEvent.setup();
+    render(<MessagePreviewSection />);
+
+    await user.click(screen.getByRole("button", { name: /Sådan ser beskederne ud/ }));
+
+    expect(await screen.findByText("Kun admin kan se dette")).toBeInTheDocument();
   });
 });
 

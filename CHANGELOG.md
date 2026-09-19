@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.196.0 build 0280] — 2026-09-19 — feature: besked-design-preview i Indstillinger → Beskeder (FEATURES.md #223)
+
+Jan: *"hvordan kan jeg se hvordan en besked se ud, kan vi lave en besked design editor hvor alle de besked typer som er i spil kan se og edit"*.
+
+Ny, read-only oversigt (kun preview for nu, redigering er et senere skridt) over alle 24 besked-typer appen kan sende — den korte in-app-tekst og den rige HTML-e-mail-udgave side om side. Forud for dette blev `message_service.py`s 19 `notify_*`-funktioner omstruktureret: hver fik sin tekst-opbygning udtrukket til en navngiven `_content_*`-funktion, som både den rigtige afsendelse OG det nye preview-katalog kalder — samme ordlyd kan derfor aldrig drifte mellem de to. Ren omstrukturering, ingen adfærdsændring (verificeret: fuld backend-suite uændret grøn).
+
+Ny `GET /api/messages/previews` (admin-only), ny `MessagePreviewSection` i Indstillinger → Beskeder (foldet sammen som default, henter lazy).
+
+Berørte filer: `backend/app/services/message_service.py`, `backend/app/services/message_preview_service.py` (ny), `backend/app/models/message.py`, `backend/app/api/messages.py`, `frontend/src/pages/Settings.jsx`, `frontend/src/pages/Settings.css`. Set i browser (Playwright). Fuld backend-suite (991) + frontend (246) grøn.
+
 ## [0.195.0 build 0279] — 2026-09-19 — feature: broadcast-besked til alle brugere ved ny biblioteks-tilføjelse (FEATURES.md #222)
 
 Jan: *"hvis nye film/tv bliver adderet til database så bliver der sendt en besked til alle at der er kommet en ny fede film/tv til samlingen og at man nu kan anmode om bio tid ... et flueben ... om hvor vidt man vil sende besked til alle eller ikke"*.

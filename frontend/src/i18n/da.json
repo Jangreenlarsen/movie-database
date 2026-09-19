@@ -865,6 +865,10 @@
   "messages.dismissing": "Lukker...",
   "messages.dismissError": "Beskeden kunne ikke markeres som læst: {message}",
   "audit.action.messageSent": "Besked sendt",
+  "messagePreview.heading": "Sådan ser beskederne ud",
+  "messagePreview.description": "Se hvordan hver besked-type ser ud, både i appen og som e-mail — med eksempel-data, ingen rigtige beskeder sendes. Read-only for nu.",
+  "messagePreview.inAppLabel": "I appen (banner/indbakke)",
+  "messagePreview.emailLabel": "Som e-mail",
   "detail.edit": "Redigér",
   "lib.clearSearch": "Ryd søgning",
   "public.signAlt": "Voldby BIO — hjemmebiograf, hvor venner og godtfolk mødes"

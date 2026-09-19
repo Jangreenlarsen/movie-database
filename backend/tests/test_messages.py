@@ -176,6 +176,76 @@ async def test_only_admins_may_send_or_list(client, second_user):
     assert forbidden_list.status_code == 403
 
 
+# --- besked-design-preview (feature #223) -----------------------------------
+
+
+async def test_only_admin_can_list_message_previews(client, second_user):
+    response = await second_user["client"].get("/api/messages/previews")
+    assert response.status_code == 403
+
+
+async def test_message_previews_cover_every_notify_function(client):
+    """Feature #223 (Jan: "alle de besked typer som er i spil kan se") —
+    19 notify_*-funktioner i message_service.py, hvoraf notify_poll_closed
+    har 2 varianter (én vinder / uafgjort) og notify_poll_cancelled har 5
+    faste tilfældige varianter: 19 - 2 + 7 = 24 indslag i alt."""
+    response = await client.get("/api/messages/previews")
+    assert response.status_code == 200
+    previews = response.json()
+    assert len(previews) == 24
+    keys = [p["key"] for p in previews]
+    assert len(keys) == len(set(keys))  # ingen dubletter
+    for preview in previews:
+        assert preview["name"]
+        assert preview["description"]
+        assert preview["subject"]
+        assert preview["body"]
+
+
+async def test_message_previews_include_both_with_and_without_html(client):
+    """De fire bruger→admin-notifikationer (nyt ønske/anmodning/forslag) har
+    aldrig haft en rig e-mail-udgave — deres preview skal derfor vise
+    html: null, ikke en tom streng eller en fejl."""
+    previews = {p["key"]: p for p in (await client.get("/api/messages/previews")).json()}
+    assert previews["admins_new_wishlist"]["html"] is None
+    assert previews["admins_new_screening_request"]["html"] is None
+    assert previews["admins_new_poll_suggestion"]["html"] is None
+    assert previews["admins_new_candidate_suggestion"]["html"] is None
+    assert previews["wishlist_moved"]["html"] is not None
+    assert "<html" in previews["wishlist_moved"]["html"]
+
+
+async def test_library_addition_broadcast_preview_shows_the_cta_link(client):
+    """Feature #222s CTA-knap ("Gå til Voldby BIO") skal være synlig i
+    previewet, ikke kun i den rigtige udsendelse."""
+    previews = {p["key"]: p for p in (await client.get("/api/messages/previews")).json()}
+    entry = previews["library_addition_broadcast"]
+    assert "movie.laces.dk" in entry["body"]
+    assert "Gå til Voldby BIO" in entry["html"]
+    assert "movie.laces.dk" in entry["html"]
+
+
+async def test_poll_cancelled_preview_shows_all_five_variants(client):
+    previews = {p["key"]: p for p in (await client.get("/api/messages/previews")).json()}
+    variant_keys = [f"poll_cancelled_{i}" for i in range(1, 6)]
+    for key in variant_keys:
+        assert key in previews
+    bodies = {previews[key]["body"] for key in variant_keys}
+    assert len(bodies) == 5  # fem forskellige tekster, ingen dubletter
+
+
+async def test_listing_message_previews_sends_nothing_and_creates_no_message(client, second_user):
+    """Rent read-only — et kald til previews må aldrig lande som en rigtig
+    besked hos nogen, og må ikke dukke op i afsenderens egen sendte-liste."""
+    await client.get("/api/messages/previews")
+
+    inbox = (await second_user["client"].get("/api/messages/inbox")).json()
+    assert inbox == []
+
+    sent = (await client.get("/api/messages")).json()
+    assert sent == []
+
+
 async def test_deleting_a_message_removes_it_for_recipients(client, second_user):
     sent = await client.post("/api/messages", json={"subject": "Fortrudt", "body": "Tekst"})
 

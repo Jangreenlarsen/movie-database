@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.196.0 (build 0280) — 2026-09-19
+
+- **Ny oversigt i Indstillinger → Beskeder: "Sådan ser beskederne ud"**. Klik dig gennem alle de besked-typer appen kan sende (ønske godkendt, ny titel i samlingen, visning planlagt, afstemning afgjort osv.) og se hvordan de ser ud — både som besked i appen og som e-mail. Kun til at kigge på for nu, ikke redigere endnu.
+
 ## v0.195.0 (build 0279) — 2026-09-19
 
 - **Ny mulighed: annoncér en ny film/serie til alle brugere**. Når du tilføjer en film/TV-serie til biblioteket (eller flytter et ønske dertil), kan du nu afkrydse "Send besked til alle" — alle andre får en besked med link til Voldby BIO, så de kan anmode om en visning.

@@ -1,8 +1,21 @@
-"""Beskeder fra admin til brugerne (feature #100)."""
+"""Beskeder fra admin til brugerne (feature #100).
+
+Feature #223 (Jan: "hvordan kan jeg se hvordan en besked se ud, kan vi
+lave en besked design editor hvor alle de besked typer som er i spil kan
+se og edit") — hver `notify_*`-funktion nedenfor har sin tekst-opbygning
+(emne/brødtekst/e-mail-indhold) udtrukket til en lille, ren `_content_*`-
+funktion umiddelbart ovenfor den. Det er IKKE en kosmetisk omskrivning:
+`message_preview_service.py` kalder de SAMME `_content_*`-funktioner med
+eksempel-data for at bygge admins preview-katalog, så previewet garanteret
+aldrig kan drifte fra den ordlyd der rent faktisk sendes — der er kun ét
+sted teksten for hver besked-type er skrevet, ikke to. Selve `notify_*`-
+funktionerne beholder al deres eksisterende ansvar (opslag, selv-skip,
+best-effort try/except, `send()`-kaldet) uændret."""
 
 import logging
 import random
 from datetime import datetime, timezone
+from typing import NamedTuple
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -21,6 +34,18 @@ from app.models.user import UserStatus
 from app.repositories import message_repository, user_repository
 
 logger = logging.getLogger("moviedb")
+
+
+class MessageContent(NamedTuple):
+    """Feature #223 — returtypen for hver `_content_*`-byggefunktion.
+    `html_kwargs`, når sat, gives direkte videre som
+    `email_templates.render_notification_email(**html_kwargs)`; `None`
+    betyder at denne besked-type aldrig har haft en rig e-mail-udgave (de
+    interne bruger→admin-notifikationer sender kun almindelig tekst)."""
+
+    subject: str
+    body: str
+    html_kwargs: dict | None = None
 
 
 def _to_model(document: dict) -> Message:
@@ -169,6 +194,25 @@ async def send(
     return message
 
 
+def _content_wishlist_moved(display_title: str, is_tv: bool, poster_url: str | None) -> MessageContent:
+    kind = "serie" if is_tv else "film"
+    body = (
+        f'Den {kind} du satte på indkøbslisten — "{display_title}" — er nu købt '
+        "og lagt i biblioteket. 🎬"
+    )
+    return MessageContent(
+        subject=f"Din ønskede {kind} er nu i biblioteket",
+        body=body,
+        html_kwargs=dict(
+            headline="Nu står den på hylden!",
+            tagline=f'"{display_title}" er købt og klar til filmaften.',
+            body_text=body,
+            poster_url=poster_url,
+            accent="gold",
+        ),
+    )
+
+
 async def notify_wishlist_moved(
     db: AsyncIOMotorDatabase,
     wishlist_doc: dict,
@@ -177,7 +221,7 @@ async def notify_wishlist_moved(
     is_tv: bool,
 ) -> None:
     """Feature #141 — når et ønske flyttes fra indkøbslisten ind i biblioteket
-    (dvs. er blevet købt), får den bruger der oprindeligt satte det på listen
+    (dvs. er blevet купt), får den bruger der oprindeligt satte det på listen
     besked. Best-effort sidekanal i try/except, så en fejl i notifikationen
     aldrig vælter selve flytningen (CLAUDE.md regel 16). Springes over hvis
     flytteren selv er den der ønskede det — man skal ikke have besked om sin
@@ -191,13 +235,10 @@ async def notify_wishlist_moved(
         return
     kind = "serie" if is_tv else "film"
     display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or kind
-    body = (
-        f'Den {kind} du satte på indkøbslisten — "{display_title}" — er nu købt '
-        "og lagt i biblioteket. 🎬"
-    )
+    content = _content_wishlist_moved(display_title, is_tv, wishlist_doc.get("poster_url"))
     payload = MessageCreate(
-        subject=f"Din ønskede {kind} er nu i biblioteket",
-        body=body,
+        subject=content.subject,
+        body=content.body,
         recipient_user_id=str(owner["_id"]),
     )
     try:
@@ -205,16 +246,29 @@ async def notify_wishlist_moved(
             db,
             payload,
             mover,
-            email_html=email_templates.render_notification_email(
-                headline="Nu står den på hylden!",
-                tagline=f'"{display_title}" er købt og klar til filmaften.',
-                body_text=body,
-                poster_url=wishlist_doc.get("poster_url"),
-                accent="gold",
-            ),
+            email_html=email_templates.render_notification_email(**content.html_kwargs),
         )
     except Exception:
         pass
+
+
+def _content_wishlist_approved(display_title: str, is_tv: bool, poster_url: str | None) -> MessageContent:
+    kind = "serie" if is_tv else "film"
+    body = (
+        f'Den {kind} du ønskede — "{display_title}" — er nu godkendt og '
+        "står på indkøbslisten. 🎬"
+    )
+    return MessageContent(
+        subject=f'Dit ønske "{display_title}" er godkendt',
+        body=body,
+        html_kwargs=dict(
+            headline="Dit ønske er godkendt!",
+            tagline=f'"{display_title}" er nu godkendt og på vej til samlingen.',
+            body_text=body,
+            poster_url=poster_url,
+            accent="gold",
+        ),
+    )
 
 
 async def notify_wishlist_approved(
@@ -238,13 +292,10 @@ async def notify_wishlist_approved(
         return
     kind = "serie" if is_tv else "film"
     display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or kind
-    body = (
-        f'Den {kind} du ønskede — "{display_title}" — er nu godkendt og '
-        "står på indkøbslisten. 🎬"
-    )
+    content = _content_wishlist_approved(display_title, is_tv, wishlist_doc.get("poster_url"))
     payload = MessageCreate(
-        subject=f'Dit ønske "{display_title}" er godkendt',
-        body=body,
+        subject=content.subject,
+        body=content.body,
         recipient_user_id=str(owner["_id"]),
     )
     try:
@@ -252,16 +303,26 @@ async def notify_wishlist_approved(
             db,
             payload,
             admin,
-            email_html=email_templates.render_notification_email(
-                headline="Dit ønske er godkendt!",
-                tagline=f'"{display_title}" er nu godkendt og på vej til samlingen.',
-                body_text=body,
-                poster_url=wishlist_doc.get("poster_url"),
-                accent="gold",
-            ),
+            email_html=email_templates.render_notification_email(**content.html_kwargs),
         )
     except Exception:
         pass
+
+
+def _content_wishlist_ordered(display_title: str, is_tv: bool, poster_url: str | None) -> MessageContent:
+    kind = "serie" if is_tv else "film"
+    body = f'Den {kind} du ønskede — "{display_title}" — er nu bestilt. 🎬'
+    return MessageContent(
+        subject=f'Dit ønske "{display_title}" er bestilt',
+        body=body,
+        html_kwargs=dict(
+            headline="Bestilt!",
+            tagline=f'"{display_title}" er nu bestilt — snart klar til filmaften.',
+            body_text=body,
+            poster_url=poster_url,
+            accent="gold",
+        ),
+    )
 
 
 async def notify_wishlist_ordered(
@@ -288,10 +349,10 @@ async def notify_wishlist_ordered(
         return
     kind = "serie" if is_tv else "film"
     display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or kind
-    body = f'Den {kind} du ønskede — "{display_title}" — er nu bestilt. 🎬'
+    content = _content_wishlist_ordered(display_title, is_tv, wishlist_doc.get("poster_url"))
     payload = MessageCreate(
-        subject=f'Dit ønske "{display_title}" er bestilt',
-        body=body,
+        subject=content.subject,
+        body=content.body,
         recipient_user_id=str(owner["_id"]),
     )
     try:
@@ -299,16 +360,32 @@ async def notify_wishlist_ordered(
             db,
             payload,
             admin,
-            email_html=email_templates.render_notification_email(
-                headline="Bestilt!",
-                tagline=f'"{display_title}" er nu bestilt — snart klar til filmaften.',
-                body_text=body,
-                poster_url=wishlist_doc.get("poster_url"),
-                accent="gold",
-            ),
+            email_html=email_templates.render_notification_email(**content.html_kwargs),
         )
     except Exception:
         pass
+
+
+def _content_wishlist_rejected(
+    display_title: str, is_tv: bool, poster_url: str | None, reason: str | None
+) -> MessageContent:
+    kind = "serie" if is_tv else "film"
+    # "Den {kind}" (ikke en bøjet form af selve ordet) — samme knep som
+    # notify_wishlist_moved bruger, så "film" ikke skal bøjes anderledes end
+    # "serie" ("filmen" vs. "serien" ville kræve to forskellige suffikser).
+    default_line = f'Den {kind} du ønskede — "{display_title}" — er desværre ikke blevet godkendt.'
+    body = f"{default_line}\n\n{reason.strip()}" if reason and reason.strip() else default_line
+    return MessageContent(
+        subject=f'Dit ønske "{display_title}" blev ikke godkendt',
+        body=body,
+        html_kwargs=dict(
+            headline="Om dit ønske",
+            tagline=f'"{display_title}" blev desværre ikke til noget denne gang.',
+            body_text=body,
+            poster_url=poster_url,
+            accent="muted",
+        ),
+    )
 
 
 async def notify_wishlist_rejected(
@@ -334,14 +411,10 @@ async def notify_wishlist_rejected(
         return
     kind = "serie" if is_tv else "film"
     display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or kind
-    # "Den {kind}" (ikke en bøjet form af selve ordet) — samme knep som
-    # notify_wishlist_moved bruger, så "film" ikke skal bøjes anderledes end
-    # "serie" ("filmen" vs. "serien" ville kræve to forskellige suffikser).
-    default_line = f'Den {kind} du ønskede — "{display_title}" — er desværre ikke blevet godkendt.'
-    body = f"{default_line}\n\n{reason.strip()}" if reason and reason.strip() else default_line
+    content = _content_wishlist_rejected(display_title, is_tv, wishlist_doc.get("poster_url"), reason)
     payload = MessageCreate(
-        subject=f'Dit ønske "{display_title}" blev ikke godkendt',
-        body=body,
+        subject=content.subject,
+        body=content.body,
         recipient_user_id=str(owner["_id"]),
     )
     try:
@@ -349,16 +422,18 @@ async def notify_wishlist_rejected(
             db,
             payload,
             admin,
-            email_html=email_templates.render_notification_email(
-                headline="Om dit ønske",
-                tagline=f'"{display_title}" blev desværre ikke til noget denne gang.',
-                body_text=body,
-                poster_url=wishlist_doc.get("poster_url"),
-                accent="muted",
-            ),
+            email_html=email_templates.render_notification_email(**content.html_kwargs),
         )
     except Exception:
         pass
+
+
+def _content_admins_new_wishlist(wisher_username: str, display_title: str, is_tv: bool) -> MessageContent:
+    kind = "serie" if is_tv else "film"
+    return MessageContent(
+        subject="Nyt ønske på indkøbslisten",
+        body=f'{wisher_username} har tilføjet "{display_title}" ({kind}) til ønskelisten.',
+    )
 
 
 async def notify_admins_new_wishlist(
@@ -378,18 +453,29 @@ async def notify_admins_new_wishlist(
         return
     kind = "serie" if is_tv else "film"
     display_title = title or kind
+    content = _content_admins_new_wishlist(wisher.get("username"), display_title, is_tv)
     for admin_doc in admins:
         if admin_doc.get("username") == wisher.get("username"):
             continue
         payload = MessageCreate(
-            subject="Nyt ønske på indkøbslisten",
-            body=f'{wisher.get("username")} har tilføjet "{display_title}" ({kind}) til ønskelisten.',
+            subject=content.subject,
+            body=content.body,
             recipient_user_id=str(admin_doc["_id"]),
         )
         try:
             await send(db, payload, wisher)
         except Exception:
             pass
+
+
+def _content_admins_new_screening_request(
+    requester_username: str, display_title: str, is_tv: bool
+) -> MessageContent:
+    kind = "serie" if is_tv else "film"
+    return MessageContent(
+        subject="Nyt ønske om visning i Voldby BIO",
+        body=f'{requester_username} ønsker at se "{display_title}" ({kind}) i Voldby BIO.',
+    )
 
 
 async def notify_admins_new_screening_request(
@@ -406,18 +492,26 @@ async def notify_admins_new_screening_request(
         return
     kind = "serie" if is_tv else "film"
     display_title = title or kind
+    content = _content_admins_new_screening_request(requester.get("username"), display_title, is_tv)
     for admin_doc in admins:
         if admin_doc.get("username") == requester.get("username"):
             continue
         payload = MessageCreate(
-            subject="Nyt ønske om visning i Voldby BIO",
-            body=f'{requester.get("username")} ønsker at se "{display_title}" ({kind}) i Voldby BIO.',
+            subject=content.subject,
+            body=content.body,
             recipient_user_id=str(admin_doc["_id"]),
         )
         try:
             await send(db, payload, requester)
         except Exception:
             pass
+
+
+def _content_admins_new_poll_suggestion(creator_username: str, poll_title: str) -> MessageContent:
+    return MessageContent(
+        subject="Nyt afstemnings-forslag afventer godkendelse",
+        body=f'{creator_username} har foreslået afstemningen "{poll_title}" — godkend eller afvis den under Voldby BIO.',
+    )
 
 
 async def notify_admins_new_poll_suggestion(
@@ -435,18 +529,31 @@ async def notify_admins_new_poll_suggestion(
     if not admins:
         return
     title = poll_document.get("title") or "En ny afstemning"
+    content = _content_admins_new_poll_suggestion(creator.get("username"), title)
     for admin_doc in admins:
         if admin_doc.get("username") == creator.get("username"):
             continue
         payload = MessageCreate(
-            subject="Nyt afstemnings-forslag afventer godkendelse",
-            body=f'{creator.get("username")} har foreslået afstemningen "{title}" — godkend eller afvis den under Voldby BIO.',
+            subject=content.subject,
+            body=content.body,
             recipient_user_id=str(admin_doc["_id"]),
         )
         try:
             await send(db, payload, creator)
         except Exception:
             pass
+
+
+def _content_admins_new_candidate_suggestion(
+    suggester_username: str, display_title: str, poll_title: str
+) -> MessageContent:
+    return MessageContent(
+        subject="Nyt kandidat-forslag afventer godkendelse",
+        body=(
+            f'{suggester_username} har foreslået at tilføje "{display_title}" til '
+            f'afstemningen "{poll_title}" — godkend eller afvis den under Voldby BIO.'
+        ),
+    )
 
 
 async def notify_admins_new_candidate_suggestion(
@@ -463,21 +570,37 @@ async def notify_admins_new_candidate_suggestion(
         return
     poll_title = poll_document.get("title") or "en afstemning"
     display_title = candidate_title or "en titel"
+    content = _content_admins_new_candidate_suggestion(suggester.get("username"), display_title, poll_title)
     for admin_doc in admins:
         if admin_doc.get("username") == suggester.get("username"):
             continue
         payload = MessageCreate(
-            subject="Nyt kandidat-forslag afventer godkendelse",
-            body=(
-                f'{suggester.get("username")} har foreslået at tilføje "{display_title}" til '
-                f'afstemningen "{poll_title}" — godkend eller afvis den under Voldby BIO.'
-            ),
+            subject=content.subject,
+            body=content.body,
             recipient_user_id=str(admin_doc["_id"]),
         )
         try:
             await send(db, payload, suggester)
         except Exception:
             pass
+
+
+def _content_poll_candidate_approved(display_title: str, poll_title: str) -> MessageContent:
+    body = (
+        f'Dit forslag om at tilføje "{display_title}" til "{poll_title}" er godkendt — '
+        "den er nu en rigtig kandidat, klar til at få stemmer."
+    )
+    return MessageContent(
+        subject="Dit kandidat-forslag er godkendt",
+        body=body,
+        html_kwargs=dict(
+            headline="Dit kandidat-forslag er godkendt!",
+            tagline=body,
+            body_text=body,
+            poster_url=None,
+            accent="gold",
+        ),
+    )
 
 
 async def notify_poll_candidate_approved(
@@ -500,13 +623,10 @@ async def notify_poll_candidate_approved(
 
     poll_title = poll_document.get("title") or "afstemningen"
     display_title = candidate_title or "titlen"
-    body = (
-        f'Dit forslag om at tilføje "{display_title}" til "{poll_title}" er godkendt — '
-        "den er nu en rigtig kandidat, klar til at få stemmer."
-    )
+    content = _content_poll_candidate_approved(display_title, poll_title)
     payload = MessageCreate(
-        subject="Dit kandidat-forslag er godkendt",
-        body=body,
+        subject=content.subject,
+        body=content.body,
         recipient_user_id=str(suggester["_id"]),
     )
     try:
@@ -514,16 +634,25 @@ async def notify_poll_candidate_approved(
             db,
             payload,
             admin,
-            email_html=email_templates.render_notification_email(
-                headline="Dit kandidat-forslag er godkendt!",
-                tagline=body,
-                body_text=body,
-                poster_url=None,
-                accent="gold",
-            ),
+            email_html=email_templates.render_notification_email(**content.html_kwargs),
         )
     except Exception:
         pass
+
+
+def _content_poll_candidate_rejected(display_title: str, poll_title: str) -> MessageContent:
+    body = f'Dit forslag om at tilføje "{display_title}" til "{poll_title}" blev desværre ikke godkendt denne gang.'
+    return MessageContent(
+        subject="Om dit kandidat-forslag",
+        body=body,
+        html_kwargs=dict(
+            headline="Om dit kandidat-forslag",
+            tagline=body,
+            body_text=body,
+            poster_url=None,
+            accent="muted",
+        ),
+    )
 
 
 async def notify_poll_candidate_rejected(
@@ -546,10 +675,10 @@ async def notify_poll_candidate_rejected(
 
     poll_title = poll_document.get("title") or "afstemningen"
     display_title = candidate_title or "titlen"
-    body = f'Dit forslag om at tilføje "{display_title}" til "{poll_title}" blev desværre ikke godkendt denne gang.'
+    content = _content_poll_candidate_rejected(display_title, poll_title)
     payload = MessageCreate(
-        subject="Om dit kandidat-forslag",
-        body=body,
+        subject=content.subject,
+        body=content.body,
         recipient_user_id=str(suggester["_id"]),
     )
     try:
@@ -557,16 +686,25 @@ async def notify_poll_candidate_rejected(
             db,
             payload,
             admin,
-            email_html=email_templates.render_notification_email(
-                headline="Om dit kandidat-forslag",
-                tagline=body,
-                body_text=body,
-                poster_url=None,
-                accent="muted",
-            ),
+            email_html=email_templates.render_notification_email(**content.html_kwargs),
         )
     except Exception:
         pass
+
+
+def _content_screening_request_declined(display_title: str, poster_url: str | None) -> MessageContent:
+    body = f'Dit ønske om at se "{display_title}" i Voldby BIO er desværre ikke blevet til noget.'
+    return MessageContent(
+        subject=f'Dit ønske om at se "{display_title}" blev afvist',
+        body=body,
+        html_kwargs=dict(
+            headline="Om din forvisnings-anmodning",
+            tagline=f'Visningen af "{display_title}" blev desværre ikke til noget denne gang.',
+            body_text=body,
+            poster_url=poster_url,
+            accent="muted",
+        ),
+    )
 
 
 async def notify_screening_request_declined(
@@ -588,7 +726,7 @@ async def notify_screening_request_declined(
     if not requesters:
         return
     display_title = title or "titlen"
-    body = f'Dit ønske om at se "{display_title}" i Voldby BIO er desværre ikke blevet til noget.'
+    content = _content_screening_request_declined(display_title, poster_url)
     for entry in requesters:
         username = entry.get("username")
         if not username or username == admin.get("username"):
@@ -597,8 +735,8 @@ async def notify_screening_request_declined(
         if requester is None:
             continue
         payload = MessageCreate(
-            subject=f'Dit ønske om at se "{display_title}" blev afvist',
-            body=body,
+            subject=content.subject,
+            body=content.body,
             recipient_user_id=str(requester["_id"]),
         )
         try:
@@ -606,16 +744,25 @@ async def notify_screening_request_declined(
                 db,
                 payload,
                 admin,
-                email_html=email_templates.render_notification_email(
-                    headline="Om din forvisnings-anmodning",
-                    tagline=f'Visningen af "{display_title}" blev desværre ikke til noget denne gang.',
-                    body_text=body,
-                    poster_url=poster_url,
-                    accent="muted",
-                ),
+                email_html=email_templates.render_notification_email(**content.html_kwargs),
             )
         except Exception:
             pass
+
+
+def _content_screening_request_scheduled(display_title: str, when: str, poster_url: str | None) -> MessageContent:
+    body = f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}. 🎬'
+    return MessageContent(
+        subject=f'Din ønskede visning "{display_title}" er planlagt!',
+        body=body,
+        html_kwargs=dict(
+            headline="Biografen venter!",
+            tagline=f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}.',
+            body_text=body,
+            poster_url=poster_url,
+            accent="gold",
+        ),
+    )
 
 
 async def notify_screening_request_scheduled(
@@ -648,7 +795,7 @@ async def notify_screening_request_scheduled(
         return
     display_title = title or "titlen"
     when = f" d. {scheduled_at.strftime('%d/%m/%Y kl. %H:%M')}" if scheduled_at else ""
-    body = f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}. 🎬'
+    content = _content_screening_request_scheduled(display_title, when, poster_url)
     for entry in requesters:
         username = entry.get("username")
         if not username:
@@ -657,8 +804,8 @@ async def notify_screening_request_scheduled(
         if requester is None:
             continue
         payload = MessageCreate(
-            subject=f'Din ønskede visning "{display_title}" er planlagt!',
-            body=body,
+            subject=content.subject,
+            body=content.body,
             recipient_user_id=str(requester["_id"]),
         )
         try:
@@ -666,16 +813,25 @@ async def notify_screening_request_scheduled(
                 db,
                 payload,
                 admin,
-                email_html=email_templates.render_notification_email(
-                    headline="Biografen venter!",
-                    tagline=f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}.',
-                    body_text=body,
-                    poster_url=poster_url,
-                    accent="gold",
-                ),
+                email_html=email_templates.render_notification_email(**content.html_kwargs),
             )
         except Exception:
             pass
+
+
+def _content_screening_scheduled_broadcast(display_title: str, when: str, poster_url: str | None) -> MessageContent:
+    body = f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}. 🎬'
+    return MessageContent(
+        subject=f'"{display_title}" er planlagt i Voldby BIO!',
+        body=body,
+        html_kwargs=dict(
+            headline="Biografen venter!",
+            tagline=f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}.',
+            body_text=body,
+            poster_url=poster_url,
+            accent="gold",
+        ),
+    )
 
 
 async def notify_screening_scheduled_broadcast(
@@ -696,10 +852,10 @@ async def notify_screening_scheduled_broadcast(
     planlægning."""
     display_title = title or "titlen"
     when = f" d. {scheduled_at.strftime('%d/%m/%Y kl. %H:%M')}" if scheduled_at else ""
-    body = f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}. 🎬'
+    content = _content_screening_scheduled_broadcast(display_title, when, poster_url)
     payload = MessageCreate(
-        subject=f'"{display_title}" er planlagt i Voldby BIO!',
-        body=body,
+        subject=content.subject,
+        body=content.body,
         recipient_user_id=None,
     )
     try:
@@ -707,16 +863,31 @@ async def notify_screening_scheduled_broadcast(
             db,
             payload,
             admin,
-            email_html=email_templates.render_notification_email(
-                headline="Biografen venter!",
-                tagline=f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}.',
-                body_text=body,
-                poster_url=poster_url,
-                accent="gold",
-            ),
+            email_html=email_templates.render_notification_email(**content.html_kwargs),
         )
     except Exception:
         pass
+
+
+def _content_library_addition_broadcast(display_title: str, is_tv: bool, poster_url: str | None) -> MessageContent:
+    body = (
+        f'"{display_title}" er lige blevet en del af Voldby BIO-samlingen! 🎬 '
+        f"Log ind og anmod om en visning: {settings.public_site_url}"
+    )
+    kind = "serie" if is_tv else "film"
+    return MessageContent(
+        subject=f"Ny {kind} i samlingen: {display_title}!",
+        body=body,
+        html_kwargs=dict(
+            headline="Ny i samlingen!",
+            tagline=f'"{display_title}" er nu en del af Voldby BIOs samling — anmod om en visning!',
+            body_text=body,
+            poster_url=poster_url,
+            accent="gold",
+            cta_url=settings.public_site_url,
+            cta_label="Gå til Voldby BIO",
+        ),
+    )
 
 
 async def notify_library_addition_broadcast(
@@ -749,13 +920,10 @@ async def notify_library_addition_broadcast(
     tidspunkt")."""
     kind = "serie" if is_tv else "film"
     display_title = title or f"En ny {kind}"
-    body = (
-        f'"{display_title}" er lige blevet en del af Voldby BIO-samlingen! 🎬 '
-        f"Log ind og anmod om en visning: {settings.public_site_url}"
-    )
+    content = _content_library_addition_broadcast(display_title, is_tv, poster_url)
     payload = MessageCreate(
-        subject=f"Ny {kind} i samlingen: {display_title}!",
-        body=body,
+        subject=content.subject,
+        body=content.body,
         recipient_user_id=None,
     )
     try:
@@ -763,18 +931,40 @@ async def notify_library_addition_broadcast(
             db,
             payload,
             creator,
-            email_html=email_templates.render_notification_email(
-                headline="Ny i samlingen!",
-                tagline=f'"{display_title}" er nu en del af Voldby BIOs samling — anmod om en visning!',
-                body_text=body,
-                poster_url=poster_url,
-                accent="gold",
-                cta_url=settings.public_site_url,
-                cta_label="Gå til Voldby BIO",
-            ),
+            email_html=email_templates.render_notification_email(**content.html_kwargs),
         )
     except Exception:
         pass
+
+
+def _content_poll_closed_single(display_title: str, poster_url: str | None) -> MessageContent:
+    tagline = f'"{display_title}" vandt afstemningen!'
+    return MessageContent(
+        subject="Afstemningen er afgjort",
+        body=tagline,
+        html_kwargs=dict(
+            headline="Afstemningen er afgjort!",
+            tagline=tagline,
+            body_text=tagline,
+            poster_url=poster_url,
+            accent="gold",
+        ),
+    )
+
+
+def _content_poll_closed_tie(titles: str) -> MessageContent:
+    tagline = f"Uafgjort mellem {titles} — admin vælger snart hvilken der bliver til noget."
+    return MessageContent(
+        subject="Afstemningen er afgjort",
+        body=tagline,
+        html_kwargs=dict(
+            headline="Afstemningen er afgjort!",
+            tagline=tagline,
+            body_text=tagline,
+            poster_url=None,
+            accent="gold",
+        ),
+    )
 
 
 async def notify_poll_closed(
@@ -793,22 +983,18 @@ async def notify_poll_closed(
     winners = [poll_model.candidates[i] for i in poll_model.winner_indices]
     if len(winners) == 1:
         winner = winners[0]
-        display_title = winner.title or "titlen"
-        tagline = f'"{display_title}" vandt afstemningen!'
-        poster_url = winner.poster_url
+        content = _content_poll_closed_single(winner.title or "titlen", winner.poster_url)
     else:
         titles = ", ".join(w.title or "en titel" for w in winners)
-        tagline = f"Uafgjort mellem {titles} — admin vælger snart hvilken der bliver til noget."
-        poster_url = None
-    body = tagline
+        content = _content_poll_closed_tie(titles)
 
     for username in voters:
         voter = await user_repository.find_by_username_normalized(db, username.lower())
         if voter is None:
             continue
         payload = MessageCreate(
-            subject="Afstemningen er afgjort",
-            body=body,
+            subject=content.subject,
+            body=content.body,
             recipient_user_id=str(voter["_id"]),
         )
         try:
@@ -816,13 +1002,7 @@ async def notify_poll_closed(
                 db,
                 payload,
                 admin,
-                email_html=email_templates.render_notification_email(
-                    headline="Afstemningen er afgjort!",
-                    tagline=tagline,
-                    body_text=body,
-                    poster_url=poster_url,
-                    accent="gold",
-                ),
+                email_html=email_templates.render_notification_email(**content.html_kwargs),
             )
         except Exception:
             pass
@@ -845,6 +1025,20 @@ _POLL_CANCELLED_MESSAGES = [
 ]
 
 
+def _content_poll_cancelled(body: str) -> MessageContent:
+    return MessageContent(
+        subject="Afstemningen er aflyst",
+        body=body,
+        html_kwargs=dict(
+            headline="Afstemningen er aflyst",
+            tagline=body,
+            body_text=body,
+            poster_url=None,
+            accent="muted",
+        ),
+    )
+
+
 async def notify_poll_cancelled(db: AsyncIOMotorDatabase, poll_document: dict, admin: dict) -> None:
     """Feature #216 — svar til hver bruger der stemte, når admin sletter en
     ENDNU ÅBEN afstemning (poll_service.delete_poll kalder kun denne når
@@ -856,15 +1050,15 @@ async def notify_poll_cancelled(db: AsyncIOMotorDatabase, poll_document: dict, a
     if not voters:
         return
 
-    body = random.choice(_POLL_CANCELLED_MESSAGES)
+    content = _content_poll_cancelled(random.choice(_POLL_CANCELLED_MESSAGES))
 
     for username in voters:
         voter = await user_repository.find_by_username_normalized(db, username.lower())
         if voter is None:
             continue
         payload = MessageCreate(
-            subject="Afstemningen er aflyst",
-            body=body,
+            subject=content.subject,
+            body=content.body,
             recipient_user_id=str(voter["_id"]),
         )
         try:
@@ -872,16 +1066,25 @@ async def notify_poll_cancelled(db: AsyncIOMotorDatabase, poll_document: dict, a
                 db,
                 payload,
                 admin,
-                email_html=email_templates.render_notification_email(
-                    headline="Afstemningen er aflyst",
-                    tagline=body,
-                    body_text=body,
-                    poster_url=None,
-                    accent="muted",
-                ),
+                email_html=email_templates.render_notification_email(**content.html_kwargs),
             )
         except Exception:
             pass
+
+
+def _content_poll_scheduled(display_title: str, when: str, poster_url: str | None) -> MessageContent:
+    body = f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}. 🎬'
+    return MessageContent(
+        subject=f'Afstemningens vinder "{display_title}" er planlagt!',
+        body=body,
+        html_kwargs=dict(
+            headline="Biografen venter!",
+            tagline=f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}.',
+            body_text=body,
+            poster_url=poster_url,
+            accent="gold",
+        ),
+    )
 
 
 async def notify_poll_scheduled(
@@ -900,15 +1103,15 @@ async def notify_poll_scheduled(
 
     display_title = winner.title or "titlen"
     when = f" d. {scheduled_at.strftime('%d/%m/%Y kl. %H:%M')}" if scheduled_at else ""
-    body = f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}. 🎬'
+    content = _content_poll_scheduled(display_title, when, winner.poster_url)
 
     for username in voters:
         voter = await user_repository.find_by_username_normalized(db, username.lower())
         if voter is None:
             continue
         payload = MessageCreate(
-            subject=f'Afstemningens vinder "{display_title}" er planlagt!',
-            body=body,
+            subject=content.subject,
+            body=content.body,
             recipient_user_id=str(voter["_id"]),
         )
         try:
@@ -916,16 +1119,25 @@ async def notify_poll_scheduled(
                 db,
                 payload,
                 admin,
-                email_html=email_templates.render_notification_email(
-                    headline="Biografen venter!",
-                    tagline=f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}.',
-                    body_text=body,
-                    poster_url=winner.poster_url,
-                    accent="gold",
-                ),
+                email_html=email_templates.render_notification_email(**content.html_kwargs),
             )
         except Exception:
             pass
+
+
+def _content_poll_approved(poll_title: str) -> MessageContent:
+    body = f'"{poll_title}" er nu godkendt og åben for alle i Voldby BIO — alle kan stemme.'
+    return MessageContent(
+        subject="Din afstemning er godkendt",
+        body=body,
+        html_kwargs=dict(
+            headline="Din afstemning er godkendt!",
+            tagline=body,
+            body_text=body,
+            poster_url=None,
+            accent="gold",
+        ),
+    )
 
 
 async def notify_poll_approved(db: AsyncIOMotorDatabase, poll_document: dict, admin: dict) -> None:
@@ -941,10 +1153,10 @@ async def notify_poll_approved(db: AsyncIOMotorDatabase, poll_document: dict, ad
         return
 
     title = poll_document.get("title") or "din afstemning"
-    body = f'"{title}" er nu godkendt og åben for alle i Voldby BIO — alle kan stemme.'
+    content = _content_poll_approved(title)
     payload = MessageCreate(
-        subject="Din afstemning er godkendt",
-        body=body,
+        subject=content.subject,
+        body=content.body,
         recipient_user_id=str(creator["_id"]),
     )
     try:
@@ -952,16 +1164,25 @@ async def notify_poll_approved(db: AsyncIOMotorDatabase, poll_document: dict, ad
             db,
             payload,
             admin,
-            email_html=email_templates.render_notification_email(
-                headline="Din afstemning er godkendt!",
-                tagline=body,
-                body_text=body,
-                poster_url=None,
-                accent="gold",
-            ),
+            email_html=email_templates.render_notification_email(**content.html_kwargs),
         )
     except Exception:
         pass
+
+
+def _content_poll_suggestion_rejected(poll_title: str) -> MessageContent:
+    body = f'"{poll_title}" blev desværre ikke godkendt som afstemning denne gang.'
+    return MessageContent(
+        subject="Om dit afstemnings-forslag",
+        body=body,
+        html_kwargs=dict(
+            headline="Om dit afstemnings-forslag",
+            tagline=body,
+            body_text=body,
+            poster_url=None,
+            accent="muted",
+        ),
+    )
 
 
 async def notify_poll_suggestion_rejected(
@@ -979,10 +1200,10 @@ async def notify_poll_suggestion_rejected(
         return
 
     title = poll_document.get("title") or "dit afstemnings-forslag"
-    body = f'"{title}" blev desværre ikke godkendt som afstemning denne gang.'
+    content = _content_poll_suggestion_rejected(title)
     payload = MessageCreate(
-        subject="Om dit afstemnings-forslag",
-        body=body,
+        subject=content.subject,
+        body=content.body,
         recipient_user_id=str(creator["_id"]),
     )
     try:
@@ -990,13 +1211,7 @@ async def notify_poll_suggestion_rejected(
             db,
             payload,
             admin,
-            email_html=email_templates.render_notification_email(
-                headline="Om dit afstemnings-forslag",
-                tagline=body,
-                body_text=body,
-                poster_url=None,
-                accent="muted",
-            ),
+            email_html=email_templates.render_notification_email(**content.html_kwargs),
         )
     except Exception:
         pass

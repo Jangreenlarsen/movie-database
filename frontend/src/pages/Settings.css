@@ -8,6 +8,119 @@
   margin-bottom: 20px;
 }
 
+/* Feature #223 — besked-design-preview (Indstillinger → Beskeder). */
+.message-preview-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text);
+  text-align: left;
+}
+
+.message-preview-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 20px;
+  margin-top: 16px;
+  align-items: start;
+}
+
+.message-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.message-preview-list button {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.message-preview-list button:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.message-preview-list button.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+}
+
+.message-preview-detail {
+  min-width: 0;
+}
+
+.message-preview-block {
+  margin-top: 16px;
+}
+
+.message-preview-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.message-preview-inapp {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  background: var(--surface);
+}
+
+.message-preview-inapp p {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.message-preview-frame {
+  width: 100%;
+  height: 520px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: #faf9f7;
+}
+
+@media (max-width: 640px) {
+  .message-preview-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .message-preview-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    max-height: none;
+  }
+
+  .message-preview-list button {
+    width: auto;
+  }
+}
+
 /* Feature #194 — branch-valg (main/dev) ved OTA-opdatering. */
 .deploy-branch-picker {
   display: flex;

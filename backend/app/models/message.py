@@ -64,3 +64,22 @@ class InboxMessage(BaseModel):
     body: str
     sent_by: str
     created_at: datetime
+
+
+class MessagePreview(BaseModel):
+    """Feature #223 — ét indslag i admins read-only besked-design-katalog
+    (Indstillinger → Beskeder). Bygget af message_preview_service fra de
+    SAMME `_content_*`-byggefunktioner som de rigtige notify_*-funktioner i
+    message_service.py selv bruger (med eksempel-data i stedet for en
+    rigtig hændelse), så previewet aldrig kan vise en anden ordlyd end den
+    der rent faktisk sendes. `html` er `None` for de få besked-typer der
+    kun nogensinde har været almindelig tekst (bruger→admin-notifikationer
+    om nye ønsker/anmodninger/forslag) — ingen rig e-mail-udgave findes for
+    dem."""
+
+    key: str
+    name: str
+    description: str
+    subject: str
+    body: str
+    html: str | None = None

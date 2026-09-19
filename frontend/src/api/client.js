@@ -293,6 +293,8 @@ export const api = {
   sendMessage: (payload) =>
     request("/messages", { method: "POST", body: JSON.stringify(payload) }),
   deleteMessage: (id) => request(`/messages/${id}`, { method: "DELETE" }),
+  // Feature #223 — read-only besked-design-katalog (Indstillinger → Beskeder).
+  listMessagePreviews: () => request("/messages/previews"),
   // Feature #94 — samlet optælling til app-hovedet.
   getLibraryCounts: () => request("/library/counts"),
   exportLibrary: () => request("/library/export"),

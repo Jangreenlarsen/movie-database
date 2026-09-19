@@ -15,6 +15,7 @@ import {
   AnthemDiagnosticsSection,
   DeploySection,
   MessagePreviewSection,
+  MessagesSection,
   PasswordPolicySection,
   PlexAutoImportSection,
   PlexImportSection,
@@ -494,6 +495,92 @@ function _previews() {
     },
   ];
 }
+
+/**
+ * Feature #224 (Jan: "i Indstillinger/Sendte besked gør det til en list
+ * som default skal udfoldet og med max 10 entry par side i den liste").
+ * Det testværdige (regel 19, tilstands-skift i et vindue): listen skal
+ * være synlig UDEN et klik (default udfoldet, til forskel fra #223s nye
+ * sektion), skal vise højst 10 ad gangen når der er flere, og
+ * "Næste"/"Forrige" skal rent faktisk bladre gennem resten.
+ */
+function _sentMessage(i) {
+  return {
+    id: `msg-${i}`,
+    subject: `Besked ${i}`,
+    body: `Indhold ${i}`,
+    sent_by: "testuser",
+    created_at: "2026-09-19T12:00:00Z",
+    recipients: [],
+    read_count: 0,
+    recipient_count: 1,
+    is_broadcast: true,
+  };
+}
+
+describe("MessagesSection — 'Sendte beskeder'-liste (feature #224)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(api, "listUsers").mockResolvedValue([]);
+  });
+
+  it("listen er udfoldet som default, uden at man skal klikke noget", async () => {
+    vi.spyOn(api, "listMessages").mockResolvedValue([_sentMessage(1), _sentMessage(2)]);
+    render(<MessagesSection currentUserId="admin-1" />);
+
+    expect(await screen.findByText("Besked 1")).toBeInTheDocument();
+    expect(screen.getByText("Besked 2")).toBeInTheDocument();
+  });
+
+  it("kan foldes sammen ved klik på overskriften", async () => {
+    vi.spyOn(api, "listMessages").mockResolvedValue([_sentMessage(1)]);
+    const user = userEvent.setup();
+    render(<MessagesSection currentUserId="admin-1" />);
+
+    await screen.findByText("Besked 1");
+    await user.click(screen.getByRole("button", { name: /Sendte beskeder/ }));
+
+    expect(screen.queryByText("Besked 1")).not.toBeInTheDocument();
+  });
+
+  it("viser højst 10 beskeder ad gangen og pagineringskontroller når der er flere", async () => {
+    const messages = Array.from({ length: 15 }, (_, i) => _sentMessage(i + 1));
+    vi.spyOn(api, "listMessages").mockResolvedValue(messages);
+    render(<MessagesSection currentUserId="admin-1" />);
+
+    await screen.findByText("Besked 1");
+    expect(screen.getByText("Besked 10")).toBeInTheDocument();
+    expect(screen.queryByText("Besked 11")).not.toBeInTheDocument();
+    expect(screen.getByText("Side 1 af 2")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "← Forrige" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Næste →" })).toBeEnabled();
+  });
+
+  it("'Næste' viser de resterende beskeder på side 2", async () => {
+    const messages = Array.from({ length: 15 }, (_, i) => _sentMessage(i + 1));
+    vi.spyOn(api, "listMessages").mockResolvedValue(messages);
+    const user = userEvent.setup();
+    render(<MessagesSection currentUserId="admin-1" />);
+
+    await screen.findByText("Besked 1");
+    await user.click(screen.getByRole("button", { name: "Næste →" }));
+
+    expect(await screen.findByText("Besked 11")).toBeInTheDocument();
+    expect(screen.getByText("Besked 15")).toBeInTheDocument();
+    expect(screen.queryByText("Besked 1")).not.toBeInTheDocument();
+    expect(screen.getByText("Side 2 af 2")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Næste →" })).toBeDisabled();
+  });
+
+  it("viser ingen pagineringskontroller når der er 10 eller færre beskeder", async () => {
+    const messages = Array.from({ length: 10 }, (_, i) => _sentMessage(i + 1));
+    vi.spyOn(api, "listMessages").mockResolvedValue(messages);
+    render(<MessagesSection currentUserId="admin-1" />);
+
+    await screen.findByText("Besked 1");
+    expect(screen.queryByText(/Side \d+ af \d+/)).not.toBeInTheDocument();
+  });
+});
 
 describe("MessagePreviewSection (feature #223)", () => {
   beforeEach(() => {

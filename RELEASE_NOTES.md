@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.197.0 (build 0281) — 2026-09-19
+
+- **"Sendte beskeder"-listen i Indstillinger → Beskeder kan nu foldes sammen** (starter udfoldet, som før) **og viser højst 10 beskeder ad gangen** med Forrige/Næste-knapper, i stedet for hele historikken på én gang.
+
 ## v0.196.0 (build 0280) — 2026-09-19
 
 - **Ny oversigt i Indstillinger → Beskeder: "Sådan ser beskederne ud"**. Klik dig gennem alle de besked-typer appen kan sende (ønske godkendt, ny titel i samlingen, visning planlagt, afstemning afgjort osv.) og se hvordan de ser ud — både som besked i appen og som e-mail. Kun til at kigge på for nu, ikke redigere endnu.

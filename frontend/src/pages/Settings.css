@@ -8,8 +8,9 @@
   margin-bottom: 20px;
 }
 
-/* Feature #223 — besked-design-preview (Indstillinger → Beskeder). */
-.message-preview-toggle {
+/* Feature #223 — klikbar sektions-overskrift der folder indhold ud/sammen
+   (besked-design-preview, og feature #224s "Sendte beskeder"-liste). */
+.settings-collapsible-toggle {
   display: flex;
   align-items: center;
   justify-content: space-between;

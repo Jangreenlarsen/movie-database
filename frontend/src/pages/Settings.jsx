@@ -2062,7 +2062,15 @@ export function PlexImportSection() {
  * måneder senere. Det er også derfor "læst af 2 af 5" er et fast tal og
  * ikke ændrer sig når der kommer nye brugere til.
  */
-function MessagesSection({ currentUserId }) {
+// Feature #224 — Jan: "gør det til en list som default skal udfoldet og
+// med max 10 entry par side i den liste". Client-side paginering: hele
+// listen hentes stadig i ét kald (som hidtil, api.listMessages() har ingen
+// skip/limit), kun VISNINGEN begrænses til 10 ad gangen — ingen ny
+// backend-kontrakt nødvendig for den beskedne mængde beskeder en
+// admin-portal som denne reelt ophober.
+const SENT_MESSAGES_PAGE_SIZE = 10;
+
+export function MessagesSection({ currentUserId }) {
   const t = useT();
   const locale = useLocale();
   const [users, setUsers] = useState([]);
@@ -2072,6 +2080,11 @@ function MessagesSection({ currentUserId }) {
   const [recipient, setRecipient] = useState("");
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
+  // Feature #224 — default UDFOLDET (Jans eksplicitte ønske), til forskel
+  // fra #223s nye "Sådan ser beskederne ud"-sektion, som default er
+  // sammenfoldet (den er ny og mindre central end selve besked-historikken).
+  const [sentExpanded, setSentExpanded] = useState(true);
+  const [sentPage, setSentPage] = useState(0);
 
   function load() {
     api.listMessages().then(setMessages).catch((err) => setError(err.message));
@@ -2116,6 +2129,17 @@ function MessagesSection({ currentUserId }) {
   // der ville blive afvist.
   const selectableUsers = users.filter(
     (u) => u.status === "active" && u.id !== currentUserId
+  );
+
+  // Feature #224 — client-side paginering af den allerede hentede liste.
+  // `clampedSentPage` beskytter mod at stå tilbage på en tom side, hvis en
+  // sletning (eller en genindlæsning med færre beskeder) gør den tidligere
+  // valgte side ude af rækkevidde.
+  const sentTotalPages = Math.max(1, Math.ceil(messages.length / SENT_MESSAGES_PAGE_SIZE));
+  const clampedSentPage = Math.min(sentPage, sentTotalPages - 1);
+  const pagedMessages = messages.slice(
+    clampedSentPage * SENT_MESSAGES_PAGE_SIZE,
+    clampedSentPage * SENT_MESSAGES_PAGE_SIZE + SENT_MESSAGES_PAGE_SIZE
   );
 
   return (
@@ -2169,45 +2193,84 @@ function MessagesSection({ currentUserId }) {
 
       <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
 
-      <h3 style={{ marginTop: 0 }}>{t("messages.sentHeading")}</h3>
-      {messages.length === 0 ? (
-        <p className="muted">{t("messages.noneSent")}</p>
-      ) : (
-        <ul className="user-list">
-          {messages.map((message) => (
-            <li key={message.id} className="message-sent-row">
-              <div className="message-sent-main">
-                <strong>{message.subject}</strong>
-                <div className="muted message-sent-meta">
-                  {t(message.is_broadcast ? "messages.toEveryone" : "messages.toOne", {
-                    name: message.recipients[0]?.username ?? "",
-                    date: new Date(message.created_at).toLocaleDateString(locale),
-                  })}
-                  {" · "}
-                  {t("messages.readCount", {
-                    read: message.read_count,
-                    total: message.recipient_count,
-                  })}
+      <button
+        type="button"
+        className="settings-collapsible-toggle"
+        onClick={() => setSentExpanded((prev) => !prev)}
+        aria-expanded={sentExpanded}
+      >
+        <h3 style={{ margin: 0 }}>{t("messages.sentHeading")}</h3>
+        <span aria-hidden="true">{sentExpanded ? "▾" : "▸"}</span>
+      </button>
+
+      {sentExpanded && (
+        <>
+          {messages.length === 0 ? (
+            <p className="muted">{t("messages.noneSent")}</p>
+          ) : (
+            <>
+              <ul className="user-list">
+                {pagedMessages.map((message) => (
+                  <li key={message.id} className="message-sent-row">
+                    <div className="message-sent-main">
+                      <strong>{message.subject}</strong>
+                      <div className="muted message-sent-meta">
+                        {t(message.is_broadcast ? "messages.toEveryone" : "messages.toOne", {
+                          name: message.recipients[0]?.username ?? "",
+                          date: new Date(message.created_at).toLocaleDateString(locale),
+                        })}
+                        {" · "}
+                        {t("messages.readCount", {
+                          read: message.read_count,
+                          total: message.recipient_count,
+                        })}
+                      </div>
+                      {/* Kun de der faktisk har læst listes: "hvem mangler" er
+                          hurtigere at aflæse ud fra tallet end ud fra to lister. */}
+                      {message.read_count > 0 && (
+                        <div className="muted message-sent-meta">
+                          {t("messages.readBy", {
+                            names: message.recipients
+                              .filter((r) => r.read_at)
+                              .map((r) => r.username)
+                              .join(", "),
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <button type="button" className="btn" onClick={() => remove(message.id)}>
+                      {t("common.delete")}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+
+              {messages.length > SENT_MESSAGES_PAGE_SIZE && (
+                <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 12 }}>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setSentPage(clampedSentPage - 1)}
+                    disabled={clampedSentPage === 0}
+                  >
+                    {t("messages.previous")}
+                  </button>
+                  <span className="muted">
+                    {t("messages.page", { page: clampedSentPage + 1, totalPages: sentTotalPages })}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setSentPage(clampedSentPage + 1)}
+                    disabled={clampedSentPage + 1 >= sentTotalPages}
+                  >
+                    {t("messages.next")}
+                  </button>
                 </div>
-                {/* Kun de der faktisk har læst listes: "hvem mangler" er
-                    hurtigere at aflæse ud fra tallet end ud fra to lister. */}
-                {message.read_count > 0 && (
-                  <div className="muted message-sent-meta">
-                    {t("messages.readBy", {
-                      names: message.recipients
-                        .filter((r) => r.read_at)
-                        .map((r) => r.username)
-                        .join(", "),
-                    })}
-                  </div>
-                )}
-              </div>
-              <button type="button" className="btn" onClick={() => remove(message.id)}>
-                {t("common.delete")}
-              </button>
-            </li>
-          ))}
-        </ul>
+              )}
+            </>
+          )}
+        </>
       )}
     </div>
   );
@@ -2255,7 +2318,7 @@ export function MessagePreviewSection() {
     <div className="card settings-section">
       <button
         type="button"
-        className="message-preview-toggle"
+        className="settings-collapsible-toggle"
         onClick={() => setExpanded((prev) => !prev)}
         aria-expanded={expanded}
       >

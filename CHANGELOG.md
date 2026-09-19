@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.197.0 build 0281] — 2026-09-19 — feature: "Sendte beskeder"-listen foldes/pagineres (FEATURES.md #224)
+
+Jan: *"i Indstillinger/Sendte besked gør det til en list som default skal udfoldet og med max 10 entry par side i den liste"*.
+
+Listen i Indstillinger → Beskeder viste tidligere alle sendte beskeder ubegrænset. Nu: en klikbar overskrift folder listen sammen/ud (default udfoldet), og client-side paginering viser højst 10 ad gangen med Forrige/Næste-knapper — samme mønster som `AuditLogSection` allerede bruger, blot client-side. Delt CSS-klasse for fold-ud/sammen-sektioner (`.settings-collapsible-toggle`) omdøbt fra #223s mere specifikke navn, så begge sektioner nu genbruger den samme.
+
+Berørte filer: `frontend/src/pages/Settings.jsx`, `frontend/src/pages/Settings.css`. Ren frontend-ændring, ingen backend rørt. Set i browser (Playwright). Fuld backend-suite (997, uændret) + frontend (251) grøn.
+
 ## [0.196.0 build 0280] — 2026-09-19 — feature: besked-design-preview i Indstillinger → Beskeder (FEATURES.md #223)
 
 Jan: *"hvordan kan jeg se hvordan en besked se ud, kan vi lave en besked design editor hvor alle de besked typer som er i spil kan se og edit"*.

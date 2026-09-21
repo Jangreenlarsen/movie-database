@@ -1,0 +1,453 @@
+<title>Netværksvejen til movie.laces.dk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+  :root{
+    --paper:#eef1ef;
+    --surface:#ffffff;
+    --tint:#e4e9e7;
+    --ink:#16242a;
+    --ink-soft:#556a70;
+    --ink-faint:#7d8f93;
+    --rule:#ccd7d4;
+    --rule-soft:#dde4e2;
+    --accent:#0c7c8c;
+    --edge:#a2542e;
+    --edge-soft:#f0e0d6;
+    --shadow:0 1px 2px rgba(22,36,42,.06),0 8px 24px -18px rgba(22,36,42,.5);
+    --sans:"Archivo","Segoe UI",system-ui,sans-serif;
+    --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+    --mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#0f1719;
+      --surface:#182226;
+      --tint:#141d20;
+      --ink:#e2e9e7;
+      --ink-soft:#9aacb0;
+      --ink-faint:#75898d;
+      --rule:#2b3a3e;
+      --rule-soft:#223034;
+      --accent:#48b9c7;
+      --edge:#d5885c;
+      --edge-soft:#33231a;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 28px -20px rgba(0,0,0,.9);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0f1719;
+    --surface:#182226;
+    --tint:#141d20;
+    --ink:#e2e9e7;
+    --ink-soft:#9aacb0;
+    --ink-faint:#75898d;
+    --rule:#2b3a3e;
+    --rule-soft:#223034;
+    --accent:#48b9c7;
+    --edge:#d5885c;
+    --edge-soft:#33231a;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 28px -20px rgba(0,0,0,.9);
+  }
+
+  body{background:var(--paper);color:var(--ink);font-family:var(--serif);
+       font-size:16.5px;line-height:1.62;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:62rem;margin:0 auto;padding:clamp(1.75rem,4vw,4rem) clamp(1.1rem,4vw,2.5rem) 4rem}
+  .prose{max-width:38rem}
+
+  header.top{border-bottom:1px solid var(--rule);padding-bottom:1.6rem;margin-bottom:2.2rem}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;
+           color:var(--accent);margin:0 0 .9rem}
+  h1{font-family:var(--sans);font-weight:700;font-size:clamp(2rem,5.2vw,3.1rem);line-height:1.05;
+     letter-spacing:-.022em;margin:0;text-wrap:balance}
+  h1 .dom{font-family:var(--mono);font-weight:500;font-size:.44em;letter-spacing:-.01em;
+          display:block;color:var(--ink-soft);margin-top:.75rem}
+  .lede{font-size:1.08rem;color:var(--ink-soft);margin:1.1rem 0 0;max-width:36rem}
+
+  .notes{display:flex;flex-direction:column;gap:.7rem;margin-top:1.6rem;max-width:38rem}
+  .note{margin:0;padding:.85rem 1.05rem;background:var(--tint);border-left:2px solid var(--accent);
+        border-radius:0 3px 3px 0;font-size:.9rem;color:var(--ink-soft)}
+  .note b{color:var(--ink);font-weight:600;font-family:var(--sans)}
+
+  figure{margin:2.6rem 0 3rem}
+  .canvas{background:var(--surface);border:1px solid var(--rule);border-radius:4px;
+          padding:1.4rem 1.2rem;overflow-x:auto;box-shadow:var(--shadow)}
+  .canvas svg{display:block;width:100%;min-width:1000px;height:auto}
+  figcaption{font-size:.88rem;color:var(--ink-faint);margin-top:.9rem;max-width:42rem}
+
+  .bx{fill:var(--surface);stroke:var(--rule);stroke-width:1}
+  .grp{fill:var(--tint);stroke:var(--rule);stroke-width:1}
+  .zone{fill:none;stroke:var(--rule);stroke-width:1;stroke-dasharray:2 4}
+  .ln{stroke:var(--ink-faint);stroke-width:1.3;fill:none}
+  .dash{stroke:var(--ink-faint);stroke-width:1.3;fill:none;stroke-dasharray:5 4}
+  .ah{fill:var(--ink-faint)}
+  .tlsbar{stroke:var(--edge);stroke-width:2.5}
+  .dot{fill:var(--accent)}
+  text{font-family:var(--mono);fill:var(--ink-soft)}
+  .t-hd{font-family:var(--sans);font-weight:600;font-size:12.5px;fill:var(--ink)}
+  .t-zone{font-family:var(--sans);font-weight:600;font-size:10.5px;fill:var(--ink-faint);
+          letter-spacing:.14em}
+  .t-grp{font-family:var(--sans);font-weight:600;font-size:11px;fill:var(--ink-faint);
+         letter-spacing:.09em}
+  .t-sm{font-size:10.5px;fill:var(--ink-soft)}
+  .t-edge{font-size:10.5px;fill:var(--edge)}
+  .t-flow{font-size:10.5px;fill:var(--ink-faint)}
+
+  h2{font-family:var(--sans);font-weight:600;font-size:1.5rem;letter-spacing:-.015em;
+     margin:0 0 .5rem;text-wrap:balance}
+  section.band{margin-top:3.2rem}
+  section.band > h2{padding-bottom:.6rem;border-bottom:1px solid var(--rule)}
+
+  ol.hops{list-style:none;margin:1.8rem 0 0;padding:0;display:flex;flex-direction:column;gap:2.2rem}
+  .hop{display:grid;grid-template-columns:3.4rem 1fr;gap:0 1.3rem;align-items:start}
+  .num{font-family:var(--mono);font-size:.82rem;color:var(--accent);letter-spacing:.05em;
+       padding-top:.42rem;position:relative}
+  .num::after{content:"";position:absolute;left:.55rem;top:2.1rem;bottom:-2.4rem;width:1px;
+              background:var(--rule)}
+  .hop:last-child .num::after{display:none}
+  .hop h3{font-family:var(--sans);font-weight:600;font-size:1.12rem;margin:0 0 .1rem;letter-spacing:-.01em}
+  .role{font-family:var(--mono);font-size:.76rem;color:var(--ink-faint);letter-spacing:.05em;
+        text-transform:uppercase;margin:0 0 .7rem}
+  .hop p{margin:0 0 .8rem;max-width:36rem}
+  .hop p:last-child{margin-bottom:0}
+
+  .tbl{width:100%;border-collapse:collapse;margin:1.1rem 0 .4rem;font-size:.92rem;
+       font-variant-numeric:tabular-nums}
+  .tbl caption{text-align:left;font-family:var(--mono);font-size:.74rem;letter-spacing:.1em;
+               text-transform:uppercase;color:var(--ink-faint);padding-bottom:.55rem}
+  .tbl th{font-family:var(--sans);font-weight:600;font-size:.76rem;letter-spacing:.07em;
+          text-transform:uppercase;color:var(--ink-faint);text-align:left;
+          border-bottom:1px solid var(--rule);padding:.4rem .8rem .4rem 0}
+  .tbl td{padding:.55rem .8rem .55rem 0;border-bottom:1px solid var(--rule-soft);
+          vertical-align:top;color:var(--ink-soft)}
+  .tbl td:first-child{color:var(--ink)}
+  .tbl tr:last-child td{border-bottom:0}
+  code,.mono{font-family:var(--mono);font-size:.87em;color:var(--ink)}
+  td code{color:var(--accent)}
+  .pill{display:inline-block;font-family:var(--mono);font-size:.72rem;padding:.12rem .5rem;
+        border-radius:2px;background:var(--edge-soft);color:var(--edge);white-space:nowrap}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(13.5rem,1fr));gap:1rem;margin-top:1.4rem}
+  .card{background:var(--surface);border:1px solid var(--rule);border-radius:4px;padding:1.05rem 1.15rem}
+  .card h4{font-family:var(--sans);font-size:.95rem;font-weight:600;margin:0 0 .35rem}
+  .card p{margin:0;font-size:.9rem;color:var(--ink-soft)}
+  .card .step{font-family:var(--mono);font-size:.72rem;color:var(--accent);display:block;
+              margin-bottom:.5rem;letter-spacing:.08em}
+
+  footer{margin-top:3.6rem;padding-top:1.2rem;border-top:1px solid var(--rule);
+         font-size:.85rem;color:var(--ink-faint);max-width:38rem}
+  footer code{color:var(--ink-faint)}
+
+  @media (max-width:34rem){
+    .hop{grid-template-columns:1fr;gap:.2rem}
+    .num::after{display:none}
+  }
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Drifts-reference · produktion</p>
+  <h1>Netværksvejen<span class="dom">movie.laces.dk</span></h1>
+  <p class="lede">Firewallen er navet: internettet, DMZ-subnettet og de to Debian-VM'er hænger på hvert sit ben. Sådan ser opbygningen ud i dag.</p>
+  <div class="notes">
+    <p class="note"><b>Adresser er udeladt.</b> Konkrete IP-adresser, subnet og VLAN-id står i den git-ignorerede drifts-runbook sammen med adgangsoplysningerne. Her beskrives roller og trafikveje.</p>
+    <p class="note"><b>Begge servere er VM'er.</b> Proxy og appserver kører som Debian-gæster under Synology Virtual Machine Manager. De er netværksmæssigt adskilt, men deler hypervisor.</p>
+  </div>
+</header>
+
+<figure>
+  <div class="canvas">
+    <svg viewBox="0 0 1120 630" role="img" aria-label="Zonediagram: perimeter-firewallen er navet med tre ben. Mod vest ligger internettet med klienter og de eksterne API-tjenester TMDb, OMDb, EAN-Search, UPCitemdb, UPCdatabase, Discogs og Resend. Mod syd ligger DMZ-subnettet med intern DNS-server, Plex-server og Anthem AVM70. Mod øst ligger to Debian-gæster under Synology VMM: nginx-proxyen, der terminerer TLS og NAT'er for appsegmentet, og appserveren, hvor Caddy deler trafikken mellem FastAPI-backend og statiske frontend-filer. Appserverens udgående trafik NAT'es af proxyen og forlader miljøet gennem firewallen med symmetrisk retur.">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="ah"/>
+        </marker>
+      </defs>
+
+      <!-- ============ INTERNET-ZONE ============ -->
+      <rect class="zone" x="8" y="120" width="300" height="336" rx="4"/>
+      <text class="t-zone" x="20" y="140">INTERNET</text>
+
+      <rect class="bx" x="16" y="150" width="284" height="54" rx="3"/>
+      <text class="t-hd" x="158" y="175" text-anchor="middle">Klient · browser / PWA</text>
+      <text class="t-sm" x="158" y="192" text-anchor="middle">https :443</text>
+
+      <rect class="bx" x="16" y="228" width="284" height="202" rx="3"/>
+      <text class="t-grp" x="32" y="252">EKSTERNE API-TJENESTER</text>
+      <circle class="dot" cx="36" cy="272" r="2"/><text class="t-sm" x="48" y="276">TMDb · film- og TV-metadata</text>
+      <circle class="dot" cx="36" cy="294" r="2"/><text class="t-sm" x="48" y="298">OMDb · IMDb-data</text>
+      <circle class="dot" cx="36" cy="316" r="2"/><text class="t-sm" x="48" y="320">EAN-Search · stregkoder</text>
+      <circle class="dot" cx="36" cy="338" r="2"/><text class="t-sm" x="48" y="342">UPCitemdb · stregkoder</text>
+      <circle class="dot" cx="36" cy="360" r="2"/><text class="t-sm" x="48" y="364">UPCdatabase · stregkoder</text>
+      <circle class="dot" cx="36" cy="382" r="2"/><text class="t-sm" x="48" y="386">Discogs · musik-metadata</text>
+      <circle class="dot" cx="36" cy="404" r="2"/><text class="t-sm" x="48" y="408">Resend · udgående e-mail</text>
+
+      <!-- signaturforklaring -->
+      <line class="dash" x1="16" y1="486" x2="46" y2="486"/>
+      <text class="t-flow" x="54" y="490">udgående, NAT&apos;et af proxyen</text>
+      <line class="ln" x1="16" y1="510" x2="46" y2="510" marker-start="url(#ar)" marker-end="url(#ar)"/>
+      <text class="t-flow" x="54" y="514">symmetrisk: retur samme vej</text>
+
+      <!-- ============ FIREWALL ============ -->
+      <rect class="bx" x="372" y="100" width="160" height="300" rx="3"/>
+      <text class="t-hd" x="452" y="238" text-anchor="middle">Perimeter-firewall</text>
+      <text class="t-sm" x="452" y="260" text-anchor="middle">ACL · 80/443 · DNAT</text>
+      <text class="t-sm" x="452" y="278" text-anchor="middle">stateful</text>
+
+      <line class="ln" x1="300" y1="177" x2="366" y2="177" marker-end="url(#ar)"/>
+      <text class="t-flow" x="333" y="169" text-anchor="middle">:443</text>
+      <line class="dash" x1="366" y1="329" x2="300" y2="329" marker-end="url(#ar)"/>
+      <text class="t-flow" x="333" y="321" text-anchor="middle">HTTPS ud</text>
+
+      <!-- ============ DMZ ============ -->
+      <line class="ln" x1="452" y1="400" x2="452" y2="460" marker-start="url(#ar)" marker-end="url(#ar)"/>
+      <text class="t-flow" x="462" y="434">DMZ-ben</text>
+
+      <rect class="grp" x="372" y="460" width="224" height="146" rx="4"/>
+      <text class="t-grp" x="388" y="482">DMZ-SUBNET</text>
+      <rect class="bx" x="388" y="494" width="192" height="30" rx="3"/>
+      <text class="t-sm" x="484" y="513" text-anchor="middle">Intern DNS-server</text>
+      <rect class="bx" x="388" y="530" width="192" height="30" rx="3"/>
+      <text class="t-sm" x="484" y="549" text-anchor="middle">Plex-server · :32400</text>
+      <rect class="bx" x="388" y="566" width="192" height="30" rx="3"/>
+      <text class="t-sm" x="484" y="585" text-anchor="middle">Anthem AVM70 · :14999</text>
+
+      <!-- ============ SYNOLOGY VMM ============ -->
+      <rect class="zone" x="612" y="40" width="492" height="566" rx="4"/>
+      <text class="t-zone" x="628" y="62">SYNOLOGY VMM · DEBIAN-GÆSTER</text>
+
+      <!-- proxy -->
+      <rect class="grp" x="628" y="78" width="460" height="186" rx="4"/>
+      <text class="t-grp" x="644" y="100">NGINX REVERSE PROXY (VM)</text>
+      <rect class="bx" x="644" y="114" width="200" height="34" rx="3"/>
+      <text class="t-sm" x="744" y="135" text-anchor="middle">Management-NIC</text>
+      <line class="ln" x1="744" y1="148" x2="744" y2="160" marker-end="url(#ar)"/>
+      <rect class="bx" x="644" y="160" width="200" height="50" rx="3"/>
+      <line class="tlsbar" x1="645.5" y1="163" x2="645.5" y2="207"/>
+      <text class="t-hd" x="658" y="182">nginx</text>
+      <text class="t-edge" x="658" y="199">TLS · Let&apos;s Encrypt</text>
+      <line class="ln" x1="744" y1="210" x2="744" y2="222" marker-end="url(#ar)"/>
+      <rect class="bx" x="644" y="222" width="200" height="32" rx="3"/>
+      <text class="t-sm" x="744" y="242" text-anchor="middle">Transport-NIC · gateway</text>
+      <text class="t-grp" x="872" y="128">TO ROLLER</text>
+      <text class="t-sm" x="872" y="152">1 · TLS-terminering</text>
+      <text class="t-sm" x="872" y="174">2 · NAT-gateway for</text>
+      <text class="t-sm" x="884" y="190">appsegmentet</text>
+
+      <line class="ln" x1="744" y1="264" x2="744" y2="306" marker-end="url(#ar)"/>
+      <text class="t-flow" x="760" y="290">transport-subnet · dedikeret VLAN</text>
+
+      <!-- appserver -->
+      <rect class="grp" x="628" y="306" width="460" height="282" rx="4"/>
+      <text class="t-grp" x="644" y="328">APPSERVER (VM)</text>
+      <rect class="bx" x="644" y="342" width="428" height="48" rx="3"/>
+      <line class="tlsbar" x1="645.5" y1="345" x2="645.5" y2="387"/>
+      <text class="t-hd" x="658" y="364">Caddy :443</text>
+      <text class="t-edge" x="658" y="381">TLS · internt certifikat</text>
+
+      <line class="ln" x1="744" y1="390" x2="744" y2="428" marker-end="url(#ar)"/>
+      <text class="t-flow" x="737" y="412" text-anchor="end">/api/*</text>
+      <line class="ln" x1="940" y1="390" x2="940" y2="428" marker-end="url(#ar)"/>
+      <text class="t-flow" x="948" y="412">/*</text>
+
+      <rect class="bx" x="644" y="428" width="200" height="48" rx="3"/>
+      <text class="t-hd" x="744" y="449" text-anchor="middle">FastAPI · uvicorn</text>
+      <text class="t-sm" x="744" y="466" text-anchor="middle">127.0.0.1:8000</text>
+      <rect class="bx" x="872" y="428" width="200" height="48" rx="3"/>
+      <text class="t-hd" x="972" y="449" text-anchor="middle">Frontend-build</text>
+      <text class="t-sm" x="972" y="466" text-anchor="middle">statiske filer</text>
+
+      <line class="ln" x1="744" y1="476" x2="744" y2="496" marker-end="url(#ar)"/>
+      <rect class="bx" x="644" y="496" width="200" height="44" rx="3"/>
+      <text class="t-hd" x="744" y="516" text-anchor="middle">MongoDB</text>
+      <text class="t-sm" x="744" y="532" text-anchor="middle">127.0.0.1:27017</text>
+      <text class="t-sm" x="872" y="516">Backend + database</text>
+      <text class="t-sm" x="872" y="532">kun på loopback</text>
+
+      <!-- firewall <-> proxy, og appserverens udgaaende vej -->
+      <line class="ln" x1="532" y1="135" x2="640" y2="135" marker-start="url(#ar)" marker-end="url(#ar)"/>
+      <text class="t-flow" x="586" y="126" text-anchor="middle">ind · ud</text>
+      <path class="dash" d="M 628 440 L 578 440 L 578 141" marker-end="url(#ar)"/>
+      <text class="t-flow" x="566" y="436" text-anchor="end">udgående fra appserveren</text>
+    </svg>
+  </div>
+  <figcaption>Firewallen ser al trafik mellem zonerne. Appserveren har ingen egen vej ud: dens opslag mod internettet, mod den interne DNS og mod Plex og AVM70 i DMZ&apos;en NAT&apos;es alle af proxyen og passerer firewallen. De to <span class="pill">TLS</span>-markerede kasser er de steder, hvor trafikken dekrypteres.</figcaption>
+</figure>
+
+<section class="band">
+  <h2>Vejen ind, hop for hop</h2>
+  <ol class="hops">
+
+    <li class="hop">
+      <div class="num">01</div>
+      <div>
+        <h3>Perimeter-firewall</h3>
+        <p class="role">ACL · DNAT · zone-nav</p>
+        <p>Eneste vej ind fra internettet, og navet for alle andre zoner. ACL'en tillader TCP 80 og 443 mod portalens offentlige adresse og NAT'er dem videre til nginx-proxyens management-interface. Alt andet — SSH, database, backend — er lukket udefra. DNS-A-record for <code>movie.laces.dk</code> peger på den offentlige adresse.</p>
+        <p>Ud over internet-benet og vejen ind til VM'erne har firewallen et <strong>DMZ-ben</strong> mod et internt subnet. Den er stateful, og al trafik gennem den er symmetrisk.</p>
+      </div>
+    </li>
+
+    <li class="hop">
+      <div class="num">02</div>
+      <div>
+        <h3>nginx reverse proxy</h3>
+        <p class="role">Debian-VM · TLS-terminering · NAT-gateway</p>
+        <p>To aktive interfaces og to roller. Den tager imod den offentlige HTTPS-session, terminerer Let's Encrypt-certifikatet (certbot, automatisk fornyelse) og åbner en <em>ny</em> HTTPS-session mod appserverens <code>:443</code> med <code>Host: movie.laces.dk</code>. <code>proxy_http_version 1.1</code> og <code>proxy_buffering off</code> er sat, så streaming-svar (SSE) når klienten løbende i stedet for at blive bufferet.</p>
+        <p>Den anden rolle: proxyens transport-NIC holder gateway-adressen for appserverens segment, og udgående trafik masquerades ud via management-NIC'et med nftables. Segmentet har bevidst ingen router-SVI — proxyen <em>er</em> gatewayen. Falder proxyen ud, mister appserveren både indgående og udgående forbindelse, inklusive navneopslag, Plex og AVM70.</p>
+        <table class="tbl">
+          <caption>Interfaces</caption>
+          <thead><tr><th scope="col">Interface</th><th scope="col">Rolle</th></tr></thead>
+          <tbody>
+            <tr><td>Management-NIC</td><td>Default route mod firewallen, administration, certifikat-fornyelse</td></tr>
+            <tr><td>Transport-NIC</td><td>L2-direkte mod appserverens segment; holder gateway-adressen</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </li>
+
+    <li class="hop">
+      <div class="num">03</div>
+      <div>
+        <h3>Transport-subnet</h3>
+        <p class="role">Isoleret L2-segment</p>
+        <p>Et dedikeret VLAN mellem proxy og appserver. Der er ingen andre routede veje ind i det: al klienttrafik kommer via proxyen, og SSH til appserveren er begrænset til dette segment.</p>
+      </div>
+    </li>
+
+    <li class="hop">
+      <div class="num">04</div>
+      <div>
+        <h3>Appserver</h3>
+        <p class="role">Debian-VM · Caddy · FastAPI · MongoDB</p>
+        <p>Alt kører native under systemd — ingen containere. Caddy er portalens interne indgang og deler trafikken: <code>/api/*</code> reverse-proxyes til backend'en, og alt andet serveres som statiske filer fra frontend-buildet med SPA-fallback til <code>index.html</code>.</p>
+        <p>Backend og database lytter <em>kun</em> på loopback og kan ikke nås direkte fra netværket. Lokal ufw er default-deny ind, med 80 og 443 åbne og SSH begrænset til transport-subnettet. Caddy kører h1/h2 — HTTP/3 er slået fra, da kun TCP 443 er åbnet, og QUIC over UDP derfor ville fejle stille.</p>
+        <table class="tbl">
+          <caption>Services</caption>
+          <thead><tr><th scope="col">Service</th><th scope="col">Bind</th><th scope="col">Rolle</th></tr></thead>
+          <tbody>
+            <tr><td>Caddy</td><td><code>0.0.0.0:80 · :443</code></td><td>Reverse proxy + statisk fileserver</td></tr>
+            <tr><td>FastAPI · uvicorn</td><td><code>127.0.0.1:8000</code></td><td>Backend-API</td></tr>
+            <tr><td>MongoDB</td><td><code>127.0.0.1:27017</code></td><td>Database</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </li>
+
+  </ol>
+</section>
+
+<section class="band">
+  <h2>DMZ-subnettet</h2>
+  <div class="prose">
+    <p>Firewallens tredje ben. Alt herpå nås fra appserveren via proxyens NAT og gennem firewallen — aldrig direkte, da appserverens segment ikke har anden vej ud.</p>
+  </div>
+  <table class="tbl">
+    <thead><tr><th scope="col">Vært</th><th scope="col">Port</th><th scope="col">Bruges af</th><th scope="col">Formål</th></tr></thead>
+    <tbody>
+      <tr><td>Intern DNS-server</td><td><code>53</code></td><td>Begge VM'er</td><td>Alle navneopslag — ingen offentlige resolvere direkte fra VM'erne</td></tr>
+      <tr><td>Plex-server</td><td><code>32400</code></td><td>Backend</td><td>Import af eksisterende bibliotek</td></tr>
+      <tr><td>Anthem AVM70</td><td><code>14999</code></td><td>Backend</td><td>Styring og diagnostik af receiveren</td></tr>
+    </tbody>
+  </table>
+  <div class="prose">
+    <p style="margin-top:1rem">Konsekvens for DNS: skal et navn kunne slås op <em>indefra</em>, skal recorden også findes i den interne DNS. Den offentlige DNS-record alene er ikke nok.</p>
+  </div>
+</section>
+
+<section class="band">
+  <h2>Symmetrisk routing</h2>
+  <div class="prose">
+    <p>Al trafik forlader miljøet ad samme vej som den kom ind — der er ingen asymmetriske stier i opsætningen.</p>
+    <p>Det gælder indgående klienttrafik, appserverens udgående opslag (eksterne API'er, DMZ-tjenester, navneopslag, pakkeopdateringer) og proxyens egen udgående trafik. Appserverens vej er den længste: transport-NIC, NAT ud via management-NIC'et, gennem firewallen — og svaret følger samme kæde retur.</p>
+    <p>Det er en forudsætning, ikke en tilfældighed. Firewallen er stateful, og en asymmetrisk retursti ville få den til at droppe svarpakker på en forbindelse, den ikke selv har set etableret.</p>
+  </div>
+</section>
+
+<section class="band">
+  <h2>Eksterne tjenester på internettet</h2>
+  <div class="prose">
+    <p>Al udgående integration initieres af backend'en på appserveren, over HTTPS, gennem proxyens NAT og firewallens internet-ben. Frontend kalder aldrig disse direkte — kun backend'ens eget REST API.</p>
+  </div>
+  <table class="tbl">
+    <thead><tr><th scope="col">Tjeneste</th><th scope="col">Formål</th></tr></thead>
+    <tbody>
+      <tr><td>TMDb</td><td>Film- og TV-metadata samt posters</td></tr>
+      <tr><td>OMDb</td><td>IMDb-data</td></tr>
+      <tr><td>EAN-Search</td><td>Stregkode-opslag <span class="mono">(UPC/EAN)</span></td></tr>
+      <tr><td>UPCitemdb</td><td>Stregkode-opslag <span class="mono">(UPC/EAN)</span></td></tr>
+      <tr><td>UPCdatabase</td><td>Stregkode-opslag <span class="mono">(UPC/EAN)</span></td></tr>
+      <tr><td>Discogs</td><td>Musik-metadata</td></tr>
+      <tr><td>Resend</td><td>Udgående e-mail, fx nulstilling af adgangskode</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="band">
+  <h2>To TLS-hops, ikke passthrough</h2>
+  <div class="prose">
+    <p>Trafikken dekrypteres og krypteres igen undervejs. Andet hop løber udelukkende i transport-subnettet, og proxyen validerer ikke appserverens certifikat — det er transportkryptering på et lukket segment, ikke en tillidskæde.</p>
+  </div>
+  <table class="tbl">
+    <thead><tr><th scope="col">Hop</th><th scope="col">Certifikat</th><th scope="col">Termineres af</th></tr></thead>
+    <tbody>
+      <tr><td>Klient → proxy</td><td>Let's Encrypt <span class="pill">offentligt betroet</span></td><td>nginx</td></tr>
+      <tr><td>Proxy → appserver</td><td>Caddys eget interne certifikat</td><td>Caddy</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="band">
+  <h2>Trafikstrømme</h2>
+  <table class="tbl">
+    <thead><tr><th scope="col">Retning</th><th scope="col">Vej</th></tr></thead>
+    <tbody>
+      <tr><td>Klient → portal</td><td>Internet → firewall (ACL + DNAT) → nginx <code>:443</code> → Caddy <code>:443</code> → frontend/backend</td></tr>
+      <tr><td>Backend → eksterne API'er</td><td>Appserver → transport-NIC → NAT → firewall → internet</td></tr>
+      <tr><td>Backend → Plex / AVM70</td><td>Appserver → transport-NIC → NAT → firewall → DMZ-ben</td></tr>
+      <tr><td>Navneopslag (begge VM'er)</td><td>→ firewall → DMZ-ben → intern DNS-server</td></tr>
+      <tr><td>Drift / SSH</td><td>Kun fra transport-subnettet, i praksis via proxyen</td></tr>
+    </tbody>
+  </table>
+  <div class="prose"><p style="margin-top:1rem">Alle rækker returnerer ad samme vej.</p></div>
+</section>
+
+<section class="band">
+  <h2>Ved ændringer — husk alle lag</h2>
+  <div class="prose">
+    <p>Et nyt hostnavn eller en ny adgangsvej virker først hele vejen igennem, når det er tilføjet fire steder:</p>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <span class="step">LAG 1</span>
+      <h4>Firewall</h4>
+      <p>Offentlig DNS-record samt ACL og port-forward på perimeteren.</p>
+    </div>
+    <div class="card">
+      <span class="step">LAG 2</span>
+      <h4>Intern DNS</h4>
+      <p>Record på DMZ-subnettet, hvis navnet også skal kunne slås op indefra.</p>
+    </div>
+    <div class="card">
+      <span class="step">LAG 3</span>
+      <h4>Proxy</h4>
+      <p>nginx <code>server_name</code> og et certifikat der dækker navnet.</p>
+    </div>
+    <div class="card">
+      <span class="step">LAG 4</span>
+      <h4>Appserver</h4>
+      <p>Caddys site-blok <em>og</em> backendens <code>CORS_ORIGINS</code>.</p>
+    </div>
+  </div>
+  <div class="prose">
+    <p style="margin-top:1.4rem">Caddy matcher på HTTP <code>Host</code>-headeren. Mangler navnet i site-blokken, svarer den tomt <code>200 OK</code>, selvom både netværk og proxy er korrekte — en fejl der ligner et netværksproblem, men ikke er det.</p>
+  </div>
+</section>
+
+<footer>
+  Samme indhold findes som <code>INFRASTRUCTURE.md</code> i projektets repo. Konkrete adresser, credentials og genetablerings-trin står i den git-ignorerede drifts-runbook.
+</footer>
+
+</div>

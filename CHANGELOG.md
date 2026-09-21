@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.197.0 build 0284] — 2026-09-21 — oprydning: `INFRASTRUCTURE.html` committet som visuel udgave af `INFRASTRUCTURE.md`
+
+Filen har ligget utracket i rod-mappen siden 30. august. Gennemgået for følsomt indhold før commit (jf. tidligere regel om ingen IP-adresser i committet dokumentation) — indeholder kun `0.0.0.0`/`127.0.0.1`, ingen rigtige interne IP'er/subnet, og følger samme struktur/overskrifter som det allerede committede `INFRASTRUCTURE.md`. Krydsreference tilføjet begge veje.
+
+Berørte filer: `INFRASTRUCTURE.html` (ny), `INFRASTRUCTURE.md`.
+
 ## [0.197.0 build 0283] — 2026-09-21 — workflow: backend-testsuiten kører nu parallelt (pytest-xdist)
 
 Jan bad om at se nærmere på testsuitens køretid (~4-4,5 min pr. fuld kørsel). Verificeret sikkert at parallelisere: hver test kører allerede mod sin egen, i-hukommelse `mongomock_motor`-instans (aldrig en delt rigtig database), og alle fire autouse-isolations-fixtures i `conftest.py` er `monkeypatch`-baserede på proces-lokale singletons — ingen test rører et rigtigt filsystem, subprocess eller miljøvariabel.

@@ -6,6 +6,12 @@ Beskriver **hvordan det ser ud i dag** — ingen historik.
 > Konkrete IP-adresser, subnet og VLAN-id er bevidst udeladt her. De står i den
 > git-ignorerede drifts-runbook sammen med adgangsoplysningerne.
 
+Se også [INFRASTRUCTURE.html](INFRASTRUCTURE.html) for en visuel, illustreret
+udgave af samme lagdeling — samme indhold, samme fravær af konkrete
+IP'er/subnet, blot som diagram i stedet for prosa. Opdatér begge ved en
+ændring i netværkstopologien; de to er bevidst holdt strukturelt parallelle
+(samme overskrifter) for at gøre det nemt at se hvad der mangler i den anden.
+
 ---
 
 ## 1. Overblik

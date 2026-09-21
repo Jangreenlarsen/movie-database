@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.198.2 build 0287] — 2026-09-21 — fix: login via /login navigerede aldrig videre (BUGS.md #98)
+
+Jan: *"hvis man gå direkte på https://movie.laces.dk/login og logger ind så kommer man ikke væk der fra"*. `App.jsx`s router-løse `/login`-tjek matchede uanset `user`-state, så et vellykket login re-renderede appen uden at URL'en nogensinde ændrede sig — samme betingelse matchede bare igen og viste login-siden forfra. Samme rodårsag ramte også en anden gren (regel 16): åbning af `/login` direkte med en allerede gyldig session viste ligeledes login-formularen i stedet for at gå direkte i appen.
+
+`/login`-grenen tjekker nu `user` før den viser `<Login>`; er brugeren allerede sat (login-tryk ELLER eksisterende session), ryddes pathen (`history.replaceState`) og koden falder igennem til de eksisterende status-bevidste grene.
+
+Berørte filer: `frontend/src/App.jsx`, `frontend/src/App.test.jsx` (ny, 2 tests). Fuld backend-suite (1009, urørt) + frontend (268) grøn. Set i browser (Playwright/msedge) — begge scenarier lander korrekt på Voldby BIO.
+
 ## [0.198.1 build 0286] — 2026-09-21 — fix: dato-felt usynligt før valg på iOS (BUGS.md #95)
 
 Jan sendte tre skærmbilleder af "Ønsk visning i Voldby BIO"s dato-felt: tomt og usynligt før tryk, men læsbart efter et valg — og bekræftede efter et opklarende spørgsmål at det kun sker på iOS. Det afkræfter BUGS.md #77s farve/`color-scheme`-hypotese (allerede korrekt, jf. at valgt dato VAR læsbar) og udpeger den rigtige årsag: iOS Safaris `<input type="date">` tegner, når den er tom, hverken placeholder-cifre eller kalender-ikon — modsat alle desktop-browsere.

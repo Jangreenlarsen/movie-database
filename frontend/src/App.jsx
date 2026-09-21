@@ -192,15 +192,29 @@ function App() {
   // orphaned by the landing-page change below, and so there's still a
   // direct link for "just let me sign in".
   if (window.location.pathname.startsWith("/login")) {
-    return (
-      <I18nProvider language={preAuthLanguage}>
-        <Login
-          onAuthenticated={setUser}
-          language={preAuthLanguage}
-          onLanguageChange={choosePreAuthLanguage}
-        />
-      </I18nProvider>
-    );
+    // BUGS.md #98 — this branch used to match on every render regardless of
+    // `user`, so the URL alone decided what to show. That left you stuck on
+    // the login form itself both right after a successful login (`setUser`
+    // re-renders `App`, but the URL is still "/login") AND when opening
+    // "/login" directly with an already-valid session (`api.me()` resolves
+    // `user` on mount, same unconditional match). `replaceState` (not
+    // `pushState`) so "/login" doesn't linger as a "back" stop once you're
+    // in, then fall through to the normal, status-aware branches below —
+    // they already know what to do with an active/pending/must-change-
+    // password user, so there's nothing else to special-case here.
+    if (user) {
+      window.history.replaceState(null, "", "/");
+    } else {
+      return (
+        <I18nProvider language={preAuthLanguage}>
+          <Login
+            onAuthenticated={setUser}
+            language={preAuthLanguage}
+            onLanguageChange={choosePreAuthLanguage}
+          />
+        </I18nProvider>
+      );
+    }
   }
 
   if (user === undefined) {

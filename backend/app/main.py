@@ -49,8 +49,10 @@ from app.core.errors import (
     InvalidCredentialsError,
     InvalidResetTokenError,
     InvalidUserStatusTransitionError,
+    InvalidMessageTemplateError,
     LastAdminError,
     MessageNotFoundError,
+    MessageTemplateNotFoundError,
     MovieNotFoundError,
     MustChangePasswordError,
     InvalidSeatError,
@@ -420,6 +422,20 @@ async def message_not_found_handler(request: Request, exc: MessageNotFoundError)
 @app.exception_handler(NoRecipientsError)
 async def no_recipients_handler(request: Request, exc: NoRecipientsError) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(MessageTemplateNotFoundError)
+async def message_template_not_found_handler(
+    request: Request, exc: MessageTemplateNotFoundError
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(InvalidMessageTemplateError)
+async def invalid_message_template_handler(
+    request: Request, exc: InvalidMessageTemplateError
+) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
 
 
 @app.exception_handler(TestModeActiveError)

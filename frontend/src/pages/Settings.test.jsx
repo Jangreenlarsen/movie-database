@@ -5,7 +5,7 @@
  * (regel 19).
  */
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -484,6 +484,17 @@ function _previews() {
       subject: "Din ønskede film er nu i biblioteket",
       body: 'Den film du satte på indkøbslisten — "Dune: Part Two" — er nu købt og lagt i biblioteket. 🎬',
       html: "<html><body>Preview-html for wishlist_moved</body></html>",
+      editable: true,
+      is_customized: false,
+      placeholders: ["kind", "title"],
+      template: {
+        subject: "Din ønskede {kind} er nu i biblioteket",
+        body: 'Den {kind} du satte på indkøbslisten — "{title}" — er nu købt og lagt i biblioteket. 🎬',
+        headline: "Nu står den på hylden!",
+        tagline: '"{title}" er købt og klar til filmaften.',
+        accent: "gold",
+        cta_label: null,
+      },
     },
     {
       key: "admins_new_wishlist",
@@ -492,6 +503,29 @@ function _previews() {
       subject: "Nyt ønske på indkøbslisten",
       body: 'anna har tilføjet "Dune: Part Two" (film) til ønskelisten.',
       html: null,
+      editable: true,
+      is_customized: false,
+      placeholders: ["kind", "title", "username"],
+      template: {
+        subject: "Nyt ønske på indkøbslisten",
+        body: '{username} har tilføjet "{title}" ({kind}) til ønskelisten.',
+        headline: null,
+        tagline: null,
+        accent: null,
+        cta_label: null,
+      },
+    },
+    {
+      key: "poll_cancelled_1",
+      name: "Afstemning aflyst — variant 1/5",
+      description: "Kan ikke redigeres her.",
+      subject: "Afstemningen er aflyst",
+      body: "Afstemningen er desværre aflyst af biografens bestyrelse.",
+      html: "<html><body>Preview-html for poll_cancelled_1</body></html>",
+      editable: false,
+      is_customized: false,
+      placeholders: [],
+      template: null,
     },
   ];
 }
@@ -643,6 +677,140 @@ describe("MessagePreviewSection (feature #223)", () => {
     await user.click(screen.getByRole("button", { name: /Sådan ser beskederne ud/ }));
 
     expect(await screen.findByText("Kun admin kan se dette")).toBeInTheDocument();
+  });
+
+  it("viser ingen 'Redigér'-knap for en ikke-redigerbar type", async () => {
+    vi.spyOn(api, "listMessagePreviews").mockResolvedValue(_previews());
+    const user = userEvent.setup();
+    render(<MessagePreviewSection />);
+
+    await user.click(screen.getByRole("button", { name: /Sådan ser beskederne ud/ }));
+    await user.click(screen.getByRole("button", { name: /Afstemning aflyst — variant 1\/5/ }));
+
+    expect(await screen.findByText("Kan ikke redigeres her.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Redigér" })).not.toBeInTheDocument();
+  });
+
+  it("åbner rediger-formularen forudfyldt med den rå skabelon", async () => {
+    vi.spyOn(api, "listMessagePreviews").mockResolvedValue(_previews());
+    const user = userEvent.setup();
+    render(<MessagePreviewSection />);
+
+    await user.click(screen.getByRole("button", { name: /Sådan ser beskederne ud/ }));
+    await screen.findByText("Din ønskede film er nu i biblioteket");
+    await user.click(screen.getByRole("button", { name: "Redigér" }));
+
+    expect(screen.getByLabelText("Emne")).toHaveValue("Din ønskede {kind} er nu i biblioteket");
+    expect(screen.getByLabelText("Brødtekst")).toHaveValue(
+      'Den {kind} du satte på indkøbslisten — "{title}" — er nu købt og lagt i biblioteket. 🎬'
+    );
+    expect(screen.getByLabelText("Overskrift (e-mail)")).toHaveValue("Nu står den på hylden!");
+    expect(screen.getByText("Tilgængelige pladsholdere: {kind}, {title}")).toBeInTheDocument();
+  });
+
+  it("skjuler e-mail-felterne (overskrift/undertekst/farve) for en type uden HTML-udgave", async () => {
+    vi.spyOn(api, "listMessagePreviews").mockResolvedValue(_previews());
+    const user = userEvent.setup();
+    render(<MessagePreviewSection />);
+
+    await user.click(screen.getByRole("button", { name: /Sådan ser beskederne ud/ }));
+    await user.click(screen.getByRole("button", { name: "Admin: nyt ønske" }));
+    await user.click(screen.getByRole("button", { name: "Redigér" }));
+
+    expect(screen.getByLabelText("Emne")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Overskrift (e-mail)")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Farve (e-mail)")).not.toBeInTheDocument();
+  });
+
+  it("gemmer en ændring og opdaterer previewet med det samme fra svaret", async () => {
+    vi.spyOn(api, "listMessagePreviews").mockResolvedValue(_previews());
+    const updateSpy = vi.spyOn(api, "updateMessageTemplate").mockResolvedValue({
+      ..._previews()[0],
+      subject: "🎉 Ny tekst om {title}!",
+      body: "Substitueret: 🎉 Ny tekst om Dune: Part Two!",
+      is_customized: true,
+      template: { ..._previews()[0].template, subject: "🎉 Ny tekst om {title}!" },
+    });
+    const user = userEvent.setup();
+    render(<MessagePreviewSection />);
+
+    await user.click(screen.getByRole("button", { name: /Sådan ser beskederne ud/ }));
+    await screen.findByText("Din ønskede film er nu i biblioteket");
+    await user.click(screen.getByRole("button", { name: "Redigér" }));
+
+    // fireEvent.change frem for user.type: user-event tolker {title} som
+    // en (ukendt) tastatur-kommando-sekvens pga. de krøllede parenteser,
+    // ikke bogstavelig tekst — irrelevant her, hvor det kun handler om at
+    // sætte input-værdien, ikke om at afprøve ægte tastetryk-for-tastetryk.
+    const subjectInput = screen.getByLabelText("Emne");
+    fireEvent.change(subjectInput, { target: { value: "🎉 Ny tekst om {title}!" } });
+    await user.click(screen.getByRole("button", { name: "Gem" }));
+
+    await waitFor(() =>
+      expect(updateSpy).toHaveBeenCalledWith(
+        "wishlist_moved",
+        expect.objectContaining({ subject: "🎉 Ny tekst om {title}!" })
+      )
+    );
+    expect(await screen.findByText("Substitueret: 🎉 Ny tekst om Dune: Part Two!")).toBeInTheDocument();
+    // Formularen lukker efter en vellykket gemning.
+    expect(screen.queryByLabelText("Emne")).not.toBeInTheDocument();
+  });
+
+  it("viser backendens specifikke fejlbesked ved en mislykket gemning, uden at lukke formularen", async () => {
+    vi.spyOn(api, "listMessagePreviews").mockResolvedValue(_previews());
+    vi.spyOn(api, "updateMessageTemplate").mockRejectedValue(
+      new Error('Feltet "subject" bruger en pladsholder der ikke findes for denne besked-type.')
+    );
+    const user = userEvent.setup();
+    render(<MessagePreviewSection />);
+
+    await user.click(screen.getByRole("button", { name: /Sådan ser beskederne ud/ }));
+    await screen.findByText("Din ønskede film er nu i biblioteket");
+    await user.click(screen.getByRole("button", { name: "Redigér" }));
+    await user.click(screen.getByRole("button", { name: "Gem" }));
+
+    expect(
+      await screen.findByText('Feltet "subject" bruger en pladsholder der ikke findes for denne besked-type.')
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Emne")).toBeInTheDocument();
+  });
+
+  it("viser 'Nulstil til standard' kun for en tilpasset type, og nulstiller ved klik", async () => {
+    const customized = _previews();
+    customized[0].is_customized = true;
+    customized[0].subject = "Tilpasset emne";
+    vi.spyOn(api, "listMessagePreviews").mockResolvedValue(customized);
+    const resetSpy = vi.spyOn(api, "resetMessageTemplate").mockResolvedValue({
+      ..._previews()[0],
+      is_customized: false,
+    });
+    const user = userEvent.setup();
+    render(<MessagePreviewSection />);
+
+    await user.click(screen.getByRole("button", { name: /Sådan ser beskederne ud/ }));
+    await screen.findByText("Tilpasset emne");
+    expect(screen.getByRole("button", { name: "Nulstil til standard" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Nulstil til standard" }));
+
+    await waitFor(() => expect(resetSpy).toHaveBeenCalledWith("wishlist_moved"));
+    expect(await screen.findByText("Din ønskede film er nu i biblioteket")).toBeInTheDocument();
+  });
+
+  it("skifter man type mens formularen er åben, lukkes den (intet crossover mellem typer)", async () => {
+    vi.spyOn(api, "listMessagePreviews").mockResolvedValue(_previews());
+    const user = userEvent.setup();
+    render(<MessagePreviewSection />);
+
+    await user.click(screen.getByRole("button", { name: /Sådan ser beskederne ud/ }));
+    await screen.findByText("Din ønskede film er nu i biblioteket");
+    await user.click(screen.getByRole("button", { name: "Redigér" }));
+    expect(screen.getByLabelText("Emne")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Admin: nyt ønske" }));
+
+    expect(screen.queryByLabelText("Emne")).not.toBeInTheDocument();
   });
 });
 

@@ -106,6 +106,60 @@
   background: #faf9f7;
 }
 
+/* Feature #225 — lille prik ved siden af en tilpasset besked-types navn i
+   listen, samme "diskret status-indikator"-princip som tabs/badges andre
+   steder i appen. */
+.message-preview-customized-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.message-preview-list button.active .message-preview-customized-dot {
+  background: var(--accent-contrast);
+}
+
+.message-preview-edit-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.message-preview-customized-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.message-preview-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.message-preview-edit-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.message-preview-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
 @media (max-width: 640px) {
   .message-preview-layout {
     grid-template-columns: 1fr;

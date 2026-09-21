@@ -2279,12 +2279,18 @@ export function MessagesSection({ currentUserId }) {
 /**
  * Feature #223 (Jan: "hvordan kan jeg se hvordan en besked se ud, kan vi
  * lave en besked design editor hvor alle de besked typer som er i spil
- * kan se og edit") — read-only katalog: vælg en besked-type i listen for
- * at se hvordan den ser ud, både den korte tekst man ser i appen
- * (banner/indbakke) og den rigere e-mail-udgave. Ingen redigering endnu
- * (Jans eksplicitte valg ved et opklarende spørgsmål 2026-09-19) — kun
- * visning. Hentet lazily første gang sektionen foldes ud, ikke ved hvert
- * besøg på Indstillinger-siden.
+ * kan se og edit") — katalog: vælg en besked-type i listen for at se
+ * hvordan den ser ud, både den korte tekst man ser i appen
+ * (banner/indbakke) og den rigere e-mail-udgave. Hentet lazily første
+ * gang sektionen foldes ud, ikke ved hvert besøg på Indstillinger-siden.
+ *
+ * Feature #225 (samme citat, anden halvdel: "... og edit") — selve
+ * redigeringen. Kun typer med `editable: true` (alle undtagen de 5 faste
+ * "afstemning aflyst"-vittigheds-varianter, se message_service.py) viser
+ * en "Redigér"-knap. Gem/nulstil sender kun de RÅ skabelon-felter
+ * (stadig med bogstavelige `{pladsholder}`-navne) — den substituerede
+ * eksempel-visning ovenfor opdateres med det samme fra samme svar, så man
+ * ser effekten uden en ekstra hentning.
  */
 export function MessagePreviewSection() {
   const t = useT();
@@ -2293,6 +2299,10 @@ export function MessagePreviewSection() {
   const [activeKey, setActiveKey] = useState(null);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
     if (!expanded || previews.length > 0) return;
@@ -2313,6 +2323,51 @@ export function MessagePreviewSection() {
   }, [expanded]);
 
   const active = previews.find((p) => p.key === activeKey) ?? null;
+
+  function selectKey(key) {
+    setActiveKey(key);
+    setEditing(false);
+    setSaveError(null);
+  }
+
+  function startEditing() {
+    setForm({ ...active.template });
+    setSaveError(null);
+    setEditing(true);
+  }
+
+  function replacePreview(updated) {
+    setPreviews((prev) => prev.map((p) => (p.key === updated.key ? updated : p)));
+  }
+
+  async function saveTemplate(event) {
+    event.preventDefault();
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const updated = await api.updateMessageTemplate(active.key, form);
+      replacePreview(updated);
+      setEditing(false);
+    } catch (err) {
+      setSaveError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function resetTemplate() {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const updated = await api.resetMessageTemplate(active.key);
+      replacePreview(updated);
+      setEditing(false);
+    } catch (err) {
+      setSaveError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="card settings-section">
@@ -2339,9 +2394,12 @@ export function MessagePreviewSection() {
                     <button
                       type="button"
                       className={preview.key === activeKey ? "active" : ""}
-                      onClick={() => setActiveKey(preview.key)}
+                      onClick={() => selectKey(preview.key)}
                     >
                       {preview.name}
+                      {preview.is_customized && (
+                        <span className="message-preview-customized-dot" title={t("messagePreview.customized")} />
+                      )}
                     </button>
                   </li>
                 ))}
@@ -2349,6 +2407,106 @@ export function MessagePreviewSection() {
               {active && (
                 <div className="message-preview-detail">
                   <p className="muted">{active.description}</p>
+
+                  {active.editable && !editing && (
+                    <div className="message-preview-edit-bar">
+                      <button type="button" className="btn" onClick={startEditing}>
+                        {t("messagePreview.edit")}
+                      </button>
+                      {active.is_customized && (
+                        <>
+                          <span className="message-preview-customized-label">{t("messagePreview.isCustomized")}</span>
+                          <button type="button" className="btn" onClick={resetTemplate} disabled={saving}>
+                            {t(saving ? "messagePreview.resetting" : "messagePreview.reset")}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {editing && form && (
+                    <form className="message-preview-edit-form" onSubmit={saveTemplate}>
+                      <p className="muted">
+                        {t("messagePreview.placeholdersHint", {
+                          placeholders: active.placeholders.map((p) => `{${p}}`).join(", "),
+                        })}
+                      </p>
+                      <label>
+                        {t("messagePreview.fieldSubject")}
+                        <input
+                          value={form.subject}
+                          onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                          required
+                        />
+                      </label>
+                      <label>
+                        {t("messagePreview.fieldBody")}
+                        <textarea
+                          value={form.body}
+                          onChange={(e) => setForm({ ...form, body: e.target.value })}
+                          rows={3}
+                          style={{ resize: "vertical" }}
+                          required
+                        />
+                      </label>
+                      {form.headline !== null && (
+                        <>
+                          <label>
+                            {t("messagePreview.fieldHeadline")}
+                            <input
+                              value={form.headline}
+                              onChange={(e) => setForm({ ...form, headline: e.target.value })}
+                              required
+                            />
+                          </label>
+                          <label>
+                            {t("messagePreview.fieldTagline")}
+                            <input
+                              value={form.tagline}
+                              onChange={(e) => setForm({ ...form, tagline: e.target.value })}
+                              required
+                            />
+                          </label>
+                          <label>
+                            {t("messagePreview.fieldAccent")}
+                            <select
+                              value={form.accent}
+                              onChange={(e) => setForm({ ...form, accent: e.target.value })}
+                            >
+                              <option value="gold">{t("messagePreview.accentGold")}</option>
+                              <option value="muted">{t("messagePreview.accentMuted")}</option>
+                            </select>
+                          </label>
+                        </>
+                      )}
+                      {form.cta_label !== null && (
+                        <label>
+                          {t("messagePreview.fieldCtaLabel")}
+                          <input
+                            value={form.cta_label}
+                            onChange={(e) => setForm({ ...form, cta_label: e.target.value })}
+                            required
+                          />
+                        </label>
+                      )}
+
+                      {saveError && <div className="banner banner-error">{saveError}</div>}
+
+                      <div className="message-preview-edit-actions">
+                        <button type="submit" className="btn btn-primary" disabled={saving}>
+                          {t(saving ? "common.saving" : "common.save")}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={() => setEditing(false)}
+                          disabled={saving}
+                        >
+                          {t("common.cancel")}
+                        </button>
+                      </div>
+                    </form>
+                  )}
 
                   <div className="message-preview-block">
                     <div className="message-preview-label">{t("messagePreview.inAppLabel")}</div>

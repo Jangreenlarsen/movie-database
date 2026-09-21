@@ -295,6 +295,10 @@ export const api = {
   deleteMessage: (id) => request(`/messages/${id}`, { method: "DELETE" }),
   // Feature #223 — read-only besked-design-katalog (Indstillinger → Beskeder).
   listMessagePreviews: () => request("/messages/previews"),
+  // Feature #225 — kun de felter admin rent faktisk har ændret sendes med.
+  updateMessageTemplate: (key, payload) =>
+    request(`/messages/templates/${key}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  resetMessageTemplate: (key) => request(`/messages/templates/${key}`, { method: "DELETE" }),
   // Feature #94 — samlet optælling til app-hovedet.
   getLibraryCounts: () => request("/library/counts"),
   exportLibrary: () => request("/library/export"),

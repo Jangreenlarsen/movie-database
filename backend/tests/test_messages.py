@@ -246,6 +246,140 @@ async def test_listing_message_previews_sends_nothing_and_creates_no_message(cli
     assert sent == []
 
 
+# --- besked-skabeloner (feature #225) ----------------------------------------
+
+
+async def test_only_admin_can_update_message_template(client, second_user):
+    response = await second_user["client"].patch(
+        "/api/messages/templates/wishlist_moved", json={"subject": "Nyt emne"}
+    )
+    assert response.status_code == 403
+
+
+async def test_only_admin_can_reset_message_template(client, second_user):
+    response = await second_user["client"].delete("/api/messages/templates/wishlist_moved")
+    assert response.status_code == 403
+
+
+async def test_updating_an_unknown_key_returns_404(client):
+    response = await client.patch(
+        "/api/messages/templates/does_not_exist", json={"subject": "Nyt emne"}
+    )
+    assert response.status_code == 404
+
+
+async def test_updating_a_non_editable_poll_cancelled_variant_returns_404(client):
+    """`poll_cancelled_1`..`_5` findes kun i preview-kataloget, ikke i
+    message_service.TEMPLATE_DEFS — de er bevidst ikke redigerbare (en fast
+    vittigheds-pulje, ikke én skabelon, se message_service.py)."""
+    response = await client.patch(
+        "/api/messages/templates/poll_cancelled_1", json={"subject": "Nyt emne"}
+    )
+    assert response.status_code == 404
+
+
+async def test_update_rejects_an_unknown_placeholder(client):
+    """`{titel}` (dansk stavefejl) findes ikke i wishlist_moved's
+    eksempel-pladsholdere (`title`, `kind`) — skal afvises FØR noget gemmes,
+    ikke først fejle stille ved næste rigtige afsendelse."""
+    response = await client.patch(
+        "/api/messages/templates/wishlist_moved",
+        json={"subject": "Din {titel} er klar"},
+    )
+    assert response.status_code == 422
+    assert "titel" in response.json()["detail"] or "subject" in response.json()["detail"]
+
+    # Intet skal være gemt efter en afvist opdatering.
+    previews = (await client.get("/api/messages/previews")).json()
+    entry = next(p for p in previews if p["key"] == "wishlist_moved")
+    assert entry["is_customized"] is False
+
+
+async def test_update_saves_and_is_reflected_in_the_preview(client):
+    response = await client.patch(
+        "/api/messages/templates/wishlist_moved",
+        json={"subject": "Ny besked om {title}!"},
+    )
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["is_customized"] is True
+    assert updated["template"]["subject"] == "Ny besked om {title}!"
+    # Den SUBSTITUEREDE eksempel-tekst i selve previewet skal også afspejle
+    # tilpasningen med det samme, ikke kun det rå skabelon-felt.
+    assert "Ny besked om" in updated["subject"]
+
+    previews = (await client.get("/api/messages/previews")).json()
+    entry = next(p for p in previews if p["key"] == "wishlist_moved")
+    assert entry["is_customized"] is True
+    assert "Ny besked om" in entry["subject"]
+
+
+async def test_partial_update_only_changes_the_given_fields(client):
+    """Kun `subject` sendes med — `body`/`headline`/`tagline`/`accent`
+    skal forblive på kode-standarden, ikke blive tomme/nulstillede."""
+    response = await client.patch(
+        "/api/messages/templates/wishlist_moved", json={"subject": "Kun emnet er ændret"}
+    )
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["template"]["subject"] == "Kun emnet er ændret"
+    assert "købt" in updated["template"]["body"]  # uændret standard-ordlyd
+    assert updated["template"]["headline"] == "Nu står den på hylden!"
+
+
+async def test_reset_reverts_a_customized_template_to_the_default(client):
+    await client.patch(
+        "/api/messages/templates/wishlist_moved", json={"subject": "Tilpasset emne"}
+    )
+    response = await client.delete("/api/messages/templates/wishlist_moved")
+    assert response.status_code == 200
+    reset = response.json()
+    assert reset["is_customized"] is False
+    assert reset["template"]["subject"] == "Din ønskede {kind} er nu i biblioteket"
+
+
+async def test_resetting_an_already_default_template_is_a_quiet_no_op(client):
+    """Ingen fejl for at nulstille noget der aldrig var tilpasset — en
+    handling der reelt lykkedes (typen ER nu på standarden), ikke en fejl."""
+    response = await client.delete("/api/messages/templates/wishlist_moved")
+    assert response.status_code == 200
+    assert response.json()["is_customized"] is False
+
+
+async def test_a_saved_template_override_changes_what_a_real_message_says(client):
+    """Den afgørende ende-til-ende-garanti (Jan: "så vi kan editere hvordan
+    beskeder skal se ud i fremtiden") — en gemt tilpasning skal påvirke en
+    RIGTIG afsendelse, ikke kun previewet. Bruger #141s wishlist_moved-flow
+    (flyt et ønske til biblioteket), samme scenarie som
+    test_wishlist_move_notification.py, men verificerer selve ORDLYDEN."""
+    await client.patch(
+        "/api/messages/templates/wishlist_moved",
+        json={"subject": "🎉 {title} landede lige på hylden!"},
+    )
+
+    transport = ASGITransport(app=app)
+    wisher_client = AsyncClient(transport=transport, base_url="http://test")
+    register = await wisher_client.post(
+        "/api/auth/register", json={"username": "custom_template_wisher", "password": "testpassword123"}
+    )
+    await client.patch(f"/api/users/{register.json()['id']}/status", json={"status": "active"})
+
+    created = await wisher_client.post(
+        "/api/movies", json={"title": "Skabelon-Testfilm", "is_wishlist": True}
+    )
+    movie_id = created.json()["id"]
+
+    moved = await client.patch(
+        f"/api/movies/{movie_id}",
+        json={"is_wishlist": False, "media_type": "Fysisk", "format": "F-DVD"},
+    )
+    assert moved.status_code == 200
+
+    inbox = (await wisher_client.get("/api/messages/inbox")).json()
+    assert len(inbox) == 1
+    assert inbox[0]["subject"] == "🎉 Skabelon-Testfilm landede lige på hylden!"
+
+
 async def test_deleting_a_message_removes_it_for_recipients(client, second_user):
     sent = await client.post("/api/messages", json={"subject": "Fortrudt", "body": "Tekst"})
 

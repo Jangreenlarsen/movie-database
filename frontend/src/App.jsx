@@ -442,7 +442,7 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
         {/* Feature #100 — beskeder står øverst i indholdet, ikke i hovedet:
             de kan fylde flere linjer, og et hoved der vokser ville skubbe
             hele siden ned hver gang der kommer en ny. */}
-        <MessageBanner />
+        <MessageBanner onGoToSettings={() => setTab("settings")} />
         {tab === "library" && (
           <Library
             user={user}

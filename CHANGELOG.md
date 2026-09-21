@@ -2,6 +2,16 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.199.0 build 0288] — 2026-09-21 — feature: beskeder kondenseres ved efterslæb + "Dine beskeder" i Indstillinger (FEATURES.md #226)
+
+Jan: *"hvis en bruger ikke har være login i lang tid så kan det være at han har 1000 beskeder kondesere dem til max 3 besked med meddelese om at ham kan gå under instillinger/besked og se alle og slette alle hams beskeder"*.
+
+`MessageBanner` viste før ALLE ulæste som fuld-bredde bannere, ubegrænset. Er der mere end 3 ulæste, vises nu kun de 3 nyeste + én system-notits med totalantal og en "Gå til Indstillinger"-knap. Modstykket: "Indstillinger → Beskeder" er ikke længere admin-only — en ny `MyMessagesSection`, synlig for alle roller, viser antal ulæste, en altid-synlig "Ryd alle" (bekræftelse påkrævet) og en sammenfoldet liste med individuel lukning + paginering (samme mønster som #224). "Ryd alle" markerer som læst (samme felt som at lukke et banner) — intet slettes fysisk, og admins "Sendte beskeder" viser fortsat korrekt læse-status.
+
+Nyt backend-endpoint `POST /api/messages/inbox/read-all` (åben for alle roller, rydder kun eget). Undervejs: `array_filters` (den oplagte MongoDB-idiomatik for bulk-array-opdatering) understøttes ikke af `mongomock`, som hele backend-suiten kører mod — løst med den simple positionelle `$`-operator i stedet (korrekt her, da en bruger aldrig optræder to gange i samme beskeds modtagerliste). Desuden fanget af selve regel-18-browserverifikationen (ikke af testsuiten): en glemt backend-dev-server-genstart gav et ægte FastAPI-404 ved første "Ryd alle"-klik — usynligt for `pytest`, som går uden om en kørende server-proces.
+
+Berørte filer: `backend/app/repositories/message_repository.py`, `backend/app/services/message_service.py`, `backend/app/models/message.py`, `backend/app/api/messages.py`, `frontend/src/api/client.js`, `frontend/src/components/MessageBanner.jsx`, `frontend/src/components/MessageBanner.css`, `frontend/src/pages/Settings.jsx`, `frontend/src/App.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`. Tests: 4 nye backend + 13 nye frontend. Fuld backend-suite (1013) + frontend (278) grøn. Set i browser (Playwright/msedge, throwaway testbruger) — kondensering, navigation, "Dine beskeder", rolle-gating og "Ryd alle" alle bekræftet.
+
 ## [0.198.2 build 0287] — 2026-09-21 — fix: login via /login navigerede aldrig videre (BUGS.md #98)
 
 Jan: *"hvis man gå direkte på https://movie.laces.dk/login og logger ind så kommer man ikke væk der fra"*. `App.jsx`s router-løse `/login`-tjek matchede uanset `user`-state, så et vellykket login re-renderede appen uden at URL'en nogensinde ændrede sig — samme betingelse matchede bare igen og viste login-siden forfra. Samme rodårsag ramte også en anden gren (regel 16): åbning af `/login` direkte med en allerede gyldig session viste ligeledes login-formularen i stedet for at gå direkte i appen.

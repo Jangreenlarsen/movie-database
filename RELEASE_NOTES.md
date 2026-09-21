@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.199.0 (build 0288) — 2026-09-21
+
+- **Har du ikke været logget ind i et stykke tid, oversvømmer dine ulæste beskeder ikke længere skærmen**. Er der mere end 3, vises nu kun de 3 seneste + en besked om hvor mange der venter, med et hurtigt link til Indstillinger.
+- **Ny sektion "Dine beskeder" i Indstillinger → Beskeder** (nu synlig for alle, ikke kun admin): se alle dine ulæste beskeder samlet, og ryd dem alle med ét klik — eller luk dem enkeltvis, hvis du hellere vil det.
+
 ## v0.198.2 (build 0287) — 2026-09-21
 
 - **Rettet**: gik du direkte til login-siden (fx via et bogmærke) og loggede ind, blev du stående på selve login-siden i stedet for at komme ind i appen. Du navigeres nu korrekt videre bagefter.

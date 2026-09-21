@@ -289,6 +289,7 @@ export const api = {
   // så den ikke tæller som aktivitet og holder en uovervåget session i live.
   getInbox: () => request("/messages/inbox", { headers: { "X-Background-Poll": "1" } }),
   markMessageRead: (id) => request(`/messages/${id}/read`, { method: "POST" }),
+  markAllMessagesRead: () => request("/messages/inbox/read-all", { method: "POST" }),
   listMessages: () => request("/messages"),
   sendMessage: (payload) =>
     request("/messages", { method: "POST", body: JSON.stringify(payload) }),

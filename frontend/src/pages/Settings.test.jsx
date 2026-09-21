@@ -16,6 +16,7 @@ import {
   DeploySection,
   MessagePreviewSection,
   MessagesSection,
+  MyMessagesSection,
   PasswordPolicySection,
   PlexAutoImportSection,
   PlexImportSection,
@@ -613,6 +614,117 @@ describe("MessagesSection — 'Sendte beskeder'-liste (feature #224)", () => {
 
     await screen.findByText("Besked 1");
     expect(screen.queryByText(/Side \d+ af \d+/)).not.toBeInTheDocument();
+  });
+});
+
+function _inboxMessage(i) {
+  return {
+    id: `inbox-${i}`,
+    subject: `Ulæst besked ${i}`,
+    body: `Indhold ${i}`,
+    sent_by: "jgl",
+    created_at: "2026-09-21T12:00:00Z",
+  };
+}
+
+/**
+ * Feature #226 — modstykket til `MessageBanner`s 3-bannere-loft: her skal
+ * enhver (ikke kun admin) kunne se sit fulde ulæste efterslæb og rydde det
+ * samlet. Det testværdige (regel 19): "Ryd alle" er en uigenkaldelig,
+ * bekræftelses-krævende handling, og en fejl her enten (a) rydder uden at
+ * spørge, (b) spørger men rydder alligevel ikke, eller (c) rammer en ANDEN
+ * brugers beskeder end den der klikkede — ingen af delene ville nogen
+ * opdage før en bruger selv rapporterede det.
+ */
+describe("MyMessagesSection (feature #226)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("viser en tom-tilstand og intet 'Ryd alle' når indbakken er tom", async () => {
+    vi.spyOn(api, "getInbox").mockResolvedValue([]);
+    render(<MyMessagesSection />);
+
+    expect(await screen.findByText("Du har ingen ulæste beskeder.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ryd alle" })).not.toBeInTheDocument();
+  });
+
+  it("viser antallet, men listen er foldet sammen som default", async () => {
+    vi.spyOn(api, "getInbox").mockResolvedValue([_inboxMessage(1), _inboxMessage(2)]);
+    render(<MyMessagesSection />);
+
+    expect(await screen.findByText("Ulæste beskeder: 2")).toBeInTheDocument();
+    expect(screen.queryByText("Ulæst besked 1")).not.toBeInTheDocument();
+  });
+
+  it("folder listen ud ved klik og viser beskederne enkeltvis", async () => {
+    vi.spyOn(api, "getInbox").mockResolvedValue([_inboxMessage(1), _inboxMessage(2)]);
+    const user = userEvent.setup();
+    render(<MyMessagesSection />);
+
+    await screen.findByText("Ulæste beskeder: 2");
+    await user.click(screen.getByRole("button", { name: /Se dem enkeltvis/ }));
+
+    expect(screen.getByText("Ulæst besked 1")).toBeInTheDocument();
+    expect(screen.getByText("Ulæst besked 2")).toBeInTheDocument();
+  });
+
+  it("'Ryd alle' beder om bekræftelse og rydder først derefter", async () => {
+    vi.spyOn(api, "getInbox").mockResolvedValue([_inboxMessage(1), _inboxMessage(2)]);
+    const markAllSpy = vi.spyOn(api, "markAllMessagesRead").mockResolvedValue({ marked_count: 2 });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+    render(<MyMessagesSection />);
+
+    await screen.findByText("Ulæste beskeder: 2");
+    await user.click(screen.getByRole("button", { name: "Ryd alle" }));
+
+    expect(window.confirm).toHaveBeenCalled();
+    await waitFor(() => expect(markAllSpy).toHaveBeenCalled());
+    expect(await screen.findByText("Du har ingen ulæste beskeder.")).toBeInTheDocument();
+  });
+
+  it("'Ryd alle' rydder ikke hvis bekræftelsen afvises", async () => {
+    vi.spyOn(api, "getInbox").mockResolvedValue([_inboxMessage(1)]);
+    const markAllSpy = vi.spyOn(api, "markAllMessagesRead").mockResolvedValue({ marked_count: 1 });
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    const user = userEvent.setup();
+    render(<MyMessagesSection />);
+
+    await screen.findByText("Ulæste beskeder: 1");
+    await user.click(screen.getByRole("button", { name: "Ryd alle" }));
+
+    expect(markAllSpy).not.toHaveBeenCalled();
+    expect(screen.getByText("Ulæste beskeder: 1")).toBeInTheDocument();
+  });
+
+  it("en enkelt besked kan lukkes fra listen uden at røre de andre", async () => {
+    vi.spyOn(api, "getInbox").mockResolvedValue([_inboxMessage(1), _inboxMessage(2)]);
+    const dismissSpy = vi.spyOn(api, "markMessageRead").mockResolvedValue(null);
+    const user = userEvent.setup();
+    render(<MyMessagesSection />);
+
+    await screen.findByText("Ulæste beskeder: 2");
+    await user.click(screen.getByRole("button", { name: /Se dem enkeltvis/ }));
+    await user.click(screen.getAllByRole("button", { name: "Luk besked" })[0]);
+
+    await waitFor(() => expect(dismissSpy).toHaveBeenCalledWith("inbox-1"));
+    expect(screen.queryByText("Ulæst besked 1")).not.toBeInTheDocument();
+    expect(screen.getByText("Ulæst besked 2")).toBeInTheDocument();
+  });
+
+  it("viser pagineringskontroller når der er mere end 10 ulæste", async () => {
+    const messages = Array.from({ length: 12 }, (_, i) => _inboxMessage(i + 1));
+    vi.spyOn(api, "getInbox").mockResolvedValue(messages);
+    const user = userEvent.setup();
+    render(<MyMessagesSection />);
+
+    await screen.findByText("Ulæste beskeder: 12");
+    await user.click(screen.getByRole("button", { name: /Se dem enkeltvis/ }));
+
+    expect(screen.getByText("Ulæst besked 10")).toBeInTheDocument();
+    expect(screen.queryByText("Ulæst besked 11")).not.toBeInTheDocument();
+    expect(screen.getByText("Side 1 af 2")).toBeInTheDocument();
   });
 });
 

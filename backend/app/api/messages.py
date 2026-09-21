@@ -3,7 +3,14 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.api.deps import get_current_user, require_admin
 from app.db import get_database
-from app.models.message import InboxMessage, Message, MessageCreate, MessagePreview, MessageTemplateUpdate
+from app.models.message import (
+    InboxMessage,
+    MarkAllReadResult,
+    Message,
+    MessageCreate,
+    MessagePreview,
+    MessageTemplateUpdate,
+)
 from app.services import audit_log_service, message_preview_service, message_service, message_template_service
 
 router = APIRouter(
@@ -58,6 +65,21 @@ async def get_inbox(
     alle logget-ind brugere inkl. guests — at modtage en besked er ren
     læsning. Registreret før `/{message_id}`-ruterne."""
     return await message_service.inbox(db, str(current_user["_id"]))
+
+
+@router.post("/inbox/read-all", response_model=MarkAllReadResult)
+async def mark_all_read(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """Feature #226 — "Ryd alle" i Indstillinger → Beskeder, når et langt
+    fravær har ophobet et efterslæb. Åben for alle logget-ind brugere som
+    `/inbox` ovenfor — man rydder kun sit eget. Registreret før
+    `/{message_id}`-ruterne af samme forsigtigheds-vane som `/inbox` og
+    `/previews` (reelt ingen kollision: "read-all" matcher aldrig det
+    bogstavelige "read"-segment i `/{message_id}/read`)."""
+    count = await message_service.mark_all_read(db, str(current_user["_id"]))
+    return MarkAllReadResult(marked_count=count)
 
 
 @router.post("/{message_id}/read", status_code=204)

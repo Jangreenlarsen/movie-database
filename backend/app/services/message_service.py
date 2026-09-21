@@ -1387,6 +1387,13 @@ async def mark_read(db: AsyncIOMotorDatabase, message_id: str, user_id: str) -> 
         raise MessageNotFoundError(message_id)
 
 
+async def mark_all_read(db: AsyncIOMotorDatabase, user_id: str) -> int:
+    """Feature #226 — "Ryd alle" i Indstillinger → Beskeder. Intet at
+    markere er ikke en fejl (samme stille no-op som #225s `reset_template`
+    på en allerede-standard skabelon) — returnerer bare 0."""
+    return await message_repository.mark_all_read(db, user_id)
+
+
 async def delete(db: AsyncIOMotorDatabase, message_id: str) -> None:
     if not await message_repository.delete(db, message_id):
         raise MessageNotFoundError(message_id)

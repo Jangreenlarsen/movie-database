@@ -78,6 +78,48 @@ describe("MessageBanner", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it("kondenserer til de 3 nyeste + en notits når der er mange ulæste (feature #226)", async () => {
+    const many = Array.from({ length: 5 }, (_, i) => ({
+      ...MESSAGE,
+      id: `msg-${i + 1}`,
+      subject: `Besked ${i + 1}`,
+    }));
+    api.getInbox.mockResolvedValue(many);
+    render(<MessageBanner />);
+
+    expect(await screen.findByText(/Ulæste beskeder i alt: 5/)).toBeInTheDocument();
+    // De 3 nyeste (sidst i listen) er synlige, resten er kondenseret væk.
+    expect(screen.getByText("Besked 3")).toBeInTheDocument();
+    expect(screen.getByText("Besked 4")).toBeInTheDocument();
+    expect(screen.getByText("Besked 5")).toBeInTheDocument();
+    expect(screen.queryByText("Besked 1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Besked 2")).not.toBeInTheDocument();
+  });
+
+  it("viser ingen kondenserings-notits ved 3 eller færre ulæste", async () => {
+    api.getInbox.mockResolvedValue([
+      MESSAGE,
+      { ...MESSAGE, id: "def456", subject: "Ny film på hylden" },
+      { ...MESSAGE, id: "ghi789", subject: "Endnu en" },
+    ]);
+    render(<MessageBanner />);
+
+    await screen.findByText("Visning fredag");
+    expect(screen.queryByText(/Ulæste beskeder i alt/)).not.toBeInTheDocument();
+  });
+
+  it("'Gå til Indstillinger' i kondenserings-notitsen kalder onGoToSettings", async () => {
+    const many = Array.from({ length: 4 }, (_, i) => ({ ...MESSAGE, id: `msg-${i + 1}` }));
+    api.getInbox.mockResolvedValue(many);
+    const onGoToSettings = vi.fn();
+    render(<MessageBanner onGoToSettings={onGoToSettings} />);
+
+    await screen.findByText(/Ulæste beskeder i alt: 4/);
+    await userEvent.click(screen.getByRole("button", { name: "Gå til Indstillinger" }));
+
+    expect(onGoToSettings).toHaveBeenCalled();
+  });
+
   it("viser flere beskeder på én gang", async () => {
     api.getInbox.mockResolvedValue([
       MESSAGE,

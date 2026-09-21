@@ -14,7 +14,9 @@ import "./Settings.css";
 function settingsTabs(isAdmin, isGuest) {
   return [
     { id: "brugere", labelKey: "settings.tab.users", visible: isAdmin },
-    { id: "beskeder", labelKey: "settings.tab.messages", visible: isAdmin },
+    // Feature #226 — "Dine beskeder" gælder alle roller; kun de to
+    // afsender-sektioner længere nede i selve fanen er stadig admin-only.
+    { id: "beskeder", labelKey: "settings.tab.messages", visible: true },
     { id: "konto", labelKey: "settings.tab.account", visible: true },
     { id: "nyt", labelKey: "settings.tab.whatsNew", visible: true },
     { id: "bibliotek", labelKey: "settings.tab.library", visible: !isGuest },
@@ -59,10 +61,15 @@ export default function Settings({ user, onSettingsChanged }) {
         </>
       )}
 
-      {activeTab === "beskeder" && isAdmin && (
+      {activeTab === "beskeder" && (
         <>
-          <MessagesSection currentUserId={user.id} />
-          <MessagePreviewSection />
+          <MyMessagesSection />
+          {isAdmin && (
+            <>
+              <MessagesSection currentUserId={user.id} />
+              <MessagePreviewSection />
+            </>
+          )}
         </>
       )}
 
@@ -2048,6 +2055,163 @@ export function PlexImportSection() {
             </>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Feature #226 (Jan: "hvis en bruger ikke har være login i lang tid så kan
+ * det være at han har 1000 beskeder kondesere dem til max 3 besked med
+ * meddelese om at ham kan gå under instillinger/besked og se alle og
+ * slette alle hams beskeder") — modstykket til `MessageBanner`s
+ * 3-bannere-loft: her kan enhver (ikke kun admin) se sit FULDE ulæste
+ * efterslæb og rydde det på én gang. "Rydning" markerer dem som læst
+ * (samme felt som at lukke et banner) — der findes ingen separat
+ * "slettet"-tilstand, og admins "Sendte beskeder"-oversigt skal stadig
+ * kunne se at beskeden blev læst, bare ikke hvornår brugeren fandt tid.
+ */
+export function MyMessagesSection() {
+  const t = useT();
+  const locale = useLocale();
+  const [messages, setMessages] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [page, setPage] = useState(0);
+  const [clearing, setClearing] = useState(false);
+  const [dismissing, setDismissing] = useState(null);
+  const [error, setError] = useState(null);
+
+  function load() {
+    api
+      .getInbox()
+      .then((fresh) => {
+        setMessages(fresh);
+        setLoaded(true);
+      })
+      .catch((err) => setError(err.message));
+  }
+
+  useEffect(load, []);
+
+  async function clearAll() {
+    if (!window.confirm(t("myMessages.confirmClearAll", { count: messages.length }))) return;
+    setClearing(true);
+    setError(null);
+    try {
+      await api.markAllMessagesRead();
+      setMessages([]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setClearing(false);
+    }
+  }
+
+  async function dismissOne(messageId) {
+    setDismissing(messageId);
+    setError(null);
+    try {
+      await api.markMessageRead(messageId);
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDismissing(null);
+    }
+  }
+
+  const totalPages = Math.max(1, Math.ceil(messages.length / SENT_MESSAGES_PAGE_SIZE));
+  const clampedPage = Math.min(page, totalPages - 1);
+  const pagedMessages = messages.slice(
+    clampedPage * SENT_MESSAGES_PAGE_SIZE,
+    clampedPage * SENT_MESSAGES_PAGE_SIZE + SENT_MESSAGES_PAGE_SIZE
+  );
+
+  return (
+    <div className="card settings-section">
+      <h2>{t("myMessages.heading")}</h2>
+      <p className="muted">{t("myMessages.description")}</p>
+
+      {error && <div className="banner banner-error">{error}</div>}
+
+      {loaded && messages.length === 0 ? (
+        <p className="muted">{t("myMessages.none")}</p>
+      ) : (
+        loaded && (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+              <strong>{t("myMessages.unreadCount", { count: messages.length })}</strong>
+              <button type="button" className="btn btn-primary" onClick={clearAll} disabled={clearing}>
+                {t(clearing ? "myMessages.clearing" : "myMessages.clearAll")}
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className="settings-collapsible-toggle"
+              style={{ marginTop: 16 }}
+              onClick={() => setExpanded((prev) => !prev)}
+              aria-expanded={expanded}
+            >
+              <h3 style={{ margin: 0 }}>{t("myMessages.listHeading")}</h3>
+              <span aria-hidden="true">{expanded ? "▾" : "▸"}</span>
+            </button>
+
+            {expanded && (
+              <>
+                <ul className="user-list">
+                  {pagedMessages.map((message) => (
+                    <li key={message.id} className="message-sent-row">
+                      <div className="message-sent-main">
+                        <strong>{message.subject}</strong>
+                        <div className="muted message-sent-meta">{message.body}</div>
+                        <div className="muted message-sent-meta">
+                          {t("messages.from", {
+                            sender: message.sent_by,
+                            date: new Date(message.created_at).toLocaleDateString(locale),
+                          })}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => dismissOne(message.id)}
+                        disabled={dismissing === message.id}
+                      >
+                        {t(dismissing === message.id ? "messages.dismissing" : "messages.dismiss")}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+
+                {messages.length > SENT_MESSAGES_PAGE_SIZE && (
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 12 }}>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => setPage(clampedPage - 1)}
+                      disabled={clampedPage === 0}
+                    >
+                      {t("messages.previous")}
+                    </button>
+                    <span className="muted">
+                      {t("messages.page", { page: clampedPage + 1, totalPages })}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => setPage(clampedPage + 1)}
+                      disabled={clampedPage + 1 >= totalPages}
+                    >
+                      {t("messages.next")}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )
       )}
     </div>
   );

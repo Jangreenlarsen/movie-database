@@ -147,6 +147,49 @@ async def test_marking_a_message_you_did_not_receive_is_a_404(client, second_use
     assert response.status_code == 404
 
 
+async def test_mark_all_read_clears_every_unread_message_for_that_user(client, second_user):
+    """Feature #226 — "Ryd alle" i Indstillinger → Beskeder, til et stort
+    efterslæb efter lang tids fravær."""
+    await client.post("/api/messages", json={"subject": "Første", "body": "Tekst"})
+    await client.post("/api/messages", json={"subject": "Anden", "body": "Tekst"})
+    await client.post("/api/messages", json={"subject": "Tredje", "body": "Tekst"})
+    assert len((await second_user["client"].get("/api/messages/inbox")).json()) == 3
+
+    response = await second_user["client"].post("/api/messages/inbox/read-all")
+    assert response.status_code == 200
+    assert response.json() == {"marked_count": 3}
+
+    assert (await second_user["client"].get("/api/messages/inbox")).json() == []
+
+
+async def test_mark_all_read_only_touches_the_calling_users_own_messages(client, second_user, raw_client):
+    """En "ryd alle" fra én bruger må ikke markere en ANDEN brugers eksemplar
+    af den samme rundsendte besked som læst."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as third:
+        register = await third.post(
+            "/api/auth/register", json={"username": "trediemand2", "password": "testpassword123"}
+        )
+        await client.patch(f"/api/users/{register.json()['id']}/status", json={"status": "active"})
+
+        await client.post("/api/messages", json={"subject": "Til alle", "body": "Tekst"})
+        await second_user["client"].post("/api/messages/inbox/read-all")
+
+        assert (await second_user["client"].get("/api/messages/inbox")).json() == []
+        assert len((await third.get("/api/messages/inbox")).json()) == 1
+
+
+async def test_mark_all_read_with_nothing_pending_is_a_quiet_no_op(client, second_user):
+    response = await second_user["client"].post("/api/messages/inbox/read-all")
+    assert response.status_code == 200
+    assert response.json() == {"marked_count": 0}
+
+
+async def test_mark_all_read_requires_login(raw_client):
+    response = await raw_client.post("/api/messages/inbox/read-all")
+    assert response.status_code == 401
+
+
 # --- afsenderens oversigt ---------------------------------------------------
 
 

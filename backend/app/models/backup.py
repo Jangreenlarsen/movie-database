@@ -90,6 +90,11 @@ class SystemBackup(BaseModel):
     # Feature #177 — samme rå, ingen-"unset"-håndtering som password_policy
     # ovenfor, blot det ene felt.
     screening_request_policy: dict = Field(default_factory=dict)
+    # Feature #225 — admin-tilpassede besked-skabeloner (regel 20 anvendt
+    # proaktivt, som #174/#177 ovenfor): kun de besked-typer der rent
+    # faktisk er tilpasset har et dokument; uden denne ville en admins
+    # tilpassede ordlyd stille forsvinde ved en gendannelse.
+    message_templates: list[dict] = Field(default_factory=list)
 
 
 class SystemRestoreResult(BaseModel):
@@ -119,6 +124,8 @@ class SystemRestoreResult(BaseModel):
     password_policy_restored: bool
     # Feature #177 — samme begrundelse som password_policy_restored ovenfor.
     screening_request_policy_restored: bool
+    # Feature #225 — se den identiske note ved SystemBackup.message_templates.
+    message_templates_imported: int
 
 
 class DatabaseResetConfirm(BaseModel):

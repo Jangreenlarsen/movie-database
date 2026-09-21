@@ -4,13 +4,25 @@ Feature #223 (Jan: "hvordan kan jeg se hvordan en besked se ud, kan vi
 lave en besked design editor hvor alle de besked typer som er i spil kan
 se og edit") — hver `notify_*`-funktion nedenfor har sin tekst-opbygning
 (emne/brødtekst/e-mail-indhold) udtrukket til en lille, ren `_content_*`-
-funktion umiddelbart ovenfor den. Det er IKKE en kosmetisk omskrivning:
-`message_preview_service.py` kalder de SAMME `_content_*`-funktioner med
-eksempel-data for at bygge admins preview-katalog, så previewet garanteret
-aldrig kan drifte fra den ordlyd der rent faktisk sendes — der er kun ét
-sted teksten for hver besked-type er skrevet, ikke to. Selve `notify_*`-
-funktionerne beholder al deres eksisterende ansvar (opslag, selv-skip,
-best-effort try/except, `send()`-kaldet) uændret."""
+funktion umiddelbart ovenfor den.
+
+Feature #225 (samme Jan-citat, anden halvdel: "... og edit") — den
+egentlige redigering. Hver besked-types STANDARD-ordlyd bor nu i ét
+centralt register, `TEMPLATE_DEFS` nedenfor, som ren skabelon-tekst med
+`{pladsholder}`-syntaks (Pythons eget `str.format`). `_render()` slår en
+evt. admin-gemt tilpasning op i `overrides` (hentet ÉN gang pr.
+notify_*-kald fra `message_template_repository`, aldrig pr. modtager i en
+løkke) og falder tilbage til `TEMPLATE_DEFS` hvis intet er tilpasset —
+samme "override eller kode-standard"-mønster som `system_settings_
+repository` allerede bruger til API-nøgler. `message_preview_service.py`
+kalder de SAMME `_content_*`-funktioner (med eksempel-data OG de samme
+`overrides`) for at bygge admins preview-katalog, så previewet garanteret
+aldrig kan vise en anden ordlyd end den der rent faktisk sendes.
+
+Bevidst UDELADT fra skabelon-systemet: `notify_poll_cancelled`s pulje af
+5 faste "aflyst"-varianter (feature #216) — den er strukturelt en
+tilfældig-vittighed-pulje, ikke én skabelon med pladsholdere, og forbliver
+hardkodet uændret."""
 
 import logging
 import random
@@ -31,7 +43,7 @@ from app.integrations import email_client, email_templates
 from app.models.message import InboxMessage, Message, MessageCreate, MessageRecipient
 from app.models.poll import Poll, PollCandidateResult
 from app.models.user import UserStatus
-from app.repositories import message_repository, user_repository
+from app.repositories import message_repository, message_template_repository, user_repository
 
 logger = logging.getLogger("moviedb")
 
@@ -46,6 +58,246 @@ class MessageContent(NamedTuple):
     subject: str
     body: str
     html_kwargs: dict | None = None
+
+
+class MessageTemplateDef(NamedTuple):
+    """Feature #225 — statisk definition af én redigerbar besked-type:
+    dens STANDARD-ordlyd (brugt hvis ingen admin-tilpasning er gemt) og de
+    eksempel-pladsholderværdier der bruges BÅDE til preview-kataloget og
+    til at validere en gemt tilpasning (renderet mod netop disse værdier
+    ved gem — en tastefejl i et pladsholder-navn som `{titel}` i stedet
+    for `{title}` fanges dermed med det samme, ikke først ved den næste
+    rigtige afsendelse). `headline`/`tagline`/`accent`/`cta_label` er
+    `None` for de fire bruger→admin-notifikationer, som aldrig har haft
+    en rig e-mail-udgave — `_render()` springer så hele HTML-opbygningen
+    over, præcis som før #225."""
+
+    subject: str
+    body: str
+    headline: str | None
+    tagline: str | None
+    accent: str | None
+    cta_label: str | None
+    sample: dict[str, str]
+
+
+# Feature #225 — hver nøgle her matcher `message_preview_service.py`s
+# katalog-nøgler 1:1 (minus `poll_cancelled_1..5`, se modul-docstringen).
+# `{title}`/`{kind}`/`{poll_title}`/`{titles}`/`{when}`/`{username}`/
+# `{site_url}` er de eneste pladsholder-navne der findes i hele registret —
+# holdt bevidst få og genkendelige på tværs af typer.
+TEMPLATE_DEFS: dict[str, MessageTemplateDef] = {
+    "wishlist_moved": MessageTemplateDef(
+        subject="Din ønskede {kind} er nu i biblioteket",
+        body='Den {kind} du satte på indkøbslisten — "{title}" — er nu købt og lagt i biblioteket. 🎬',
+        headline="Nu står den på hylden!",
+        tagline='"{title}" er købt og klar til filmaften.',
+        accent="gold",
+        cta_label=None,
+        sample={"title": "Dune: Part Two", "kind": "film"},
+    ),
+    "wishlist_approved": MessageTemplateDef(
+        subject='Dit ønske "{title}" er godkendt',
+        body='Den {kind} du ønskede — "{title}" — er nu godkendt og står på indkøbslisten. 🎬',
+        headline="Dit ønske er godkendt!",
+        tagline='"{title}" er nu godkendt og på vej til samlingen.',
+        accent="gold",
+        cta_label=None,
+        sample={"title": "The Bear", "kind": "serie"},
+    ),
+    "wishlist_ordered": MessageTemplateDef(
+        subject='Dit ønske "{title}" er bestilt',
+        body='Den {kind} du ønskede — "{title}" — er nu bestilt. 🎬',
+        headline="Bestilt!",
+        tagline='"{title}" er nu bestilt — snart klar til filmaften.',
+        accent="gold",
+        cta_label=None,
+        sample={"title": "Dune: Part Two", "kind": "film"},
+    ),
+    "wishlist_rejected": MessageTemplateDef(
+        subject='Dit ønske "{title}" blev ikke godkendt',
+        body='Den {kind} du ønskede — "{title}" — er desværre ikke blevet godkendt.',
+        headline="Om dit ønske",
+        tagline='"{title}" blev desværre ikke til noget denne gang.',
+        accent="muted",
+        cta_label=None,
+        sample={"title": "Dune: Part Two", "kind": "film"},
+    ),
+    "admins_new_wishlist": MessageTemplateDef(
+        subject="Nyt ønske på indkøbslisten",
+        body='{username} har tilføjet "{title}" ({kind}) til ønskelisten.',
+        headline=None,
+        tagline=None,
+        accent=None,
+        cta_label=None,
+        sample={"username": "anna", "title": "Dune: Part Two", "kind": "film"},
+    ),
+    "admins_new_screening_request": MessageTemplateDef(
+        subject="Nyt ønske om visning i Voldby BIO",
+        body='{username} ønsker at se "{title}" ({kind}) i Voldby BIO.',
+        headline=None,
+        tagline=None,
+        accent=None,
+        cta_label=None,
+        sample={"username": "anna", "title": "The Bear", "kind": "serie"},
+    ),
+    "admins_new_poll_suggestion": MessageTemplateDef(
+        subject="Nyt afstemnings-forslag afventer godkendelse",
+        body='{username} har foreslået afstemningen "{poll_title}" — godkend eller afvis den under Voldby BIO.',
+        headline=None,
+        tagline=None,
+        accent=None,
+        cta_label=None,
+        sample={"username": "anna", "poll_title": "Fredagsfilm"},
+    ),
+    "admins_new_candidate_suggestion": MessageTemplateDef(
+        subject="Nyt kandidat-forslag afventer godkendelse",
+        body=(
+            '{username} har foreslået at tilføje "{title}" til afstemningen '
+            '"{poll_title}" — godkend eller afvis den under Voldby BIO.'
+        ),
+        headline=None,
+        tagline=None,
+        accent=None,
+        cta_label=None,
+        sample={"username": "anna", "title": "Dune: Part Two", "poll_title": "Fredagsfilm"},
+    ),
+    "poll_candidate_approved": MessageTemplateDef(
+        subject="Dit kandidat-forslag er godkendt",
+        body='Dit forslag om at tilføje "{title}" til "{poll_title}" er godkendt — den er nu en rigtig kandidat, klar til at få stemmer.',
+        headline="Dit kandidat-forslag er godkendt!",
+        tagline='Dit forslag om at tilføje "{title}" til "{poll_title}" er godkendt — den er nu en rigtig kandidat, klar til at få stemmer.',
+        accent="gold",
+        cta_label=None,
+        sample={"title": "Dune: Part Two", "poll_title": "Fredagsfilm"},
+    ),
+    "poll_candidate_rejected": MessageTemplateDef(
+        subject="Om dit kandidat-forslag",
+        body='Dit forslag om at tilføje "{title}" til "{poll_title}" blev desværre ikke godkendt denne gang.',
+        headline="Om dit kandidat-forslag",
+        tagline='Dit forslag om at tilføje "{title}" til "{poll_title}" blev desværre ikke godkendt denne gang.',
+        accent="muted",
+        cta_label=None,
+        sample={"title": "Dune: Part Two", "poll_title": "Fredagsfilm"},
+    ),
+    "screening_request_declined": MessageTemplateDef(
+        subject='Dit ønske om at se "{title}" blev afvist',
+        body='Dit ønske om at se "{title}" i Voldby BIO er desværre ikke blevet til noget.',
+        headline="Om din forvisnings-anmodning",
+        tagline='Visningen af "{title}" blev desværre ikke til noget denne gang.',
+        accent="muted",
+        cta_label=None,
+        sample={"title": "Dune: Part Two"},
+    ),
+    "screening_request_scheduled": MessageTemplateDef(
+        subject='Din ønskede visning "{title}" er planlagt!',
+        body='"{title}" er nu planlagt til visning i Voldby BIO{when}. 🎬',
+        headline="Biografen venter!",
+        tagline='"{title}" er nu planlagt til visning i Voldby BIO{when}.',
+        accent="gold",
+        cta_label=None,
+        sample={"title": "Dune: Part Two", "when": " d. 12/12/2026 kl. 20:00"},
+    ),
+    "screening_scheduled_broadcast": MessageTemplateDef(
+        subject='"{title}" er planlagt i Voldby BIO!',
+        body='"{title}" er nu planlagt til visning i Voldby BIO{when}. 🎬',
+        headline="Biografen venter!",
+        tagline='"{title}" er nu planlagt til visning i Voldby BIO{when}.',
+        accent="gold",
+        cta_label=None,
+        sample={"title": "Dune: Part Two", "when": " d. 12/12/2026 kl. 20:00"},
+    ),
+    "library_addition_broadcast": MessageTemplateDef(
+        subject="Ny {kind} i samlingen: {title}!",
+        body='"{title}" er lige blevet en del af Voldby BIO-samlingen! 🎬 Log ind og anmod om en visning: {site_url}',
+        headline="Ny i samlingen!",
+        tagline='"{title}" er nu en del af Voldby BIOs samling — anmod om en visning!',
+        accent="gold",
+        cta_label="Gå til Voldby BIO",
+        sample={"title": "Dune: Part Two", "kind": "film", "site_url": "https://movie.laces.dk"},
+    ),
+    "poll_closed_single": MessageTemplateDef(
+        subject="Afstemningen er afgjort",
+        body='"{title}" vandt afstemningen!',
+        headline="Afstemningen er afgjort!",
+        tagline='"{title}" vandt afstemningen!',
+        accent="gold",
+        cta_label=None,
+        sample={"title": "Dune: Part Two"},
+    ),
+    "poll_closed_tie": MessageTemplateDef(
+        subject="Afstemningen er afgjort",
+        body="Uafgjort mellem {titles} — admin vælger snart hvilken der bliver til noget.",
+        headline="Afstemningen er afgjort!",
+        tagline="Uafgjort mellem {titles} — admin vælger snart hvilken der bliver til noget.",
+        accent="gold",
+        cta_label=None,
+        sample={"titles": "Dune: Part Two, Arrival"},
+    ),
+    "poll_scheduled": MessageTemplateDef(
+        subject='Afstemningens vinder "{title}" er planlagt!',
+        body='"{title}" er nu planlagt til visning i Voldby BIO{when}. 🎬',
+        headline="Biografen venter!",
+        tagline='"{title}" er nu planlagt til visning i Voldby BIO{when}.',
+        accent="gold",
+        cta_label=None,
+        sample={"title": "Dune: Part Two", "when": " d. 12/12/2026 kl. 20:00"},
+    ),
+    "poll_approved": MessageTemplateDef(
+        subject="Din afstemning er godkendt",
+        body='"{poll_title}" er nu godkendt og åben for alle i Voldby BIO — alle kan stemme.',
+        headline="Din afstemning er godkendt!",
+        tagline='"{poll_title}" er nu godkendt og åben for alle i Voldby BIO — alle kan stemme.',
+        accent="gold",
+        cta_label=None,
+        sample={"poll_title": "Fredagsfilm"},
+    ),
+    "poll_suggestion_rejected": MessageTemplateDef(
+        subject="Om dit afstemnings-forslag",
+        body='"{poll_title}" blev desværre ikke godkendt som afstemning denne gang.',
+        headline="Om dit afstemnings-forslag",
+        tagline='"{poll_title}" blev desværre ikke godkendt som afstemning denne gang.',
+        accent="muted",
+        cta_label=None,
+        sample={"poll_title": "Fredagsfilm"},
+    ),
+}
+
+
+def _render(
+    key: str,
+    placeholders: dict[str, str],
+    poster_url: str | None,
+    overrides: dict[str, dict],
+) -> MessageContent:
+    """Feature #225 — genbrugt af hver `_content_*`-funktion nedenfor.
+    `overrides` er hele det gemte tilpasnings-sæt
+    (`message_template_repository.find_all`, hentet ÉN gang pr.
+    notify_*-kald — se disses egne kommentarer), ikke ét Mongo-opslag pr.
+    besked-type/modtager. En manglende nøgle i `overrides` betyder "ingen
+    tilpasning" — `TEMPLATE_DEFS[key]`s standard-ordlyd bruges så, med
+    UÆNDRET output i forhold til før #225 (verificeret ved den fulde,
+    allerede-eksisterende test-suite, som asserter eksakt ordlyd for
+    stort set alle disse beskeder)."""
+    definition = TEMPLATE_DEFS[key]
+    override = overrides.get(key) or {}
+    subject = override.get("subject", definition.subject).format(**placeholders)
+    body = override.get("body", definition.body).format(**placeholders)
+    html_kwargs = None
+    if definition.headline is not None:
+        html_kwargs = dict(
+            headline=override.get("headline", definition.headline).format(**placeholders),
+            tagline=override.get("tagline", definition.tagline).format(**placeholders),
+            body_text=body,
+            poster_url=poster_url,
+            accent=override.get("accent", definition.accent),
+        )
+        if definition.cta_label is not None:
+            # cta_url er altid den rigtige, faktiske URL — data, ikke
+            # redigerbar ordlyd, samme princip som poster_url.
+            html_kwargs["cta_url"] = settings.public_site_url
+            html_kwargs["cta_label"] = override.get("cta_label", definition.cta_label).format(**placeholders)
+    return MessageContent(subject=subject, body=body, html_kwargs=html_kwargs)
 
 
 def _to_model(document: dict) -> Message:
@@ -194,23 +446,11 @@ async def send(
     return message
 
 
-def _content_wishlist_moved(display_title: str, is_tv: bool, poster_url: str | None) -> MessageContent:
+def _content_wishlist_moved(
+    display_title: str, is_tv: bool, poster_url: str | None, overrides: dict[str, dict]
+) -> MessageContent:
     kind = "serie" if is_tv else "film"
-    body = (
-        f'Den {kind} du satte på indkøbslisten — "{display_title}" — er nu købt '
-        "og lagt i biblioteket. 🎬"
-    )
-    return MessageContent(
-        subject=f"Din ønskede {kind} er nu i biblioteket",
-        body=body,
-        html_kwargs=dict(
-            headline="Nu står den på hylden!",
-            tagline=f'"{display_title}" er købt og klar til filmaften.',
-            body_text=body,
-            poster_url=poster_url,
-            accent="gold",
-        ),
-    )
+    return _render("wishlist_moved", {"title": display_title, "kind": kind}, poster_url, overrides)
 
 
 async def notify_wishlist_moved(
@@ -221,7 +461,7 @@ async def notify_wishlist_moved(
     is_tv: bool,
 ) -> None:
     """Feature #141 — når et ønske flyttes fra indkøbslisten ind i biblioteket
-    (dvs. er blevet купt), får den bruger der oprindeligt satte det på listen
+    (dvs. er blevet købt), får den bruger der oprindeligt satte det på listen
     besked. Best-effort sidekanal i try/except, så en fejl i notifikationen
     aldrig vælter selve flytningen (CLAUDE.md regel 16). Springes over hvis
     flytteren selv er den der ønskede det — man skal ikke have besked om sin
@@ -233,9 +473,9 @@ async def notify_wishlist_moved(
     owner = await user_repository.find_by_username_normalized(db, owner_username.lower())
     if owner is None:
         return
-    kind = "serie" if is_tv else "film"
-    display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or kind
-    content = _content_wishlist_moved(display_title, is_tv, wishlist_doc.get("poster_url"))
+    overrides = await message_template_repository.find_all(db)
+    display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or ("serie" if is_tv else "film")
+    content = _content_wishlist_moved(display_title, is_tv, wishlist_doc.get("poster_url"), overrides)
     payload = MessageCreate(
         subject=content.subject,
         body=content.body,
@@ -252,23 +492,11 @@ async def notify_wishlist_moved(
         pass
 
 
-def _content_wishlist_approved(display_title: str, is_tv: bool, poster_url: str | None) -> MessageContent:
+def _content_wishlist_approved(
+    display_title: str, is_tv: bool, poster_url: str | None, overrides: dict[str, dict]
+) -> MessageContent:
     kind = "serie" if is_tv else "film"
-    body = (
-        f'Den {kind} du ønskede — "{display_title}" — er nu godkendt og '
-        "står på indkøbslisten. 🎬"
-    )
-    return MessageContent(
-        subject=f'Dit ønske "{display_title}" er godkendt',
-        body=body,
-        html_kwargs=dict(
-            headline="Dit ønske er godkendt!",
-            tagline=f'"{display_title}" er nu godkendt og på vej til samlingen.',
-            body_text=body,
-            poster_url=poster_url,
-            accent="gold",
-        ),
-    )
+    return _render("wishlist_approved", {"title": display_title, "kind": kind}, poster_url, overrides)
 
 
 async def notify_wishlist_approved(
@@ -290,9 +518,9 @@ async def notify_wishlist_approved(
     owner = await user_repository.find_by_username_normalized(db, owner_username.lower())
     if owner is None:
         return
-    kind = "serie" if is_tv else "film"
-    display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or kind
-    content = _content_wishlist_approved(display_title, is_tv, wishlist_doc.get("poster_url"))
+    overrides = await message_template_repository.find_all(db)
+    display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or ("serie" if is_tv else "film")
+    content = _content_wishlist_approved(display_title, is_tv, wishlist_doc.get("poster_url"), overrides)
     payload = MessageCreate(
         subject=content.subject,
         body=content.body,
@@ -309,20 +537,11 @@ async def notify_wishlist_approved(
         pass
 
 
-def _content_wishlist_ordered(display_title: str, is_tv: bool, poster_url: str | None) -> MessageContent:
+def _content_wishlist_ordered(
+    display_title: str, is_tv: bool, poster_url: str | None, overrides: dict[str, dict]
+) -> MessageContent:
     kind = "serie" if is_tv else "film"
-    body = f'Den {kind} du ønskede — "{display_title}" — er nu bestilt. 🎬'
-    return MessageContent(
-        subject=f'Dit ønske "{display_title}" er bestilt',
-        body=body,
-        html_kwargs=dict(
-            headline="Bestilt!",
-            tagline=f'"{display_title}" er nu bestilt — snart klar til filmaften.',
-            body_text=body,
-            poster_url=poster_url,
-            accent="gold",
-        ),
-    )
+    return _render("wishlist_ordered", {"title": display_title, "kind": kind}, poster_url, overrides)
 
 
 async def notify_wishlist_ordered(
@@ -347,9 +566,9 @@ async def notify_wishlist_ordered(
     owner = await user_repository.find_by_username_normalized(db, owner_username.lower())
     if owner is None:
         return
-    kind = "serie" if is_tv else "film"
-    display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or kind
-    content = _content_wishlist_ordered(display_title, is_tv, wishlist_doc.get("poster_url"))
+    overrides = await message_template_repository.find_all(db)
+    display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or ("serie" if is_tv else "film")
+    content = _content_wishlist_ordered(display_title, is_tv, wishlist_doc.get("poster_url"), overrides)
     payload = MessageCreate(
         subject=content.subject,
         body=content.body,
@@ -367,25 +586,23 @@ async def notify_wishlist_ordered(
 
 
 def _content_wishlist_rejected(
-    display_title: str, is_tv: bool, poster_url: str | None, reason: str | None
+    display_title: str,
+    is_tv: bool,
+    poster_url: str | None,
+    reason: str | None,
+    overrides: dict[str, dict],
 ) -> MessageContent:
     kind = "serie" if is_tv else "film"
-    # "Den {kind}" (ikke en bøjet form af selve ordet) — samme knep som
-    # notify_wishlist_moved bruger, så "film" ikke skal bøjes anderledes end
-    # "serie" ("filmen" vs. "serien" ville kræve to forskellige suffikser).
-    default_line = f'Den {kind} du ønskede — "{display_title}" — er desværre ikke blevet godkendt.'
-    body = f"{default_line}\n\n{reason.strip()}" if reason and reason.strip() else default_line
-    return MessageContent(
-        subject=f'Dit ønske "{display_title}" blev ikke godkendt',
-        body=body,
-        html_kwargs=dict(
-            headline="Om dit ønske",
-            tagline=f'"{display_title}" blev desværre ikke til noget denne gang.',
-            body_text=body,
-            poster_url=poster_url,
-            accent="muted",
-        ),
-    )
+    content = _render("wishlist_rejected", {"title": display_title, "kind": kind}, poster_url, overrides)
+    # `reason` er adminens egen, frie begrundelses-TEKST (feature #165) —
+    # bevidst IKKE en pladsholder i selve skabelonen, men altid tilføjet
+    # samme måde bagefter, uanset hvad admin har redigeret subject/body
+    # til. Uændret adfærd fra før #225.
+    if not reason or not reason.strip():
+        return content
+    new_body = f"{content.body}\n\n{reason.strip()}"
+    html_kwargs = dict(content.html_kwargs, body_text=new_body) if content.html_kwargs else None
+    return MessageContent(subject=content.subject, body=new_body, html_kwargs=html_kwargs)
 
 
 async def notify_wishlist_rejected(
@@ -409,9 +626,9 @@ async def notify_wishlist_rejected(
     owner = await user_repository.find_by_username_normalized(db, owner_username.lower())
     if owner is None:
         return
-    kind = "serie" if is_tv else "film"
-    display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or kind
-    content = _content_wishlist_rejected(display_title, is_tv, wishlist_doc.get("poster_url"), reason)
+    overrides = await message_template_repository.find_all(db)
+    display_title = title or wishlist_doc.get("title") or wishlist_doc.get("name") or ("serie" if is_tv else "film")
+    content = _content_wishlist_rejected(display_title, is_tv, wishlist_doc.get("poster_url"), reason, overrides)
     payload = MessageCreate(
         subject=content.subject,
         body=content.body,
@@ -428,11 +645,15 @@ async def notify_wishlist_rejected(
         pass
 
 
-def _content_admins_new_wishlist(wisher_username: str, display_title: str, is_tv: bool) -> MessageContent:
+def _content_admins_new_wishlist(
+    wisher_username: str, display_title: str, is_tv: bool, overrides: dict[str, dict]
+) -> MessageContent:
     kind = "serie" if is_tv else "film"
-    return MessageContent(
-        subject="Nyt ønske på indkøbslisten",
-        body=f'{wisher_username} har tilføjet "{display_title}" ({kind}) til ønskelisten.',
+    return _render(
+        "admins_new_wishlist",
+        {"username": wisher_username, "title": display_title, "kind": kind},
+        None,
+        overrides,
     )
 
 
@@ -451,9 +672,9 @@ async def notify_admins_new_wishlist(
     admins = await user_repository.list_active_admins(db)
     if not admins:
         return
-    kind = "serie" if is_tv else "film"
-    display_title = title or kind
-    content = _content_admins_new_wishlist(wisher.get("username"), display_title, is_tv)
+    overrides = await message_template_repository.find_all(db)
+    display_title = title or ("serie" if is_tv else "film")
+    content = _content_admins_new_wishlist(wisher.get("username"), display_title, is_tv, overrides)
     for admin_doc in admins:
         if admin_doc.get("username") == wisher.get("username"):
             continue
@@ -469,12 +690,14 @@ async def notify_admins_new_wishlist(
 
 
 def _content_admins_new_screening_request(
-    requester_username: str, display_title: str, is_tv: bool
+    requester_username: str, display_title: str, is_tv: bool, overrides: dict[str, dict]
 ) -> MessageContent:
     kind = "serie" if is_tv else "film"
-    return MessageContent(
-        subject="Nyt ønske om visning i Voldby BIO",
-        body=f'{requester_username} ønsker at se "{display_title}" ({kind}) i Voldby BIO.',
+    return _render(
+        "admins_new_screening_request",
+        {"username": requester_username, "title": display_title, "kind": kind},
+        None,
+        overrides,
     )
 
 
@@ -490,9 +713,9 @@ async def notify_admins_new_screening_request(
     admins = await user_repository.list_active_admins(db)
     if not admins:
         return
-    kind = "serie" if is_tv else "film"
-    display_title = title or kind
-    content = _content_admins_new_screening_request(requester.get("username"), display_title, is_tv)
+    overrides = await message_template_repository.find_all(db)
+    display_title = title or ("serie" if is_tv else "film")
+    content = _content_admins_new_screening_request(requester.get("username"), display_title, is_tv, overrides)
     for admin_doc in admins:
         if admin_doc.get("username") == requester.get("username"):
             continue
@@ -507,10 +730,14 @@ async def notify_admins_new_screening_request(
             pass
 
 
-def _content_admins_new_poll_suggestion(creator_username: str, poll_title: str) -> MessageContent:
-    return MessageContent(
-        subject="Nyt afstemnings-forslag afventer godkendelse",
-        body=f'{creator_username} har foreslået afstemningen "{poll_title}" — godkend eller afvis den under Voldby BIO.',
+def _content_admins_new_poll_suggestion(
+    creator_username: str, poll_title: str, overrides: dict[str, dict]
+) -> MessageContent:
+    return _render(
+        "admins_new_poll_suggestion",
+        {"username": creator_username, "poll_title": poll_title},
+        None,
+        overrides,
     )
 
 
@@ -529,7 +756,8 @@ async def notify_admins_new_poll_suggestion(
     if not admins:
         return
     title = poll_document.get("title") or "En ny afstemning"
-    content = _content_admins_new_poll_suggestion(creator.get("username"), title)
+    overrides = await message_template_repository.find_all(db)
+    content = _content_admins_new_poll_suggestion(creator.get("username"), title, overrides)
     for admin_doc in admins:
         if admin_doc.get("username") == creator.get("username"):
             continue
@@ -545,14 +773,13 @@ async def notify_admins_new_poll_suggestion(
 
 
 def _content_admins_new_candidate_suggestion(
-    suggester_username: str, display_title: str, poll_title: str
+    suggester_username: str, display_title: str, poll_title: str, overrides: dict[str, dict]
 ) -> MessageContent:
-    return MessageContent(
-        subject="Nyt kandidat-forslag afventer godkendelse",
-        body=(
-            f'{suggester_username} har foreslået at tilføje "{display_title}" til '
-            f'afstemningen "{poll_title}" — godkend eller afvis den under Voldby BIO.'
-        ),
+    return _render(
+        "admins_new_candidate_suggestion",
+        {"username": suggester_username, "title": display_title, "poll_title": poll_title},
+        None,
+        overrides,
     )
 
 
@@ -570,7 +797,10 @@ async def notify_admins_new_candidate_suggestion(
         return
     poll_title = poll_document.get("title") or "en afstemning"
     display_title = candidate_title or "en titel"
-    content = _content_admins_new_candidate_suggestion(suggester.get("username"), display_title, poll_title)
+    overrides = await message_template_repository.find_all(db)
+    content = _content_admins_new_candidate_suggestion(
+        suggester.get("username"), display_title, poll_title, overrides
+    )
     for admin_doc in admins:
         if admin_doc.get("username") == suggester.get("username"):
             continue
@@ -585,21 +815,11 @@ async def notify_admins_new_candidate_suggestion(
             pass
 
 
-def _content_poll_candidate_approved(display_title: str, poll_title: str) -> MessageContent:
-    body = (
-        f'Dit forslag om at tilføje "{display_title}" til "{poll_title}" er godkendt — '
-        "den er nu en rigtig kandidat, klar til at få stemmer."
-    )
-    return MessageContent(
-        subject="Dit kandidat-forslag er godkendt",
-        body=body,
-        html_kwargs=dict(
-            headline="Dit kandidat-forslag er godkendt!",
-            tagline=body,
-            body_text=body,
-            poster_url=None,
-            accent="gold",
-        ),
+def _content_poll_candidate_approved(
+    display_title: str, poll_title: str, overrides: dict[str, dict]
+) -> MessageContent:
+    return _render(
+        "poll_candidate_approved", {"title": display_title, "poll_title": poll_title}, None, overrides
     )
 
 
@@ -623,7 +843,8 @@ async def notify_poll_candidate_approved(
 
     poll_title = poll_document.get("title") or "afstemningen"
     display_title = candidate_title or "titlen"
-    content = _content_poll_candidate_approved(display_title, poll_title)
+    overrides = await message_template_repository.find_all(db)
+    content = _content_poll_candidate_approved(display_title, poll_title, overrides)
     payload = MessageCreate(
         subject=content.subject,
         body=content.body,
@@ -640,18 +861,11 @@ async def notify_poll_candidate_approved(
         pass
 
 
-def _content_poll_candidate_rejected(display_title: str, poll_title: str) -> MessageContent:
-    body = f'Dit forslag om at tilføje "{display_title}" til "{poll_title}" blev desværre ikke godkendt denne gang.'
-    return MessageContent(
-        subject="Om dit kandidat-forslag",
-        body=body,
-        html_kwargs=dict(
-            headline="Om dit kandidat-forslag",
-            tagline=body,
-            body_text=body,
-            poster_url=None,
-            accent="muted",
-        ),
+def _content_poll_candidate_rejected(
+    display_title: str, poll_title: str, overrides: dict[str, dict]
+) -> MessageContent:
+    return _render(
+        "poll_candidate_rejected", {"title": display_title, "poll_title": poll_title}, None, overrides
     )
 
 
@@ -675,7 +889,8 @@ async def notify_poll_candidate_rejected(
 
     poll_title = poll_document.get("title") or "afstemningen"
     display_title = candidate_title or "titlen"
-    content = _content_poll_candidate_rejected(display_title, poll_title)
+    overrides = await message_template_repository.find_all(db)
+    content = _content_poll_candidate_rejected(display_title, poll_title, overrides)
     payload = MessageCreate(
         subject=content.subject,
         body=content.body,
@@ -692,19 +907,10 @@ async def notify_poll_candidate_rejected(
         pass
 
 
-def _content_screening_request_declined(display_title: str, poster_url: str | None) -> MessageContent:
-    body = f'Dit ønske om at se "{display_title}" i Voldby BIO er desværre ikke blevet til noget.'
-    return MessageContent(
-        subject=f'Dit ønske om at se "{display_title}" blev afvist',
-        body=body,
-        html_kwargs=dict(
-            headline="Om din forvisnings-anmodning",
-            tagline=f'Visningen af "{display_title}" blev desværre ikke til noget denne gang.',
-            body_text=body,
-            poster_url=poster_url,
-            accent="muted",
-        ),
-    )
+def _content_screening_request_declined(
+    display_title: str, poster_url: str | None, overrides: dict[str, dict]
+) -> MessageContent:
+    return _render("screening_request_declined", {"title": display_title}, poster_url, overrides)
 
 
 async def notify_screening_request_declined(
@@ -726,7 +932,8 @@ async def notify_screening_request_declined(
     if not requesters:
         return
     display_title = title or "titlen"
-    content = _content_screening_request_declined(display_title, poster_url)
+    overrides = await message_template_repository.find_all(db)
+    content = _content_screening_request_declined(display_title, poster_url, overrides)
     for entry in requesters:
         username = entry.get("username")
         if not username or username == admin.get("username"):
@@ -750,18 +957,11 @@ async def notify_screening_request_declined(
             pass
 
 
-def _content_screening_request_scheduled(display_title: str, when: str, poster_url: str | None) -> MessageContent:
-    body = f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}. 🎬'
-    return MessageContent(
-        subject=f'Din ønskede visning "{display_title}" er planlagt!',
-        body=body,
-        html_kwargs=dict(
-            headline="Biografen venter!",
-            tagline=f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}.',
-            body_text=body,
-            poster_url=poster_url,
-            accent="gold",
-        ),
+def _content_screening_request_scheduled(
+    display_title: str, when: str, poster_url: str | None, overrides: dict[str, dict]
+) -> MessageContent:
+    return _render(
+        "screening_request_scheduled", {"title": display_title, "when": when}, poster_url, overrides
     )
 
 
@@ -795,7 +995,8 @@ async def notify_screening_request_scheduled(
         return
     display_title = title or "titlen"
     when = f" d. {scheduled_at.strftime('%d/%m/%Y kl. %H:%M')}" if scheduled_at else ""
-    content = _content_screening_request_scheduled(display_title, when, poster_url)
+    overrides = await message_template_repository.find_all(db)
+    content = _content_screening_request_scheduled(display_title, when, poster_url, overrides)
     for entry in requesters:
         username = entry.get("username")
         if not username:
@@ -819,18 +1020,11 @@ async def notify_screening_request_scheduled(
             pass
 
 
-def _content_screening_scheduled_broadcast(display_title: str, when: str, poster_url: str | None) -> MessageContent:
-    body = f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}. 🎬'
-    return MessageContent(
-        subject=f'"{display_title}" er planlagt i Voldby BIO!',
-        body=body,
-        html_kwargs=dict(
-            headline="Biografen venter!",
-            tagline=f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}.',
-            body_text=body,
-            poster_url=poster_url,
-            accent="gold",
-        ),
+def _content_screening_scheduled_broadcast(
+    display_title: str, when: str, poster_url: str | None, overrides: dict[str, dict]
+) -> MessageContent:
+    return _render(
+        "screening_scheduled_broadcast", {"title": display_title, "when": when}, poster_url, overrides
     )
 
 
@@ -852,7 +1046,8 @@ async def notify_screening_scheduled_broadcast(
     planlægning."""
     display_title = title or "titlen"
     when = f" d. {scheduled_at.strftime('%d/%m/%Y kl. %H:%M')}" if scheduled_at else ""
-    content = _content_screening_scheduled_broadcast(display_title, when, poster_url)
+    overrides = await message_template_repository.find_all(db)
+    content = _content_screening_scheduled_broadcast(display_title, when, poster_url, overrides)
     payload = MessageCreate(
         subject=content.subject,
         body=content.body,
@@ -869,24 +1064,15 @@ async def notify_screening_scheduled_broadcast(
         pass
 
 
-def _content_library_addition_broadcast(display_title: str, is_tv: bool, poster_url: str | None) -> MessageContent:
-    body = (
-        f'"{display_title}" er lige blevet en del af Voldby BIO-samlingen! 🎬 '
-        f"Log ind og anmod om en visning: {settings.public_site_url}"
-    )
+def _content_library_addition_broadcast(
+    display_title: str, is_tv: bool, poster_url: str | None, overrides: dict[str, dict]
+) -> MessageContent:
     kind = "serie" if is_tv else "film"
-    return MessageContent(
-        subject=f"Ny {kind} i samlingen: {display_title}!",
-        body=body,
-        html_kwargs=dict(
-            headline="Ny i samlingen!",
-            tagline=f'"{display_title}" er nu en del af Voldby BIOs samling — anmod om en visning!',
-            body_text=body,
-            poster_url=poster_url,
-            accent="gold",
-            cta_url=settings.public_site_url,
-            cta_label="Gå til Voldby BIO",
-        ),
+    return _render(
+        "library_addition_broadcast",
+        {"title": display_title, "kind": kind, "site_url": settings.public_site_url},
+        poster_url,
+        overrides,
     )
 
 
@@ -920,7 +1106,8 @@ async def notify_library_addition_broadcast(
     tidspunkt")."""
     kind = "serie" if is_tv else "film"
     display_title = title or f"En ny {kind}"
-    content = _content_library_addition_broadcast(display_title, is_tv, poster_url)
+    overrides = await message_template_repository.find_all(db)
+    content = _content_library_addition_broadcast(display_title, is_tv, poster_url, overrides)
     payload = MessageCreate(
         subject=content.subject,
         body=content.body,
@@ -937,34 +1124,14 @@ async def notify_library_addition_broadcast(
         pass
 
 
-def _content_poll_closed_single(display_title: str, poster_url: str | None) -> MessageContent:
-    tagline = f'"{display_title}" vandt afstemningen!'
-    return MessageContent(
-        subject="Afstemningen er afgjort",
-        body=tagline,
-        html_kwargs=dict(
-            headline="Afstemningen er afgjort!",
-            tagline=tagline,
-            body_text=tagline,
-            poster_url=poster_url,
-            accent="gold",
-        ),
-    )
+def _content_poll_closed_single(
+    display_title: str, poster_url: str | None, overrides: dict[str, dict]
+) -> MessageContent:
+    return _render("poll_closed_single", {"title": display_title}, poster_url, overrides)
 
 
-def _content_poll_closed_tie(titles: str) -> MessageContent:
-    tagline = f"Uafgjort mellem {titles} — admin vælger snart hvilken der bliver til noget."
-    return MessageContent(
-        subject="Afstemningen er afgjort",
-        body=tagline,
-        html_kwargs=dict(
-            headline="Afstemningen er afgjort!",
-            tagline=tagline,
-            body_text=tagline,
-            poster_url=None,
-            accent="gold",
-        ),
-    )
+def _content_poll_closed_tie(titles: str, overrides: dict[str, dict]) -> MessageContent:
+    return _render("poll_closed_tie", {"titles": titles}, None, overrides)
 
 
 async def notify_poll_closed(
@@ -981,12 +1148,13 @@ async def notify_poll_closed(
         return
 
     winners = [poll_model.candidates[i] for i in poll_model.winner_indices]
+    overrides = await message_template_repository.find_all(db)
     if len(winners) == 1:
         winner = winners[0]
-        content = _content_poll_closed_single(winner.title or "titlen", winner.poster_url)
+        content = _content_poll_closed_single(winner.title or "titlen", winner.poster_url, overrides)
     else:
         titles = ", ".join(w.title or "en titel" for w in winners)
-        content = _content_poll_closed_tie(titles)
+        content = _content_poll_closed_tie(titles, overrides)
 
     for username in voters:
         voter = await user_repository.find_by_username_normalized(db, username.lower())
@@ -1016,6 +1184,10 @@ async def notify_poll_closed(
 # lore'en (feature #163/#210/#211's fiktive lokalavis-univers). Ren
 # tilfældig udvælgelse pr. afsendelse, ikke en gemt round-robin-tilstand —
 # simplest mulige tolkning af "en rotation", uden ny state at holde styr på.
+#
+# Feature #225 — bevidst UDELADT fra skabelon-systemet ovenfor (se modul-
+# docstringen): en pulje af 5 faste vittigheds-varianter er strukturelt
+# noget andet end én skabelon med pladsholdere, og forbliver hardkodet.
 _POLL_CANCELLED_MESSAGES = [
     "Afstemningen er desværre aflyst af biografens bestyrelse, bestående af de 7 små dværge.",
     "Filmaftenen er trukket tilbage efter et lynindkaldt nødmøde i popcornmaskinens fagforening.",
@@ -1072,19 +1244,10 @@ async def notify_poll_cancelled(db: AsyncIOMotorDatabase, poll_document: dict, a
             pass
 
 
-def _content_poll_scheduled(display_title: str, when: str, poster_url: str | None) -> MessageContent:
-    body = f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}. 🎬'
-    return MessageContent(
-        subject=f'Afstemningens vinder "{display_title}" er planlagt!',
-        body=body,
-        html_kwargs=dict(
-            headline="Biografen venter!",
-            tagline=f'"{display_title}" er nu planlagt til visning i Voldby BIO{when}.',
-            body_text=body,
-            poster_url=poster_url,
-            accent="gold",
-        ),
-    )
+def _content_poll_scheduled(
+    display_title: str, when: str, poster_url: str | None, overrides: dict[str, dict]
+) -> MessageContent:
+    return _render("poll_scheduled", {"title": display_title, "when": when}, poster_url, overrides)
 
 
 async def notify_poll_scheduled(
@@ -1103,7 +1266,8 @@ async def notify_poll_scheduled(
 
     display_title = winner.title or "titlen"
     when = f" d. {scheduled_at.strftime('%d/%m/%Y kl. %H:%M')}" if scheduled_at else ""
-    content = _content_poll_scheduled(display_title, when, winner.poster_url)
+    overrides = await message_template_repository.find_all(db)
+    content = _content_poll_scheduled(display_title, when, winner.poster_url, overrides)
 
     for username in voters:
         voter = await user_repository.find_by_username_normalized(db, username.lower())
@@ -1125,19 +1289,8 @@ async def notify_poll_scheduled(
             pass
 
 
-def _content_poll_approved(poll_title: str) -> MessageContent:
-    body = f'"{poll_title}" er nu godkendt og åben for alle i Voldby BIO — alle kan stemme.'
-    return MessageContent(
-        subject="Din afstemning er godkendt",
-        body=body,
-        html_kwargs=dict(
-            headline="Din afstemning er godkendt!",
-            tagline=body,
-            body_text=body,
-            poster_url=None,
-            accent="gold",
-        ),
-    )
+def _content_poll_approved(poll_title: str, overrides: dict[str, dict]) -> MessageContent:
+    return _render("poll_approved", {"poll_title": poll_title}, None, overrides)
 
 
 async def notify_poll_approved(db: AsyncIOMotorDatabase, poll_document: dict, admin: dict) -> None:
@@ -1153,7 +1306,8 @@ async def notify_poll_approved(db: AsyncIOMotorDatabase, poll_document: dict, ad
         return
 
     title = poll_document.get("title") or "din afstemning"
-    content = _content_poll_approved(title)
+    overrides = await message_template_repository.find_all(db)
+    content = _content_poll_approved(title, overrides)
     payload = MessageCreate(
         subject=content.subject,
         body=content.body,
@@ -1170,19 +1324,8 @@ async def notify_poll_approved(db: AsyncIOMotorDatabase, poll_document: dict, ad
         pass
 
 
-def _content_poll_suggestion_rejected(poll_title: str) -> MessageContent:
-    body = f'"{poll_title}" blev desværre ikke godkendt som afstemning denne gang.'
-    return MessageContent(
-        subject="Om dit afstemnings-forslag",
-        body=body,
-        html_kwargs=dict(
-            headline="Om dit afstemnings-forslag",
-            tagline=body,
-            body_text=body,
-            poster_url=None,
-            accent="muted",
-        ),
-    )
+def _content_poll_suggestion_rejected(poll_title: str, overrides: dict[str, dict]) -> MessageContent:
+    return _render("poll_suggestion_rejected", {"poll_title": poll_title}, None, overrides)
 
 
 async def notify_poll_suggestion_rejected(
@@ -1200,7 +1343,8 @@ async def notify_poll_suggestion_rejected(
         return
 
     title = poll_document.get("title") or "dit afstemnings-forslag"
-    content = _content_poll_suggestion_rejected(title)
+    overrides = await message_template_repository.find_all(db)
+    content = _content_poll_suggestion_rejected(title, overrides)
     payload = MessageCreate(
         subject=content.subject,
         body=content.body,

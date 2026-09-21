@@ -360,6 +360,31 @@ class NoRecipientsError(Exception):
         super().__init__("Der er ingen aktive brugere at sende beskeden til")
 
 
+class MessageTemplateNotFoundError(Exception):
+    """Feature #225 — `key` matcher ingen redigerbar besked-type i
+    `message_service.TEMPLATE_DEFS` (enten en decideret ukendt nøgle, eller
+    en af `poll_cancelled_1..5`, som bevidst ikke er redigerbare — se
+    message_service.py's modul-docstring)."""
+
+    def __init__(self, key: str):
+        super().__init__(f"Ukendt eller ikke-redigerbar besked-type: {key}")
+
+
+class InvalidMessageTemplateError(Exception):
+    """Feature #225 — et gemt skabelon-felt renderer ikke mod nøglens egne
+    eksempel-pladsholdere (`TEMPLATE_DEFS[key].sample`). Fanger typisk en
+    tastefejl i et `{pladsholder}`-navn (fx `{titel}` i stedet for
+    `{title}`) FØR den gemmes, i stedet for at den først fejler stille ved
+    den næste rigtige afsendelse (hvor `try/except: pass` ville sluge den
+    som enhver anden fejl)."""
+
+    def __init__(self, field: str, reason: str):
+        self.field = field
+        super().__init__(
+            f'Feltet "{field}" bruger en pladsholder der ikke findes for denne besked-type ({reason}).'
+        )
+
+
 class TestModeActiveError(Exception):
     """Feature #217 (Jan: "email og beskeder ikke sendes ud af system i
     test mode") — message_service.send() er det ENESTE sted en besked

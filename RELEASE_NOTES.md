@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.198.0 (build 0285) — 2026-09-21
+
+- **"Sådan ser beskederne ud" i Indstillinger → Beskeder kan nu redigeres**. De fleste besked-typer (ønske godkendt/flyttet/afvist, ny titel i samlingen, visning planlagt, afstemning afgjort m.fl.) kan tilpasses i deres ordlyd — emne, brødtekst, og for e-mails også overskrift/undertekst/farve/knap-tekst — med `{titel}`-agtige indsætninger der udfyldes automatisk. Ændringer slår igennem på fremtidige rigtige beskeder, ikke kun i previewet. "Nulstil til standard" bringer en tilpasset type tilbage til den oprindelige tekst.
+
 ## v0.197.0 (build 0281) — 2026-09-19
 
 - **"Sendte beskeder"-listen i Indstillinger → Beskeder kan nu foldes sammen** (starter udfoldet, som før) **og viser højst 10 beskeder ad gangen** med Forrige/Næste-knapper, i stedet for hele historikken på én gang.

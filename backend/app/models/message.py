@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -66,8 +67,23 @@ class InboxMessage(BaseModel):
     created_at: datetime
 
 
+class MessageTemplateFields(BaseModel):
+    """Feature #225 — de RÅ, redigerbare skabelon-felter for én besked-type,
+    stadig med bogstavelige `{pladsholder}`-navne (IKKE substitueret med
+    eksempel-data) — det en rediger-formular skal forudfyldes med.
+    `headline`/`tagline`/`accent`/`cta_label` er `None` for de fire
+    bruger→admin-notifikationer uden en rig e-mail-udgave."""
+
+    subject: str
+    body: str
+    headline: str | None = None
+    tagline: str | None = None
+    accent: Literal["gold", "muted"] | None = None
+    cta_label: str | None = None
+
+
 class MessagePreview(BaseModel):
-    """Feature #223 — ét indslag i admins read-only besked-design-katalog
+    """Feature #223 — ét indslag i admins besked-design-katalog
     (Indstillinger → Beskeder). Bygget af message_preview_service fra de
     SAMME `_content_*`-byggefunktioner som de rigtige notify_*-funktioner i
     message_service.py selv bruger (med eksempel-data i stedet for en
@@ -75,7 +91,13 @@ class MessagePreview(BaseModel):
     der rent faktisk sendes. `html` er `None` for de få besked-typer der
     kun nogensinde har været almindelig tekst (bruger→admin-notifikationer
     om nye ønsker/anmodninger/forslag) — ingen rig e-mail-udgave findes for
-    dem."""
+    dem.
+
+    Feature #225 — `editable` er `False` for `poll_cancelled_1..5` (en fast
+    tilfældig-varianter-pulje, ikke én skabelon med pladsholdere, se
+    message_service.py's modul-docstring); alle øvrige typer er
+    redigerbare. `template`/`placeholders`/`is_customized` er kun sat når
+    `editable` er sandt."""
 
     key: str
     name: str
@@ -83,3 +105,39 @@ class MessagePreview(BaseModel):
     subject: str
     body: str
     html: str | None = None
+    editable: bool = False
+    is_customized: bool = False
+    placeholders: list[str] = Field(default_factory=list)
+    template: MessageTemplateFields | None = None
+
+
+class MessageTemplateUpdate(BaseModel):
+    """Feature #225 — en admins tilpasning af én besked-types skabelon. Kun
+    de felter der rent faktisk ændres er med (`exclude_unset` i service-
+    laget) — et delvist kald ændrer ikke felter det ikke selv rørte.
+    `.format(**sample)`-valideres i `message_template_service` mod
+    `message_service.TEMPLATE_DEFS[key].sample`, IKKE her — den validering
+    kræver at kende den specifikke nøgles pladsholder-sæt, som modellen her
+    ikke selv har adgang til."""
+
+    subject: str | None = Field(default=None, max_length=200)
+    body: str | None = Field(default=None, max_length=2000)
+    headline: str | None = Field(default=None, max_length=200)
+    tagline: str | None = Field(default=None, max_length=300)
+    accent: Literal["gold", "muted"] | None = None
+    cta_label: str | None = Field(default=None, max_length=60)
+
+    @field_validator("subject", "body", "headline", "tagline", "cta_label")
+    @classmethod
+    def not_blank(cls, value: str | None) -> str | None:
+        """Samme "tjek alle former for tom"-princip som MessageCreate.not_blank
+        ovenfor (CLAUDE.md regel 16) — `None` betyder "dette felt er slet
+        ikke med i kaldet" og skal bevares som `None` (`exclude_unset`
+        afgør senere om feltet overhovedet skrives), men en tilstedeværende,
+        men whitespace-only streng er reelt en tom skabelon-tekst."""
+        if value is None:
+            return None
+        trimmed = value.strip()
+        if not trimmed:
+            raise ValueError("Feltet må ikke være tomt")
+        return trimmed

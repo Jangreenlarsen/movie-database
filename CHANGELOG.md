@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.198.0 build 0285] — 2026-09-21 — feature: besked-design-editor — redigering (FEATURES.md #225)
+
+Jan: *"lave den her funktion under indstillinger/beskeder/'Sådan ser beskederne ud' så vi kan editere hvordan beskeder skal se ud i fremtiden"*. #223 byggede kun det read-only preview; dette er redigerings-skridtet.
+
+19 af de 24 besked-typer kan nu redigeres med `{pladsholder}`-syntaks (emne, brødtekst, og for HTML-typer også overskrift/undertekst/farve/knap-tekst). Standard-ordlyden flyttet til et centralt `TEMPLATE_DEFS`-register i `message_service.py`; en ny delt `_render()` slår en evt. gemt admin-tilpasning op pr. felt og falder ellers tilbage til kode-standarden — en tilpasning af kun `subject` lader de øvrige felter urørt, ikke tomme. Samme `_render()` bruges af både den rigtige afsendelses-vej og preview-kataloget, så de aldrig kan drifte fra hinanden. Poll-annulleringens 5 faste vittigheds-varianter (#216) og ønske-afvisningens admin-begrundelse er bevidst IKKE en del af skabelon-systemet.
+
+Nyt: `message_template_repository.py` (samme override-eller-standard-mønster som `system_settings_repository`), `message_template_service.py` (validerer ved at `.format()`-render hvert felt mod et sample før noget gemmes — en tastefejlet pladsholder afvises med 422 i stedet for at fejle stille ved næste rigtige afsendelse), `PATCH`/`DELETE /api/messages/templates/{key}` (admin-only). Backup/restore (regel 20, proaktivt): ny `message_templates`-liste på `SystemBackup` — en tilpasset ordlyd overlever nu backup/restore.
+
+Frontend: "Redigér"/"Nulstil til standard" på hvert redigerbart previewkatalog-indslag, tilpasset-markør i listen.
+
+Berørte filer: se FEATURES.md #225 for fuld liste. Fuld backend-suite (1009, +15 nye #225-tests, +1 backup-roundtrip-test) + frontend (258, +10 nye tests) grøn. Set i browser (Playwright) — gem/nulstil bekræftet, samt at et delvist gemt felt korrekt lader de øvrige stå på standarden i den faktiske e-mail-preview.
+
 ## [0.197.0 build 0284] — 2026-09-21 — oprydning: `INFRASTRUCTURE.html` committet som visuel udgave af `INFRASTRUCTURE.md`
 
 Filen har ligget utracket i rod-mappen siden 30. august. Gennemgået for følsomt indhold før commit (jf. tidligere regel om ingen IP-adresser i committet dokumentation) — indeholder kun `0.0.0.0`/`127.0.0.1`, ingen rigtige interne IP'er/subnet, og følger samme struktur/overskrifter som det allerede committede `INFRASTRUCTURE.md`. Krydsreference tilføjet begge veje.

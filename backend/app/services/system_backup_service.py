@@ -15,6 +15,7 @@ from app.models.settings import (
 from app.repositories import (
     audit_log_repository,
     message_repository,
+    message_template_repository,
     movie_repository,
     poll_repository,
     poster_cache_repository,
@@ -74,6 +75,8 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
     polls = await db[poll_repository.COLLECTION].find({}).to_list(length=None)
     seat_reservations = await db[reservation_repository.COLLECTION].find({}).to_list(length=None)
     messages = await db[message_repository.COLLECTION].find({}).to_list(length=None)
+    # Feature #225 — admin-tilpassede besked-skabeloner (regel 20).
+    message_templates = await message_template_repository.find_all_raw(db)
     audit_log = await db[audit_log_repository.COLLECTION].find({}).to_list(length=None)
     visits = await db[visit_repository.COLLECTION].find({}).to_list(length=None)
     poster_cache = await poster_cache_repository.find_all_raw(db)
@@ -117,6 +120,7 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
         polls=[to_json_safe(doc) for doc in polls],
         seat_reservations=[to_json_safe(doc) for doc in seat_reservations],
         messages=[to_json_safe(doc) for doc in messages],
+        message_templates=[to_json_safe(doc) for doc in message_templates],
         audit_log=[to_json_safe(doc) for doc in audit_log],
         visits=[to_json_safe(doc) for doc in visits],
         poster_cache=[to_json_safe(doc) for doc in poster_cache],
@@ -208,6 +212,7 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
     polls = [from_json_safe(doc) for doc in backup.polls]
     seat_reservations = [from_json_safe(doc) for doc in backup.seat_reservations]
     messages = [from_json_safe(doc) for doc in backup.messages]
+    message_templates = [from_json_safe(doc) for doc in backup.message_templates]
     audit_log = [from_json_safe(doc) for doc in backup.audit_log]
     visits = [from_json_safe(doc) for doc in backup.visits]
     poster_cache = [from_json_safe(doc) for doc in backup.poster_cache]
@@ -232,6 +237,7 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
     await _replace_raw_collection(db, poll_repository.COLLECTION, polls)
     await _replace_raw_collection(db, reservation_repository.COLLECTION, seat_reservations)
     await _replace_raw_collection(db, message_repository.COLLECTION, messages)
+    await message_template_repository.replace_all(db, message_templates)
     audit_log_imported = await _merge_raw_collection(db, audit_log_repository.COLLECTION, audit_log)
     await _replace_raw_collection(db, visit_repository.COLLECTION, visits)
     await _replace_raw_collection(db, poster_cache_repository.COLLECTION, poster_cache)
@@ -261,6 +267,7 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
         polls_imported=len(polls),
         seat_reservations_imported=len(seat_reservations),
         messages_imported=len(messages),
+        message_templates_imported=len(message_templates),
         audit_log_imported=audit_log_imported,
         visits_imported=len(visits),
         poster_cache_imported=len(poster_cache),

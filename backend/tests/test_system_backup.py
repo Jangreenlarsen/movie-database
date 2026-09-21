@@ -195,6 +195,35 @@ async def test_restore_reapplies_password_policy(client):
     assert policy["password_require_digit"] is True
 
 
+async def test_backup_and_restore_round_trips_a_customized_message_template(client):
+    """Feature #225 (CLAUDE.md regel 20, anvendt proaktivt som #174/#177) —
+    en admins tilpassede besked-ordlyd skal overleve en backup/restore-
+    cyklus ligesom enhver anden admin-konfiguration. Samme "ændr efter
+    backup, bekræft restore bringer det oprindelige tilbage"-mønster som
+    test_restore_reapplies_password_policy ovenfor."""
+    await client.patch(
+        "/api/messages/templates/wishlist_moved",
+        json={"subject": "Tilpasset FØR backup"},
+    )
+    backup = (await client.get("/api/system/backup")).json()
+    assert len(backup["message_templates"]) == 1
+
+    # Ændret EFTER backup'en blev taget — en rigtig gendannelse skal bringe
+    # den oprindelige tilpasning tilbage, ikke den nyeste.
+    await client.patch(
+        "/api/messages/templates/wishlist_moved",
+        json={"subject": "Ændret EFTER backup"},
+    )
+
+    response = await client.post("/api/system/restore", json=backup)
+    assert response.status_code == 200
+    assert response.json()["message_templates_imported"] == 1
+
+    previews = (await client.get("/api/messages/previews")).json()
+    entry = next(p for p in previews if p["key"] == "wishlist_moved")
+    assert entry["template"]["subject"] == "Tilpasset FØR backup"
+
+
 async def test_restore_ignores_the_pre_186_screening_policy_field_name_without_crashing(client):
     """Feature #186 renamed require_preferred_at_for_guests to
     require_preferred_at. A backup taken before the rename still has the old

@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.199.1 build 0290] — 2026-09-21 — dokumentation: manglende endpoint-række og mongomock-forbehold eftersynkroniseret (FEATURES.md #226)
+
+Jan bad om at få dokumentationen opdateret. Gennemgang fandt at `POST /api/messages/inbox/read-all` (feature #226, implementeret to commits tidligere) aldrig blev tilføjet til ARCHITECTURE.md's REST API-kontrakt-tabel — et brud på regel 8 der var glidet forbi i farten. Rettet, med samme "registreret før `/{message_id}`-ruterne"-note som `/inbox` selv. Desuden tilføjet TECH_REFERENCE.md's liste over kendte mongomock-begrænsninger: `array_filters` (`$[elem]`) understøttes ikke og kaster `NotImplementedError` — den konkrete lærdom fra selve implementeringen af #226 (løst med den almindelige positionelle `$`-operator i stedet), nu skrevet ned så den ikke skal genopdages.
+
+Berørte filer: `ARCHITECTURE.md`, `TECH_REFERENCE.md`. Ingen app-kodeændring, ingen RELEASE_NOTES-entry (intet brugervendt).
+
 ## [0.199.1 build 0289] — 2026-09-21 — feature: "Ryd alle" direkte i kondenserings-notitsen (FEATURES.md #226-opfølgning)
 
 Jan sendte et skærmbillede af kondenserings-notitsen med en cirkel om "Gå til Indstillinger": *"lad os få en knap ved siden af gå til instillinger hvor bruger kan slette alle beskeder"*.

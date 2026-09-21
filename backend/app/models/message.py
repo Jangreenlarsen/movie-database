@@ -67,6 +67,12 @@ class InboxMessage(BaseModel):
     created_at: datetime
 
 
+class MarkAllReadResult(BaseModel):
+    """Feature #226 — svar fra "Ryd alle" i Indstillinger → Beskeder."""
+
+    marked_count: int
+
+
 class MessageTemplateFields(BaseModel):
     """Feature #225 — de RÅ, redigerbare skabelon-felter for én besked-type,
     stadig med bogstavelige `{pladsholder}`-navne (IKKE substitueret med

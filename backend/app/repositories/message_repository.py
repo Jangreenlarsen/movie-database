@@ -64,6 +64,26 @@ async def mark_read(db: AsyncIOMotorDatabase, message_id: str, user_id: str) -> 
     return result.matched_count > 0
 
 
+async def mark_all_read(db: AsyncIOMotorDatabase, user_id: str) -> int:
+    """Markerer ALLE brugerens ulæste beskeder som læst i ét kald (feature
+    #226) — "Ryd alle" i Indstillinger → Beskeder, i stedet for ét kald pr.
+    besked (kan være tusindvis efter lang tids fravær).
+
+    Positional `$` (ikke `$[elem]`/`array_filters` — mongomock, som hele
+    testsuiten kører mod, understøtter det ikke endnu) rammer for HVERT
+    matchet dokument det første element der opfylder selve query'ens
+    `$elemMatch`, dvs. netop brugerens eget — en bruger optræder aldrig to
+    gange i samme beskeds modtagerliste, så det er entydigt. Samme
+    punktum-sti-`$set`-princip som `mark_read` ovenfor, blot som
+    `update_many`, så en anden modtagers markering aldrig kan overskrives."""
+    now = datetime.now(timezone.utc)
+    result = await db[COLLECTION].update_many(
+        {"recipients": {"$elemMatch": {"user_id": user_id, "read_at": None}}},
+        {"$set": {"recipients.$.read_at": now}},
+    )
+    return result.modified_count
+
+
 async def delete(db: AsyncIOMotorDatabase, message_id: str) -> bool:
     if not ObjectId.is_valid(message_id):
         return False

@@ -24,6 +24,15 @@
   min-width: 0;
 }
 
+/* Feature #226 — en SYSTEM-notits ("du har X flere"), ikke en besked et
+   menneske har skrevet, så den låner ikke den personlige accent-kantstribe
+   ovenfor. */
+.message-banner-overflow {
+  background: var(--surface-hover);
+  border-left: 4px solid var(--border);
+  align-items: center;
+}
+
 .message-banner-subject {
   font-weight: 700;
   font-size: 0.95rem;

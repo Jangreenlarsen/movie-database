@@ -1,5 +1,14 @@
 # Release Notes
 
+## v0.199.0 (build 0288) — 2026-09-21
+
+- **Har du ikke været logget ind i et stykke tid, oversvømmer dine ulæste beskeder ikke længere skærmen**. Er der mere end 3, vises nu kun de 3 seneste + en besked om hvor mange der venter, med et hurtigt link til Indstillinger.
+- **Ny sektion "Dine beskeder" i Indstillinger → Beskeder** (nu synlig for alle, ikke kun admin): se alle dine ulæste beskeder samlet, og ryd dem alle med ét klik — eller luk dem enkeltvis, hvis du hellere vil det.
+
+## v0.198.2 (build 0287) — 2026-09-21
+
+- **Rettet**: gik du direkte til login-siden (fx via et bogmærke) og loggede ind, blev du stående på selve login-siden i stedet for at komme ind i appen. Du navigeres nu korrekt videre bagefter.
+
 ## v0.198.1 (build 0286) — 2026-09-21
 
 - **Rettet**: dato-feltet ved "Ønsk visning i Voldby BIO" (og andre steder du vælger en dato) kunne være helt usynligt på iPhone, indtil du trykkede på det — der stod bare en tom boks uden nogen antydning af at den skulle bruges. Der står nu "Vælg dato", indtil du har valgt en.

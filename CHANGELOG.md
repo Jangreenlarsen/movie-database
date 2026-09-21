@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.197.0 build 0282] — 2026-09-21 — test: bekræfter at en fuld system-backup genskaber brugeres login-oplysninger
+
+Jan spurgte om en fuld system-backup også indeholder bruger-info, så brugere kan gendannes med deres oprindelige login. Svaret var allerede ja — `user_repository.find_all_raw` inkluderer `password_hash` i backuppen, og `restore_backup` wholesale-erstatter `users` med backuppens indhold (feature #61/#65) — men ingen test beviste konkret at et FRISKT login-forsøg (ikke bare en allerede udstedt session) rent faktisk lykkes med den oprindelige adgangskode efter en restore.
+
+Ny test `test_restore_preserves_login_credentials` i `test_system_backup.py`: registrerer en bruger, tager backup, ændrer brugerens status efter backup'en, gendanner, og logger derefter ind fra en helt ny, session-løs klient med den oprindelige adgangskode — bekræfter både login og at status er rullet tilbage til det backup'ede.
+
+Ingen kodeændring i selve backup/restore-logikken (den var allerede korrekt) — kun ny testdækning af en garanti der ikke tidligere var eksplicit bevist. Fuld backend-suite grøn.
+
 ## [0.197.0 build 0281] — 2026-09-19 — feature: "Sendte beskeder"-listen foldes/pagineres (FEATURES.md #224)
 
 Jan: *"i Indstillinger/Sendte besked gør det til en list som default skal udfoldet og med max 10 entry par side i den liste"*.

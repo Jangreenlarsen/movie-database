@@ -307,6 +307,53 @@ async def test_restore_round_trip_preserves_everything(client, monkeypatch):
     assert me.status_code == 200
 
 
+async def test_restore_preserves_login_credentials(client):
+    """Jan: "en fuld system backup vil den også have bruger info, sådan vi
+    kan restore bruger med deres user/password også". `create_backup` var
+    allerede dokumenteret til at inkludere `password_hash` (se
+    user_repository.find_all_raw), og `restore_backup` wholesale-erstatter
+    `users` med backuppens indhold — men ingen test beviste konkret at et
+    FRISKT login-forsøg (ikke bare en allerede udstedt session, som den
+    øvrige roundtrip-test ovenfor tjekker) rent faktisk lykkes med den
+    OPRINDELIGE adgangskode efter en restore. Beviser den faktiske garanti
+    Jan spurgte om, ikke kun at `users_imported`-tallet stemmer."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as member_client:
+        register = await member_client.post(
+            "/api/auth/register",
+            json={"username": "credentialcheck", "password": "originalpassword123"},
+        )
+    await client.patch(f"/api/users/{register.json()['id']}/status", json={"status": "active"})
+
+    backup = (await client.get("/api/system/backup")).json()
+
+    # Ændr databasen efter backup'en, så en restore rent faktisk skal
+    # skrive brugeren tilbage (ikke bare være et no-op fordi intet ændrede
+    # sig) — matcher mønsteret i den store roundtrip-test ovenfor.
+    await client.patch(f"/api/users/{register.json()['id']}/status", json={"status": "disabled"})
+
+    restore = await client.post("/api/system/restore", json=backup)
+    assert restore.status_code == 200
+
+    # Et helt FRISKT login-forsøg, uden nogen eksisterende session/cookie —
+    # beviser at `password_hash` overlevede JSON-roundturen (mongo_json's
+    # base64-indpakning, se poster_cache-kommentaren ovenfor for samme
+    # klasse bekymring) og blev skrevet korrekt tilbage til databasen.
+    async with AsyncClient(transport=transport, base_url="http://test") as fresh_client:
+        login = await fresh_client.post(
+            "/api/auth/login",
+            json={"username": "credentialcheck", "password": "originalpassword123"},
+        )
+        assert login.status_code == 200
+        me = await fresh_client.get("/api/users/me")
+        assert me.status_code == 200
+        assert me.json()["username"] == "credentialcheck"
+        # Statussen (disabled, sat efter backup'en) skal også være rullet
+        # tilbage til "active" — beviser at HELE brugerdokumentet, ikke kun
+        # password_hash isoleret, kom tilbage fra backup'en.
+        assert me.json()["status"] == "active"
+
+
 async def test_restore_requires_admin(client):
     backup = (await client.get("/api/system/backup")).json()
 

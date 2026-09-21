@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.198.1 build 0286] — 2026-09-21 — fix: dato-felt usynligt før valg på iOS (BUGS.md #95)
+
+Jan sendte tre skærmbilleder af "Ønsk visning i Voldby BIO"s dato-felt: tomt og usynligt før tryk, men læsbart efter et valg — og bekræftede efter et opklarende spørgsmål at det kun sker på iOS. Det afkræfter BUGS.md #77s farve/`color-scheme`-hypotese (allerede korrekt, jf. at valgt dato VAR læsbar) og udpeger den rigtige årsag: iOS Safaris `<input type="date">` tegner, når den er tom, hverken placeholder-cifre eller kalender-ikon — modsat alle desktop-browsere.
+
+Ny delt komponent `DateField` tegner selv en "Vælg dato"-hjælpetekst oven på feltet (`pointer-events: none`, så et tryk falder igennem til det native felt), men kun når feltet er tomt OG en ny `isIOS()`-detektor (`utils/platform.js`) slår til — så desktops allerede-fungerende placeholder aldrig dubleres. Erstatter alle fire forekomster af et bart `<input type="date">` i kodebasen (regel 16): `DateTime24Input.jsx` (ScreeningRequestButton + Cinema.jsx's afstemnings-frist), Cinema.jsx's afstemnings-måldato, Library.jsx/TvShows.jsx's set-dato.
+
+Berørte filer: `frontend/src/components/DateField.jsx` (ny), `frontend/src/components/DateField.css` (ny), `frontend/src/utils/platform.js` (ny), `frontend/src/components/DateTime24Input.jsx`, `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `BUGS.md`. Tests: `utils/platform.test.js` + `components/DateField.test.jsx`, 8 nye. Fuld backend-suite (1009, urørt) + frontend (266) grøn. Set i browser (Playwright/msedge, desktop + iPhone-UA-spoofet) — se BUGS.md #95 for forbeholdet om at Chromium ikke kan gengive iOS' egen native widget, så endelig bekræftelse afventer Jans iPhone.
+
 ## [0.198.0 build 0285] — 2026-09-21 — feature: besked-design-editor — redigering (FEATURES.md #225)
 
 Jan: *"lave den her funktion under indstillinger/beskeder/'Sådan ser beskederne ud' så vi kan editere hvordan beskeder skal se ud i fremtiden"*. #223 byggede kun det read-only preview; dette er redigerings-skridtet.

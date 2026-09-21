@@ -46,6 +46,7 @@
   "common.back": "Back",
   "common.delete": "Delete",
   "common.loading": "Loading...",
+  "common.pickDate": "Pick a date",
   "field.serialNumber": "Serial number",
   "field.added": "Added",
   "field.title": "Title",

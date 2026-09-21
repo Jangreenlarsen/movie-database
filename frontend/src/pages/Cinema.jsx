@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import CinemaShowcase from "../components/CinemaShowcase";
+import DateField from "../components/DateField";
 import DateTime24Input from "../components/DateTime24Input";
 import SeatSelectionModal from "../components/SeatSelectionModal";
 import { formatDateHeading, formatShortDate, formatTime, groupByDate } from "../utils/cinemaFormat";
@@ -858,7 +859,7 @@ function PollCreateForm({ isAdmin, onCreated, onCancel }) {
       />
       <label className="cinema-poll-date-label">
         {t("polls.targetDate")}
-        <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+        <DateField value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
       </label>
       <label className="cinema-poll-date-label">
         {t("polls.votingDeadline")}

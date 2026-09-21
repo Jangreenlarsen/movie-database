@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.198.1 (build 0286) — 2026-09-21
+
+- **Rettet**: dato-feltet ved "Ønsk visning i Voldby BIO" (og andre steder du vælger en dato) kunne være helt usynligt på iPhone, indtil du trykkede på det — der stod bare en tom boks uden nogen antydning af at den skulle bruges. Der står nu "Vælg dato", indtil du har valgt en.
+
 ## v0.198.0 (build 0285) — 2026-09-21
 
 - **"Sådan ser beskederne ud" i Indstillinger → Beskeder kan nu redigeres**. De fleste besked-typer (ønske godkendt/flyttet/afvist, ny titel i samlingen, visning planlagt, afstemning afgjort m.fl.) kan tilpasses i deres ordlyd — emne, brødtekst, og for e-mails også overskrift/undertekst/farve/knap-tekst — med `{titel}`-agtige indsætninger der udfyldes automatisk. Ændringer slår igennem på fremtidige rigtige beskeder, ikke kun i previewet. "Nulstil til standard" bringer en tilpasset type tilbage til den oprindelige tekst.

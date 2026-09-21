@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.197.0 build 0283] — 2026-09-21 — workflow: backend-testsuiten kører nu parallelt (pytest-xdist)
+
+Jan bad om at se nærmere på testsuitens køretid (~4-4,5 min pr. fuld kørsel). Verificeret sikkert at parallelisere: hver test kører allerede mod sin egen, i-hukommelse `mongomock_motor`-instans (aldrig en delt rigtig database), og alle fire autouse-isolations-fixtures i `conftest.py` er `monkeypatch`-baserede på proces-lokale singletons — ingen test rører et rigtigt filsystem, subprocess eller miljøvariabel.
+
+`pytest-xdist` tilføjet til `requirements-dev.txt`, standard-kommandoen i CLAUDE.md regel 6 og TECH_REFERENCE.md udvidet med `-n auto`. Målt ~8-9× hurtigere (998 tests: ~260s → ~30s), samme resultat over 3 gentagne kørsler — ingen flakiness introduceret.
+
+Berørte filer: `backend/requirements-dev.txt`, `CLAUDE.md`, `TECH_REFERENCE.md`. Ingen app-kodeændring.
+
 ## [0.197.0 build 0282] — 2026-09-21 — test: bekræfter at en fuld system-backup genskaber brugeres login-oplysninger
 
 Jan spurgte om en fuld system-backup også indeholder bruger-info, så brugere kan gendannes med deres oprindelige login. Svaret var allerede ja — `user_repository.find_all_raw` inkluderer `password_hash` i backuppen, og `restore_backup` wholesale-erstatter `users` med backuppens indhold (feature #61/#65) — men ingen test beviste konkret at et FRISKT login-forsøg (ikke bare en allerede udstedt session) rent faktisk lykkes med den oprindelige adgangskode efter en restore.

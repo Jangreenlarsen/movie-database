@@ -114,7 +114,7 @@ Hver film/serie kan tildeles frie, **brugerdefinerede tags** (fx "Julefilm", "Se
 3. Opdater `version.json`: bump build (altid), bump version (hvis feature/bugfix/breaking).
 4. Tilføj entry i `CHANGELOG.md` med `[version build NNNN]` prefix.
 5. Opdater `RELEASE_NOTES.md` hvis kode er ændret.
-6. Kør **begge** testsuiter før noget meldes færdigt: `cd backend && ./.venv/Scripts/python.exe -m pytest -q` og `cd frontend && npm test`. Frontend havde ingen suite indtil feature #103; "hvis relevant" gælder derfor ikke længere som undskyldning for at springe den over. Rør ændringen ved layout eller placering, gælder desuden regel 18.
+6. Kør **begge** testsuiter før noget meldes færdigt: `cd backend && ./.venv/Scripts/python.exe -m pytest -q -n auto` og `cd frontend && npm test`. `-n auto` (pytest-xdist, `requirements-dev.txt`) kører suiten parallelt i stedet for serielt — verificeret sikkert (2026-09-21): hver test kører mod sin egen, i-hukommelse `mongomock_motor`-instans (aldrig en delt rigtig database), og de fire autouse-isolations-fixtures i `conftest.py` er alle `monkeypatch`-baserede på proces-lokale singletons (`settings`, `app.dependency_overrides`, `anthem_service._session_active`) — ingen test rører et rigtigt filsystem/subprocess/miljøvariabel. Målt ~8-9× hurtigere (998 tests: ~260s → ~30s), samme resultat over 3 gentagne kørsler. Frontend havde ingen suite indtil feature #103; "hvis relevant" gælder derfor ikke længere som undskyldning for at springe den over. Rør ændringen ved layout eller placering, gælder desuden regel 18.
 7. `git add` + `git commit` med besked der inkluderer version: `v0.1.0-b0001: beskrivelse`.
 8. `git push origin dev` til GitHub.
 9. Spørg Jan: *"Vil du også merge til `main`?"* — merge og push `origin main` hvis ja.

@@ -87,8 +87,10 @@ Egen ~60-linjers motor i `frontend/src/i18n/`, ikke react-i18next — to sprog, 
 **Backend**: `pytest` + `httpx.AsyncClient` mod FastAPI-appen, med `mongomock_motor` i stedet for en rigtig MongoDB.
 
 ```bash
-cd backend && ./.venv/Scripts/python.exe -m pytest -q
+cd backend && ./.venv/Scripts/python.exe -m pytest -q -n auto
 ```
+
+`-n auto` (pytest-xdist, `requirements-dev.txt`) fordeler testene over flere processer i stedet for at køre dem serielt — sikkert her fordi hver test allerede kører mod sin egen, i-hukommelse `mongomock_motor`-instans og al isolation i `conftest.py` er `monkeypatch`-baseret (proces-lokal, ikke en delt real ressource). ~8-9× hurtigere i praksis (998 tests: ~260s → ~30s, se CLAUDE.md regel 6). Udelad `-n auto` for læsbar, serielt-ordnet output ved fejlsøgning af en specifik fejlende test.
 
 `conftest.py` fastlåser de eksterne API-nøgler til åbenlyst falske værdier, så suiten aldrig afhænger af udviklerens `.env` (BUGS.md #31). Bemærk at mongomock ikke implementerer alt: `$text` mangler helt (BUGS.md #48), og sparse/partielle index-regler håndhæves ikke som i produktion (BUGS.md #1) — en test kan derfor ikke bevise at et unikt index virker.
 

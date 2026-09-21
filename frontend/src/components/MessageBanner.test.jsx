@@ -26,6 +26,7 @@ describe("MessageBanner", () => {
   beforeEach(() => {
     vi.spyOn(api, "getInbox").mockResolvedValue([]);
     vi.spyOn(api, "markMessageRead").mockResolvedValue(null);
+    vi.spyOn(api, "markAllMessagesRead").mockResolvedValue({ marked_count: 0 });
   });
 
   it("viser intet når indbakken er tom", async () => {
@@ -118,6 +119,50 @@ describe("MessageBanner", () => {
     await userEvent.click(screen.getByRole("button", { name: "Gå til Indstillinger" }));
 
     expect(onGoToSettings).toHaveBeenCalled();
+  });
+
+  it("'Ryd alle' i kondenserings-notitsen beder om bekræftelse og rydder ALLE, ikke kun de synlige", async () => {
+    // Kernen: banneret viser kun 3, men "Ryd alle" skal rydde alle 5 —
+    // både de synlige OG dem der er kondenseret væk.
+    const many = Array.from({ length: 5 }, (_, i) => ({ ...MESSAGE, id: `msg-${i + 1}`, subject: `Besked ${i + 1}` }));
+    api.getInbox.mockResolvedValue(many);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<MessageBanner />);
+
+    await screen.findByText(/Ulæste beskeder i alt: 5/);
+    await userEvent.click(screen.getByRole("button", { name: "Ryd alle" }));
+
+    expect(window.confirm).toHaveBeenCalled();
+    await waitFor(() => expect(api.markAllMessagesRead).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByText("Besked 5")).not.toBeInTheDocument());
+    expect(screen.queryByText(/Ulæste beskeder i alt/)).not.toBeInTheDocument();
+  });
+
+  it("'Ryd alle' i kondenserings-notitsen rydder intet hvis bekræftelsen afvises", async () => {
+    const many = Array.from({ length: 4 }, (_, i) => ({ ...MESSAGE, id: `msg-${i + 1}` }));
+    api.getInbox.mockResolvedValue(many);
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<MessageBanner />);
+
+    await screen.findByText(/Ulæste beskeder i alt: 4/);
+    await userEvent.click(screen.getByRole("button", { name: "Ryd alle" }));
+
+    expect(api.markAllMessagesRead).not.toHaveBeenCalled();
+    expect(screen.getByText(/Ulæste beskeder i alt: 4/)).toBeInTheDocument();
+  });
+
+  it("beholder banneret hvis 'Ryd alle' fejler", async () => {
+    const many = Array.from({ length: 4 }, (_, i) => ({ ...MESSAGE, id: `msg-${i + 1}` }));
+    api.getInbox.mockResolvedValue(many);
+    api.markAllMessagesRead.mockRejectedValue(new Error("Netværksfejl"));
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<MessageBanner />);
+
+    await screen.findByText(/Ulæste beskeder i alt: 4/);
+    await userEvent.click(screen.getByRole("button", { name: "Ryd alle" }));
+
+    expect(await screen.findByText(/Netværksfejl/)).toBeInTheDocument();
+    expect(screen.getByText(/Ulæste beskeder i alt: 4/)).toBeInTheDocument();
   });
 
   it("viser flere beskeder på én gang", async () => {

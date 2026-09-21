@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.199.1 (build 0289) — 2026-09-21
+
+- **"Ryd alle" kan nu klikkes direkte fra beskeden om at du har flere ulæste**, ved siden af "Gå til Indstillinger" — ingen grund til at gå om ad Indstillinger, hvis du bare vil rydde det hele med det samme.
+
 ## v0.199.0 (build 0288) — 2026-09-21
 
 - **Har du ikke været logget ind i et stykke tid, oversvømmer dine ulæste beskeder ikke længere skærmen**. Er der mere end 3, vises nu kun de 3 seneste + en besked om hvor mange der venter, med et hurtigt link til Indstillinger.

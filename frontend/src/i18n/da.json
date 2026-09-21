@@ -46,6 +46,7 @@
   "common.back": "Tilbage",
   "common.delete": "Slet",
   "common.loading": "Indlæser...",
+  "common.pickDate": "Vælg dato",
   "field.serialNumber": "Serienummer",
   "field.added": "Tilføjet",
   "field.title": "Titel",

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import Chip from "../components/Chip";
 import Combobox from "../components/Combobox";
+import DateField from "../components/DateField";
 import MovieLookupForm from "../components/MovieLookupForm";
 import Pagination from "../components/Pagination";
 import { PlexCardBadge, PlexPlayLink, PlexShieldPlayButton } from "../components/PlexAvailability";
@@ -1689,11 +1690,10 @@ export function MovieDetailModal({
                     {t("lib.watched")}
                   </label>
                   {watched && (
-                    <input
-                      type="date"
+                    <DateField
                       value={watchedAt}
                       onChange={(e) => setWatchedAt(e.target.value)}
-                      style={{ marginTop: 6, display: "block" }}
+                      className="date-field-block"
                     />
                   )}
                 </div>

@@ -1,3 +1,5 @@
+import DateField from "./DateField";
+
 const HOURS = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0"));
 const MINUTES = Array.from({ length: 60 }, (_, m) => String(m).padStart(2, "0"));
 
@@ -24,11 +26,7 @@ export default function DateTime24Input({ value, onChange }) {
 
   return (
     <span className="datetime24-input">
-      <input
-        type="date"
-        value={datePart}
-        onChange={(e) => emit(e.target.value, hour || "00", minute || "00")}
-      />
+      <DateField value={datePart} onChange={(e) => emit(e.target.value, hour || "00", minute || "00")} />
       <select value={hour} onChange={(e) => emit(datePart, e.target.value, minute || "00")}>
         <option value="" disabled>
           Time

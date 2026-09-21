@@ -40,6 +40,7 @@ export default function MessageBanner({ pollIntervalMs = POLL_INTERVAL_MS, onGoT
   const locale = useLocale();
   const [messages, setMessages] = useState([]);
   const [dismissing, setDismissing] = useState(null);
+  const [clearingAll, setClearingAll] = useState(false);
   const [error, setError] = useState(null);
   // Feature #135 — beskeder brugeren har lukket lokalt. En poll må aldrig
   // hente dem tilbage på skærmen, hvis den når indbakken før `markMessageRead`
@@ -77,6 +78,28 @@ export default function MessageBanner({ pollIntervalMs = POLL_INTERVAL_MS, onGoT
     };
   }, [pollIntervalMs]);
 
+  // Feature #226-opfølgning (Jan: skærmbillede af kondenserings-notitsen med
+  // en cirkel om "Gå til Indstillinger" — "lad os få en knap ved siden af
+  // ... hvor bruger kan slette alle beskeder") — rydder direkte herfra i
+  // stedet for at kræve omvejen om Indstillinger for selve rydningen.
+  // Samme handling/bekræftelse som `MyMessagesSection.clearAll`.
+  function clearAll() {
+    if (!window.confirm(t("myMessages.confirmClearAll", { count: messages.length }))) return;
+    setClearingAll(true);
+    setError(null);
+    api
+      .markAllMessagesRead()
+      .then(() => {
+        // Samme race-værn som dismiss() nedenfor: en poll der er undervejs
+        // da kaldet startede, må ikke sætte de netop ryddede beskeder
+        // tilbage på skærmen.
+        messages.forEach((m) => dismissedRef.current.add(m.id));
+        setMessages([]);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setClearingAll(false));
+  }
+
   function dismiss(messageId) {
     setDismissing(messageId);
     setError(null);
@@ -107,11 +130,16 @@ export default function MessageBanner({ pollIntervalMs = POLL_INTERVAL_MS, onGoT
               {t("messages.overflowNotice", { count: messages.length, shown: MAX_VISIBLE_MESSAGES })}
             </p>
           </div>
-          {onGoToSettings && (
-            <button type="button" className="btn" onClick={onGoToSettings}>
-              {t("messages.overflowGoToSettings")}
+          <div className="message-banner-overflow-actions">
+            <button type="button" className="btn btn-primary" onClick={clearAll} disabled={clearingAll}>
+              {t(clearingAll ? "myMessages.clearing" : "myMessages.clearAll")}
             </button>
-          )}
+            {onGoToSettings && (
+              <button type="button" className="btn" onClick={onGoToSettings}>
+                {t("messages.overflowGoToSettings")}
+              </button>
+            )}
+          </div>
         </div>
       )}
       {visibleMessages.map((message) => (

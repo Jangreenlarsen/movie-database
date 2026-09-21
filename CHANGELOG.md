@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.199.1 build 0289] — 2026-09-21 — feature: "Ryd alle" direkte i kondenserings-notitsen (FEATURES.md #226-opfølgning)
+
+Jan sendte et skærmbillede af kondenserings-notitsen med en cirkel om "Gå til Indstillinger": *"lad os få en knap ved siden af gå til instillinger hvor bruger kan slette alle beskeder"*.
+
+`MessageBanner`s kondenserings-notits fik sin egen "Ryd alle"-knap ved siden af "Gå til Indstillinger" — samme bekræftelse + `markAllMessagesRead`-kald som `MyMessagesSection` i Indstillinger, genbruger dens eksisterende i18n-nøgler. Rydder ALLE ulæste (også de kondenserede/skjulte), ikke kun de 3 synlige bannere. Ingen omvej om Indstillinger nødvendig længere.
+
+Berørte filer: `frontend/src/components/MessageBanner.jsx`, `frontend/src/components/MessageBanner.css`, `frontend/src/components/MessageBanner.test.jsx` (+3 tests). Fuld backend-suite (1013, urørt) + frontend (281) grøn. Set i browser (Playwright/msedge) — knapperne sidder korrekt side om side, og rydningen tømmer hele banneret.
+
 ## [0.199.0 build 0288] — 2026-09-21 — feature: beskeder kondenseres ved efterslæb + "Dine beskeder" i Indstillinger (FEATURES.md #226)
 
 Jan: *"hvis en bruger ikke har være login i lang tid så kan det være at han har 1000 beskeder kondesere dem til max 3 besked med meddelese om at ham kan gå under instillinger/besked og se alle og slette alle hams beskeder"*.

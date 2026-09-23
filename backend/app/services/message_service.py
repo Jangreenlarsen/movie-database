@@ -84,8 +84,8 @@ class MessageTemplateDef(NamedTuple):
 # Feature #225 — hver nøgle her matcher `message_preview_service.py`s
 # katalog-nøgler 1:1 (minus `poll_cancelled_1..5`, se modul-docstringen).
 # `{title}`/`{kind}`/`{poll_title}`/`{titles}`/`{when}`/`{username}`/
-# `{site_url}` er de eneste pladsholder-navne der findes i hele registret —
-# holdt bevidst få og genkendelige på tværs af typer.
+# `{site_url}`/`{seat}` er de eneste pladsholder-navne der findes i hele
+# registret — holdt bevidst få og genkendelige på tværs af typer.
 TEMPLATE_DEFS: dict[str, MessageTemplateDef] = {
     "wishlist_moved": MessageTemplateDef(
         subject="Din ønskede {kind} er nu i biblioteket",
@@ -260,6 +260,35 @@ TEMPLATE_DEFS: dict[str, MessageTemplateDef] = {
         accent="muted",
         cta_label=None,
         sample={"poll_title": "Fredagsfilm"},
+    ),
+    # Feature #227 — "Mine pladser". `{when}` har sit eget foranstillede
+    # mellemrum (" d. 26-09-2026 kl. 19:30") eller er tom, samme konvention
+    # som screening_request_scheduled.
+    "admins_reservation_cancelled": MessageTemplateDef(
+        subject="Plads frigivet i Voldby BIO",
+        body='{username} har meldt fra sæde {seat} til "{title}"{when} — pladsen er ledig igen.',
+        headline=None,
+        tagline=None,
+        accent=None,
+        cta_label=None,
+        sample={
+            "username": "anna",
+            "seat": "6",
+            "title": "Dune: Part Two",
+            "when": " d. 26-09-2026 kl. 19:30",
+        },
+    ),
+    "reservation_added_by_admin": MessageTemplateDef(
+        subject="Du har fået en plads i Voldby BIO",
+        body=(
+            'Du er tilmeldt "{title}"{when} på sæde {seat}. Kan du alligevel '
+            'ikke komme, så meld fra under "Mine pladser" øverst på siden. 🎬'
+        ),
+        headline="Din plads er klar!",
+        tagline='Sæde {seat} til "{title}"{when}.',
+        accent="gold",
+        cta_label=None,
+        sample={"seat": "6", "title": "Dune: Part Two", "when": " d. 26-09-2026 kl. 19:30"},
     ),
 }
 
@@ -1397,3 +1426,90 @@ async def mark_all_read(db: AsyncIOMotorDatabase, user_id: str) -> int:
 async def delete(db: AsyncIOMotorDatabase, message_id: str) -> None:
     if not await message_repository.delete(db, message_id):
         raise MessageNotFoundError(message_id)
+
+
+def _content_admins_reservation_cancelled(
+    username: str, seat: int, title: str, when: str, overrides: dict[str, dict]
+) -> MessageContent:
+    return _render(
+        "admins_reservation_cancelled",
+        {"username": username, "seat": str(seat), "title": title, "when": when},
+        None,
+        overrides,
+    )
+
+
+async def notify_admins_reservation_cancelled(
+    db: AsyncIOMotorDatabase,
+    owner: dict,
+    seat: int,
+    title: str | None,
+    when: str,
+) -> None:
+    """Feature #227 — en bruger meldte fra en GODKENDT plads via "Mine
+    pladser". Uden denne besked opdager konduktøren det aldrig: pladsen
+    forsvinder bare stille fra godkendt-listen. Samme bruger→admin-retning
+    og "spring dig selv over"-regel som notify_admins_new_wishlist."""
+    admins = await user_repository.list_active_admins(db)
+    if not admins:
+        return
+    overrides = await message_template_repository.find_all(db)
+    content = _content_admins_reservation_cancelled(
+        owner.get("username"), seat, title or "fremvisningen", when, overrides
+    )
+    for admin_doc in admins:
+        if admin_doc.get("username") == owner.get("username"):
+            continue
+        payload = MessageCreate(
+            subject=content.subject,
+            body=content.body,
+            recipient_user_id=str(admin_doc["_id"]),
+        )
+        try:
+            await send(db, payload, owner)
+        except Exception:
+            pass
+
+
+def _content_reservation_added_by_admin(
+    seat: int, title: str, when: str, overrides: dict[str, dict]
+) -> MessageContent:
+    return _render(
+        "reservation_added_by_admin",
+        {"seat": str(seat), "title": title, "when": when},
+        None,
+        overrides,
+    )
+
+
+async def notify_reservation_added_by_admin(
+    db: AsyncIOMotorDatabase,
+    target: dict,
+    admin: dict,
+    seat: int,
+    title: str | None,
+    when: str,
+) -> None:
+    """Feature #227 — en admin har booket en plads på vegne af `target`.
+    Brugeren skal vide at pladsen findes (og at de selv kan melde fra),
+    ellers står den bare i "Mine pladser" uden forklaring. Best-effort
+    sidekanal: reservationen er allerede gemt, så en fejl her vælter den
+    ikke (CLAUDE.md regel 16)."""
+    if target.get("username") == admin.get("username"):
+        return
+    overrides = await message_template_repository.find_all(db)
+    content = _content_reservation_added_by_admin(seat, title or "fremvisningen", when, overrides)
+    payload = MessageCreate(
+        subject=content.subject,
+        body=content.body,
+        recipient_user_id=str(target["_id"]),
+    )
+    try:
+        await send(
+            db,
+            payload,
+            admin,
+            email_html=email_templates.render_notification_email(**content.html_kwargs),
+        )
+    except Exception:
+        pass

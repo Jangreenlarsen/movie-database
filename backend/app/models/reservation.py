@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Feature #133 — Voldby BIO har én fast sal: 14 sæder på tre niveauer,
 # nummereret fortløbende 1–14 (som i sæde-vælger-artefakten). Selve layoutet
@@ -35,9 +35,23 @@ SeatStatus = Literal["free", "mine", "pending", "taken"]
 
 
 class ReservationCreate(BaseModel):
-    """En gæst reserverer et eller flere ledige sæder på en fremvisning."""
+    """En gæst reserverer et eller flere ledige sæder på en fremvisning.
+
+    Feature #227 — `reserved_for` (brugernavn) lader en ADMIN booke på
+    vegne af en anden bruger. Rollen tjekkes i `reserve_seats`, ikke her:
+    modellen kender ikke kalderen. Tom streng/whitespace betyder "ikke sat"
+    (CLAUDE.md regel 16 — alle repræsentationer af tom behandles ens)."""
 
     seat_ids: list[str] = Field(min_length=1)
+    reserved_for: str | None = None
+
+    @field_validator("reserved_for")
+    @classmethod
+    def blank_means_unset(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        return value or None
 
 
 class AdminHoldCreate(BaseModel):
@@ -88,3 +102,10 @@ class SeatMapEntry(BaseModel):
 class SeatMap(BaseModel):
     screening_id: str
     seats: list[SeatMapEntry]
+
+
+class ScreeningReservationsCleared(BaseModel):
+    """Feature #227 — svar på "ryd alle tilmeldte" for én visning."""
+
+    screening_id: str
+    removed: int

@@ -4,8 +4,10 @@ import CinemaShowcase from "../components/CinemaShowcase";
 import DateField from "../components/DateField";
 import DateTime24Input from "../components/DateTime24Input";
 import SeatSelectionModal from "../components/SeatSelectionModal";
+import { announceReservationsChanged } from "../utils/reservationEvents";
 import { formatDateHeading, formatShortDate, formatTime, groupByDate } from "../utils/cinemaFormat";
 import { posterSrc } from "../utils/posterUrl";
+import { freeSeatNumbers } from "../utils/reservationGroups";
 import { useLocale, useT } from "../i18n";
 // Feature #195 — Jan: "guester som er login skal se samme public side for
 // voldby bio som guester som ikke er login på portal". Genbruger Presse/
@@ -1536,6 +1538,7 @@ function ReservationAdmin({ screenings }) {
   }, []);
 
   return (
+    <>
     <div className="card cinema-panel">
       <h2>{t("cinema.reservations")}</h2>
       <p className="muted">{t("cinema.reservationsHint")}</p>
@@ -1573,6 +1576,17 @@ function ReservationAdmin({ screenings }) {
 
       <HoldTool screenings={screenings} onChanged={refresh} />
     </div>
+
+    {/* Feature #227 — samme data og samme genindlæsning som køen ovenfor,
+        så en godkendelse dér og en fjernelse her aldrig viser to forskellige
+        tilstande af de samme pladser. */}
+    <AttendeesAdmin
+      screenings={screenings}
+      reservations={[...pending, ...approved]}
+      status={status}
+      onChanged={refresh}
+    />
+    </>
   );
 }
 
@@ -1770,6 +1784,262 @@ function HoldTool({ screenings, onChanged }) {
       </div>
       {ok && <div className="banner banner-info" style={{ marginTop: 8 }}>{t("cinema.holdSuccess")}</div>}
       {error && <div className="banner banner-error" style={{ marginTop: 8 }}>{error}</div>}
+    </div>
+  );
+}
+
+// Feature #227 — "Tilmeldte pr. visning": én blok pr. kommende visning med
+// hvem der sidder hvor, og redigering (godkend, fjern, ryd alle, tilføj en
+// bruger på et ledigt sæde). Kun admin — renderes via ReservationAdmin, der
+// ejer både data og genindlæsning.
+export function AttendeesAdmin({ screenings, reservations, status, onChanged }) {
+  const t = useT();
+  const [users, setUsers] = useState([]);
+  const [usersError, setUsersError] = useState(null);
+  const sorted = [...screenings].sort((a, b) =>
+    String(a.scheduled_at).localeCompare(String(b.scheduled_at))
+  );
+  // Den første (næste) visning er foldet ud fra start, resten er én linje.
+  // `null` = admin har ikke rørt noget endnu, så standarden følger med når
+  // visningerne først ankommer (de hentes asynkront af Cinema).
+  const [touched, setTouched] = useState(null);
+  const expanded = touched ?? new Set(sorted[0] ? [sorted[0].id] : []);
+
+  useEffect(() => {
+    api
+      .listUsers()
+      .then((rows) => setUsers(rows.filter((u) => u.status === "active")))
+      .catch((err) => setUsersError(err.message));
+  }, []);
+
+  const total = reservations.filter((r) => r.screening_id && !r.is_hold).length;
+
+  function toggle(id) {
+    setTouched(() => {
+      const next = new Set(expanded);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  return (
+    <div className="card cinema-panel">
+      <div className="cinema-attendees-head">
+        <div>
+          <h2>{t("attendees.title")}</h2>
+          <p className="muted">{t("attendees.hint")}</p>
+        </div>
+        <span className="muted cinema-attendees-summary">
+          {t("attendees.summary", { screenings: sorted.length, count: total })}
+        </span>
+      </div>
+
+      {status === "error" && (
+        <div className="banner banner-error">{t("cinema.reservationsLoadError")}</div>
+      )}
+      {usersError && <div className="banner banner-error">{usersError}</div>}
+      {sorted.length === 0 && <p className="muted">{t("attendees.noScreenings")}</p>}
+
+      <div className="cinema-attendees">
+        {sorted.map((screening) => (
+          <AttendeesBlock
+            key={screening.id}
+            screening={screening}
+            reservations={reservations}
+            users={users}
+            expanded={expanded.has(screening.id)}
+            onToggle={() => toggle(screening.id)}
+            onChanged={onChanged}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AttendeesBlock({ screening, reservations, users, expanded, onToggle, onChanged }) {
+  const t = useT();
+  const locale = useLocale();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [username, setUsername] = useState("");
+  const [seatId, setSeatId] = useState("");
+
+  const own = reservations
+    .filter((r) => r.screening_id === screening.id)
+    .sort((a, b) => a.seat_number - b.seat_number);
+  const free = freeSeatNumbers(SEAT_OPTIONS, reservations, screening.id);
+  const booked = SEAT_OPTIONS.length - free.length;
+  const title = screening.title ?? t("cinema.unknownTitle");
+  const when = `${formatDateHeading(screening.scheduled_at, locale)} · ${formatTime(
+    screening.scheduled_at,
+    locale
+  )}`;
+
+  // Det valgte sæde kan være blevet taget siden (af en anden eller af en
+  // genindlæsning) — så falder vælgeren tilbage til "vælg" i stedet for at
+  // sende et sæde der ikke længere står på listen.
+  const seatStillFree = free.some((seat) => seat.id === seatId);
+  const canAdd = Boolean(username) && seatStillFree && !busy;
+
+  async function run(action) {
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+      await onChanged();
+      announceReservationsChanged();
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function add() {
+    if (!canAdd) return;
+    const ok = await run(() => api.reserveSeats(screening.id, [seatId], username));
+    if (ok) {
+      setSeatId("");
+      setUsername("");
+    }
+  }
+
+  function remove(reservation) {
+    const text = t("attendees.confirmRemove", {
+      number: reservation.seat_number,
+      name: reservation.reserved_by,
+    });
+    if (!window.confirm(text)) return;
+    run(() => api.cancelReservation(reservation.id));
+  }
+
+  function clearAll() {
+    if (!window.confirm(t("attendees.confirmClear", { count: own.length, title }))) return;
+    run(() => api.clearScreeningReservations(screening.id));
+  }
+
+  if (!expanded) {
+    return (
+      <div className="cinema-attendees-block cinema-attendees-block--collapsed">
+        <div className="cinema-attendees-block-head">
+          <strong>{title}</strong>
+          <span className="muted">{when}</span>
+          <span className="cinema-attendees-spacer" />
+          <span className="muted">
+            {t("attendees.bookedOf", { count: booked, total: SEAT_OPTIONS.length })}
+          </span>
+          <button type="button" className="btn" onClick={onToggle} aria-expanded="false">
+            {t("attendees.open")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="cinema-attendees-block">
+      <div className="cinema-attendees-block-head cinema-attendees-block-head--open">
+        <strong>{title}</strong>
+        <span className="muted">{when}</span>
+        <span className="cinema-attendees-spacer" />
+        <span className="muted">
+          {t("attendees.bookedOf", { count: booked, total: SEAT_OPTIONS.length })}
+        </span>
+        <button type="button" className="btn" onClick={onToggle} aria-expanded="true">
+          {t("attendees.close")}
+        </button>
+      </div>
+
+      {own.length === 0 && <p className="muted cinema-attendees-empty">{t("attendees.empty")}</p>}
+
+      {own.map((reservation) => (
+        <div className="cinema-attendees-row" key={reservation.id}>
+          <span className="cinema-attendees-seat" aria-hidden="true">
+            {reservation.seat_number}
+          </span>
+          <span className="cinema-attendees-name">
+            <span className="cinema-attendees-sr">
+              {t("seat.seatLabel", { number: reservation.seat_number })}:{" "}
+            </span>
+            {reservation.reserved_by}
+            {reservation.is_hold && (
+              <span className="muted"> · {t("attendees.holdLabel")}</span>
+            )}
+          </span>
+          <span
+            className={`cinema-attendees-pill ${
+              reservation.status === "approved"
+                ? "cinema-attendees-pill--approved"
+                : "cinema-attendees-pill--pending"
+            }`}
+          >
+            {t(reservation.status === "approved" ? "myReservations.approved" : "attendees.pending")}
+          </span>
+          {reservation.status !== "approved" && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => run(() => api.approveReservation(reservation.id))}
+            >
+              {t("cinema.approve")}
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn cinema-attendees-remove"
+            disabled={busy}
+            onClick={() => remove(reservation)}
+          >
+            {t("attendees.remove")}
+          </button>
+        </div>
+      ))}
+
+      <div className="cinema-attendees-add">
+        <label>
+          {t("attendees.user")}
+          <select value={username} onChange={(e) => setUsername(e.target.value)}>
+            <option value="">{t("attendees.chooseUser")}</option>
+            {users.map((user) => (
+              <option key={user.id} value={user.username}>
+                {user.username}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t("attendees.freeSeat")}
+          <select value={seatStillFree ? seatId : ""} onChange={(e) => setSeatId(e.target.value)}>
+            <option value="">{t("attendees.chooseSeat")}</option>
+            {free.map((seat) => (
+              <option key={seat.id} value={seat.id}>
+                {t("seat.seatLabel", { number: seat.number })}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="button" className="btn btn-primary" onClick={add} disabled={!canAdd}>
+          {t("attendees.add")}
+        </button>
+        <span className="cinema-attendees-spacer" />
+        {own.length > 0 && (
+          <button
+            type="button"
+            className="btn cinema-attendees-clear"
+            onClick={clearAll}
+            disabled={busy}
+          >
+            {t("attendees.clearAll")}
+          </button>
+        )}
+      </div>
+      <p className="muted cinema-attendees-note">{t("attendees.addNote")}</p>
+      {error && <div className="banner banner-error">{error}</div>}
     </div>
   );
 }

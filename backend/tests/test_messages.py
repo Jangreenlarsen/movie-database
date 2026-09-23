@@ -229,13 +229,14 @@ async def test_only_admin_can_list_message_previews(client, second_user):
 
 async def test_message_previews_cover_every_notify_function(client):
     """Feature #223 (Jan: "alle de besked typer som er i spil kan se") —
-    19 notify_*-funktioner i message_service.py, hvoraf notify_poll_closed
+    21 notify_*-funktioner i message_service.py, hvoraf notify_poll_closed
     har 2 varianter (én vinder / uafgjort) og notify_poll_cancelled har 5
-    faste tilfældige varianter: 19 - 2 + 7 = 24 indslag i alt."""
+    faste tilfældige varianter: 21 - 2 + 7 = 26 indslag i alt (feature #227
+    tilføjede de to reservations-beskeder)."""
     response = await client.get("/api/messages/previews")
     assert response.status_code == 200
     previews = response.json()
-    assert len(previews) == 24
+    assert len(previews) == 26
     keys = [p["key"] for p in previews]
     assert len(keys) == len(set(keys))  # ingen dubletter
     for preview in previews:
@@ -254,6 +255,8 @@ async def test_message_previews_include_both_with_and_without_html(client):
     assert previews["admins_new_screening_request"]["html"] is None
     assert previews["admins_new_poll_suggestion"]["html"] is None
     assert previews["admins_new_candidate_suggestion"]["html"] is None
+    assert previews["admins_reservation_cancelled"]["html"] is None
+    assert "<html" in previews["reservation_added_by_admin"]["html"]
     assert previews["wishlist_moved"]["html"] is not None
     assert "<html" in previews["wishlist_moved"]["html"]
 

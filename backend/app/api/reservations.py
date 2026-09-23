@@ -7,6 +7,7 @@ from app.models.reservation import (
     AdminHoldCreate,
     Reservation,
     ReservationCreate,
+    ScreeningReservationsCleared,
     SeatMap,
 )
 from app.services import audit_log_service, reservation_service
@@ -43,9 +44,47 @@ async def reserve_seats(
     # reservere et sæde, præcis som de må ønske en visning (#62/#72) —
     # MEDMINDRE visningen er markeret privat (feature #170), tjekket inde i
     # selve reserve_seats (kræver screeningens data, ikke kun rollen).
-    return await reservation_service.reserve_seats(
-        db, screening_id, payload.seat_ids, current_user["username"], current_user["role"]
+    # Feature #227 — `reserved_for` gør kaldet til en admin-handling; rollen
+    # tjekkes i service-laget, da den afhænger af payloadet.
+    result = await reservation_service.reserve_seats(
+        db,
+        screening_id,
+        payload.seat_ids,
+        current_user["username"],
+        current_user["role"],
+        reserved_for=payload.reserved_for,
+        admin=current_user,
     )
+    if payload.reserved_for is not None and result:
+        seats = ", ".join(str(r.seat_number) for r in result)
+        await audit_log_service.record(
+            db,
+            current_user["username"],
+            "reservation.added_for_user",
+            f"Sæde {seats} — {result[0].reserved_by}",
+        )
+    return result
+
+
+@router.delete(
+    "/api/screenings/{screening_id}/reservations",
+    response_model=ScreeningReservationsCleared,
+    dependencies=[Depends(require_admin)],
+)
+async def clear_screening_reservations(
+    screening_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    # Feature #227 — "Ryd alle tilmeldte" på én visning.
+    result = await reservation_service.clear_screening_reservations(db, screening_id)
+    await audit_log_service.record(
+        db,
+        current_user["username"],
+        "reservation.cleared",
+        f"{result.removed} reservation(er) på fremvisning {screening_id}",
+    )
+    return result
 
 
 @router.get(
@@ -118,6 +157,7 @@ async def cancel_reservation(
     current_user: dict = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_database),
 ):
-    # Ejeren kan slette sin egen (endnu ikke godkendte) reservation, en admin
-    # enhver — håndhæves i service-laget (CLAUDE.md regel 16).
+    # Ejeren kan slette sin egen reservation — også en godkendt, det er
+    # "meld fra" i Mine pladser (feature #227) — en admin enhver. Håndhæves
+    # i service-laget (CLAUDE.md regel 16).
     await reservation_service.cancel_reservation(db, reservation_id, current_user)

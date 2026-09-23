@@ -11,6 +11,7 @@ import CinemaPublicV2 from "./pages/CinemaPublicV2";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import MessageBanner from "./components/MessageBanner";
+import MyReservationsButton from "./components/MyReservations";
 import PendingApproval from "./pages/PendingApproval";
 import ForcePasswordChange from "./pages/ForcePasswordChange";
 import { api, setOnSessionExpired } from "./api/client";
@@ -431,6 +432,8 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
               <span aria-hidden="true">🔄</span>
               <span className="header-btn-label">{t("app.refresh")}</span>
             </button>
+            {/* Feature #227 — egne biografpladser + meld fra, for alle roller. */}
+            <MyReservationsButton />
             <button type="button" className="btn" onClick={onLogout}>
               {t("app.logout")}
             </button>

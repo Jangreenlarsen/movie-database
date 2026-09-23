@@ -48,7 +48,7 @@ from app.repositories import (
     user_repository,
 )
 from app.repositories.sort_title import strip_leading_article
-from app.services import message_service, tag_service
+from app.services import announcement_service, message_service, tag_service
 
 
 def _to_model(document: dict) -> Movie:
@@ -320,13 +320,18 @@ async def create_movie(
             # slår til pr. tilføjelse. Gensidigt udelukkende med
             # ønske-grenen ovenfor — en ønske-post kan ikke også udløse
             # denne, den har jo ikke ramt biblioteket endnu.
-            elif payload.notify_all:
-                creator = await user_repository.find_by_username_normalized(
-                    db, registered_by.lower()
+            # Feature #228 — samme valg, nu med tre udfald: læg i den samlede
+            # opdatering, send med det samme (#222) eller ingen besked.
+            else:
+                mode = announcement_service.resolve_mode(payload.announce, payload.notify_all)
+                creator = (
+                    await user_repository.find_by_username_normalized(db, registered_by.lower())
+                    if mode != "none"
+                    else None
                 )
                 if creator is not None:
-                    await message_service.notify_library_addition_broadcast(
-                        db, creator, model.title, is_tv=False, poster_url=model.poster_url
+                    await announcement_service.handle_library_addition(
+                        db, creator, "movie", model.id, model.title, model.poster_url, mode
                     )
             return model
         except DuplicateKeyError as exc:
@@ -735,6 +740,8 @@ async def update_movie(
     # Feature #222 — transient, aldrig gemt på dokumentet (regel 20 ikke
     # relevant — se ScreeningCreate.notify_scope for det samme mønster).
     notify_all = fields.pop("notify_all", False)
+    # Feature #228 — se MovieUpdate.announce.
+    announce_mode = announcement_service.resolve_mode(fields.pop("announce", None), notify_all)
     requested_media_type = fields.get("media_type")
     requested_wishlist_status = fields.get("wishlist_status")
     requested_order_status = fields.get("order_status")
@@ -838,14 +845,16 @@ async def update_movie(
         # ønskeren ovenfor (Jans eksplicitte valg: begge veje). Samme
         # flueben-felt som ved oprettelse, blot på MovieUpdate i stedet
         # for MovieCreate.
-        if notify_all:
-            await message_service.notify_library_addition_broadcast(
-                db,
-                current_user,
-                document.get("title"),
-                is_tv=False,
-                poster_url=document.get("poster_url"),
-            )
+        # Feature #228 — samme tre udfald som ved oprettelse.
+        await announcement_service.handle_library_addition(
+            db,
+            current_user,
+            "movie",
+            movie_id,
+            document.get("title"),
+            document.get("poster_url"),
+            announce_mode,
+        )
     # Feature #166 — modparten til #165's afvisnings-besked: godkendes et
     # afventende ønske, får opretteren også besked om det. `current_doc`s
     # status er den FØR skrivningen, så et allerede-godkendt ønske (fx et

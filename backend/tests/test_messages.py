@@ -231,12 +231,13 @@ async def test_message_previews_cover_every_notify_function(client):
     """Feature #223 (Jan: "alle de besked typer som er i spil kan se") —
     21 notify_*-funktioner i message_service.py, hvoraf notify_poll_closed
     har 2 varianter (én vinder / uafgjort) og notify_poll_cancelled har 5
-    faste tilfældige varianter: 21 - 2 + 7 = 26 indslag i alt (feature #227
-    tilføjede de to reservations-beskeder)."""
+    faste tilfældige varianter: 21 - 2 + 7 = 26 indslag (feature #227
+    tilføjede de to reservations-beskeder), plus feature #228's samlede
+    opdatering (send_library_additions_digest) = 27."""
     response = await client.get("/api/messages/previews")
     assert response.status_code == 200
     previews = response.json()
-    assert len(previews) == 26
+    assert len(previews) == 27
     keys = [p["key"] for p in previews]
     assert len(keys) == len(set(keys))  # ingen dubletter
     for preview in previews:

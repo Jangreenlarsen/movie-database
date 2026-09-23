@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import AnnounceChoice from "../components/AnnounceChoice";
 import Chip from "../components/Chip";
 import Combobox from "../components/Combobox";
 import DateField from "../components/DateField";
@@ -13,6 +14,7 @@ import ViewModeToggle from "../components/ViewModeToggle";
 import { useLocale, useT } from "../i18n";
 import { cycleFilterValue, cycleTriState, EMPTY_FILTER_STATE } from "../utils/filterCycle";
 import { cardPosterSize, posterSrc } from "../utils/posterUrl";
+import { DEFAULT_ANNOUNCE, announceQueueChanged } from "../utils/announcements";
 import { duplicateSerialSuffix, formatSerial, serialPrefix } from "../utils/serialNumber";
 import "../pages/Library.css";
 import "./TvShows.css";
@@ -1058,7 +1060,8 @@ export function TvShowDetailModal({
   const [moving, setMoving] = useState(false);
   const [error, setError] = useState(null);
   // Feature #222 — se den identiske note i Library.MovieDetailModal.
-  const [notifyAll, setNotifyAll] = useState(false);
+  // Feature #228 — tre valg i stedet for #222's ene flueben.
+  const [announce, setAnnounce] = useState(DEFAULT_ANNOUNCE);
   const isGuest = user.role === "guest";
   // Feature #101 — se den identiske note i Library.MovieDetailModal.
   const [editing, setEditing] = useState(!show.id);
@@ -1155,9 +1158,11 @@ export function TvShowDetailModal({
           barcode: show.barcode,
           barcode_source: show.barcode_source,
           is_wishlist: show.is_wishlist,
-          notify_all: !show.is_wishlist && notifyAll,
+          announce: show.is_wishlist ? "none" : announce,
           ...(ownedSeasonNumbers.length > 0 ? { owned_seasons: ownedSeasonNumbers } : {}),
         });
+        // Feature #228 — påmindelsen om køen følger med.
+        announceQueueChanged();
         // Feature #147 — se den identiske logik i Library.jsx: registrerer man
         // til biblioteket og titlen lå på ønskelisten, tilbyd at fjerne ønsket.
         if (!show.is_wishlist) {
@@ -1197,7 +1202,8 @@ export function TvShowDetailModal({
     setError(null);
     try {
       const payload = buildPayload();
-      await api.updateTvShow(show.id, { ...payload, is_wishlist: false, notify_all: notifyAll });
+      await api.updateTvShow(show.id, { ...payload, is_wishlist: false, announce });
+      announceQueueChanged();
       onChanged();
       onClose();
     } catch (err) {
@@ -1652,14 +1658,12 @@ export function TvShowDetailModal({
               egen række i modal-body, ikke i den højre-justerede knap-række
               i modal-footer (regel 18 fangede en klemt kolonne dér). */}
           {editing && ((!show.id && !show.is_wishlist) || (show.id && show.is_wishlist)) && (
-            <label className="notify-toggle">
-              <input
-                type="checkbox"
-                checked={notifyAll}
-                onChange={(e) => setNotifyAll(e.target.checked)}
-              />
-              {t(show.id ? "detail.notifyAllMove" : "detail.notifyAllCreate")}
-            </label>
+            <AnnounceChoice
+              value={announce}
+              onChange={setAnnounce}
+              isMove={Boolean(show.id)}
+              name="announce-show"
+            />
           )}
         </div>
 

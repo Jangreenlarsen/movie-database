@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
+import AnnounceChoice from "../components/AnnounceChoice";
 import Chip from "../components/Chip";
 import Combobox from "../components/Combobox";
 import DateField from "../components/DateField";
@@ -12,6 +13,7 @@ import SubtitlesPicker from "../components/SubtitlesPicker";
 import ViewModeToggle from "../components/ViewModeToggle";
 import { useLocale, useT } from "../i18n";
 import { cycleFilterValue, cycleTriState, EMPTY_FILTER_STATE } from "../utils/filterCycle";
+import { DEFAULT_ANNOUNCE, announceQueueChanged } from "../utils/announcements";
 import { cardPosterSize, posterSrc } from "../utils/posterUrl";
 import { duplicateSerialSuffix, formatSerial, serialPrefix } from "../utils/serialNumber";
 import "./Library.css";
@@ -1197,7 +1199,8 @@ export function MovieDetailModal({
   // en helt ny (ikke-ønske) biblioteks-oprettelse, eller når et eksisterende
   // ønske flyttes til biblioteket. Default fra (Jans ønske: et bevidst
   // tilvalg, ikke noget der sker automatisk ved hver tilføjelse).
-  const [notifyAll, setNotifyAll] = useState(false);
+  // Feature #228 — tre valg i stedet for #222's ene flueben.
+  const [announce, setAnnounce] = useState(DEFAULT_ANNOUNCE);
 
   /** Feature #101 — kaster ændringer væk og går tilbage til læsevisningen.
    *  Sat lige efter alle useState-linjerne, så nulstillingen og
@@ -1356,8 +1359,10 @@ export function MovieDetailModal({
           barcode: movie.barcode,
           barcode_source: movie.barcode_source,
           is_wishlist: movie.is_wishlist,
-          notify_all: !movie.is_wishlist && notifyAll,
+          announce: movie.is_wishlist ? "none" : announce,
         });
+        // Feature #228 — påmindelsen om køen følger med.
+        announceQueueChanged();
         // Feature #147 — registrerer man til biblioteket (ikke ønskelisten) og
         // titlen allerede lå på ønskelisten, så tilbyd at fjerne ønsket derfra
         // (man ejer den jo nu). Kun ønske-dubletter, aldrig en biblioteks-kopi.
@@ -1404,7 +1409,8 @@ export function MovieDetailModal({
     try {
       const payload = await buildPayload();
       if (!payload) return; // fortrudt byt-plads-bekræftelse — finally nulstiller moving
-      await api.updateMovie(movie.id, { ...payload, is_wishlist: false, notify_all: notifyAll });
+      await api.updateMovie(movie.id, { ...payload, is_wishlist: false, announce });
+      announceQueueChanged();
       onChanged();
       onClose();
     } catch (err) {
@@ -1862,14 +1868,12 @@ export function MovieDetailModal({
               modal-footer nedenfor) — regel 18 fangede at fluebenets lange
               tekst ellers klemmes ned i en smal kolonne mellem knapperne. */}
           {editing && ((!movie.id && !movie.is_wishlist) || (movie.id && movie.is_wishlist)) && (
-            <label className="notify-toggle">
-              <input
-                type="checkbox"
-                checked={notifyAll}
-                onChange={(e) => setNotifyAll(e.target.checked)}
-              />
-              {t(movie.id ? "detail.notifyAllMove" : "detail.notifyAllCreate")}
-            </label>
+            <AnnounceChoice
+              value={announce}
+              onChange={setAnnounce}
+              isMove={Boolean(movie.id)}
+              name="announce-movie"
+            />
           )}
         </div>
 

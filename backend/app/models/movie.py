@@ -4,6 +4,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.models.announcement import AnnounceMode
 from app.models.scan import BarcodeSource
 
 # Feature #123 — undertekster er nu en liste (afkryds Eng/DK + fritekst under
@@ -175,6 +176,10 @@ class MovieCreate(BaseModel):
     # i samlingen") sendes til alle brugere ved denne oprettelse. Aldrig
     # gemt på selve dokumentet (samme mønster som ScreeningCreate.notify_scope).
     notify_all: bool = False
+    # Feature #228 — erstatter `notify_all` som styring (den bevares som
+    # alias for "now", se announcement_service.resolve_mode). Transient,
+    # aldrig gemt på dokumentet.
+    announce: AnnounceMode | None = None
 
     @model_validator(mode="after")
     def require_tmdb_id_or_title(self) -> "MovieCreate":
@@ -258,6 +263,10 @@ class MovieUpdate(BaseModel):
     # broadcasten ved "flyt til bibliotek" (ønske → ejet). Poppes ud af
     # `fields` i update_movie, aldrig gemt på dokumentet.
     notify_all: bool = False
+    # Feature #228 — erstatter `notify_all` som styring (den bevares som
+    # alias for "now", se announcement_service.resolve_mode). Transient,
+    # aldrig gemt på dokumentet.
+    announce: AnnounceMode | None = None
     # Feature #144 — kun en admin må sætte denne (godkende); håndhæves i
     # service-laget (update_movie).
     wishlist_status: WishlistStatus | None = None

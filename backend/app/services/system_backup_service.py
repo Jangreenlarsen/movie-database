@@ -13,6 +13,7 @@ from app.models.settings import (
     SystemSettingsUpdate,
 )
 from app.repositories import (
+    announcement_repository,
     audit_log_repository,
     message_repository,
     message_template_repository,
@@ -74,6 +75,9 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
     screening_requests = await db[screening_request_repository.COLLECTION].find({}).to_list(length=None)
     polls = await db[poll_repository.COLLECTION].find({}).to_list(length=None)
     seat_reservations = await db[reservation_repository.COLLECTION].find({}).to_list(length=None)
+    # Feature #228 — køen til den samlede opdatering (regel 20). Refererer
+    # film/serie-id'er, som er konsistente med samme snapshot.
+    pending_announcements = await db[announcement_repository.COLLECTION].find({}).to_list(length=None)
     messages = await db[message_repository.COLLECTION].find({}).to_list(length=None)
     # Feature #225 — admin-tilpassede besked-skabeloner (regel 20).
     message_templates = await message_template_repository.find_all_raw(db)
@@ -119,6 +123,7 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
         screening_requests=[to_json_safe(doc) for doc in screening_requests],
         polls=[to_json_safe(doc) for doc in polls],
         seat_reservations=[to_json_safe(doc) for doc in seat_reservations],
+        pending_announcements=[to_json_safe(doc) for doc in pending_announcements],
         messages=[to_json_safe(doc) for doc in messages],
         message_templates=[to_json_safe(doc) for doc in message_templates],
         audit_log=[to_json_safe(doc) for doc in audit_log],
@@ -211,6 +216,7 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
     screening_requests = [from_json_safe(doc) for doc in backup.screening_requests]
     polls = [from_json_safe(doc) for doc in backup.polls]
     seat_reservations = [from_json_safe(doc) for doc in backup.seat_reservations]
+    pending_announcements = [from_json_safe(doc) for doc in backup.pending_announcements]
     messages = [from_json_safe(doc) for doc in backup.messages]
     message_templates = [from_json_safe(doc) for doc in backup.message_templates]
     audit_log = [from_json_safe(doc) for doc in backup.audit_log]
@@ -236,6 +242,7 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
     await _replace_raw_collection(db, screening_request_repository.COLLECTION, screening_requests)
     await _replace_raw_collection(db, poll_repository.COLLECTION, polls)
     await _replace_raw_collection(db, reservation_repository.COLLECTION, seat_reservations)
+    await _replace_raw_collection(db, announcement_repository.COLLECTION, pending_announcements)
     await _replace_raw_collection(db, message_repository.COLLECTION, messages)
     await message_template_repository.replace_all(db, message_templates)
     audit_log_imported = await _merge_raw_collection(db, audit_log_repository.COLLECTION, audit_log)
@@ -266,6 +273,7 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
         screening_requests_imported=len(screening_requests),
         polls_imported=len(polls),
         seat_reservations_imported=len(seat_reservations),
+        pending_announcements_imported=len(pending_announcements),
         messages_imported=len(messages),
         message_templates_imported=len(message_templates),
         audit_log_imported=audit_log_imported,
@@ -313,6 +321,9 @@ async def reset_library(db: AsyncIOMotorDatabase) -> DatabaseResetResult:
     # movie_id/tv_show_id, som ikke længere findes efter et biblioteks-reset.
     polls_removed = await _clear_collection(db, poll_repository.COLLECTION)
     seat_reservations_removed = await _clear_collection(db, reservation_repository.COLLECTION)
+    # Feature #228 — køen peger på film/serie-id'er der ikke findes efter et
+    # reset; samme dinglende-reference-begrundelse som reservationerne.
+    pending_announcements_removed = await _clear_collection(db, announcement_repository.COLLECTION)
 
     return DatabaseResetResult(
         movies_removed=movies_removed,
@@ -325,4 +336,5 @@ async def reset_library(db: AsyncIOMotorDatabase) -> DatabaseResetResult:
         screening_requests_removed=screening_requests_removed,
         polls_removed=polls_removed,
         seat_reservations_removed=seat_reservations_removed,
+        pending_announcements_removed=pending_announcements_removed,
     )

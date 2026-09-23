@@ -472,6 +472,23 @@ class SeatTakenError(Exception):
         super().__init__(f"Sæde {seat_number} er allerede optaget — vælg et andet.")
 
 
+class AnnouncementNotFoundError(Exception):
+    """Feature #228 — titlen står ikke (længere) i køen til den samlede
+    opdatering, fx fordi en anden allerede har fjernet eller sendt den."""
+
+    def __init__(self, announcement_id: str):
+        self.announcement_id = announcement_id
+        super().__init__("Titlen står ikke længere i køen til den samlede opdatering")
+
+
+class EmptyAnnouncementQueueError(Exception):
+    """Feature #228 — "send samlet opdatering" med en tom kø (fx fordi en
+    anden lige har sendt den). 409 frem for en tom besked til alle."""
+
+    def __init__(self):
+        super().__init__("Der er ingen titler i køen at sende")
+
+
 class ReservationTargetError(Exception):
     """Feature #227 — en admin forsøgte at booke en plads på vegne af en
     bruger der ikke findes eller ikke er aktiv (afventer godkendelse, afvist

@@ -69,6 +69,9 @@ class SystemBackup(BaseModel):
     # screening_requests: kandidater refererer movie_id/tv_show_id.
     polls: list[dict] = Field(default_factory=list)
     seat_reservations: list[dict] = Field(default_factory=list)
+    # Feature #228 — køen til den samlede opdatering (regel 20 anvendt fra
+    # dag ét). Tom liste for en backup taget før feature #228.
+    pending_announcements: list[dict] = Field(default_factory=list)
     messages: list[dict] = Field(default_factory=list)
     audit_log: list[dict] = Field(default_factory=list)
     visits: list[dict] = Field(default_factory=list)
@@ -109,6 +112,8 @@ class SystemRestoreResult(BaseModel):
     screening_requests_imported: int
     polls_imported: int
     seat_reservations_imported: int
+    # Feature #228.
+    pending_announcements_imported: int
     messages_imported: int
     # Merged insert-only, not wholesale-replaced (system_backup_service.
     # _merge_raw_collection) — this is how many entries were actually new,
@@ -148,6 +153,8 @@ class DatabaseResetResult(BaseModel):
     screening_requests_removed: int
     polls_removed: int
     seat_reservations_removed: int
+    # Feature #228.
+    pending_announcements_removed: int
 
 
 class MediaTypeCounts(BaseModel):

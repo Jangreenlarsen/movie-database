@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
+import AnnouncementQueueSection from "../components/AnnouncementQueue";
 import Chip from "../components/Chip";
 import { LANGUAGES, useLocale, useT } from "../i18n";
 import "./Settings.css";
@@ -27,12 +28,16 @@ function settingsTabs(isAdmin, isGuest) {
   ].filter((tab) => tab.visible);
 }
 
-export default function Settings({ user, onSettingsChanged }) {
+export default function Settings({ user, onSettingsChanged, initialTab }) {
   const t = useT();
   const isAdmin = user.role === "admin";
   const isGuest = user.role === "guest";
   const tabs = settingsTabs(isAdmin, isGuest);
-  const [activeTab, setActiveTab] = useState(tabs[0]?.id ?? "konto");
+  // Feature #228 — `initialTab` lader fx påmindelsen om den samlede
+  // opdatering åbne direkte på Beskeder. Kun en fane rollen faktisk kan se.
+  const [activeTab, setActiveTab] = useState(
+    tabs.some((tab) => tab.id === initialTab) ? initialTab : (tabs[0]?.id ?? "konto")
+  );
 
   return (
     <section>
@@ -64,6 +69,8 @@ export default function Settings({ user, onSettingsChanged }) {
       {activeTab === "beskeder" && (
         <>
           <MyMessagesSection />
+          {/* Feature #228 — fælles kø for admin + standard, ikke gæster. */}
+          {!isGuest && <AnnouncementQueueSection />}
           {isAdmin && (
             <>
               <MessagesSection currentUserId={user.id} />

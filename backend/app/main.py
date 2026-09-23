@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.api import (
     analytics,
+    announcements,
     anthem,
     attributes,
     audit_log,
@@ -35,6 +36,8 @@ from app.core.config import settings
 from app.core.security import create_access_token, decode_access_token
 from app.core.errors import (
     AccountDisabledError,
+    AnnouncementNotFoundError,
+    EmptyAnnouncementQueueError,
     AnthemNotConfiguredError,
     AnthemSessionBusyError,
     AccountPendingError,
@@ -89,6 +92,7 @@ from app.core.errors import (
 )
 from app.db import close_client, get_client, get_database
 from app.repositories import (
+    announcement_repository,
     audit_log_repository,
     message_repository,
     movie_repository,
@@ -132,6 +136,7 @@ async def lifespan(app: FastAPI):
     await reservation_repository.ensure_indexes(db)
     await poster_cache_repository.ensure_indexes(db)
     await poll_repository.ensure_indexes(db)
+    await announcement_repository.ensure_indexes(db)
     logger.info("MongoDB client initialized (%s)", settings.mongo_db_name)
 
     # Feature #181 (Jan: "vi skal have en automatisk scan af plex media
@@ -468,6 +473,18 @@ async def plex_filter_unavailable_handler(
     return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
+@app.exception_handler(AnnouncementNotFoundError)
+async def announcement_not_found_handler(request: Request, exc: AnnouncementNotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(EmptyAnnouncementQueueError)
+async def empty_announcement_queue_handler(
+    request: Request, exc: EmptyAnnouncementQueueError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
 @app.exception_handler(ReservationTargetError)
 async def reservation_target_handler(request: Request, exc: ReservationTargetError) -> JSONResponse:
     return JSONResponse(status_code=400, content={"detail": str(exc)})
@@ -510,6 +527,7 @@ app.include_router(screening_requests.router)
 app.include_router(screenings.router)
 app.include_router(polls.router)
 app.include_router(reservations.router)
+app.include_router(announcements.router)
 app.include_router(messages.router)
 app.include_router(posters.router)
 app.include_router(monitor.router)

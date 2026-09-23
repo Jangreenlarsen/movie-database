@@ -216,6 +216,25 @@ TEMPLATE_DEFS: dict[str, MessageTemplateDef] = {
         cta_label="Gå til Voldby BIO",
         sample={"title": "Dune: Part Two", "kind": "film", "site_url": "https://movie.laces.dk"},
     ),
+    # Feature #228 — den samlede opdatering: én besked med alle titler i
+    # køen i stedet for én pr. titel. `{titles}` er en punktliste, én titel
+    # pr. linje (banneret og e-mailen bevarer linjeskift). Bevidst intet
+    # antal i emnet: "1 nye titler" lyder forkert, og ordlyden kan redigeres.
+    "library_additions_digest": MessageTemplateDef(
+        subject="Nyt i Voldby BIO-samlingen",
+        body=(
+            "Der er kommet nyt til Voldby BIO-samlingen! 🎬\n\n{titles}\n\n"
+            "Log ind og anmod om en visning: {site_url}"
+        ),
+        headline="Nyt i samlingen!",
+        tagline="Klar til filmaften — anmod om en visning!",
+        accent="gold",
+        cta_label="Gå til Voldby BIO",
+        sample={
+            "titles": "• Dune: Part Two (film)\n• The Bear (serie)\n• Arrival (film)",
+            "site_url": "https://movie.laces.dk",
+        },
+    ),
     "poll_closed_single": MessageTemplateDef(
         subject="Afstemningen er afgjort",
         body='"{title}" vandt afstemningen!',
@@ -1513,3 +1532,45 @@ async def notify_reservation_added_by_admin(
         )
     except Exception:
         pass
+
+
+def format_digest_titles(items: list[dict]) -> str:
+    """Feature #228 — "• Titel (film)" pr. linje, i køens rækkefølge."""
+    lines = []
+    for item in items:
+        kind = "serie" if item.get("media_kind") == "tv" else "film"
+        lines.append(f"• {item.get('title') or 'Ukendt titel'} ({kind})")
+    return "\n".join(lines)
+
+
+def _content_library_additions_digest(
+    titles_text: str, poster_url: str | None, overrides: dict[str, dict]
+) -> MessageContent:
+    return _render(
+        "library_additions_digest",
+        {"titles": titles_text, "site_url": settings.public_site_url},
+        poster_url,
+        overrides,
+    )
+
+
+async def send_library_additions_digest(
+    db: AsyncIOMotorDatabase, sender: dict, items: list[dict]
+) -> Message:
+    """Feature #228 — sender køen som ÉN samlet broadcast til alle aktive
+    brugere. Til forskel fra notify_*-funktionerne ovenfor sluges fejl
+    IKKE: det er en handling brugeren bevidst udfører, og kalderen
+    (announcement_service) må kun tømme køen hvis beskeden faktisk gik ud —
+    fx giver test-tilstand (#217) en tydelig 409 og køen står urørt, ligesom
+    admins manuelle "send besked". Plakaten i e-mailen er den første titel
+    med en plakat — skabelonen har plads til ét billede."""
+    overrides = await message_template_repository.find_all(db)
+    poster_url = next((item.get("poster_url") for item in items if item.get("poster_url")), None)
+    content = _content_library_additions_digest(format_digest_titles(items), poster_url, overrides)
+    payload = MessageCreate(subject=content.subject, body=content.body, recipient_user_id=None)
+    return await send(
+        db,
+        payload,
+        sender,
+        email_html=email_templates.render_notification_email(**content.html_kwargs),
+    )

@@ -210,6 +210,24 @@ async def list_message_previews(db: AsyncIOMotorDatabase) -> list[MessagePreview
             overrides=overrides,
         ),
         _entry(
+            "library_additions_digest",
+            "Samlet opdatering — til alle",
+            "Til ALLE aktive brugere, når nogen sender køen under \"Samlet opdatering\": én besked med alle de nye titler i stedet for én pr. titel (feature #228).",
+            ms._content_library_additions_digest(
+                ms.format_digest_titles(
+                    [
+                        {"title": _SAMPLE_MOVIE_TITLE, "media_kind": "movie"},
+                        {"title": _SAMPLE_TV_TITLE, "media_kind": "tv"},
+                        {"title": _SAMPLE_TIE_TITLE, "media_kind": "movie"},
+                    ]
+                ),
+                _SAMPLE_POSTER,
+                overrides,
+            ),
+            editable=True,
+            overrides=overrides,
+        ),
+        _entry(
             "poll_closed_single",
             "Afstemning afgjort (én vinder)",
             "Til hver der stemte, når admin lukker afstemningen og der er én entydig vinder (feature #162).",

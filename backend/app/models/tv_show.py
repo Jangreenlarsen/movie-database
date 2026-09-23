@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.models.announcement import AnnounceMode
 from app.models.movie import AudioType, MediaType, MovieFormat, OrderStatus, WishlistStatus
 from app.models.scan import BarcodeSource
 
@@ -61,6 +62,10 @@ class TvShowCreate(BaseModel):
     is_wishlist: bool = False
     # Feature #222 — se den identiske note i MovieCreate.
     notify_all: bool = False
+    # Feature #228 — erstatter `notify_all` som styring (den bevares som
+    # alias for "now", se announcement_service.resolve_mode). Transient,
+    # aldrig gemt på dokumentet.
+    announce: AnnounceMode | None = None
 
     @model_validator(mode="after")
     def require_tmdb_id_or_name(self) -> "TvShowCreate":
@@ -128,6 +133,10 @@ class TvShowUpdate(BaseModel):
     is_wishlist: bool | None = None
     # Feature #222 — se den identiske note i MovieUpdate.
     notify_all: bool = False
+    # Feature #228 — erstatter `notify_all` som styring (den bevares som
+    # alias for "now", se announcement_service.resolve_mode). Transient,
+    # aldrig gemt på dokumentet.
+    announce: AnnounceMode | None = None
     # Feature #144 — kun admin må godkende; håndhæves i update_tv_show.
     wishlist_status: WishlistStatus | None = None
     serial_number: int | None = Field(default=None, gt=0)

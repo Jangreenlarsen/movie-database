@@ -18,7 +18,7 @@
  * format/medietype, så blokeringen gav ingen mening for netop den handling.
  */
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -126,97 +126,83 @@ describe("MovieDetailModal — flyt til bibliotek (feature #196)", () => {
 });
 
 /**
- * Feature #222 (Jan: "hvis nye film/tv bliver adderet til database så
- * bliver der sendt en besked til alle ... lave også et flueben setting
- * ... om hvor vidt man vil sende besked til alle eller ikke"). Det
- * testværdige (regel 19, tilstands-skift i et vindue): fluebenet skal kun
- * vises hvor det reelt er relevant (en ny ikke-ønske-oprettelse, eller en
- * "flyt til bibliotek"-handling), default være fra, og dets værdi skal
- * rent faktisk følge med i det payload der sendes til backend.
+ * Feature #228 (erstatter #222's ene flueben) — ved en ny biblioteks-
+ * tilføjelse eller "Flyt til bibliotek" vælger man mellem tre udfald for
+ * beskeden til brugerne. Det testværdige (regel 19): valgene vises kun hvor
+ * de er relevante, standarden er den samlede opdatering, og valget følger
+ * rent faktisk med i payloadet som `announce`.
  */
-describe("MovieDetailModal — broadcast-flueben ved biblioteks-tilføjelse (feature #222)", () => {
+describe("MovieDetailModal — besked-valg ved biblioteks-tilføjelse (feature #228)", () => {
   beforeEach(() => {
     vi.spyOn(api, "recordVisit").mockResolvedValue({});
     vi.spyOn(api, "myScreeningRequests").mockResolvedValue([]);
     vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({ require_preferred_at: false });
   });
 
-  it("vises ved 'Flyt til bibliotek' for et ønske, default fra, og sendes med i payload når afkrydset", async () => {
+  it("standard ved 'Flyt til bibliotek' er den samlede opdatering", async () => {
     vi.spyOn(api, "updateMovie").mockResolvedValue({ ...baseMovie, is_wishlist: false });
-    const movie = { ...baseMovie, media_type: "Fysisk", format: "F-DVD" };
-    renderModal(movie);
+    renderModal({ ...baseMovie, media_type: "Fysisk", format: "F-DVD" });
 
     await userEvent.click(await screen.findByRole("button", { name: "Redigér" }));
-    const checkbox = screen.getByRole("checkbox", {
-      name: "Send besked til alle når den flyttes til biblioteket",
+    const group = screen.getByRole("group", {
+      name: "Besked til brugerne når den flyttes til biblioteket",
     });
-    expect(checkbox).not.toBeChecked();
+    expect(within(group).getByRole("radio", { name: /Med i næste samlede opdatering/ })).toBeChecked();
 
-    await userEvent.click(checkbox);
     await userEvent.click(screen.getByRole("button", { name: "Flyt til bibliotek" }));
-
     await waitFor(() => expect(api.updateMovie).toHaveBeenCalledTimes(1));
     const [, payload] = api.updateMovie.mock.calls[0];
-    expect(payload.notify_all).toBe(true);
+    expect(payload.announce).toBe("queue");
+    expect(payload).not.toHaveProperty("notify_all");
   });
 
-  it("sendes som false når fluebenet ikke afkrydses", async () => {
+  it("'Send besked til alle med det samme' sendes som announce: now ved flyt", async () => {
     vi.spyOn(api, "updateMovie").mockResolvedValue({ ...baseMovie, is_wishlist: false });
-    const movie = { ...baseMovie, media_type: "Fysisk", format: "F-DVD" };
-    renderModal(movie);
+    renderModal({ ...baseMovie, media_type: "Fysisk", format: "F-DVD" });
 
     await userEvent.click(await screen.findByRole("button", { name: "Redigér" }));
+    await userEvent.click(screen.getByRole("radio", { name: /Send besked til alle med det samme/ }));
     await userEvent.click(screen.getByRole("button", { name: "Flyt til bibliotek" }));
 
     await waitFor(() => expect(api.updateMovie).toHaveBeenCalledTimes(1));
     const [, payload] = api.updateMovie.mock.calls[0];
-    expect(payload.notify_all).toBe(false);
+    expect(payload.announce).toBe("now");
   });
 
-  it("vises ved oprettelse af en ny (ikke-ønske) film, og sendes med til createMovie", async () => {
+  it("vises ved oprettelse af en ny (ikke-ønske) film, og 'Ingen besked' sendes med", async () => {
     vi.spyOn(api, "createMovie").mockResolvedValue({ ...baseMovie, id: "movie-2" });
-    const draft = {
+    renderModal({
       ...baseMovie,
       id: undefined,
       is_wishlist: false,
       media_type: "Fysisk",
       format: "F-DVD",
-    };
-    renderModal(draft);
-
-    const checkbox = await screen.findByRole("checkbox", {
-      name: "Send besked til alle om denne nye tilføjelse",
     });
-    await userEvent.click(checkbox);
+
+    await screen.findByRole("group", { name: "Besked til brugerne om den nye titel" });
+    await userEvent.click(screen.getByRole("radio", { name: /Ingen besked/ }));
     await userEvent.click(screen.getByRole("button", { name: "Opret" }));
 
     await waitFor(() => expect(api.createMovie).toHaveBeenCalledTimes(1));
     const [payload] = api.createMovie.mock.calls[0];
-    expect(payload.notify_all).toBe(true);
+    expect(payload.announce).toBe("none");
   });
 
-  it("vises IKKE ved oprettelse af et nyt ønske (is_wishlist true i kladde-tilstand)", async () => {
-    vi.spyOn(api, "createMovie").mockResolvedValue({ ...baseMovie, id: "movie-3" });
-    const draft = { ...baseMovie, id: undefined, is_wishlist: true };
-    renderModal(draft);
+  it("vises IKKE ved oprettelse af et nyt ønske", async () => {
+    vi.spyOn(api, "createMovie").mockResolvedValue({ ...baseMovie, id: "movie-2" });
+    renderModal({ ...baseMovie, id: undefined, is_wishlist: true });
 
     await screen.findByRole("button", { name: "Opret" });
     expect(
-      screen.queryByRole("checkbox", { name: "Send besked til alle om denne nye tilføjelse" })
+      screen.queryByRole("group", { name: "Besked til brugerne om den nye titel" })
     ).not.toBeInTheDocument();
   });
 
-  it("vises IKKE ved en almindelig redigering af en allerede-ejet film (ikke en flyt-handling)", async () => {
-    const movie = { ...baseMovie, is_wishlist: false, media_type: "Fysisk", format: "F-DVD" };
-    renderModal(movie);
+  it("vises IKKE ved en almindelig redigering af en allerede-ejet film", async () => {
+    renderModal({ ...baseMovie, is_wishlist: false, media_type: "Fysisk", format: "F-DVD" });
 
     await userEvent.click(await screen.findByRole("button", { name: "Redigér" }));
-    expect(
-      screen.queryByRole("checkbox", { name: "Send besked til alle når den flyttes til biblioteket" })
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("checkbox", { name: "Send besked til alle om denne nye tilføjelse" })
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /Med i næste samlede opdatering/ })).not.toBeInTheDocument();
   });
 });
 

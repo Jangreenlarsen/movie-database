@@ -7,6 +7,7 @@ from app.core.errors import (
     InvalidSeatError,
     NotAuthorizedError,
     ReservationNotFoundError,
+    ReservationTargetError,
     ScreeningNotFoundError,
     SeatTakenError,
 )
@@ -17,6 +18,7 @@ from app.models.reservation import (
     SEATS,
     AdminHoldCreate,
     Reservation,
+    ScreeningReservationsCleared,
     SeatMap,
     SeatMapEntry,
 )
@@ -57,6 +59,14 @@ async def _to_model(db: AsyncIOMotorDatabase, document: dict) -> Reservation:
         screening_title=screening_title,
         screening_at=screening_at,
     )
+
+
+def _when_text(reservation: Reservation) -> str:
+    """' d. 26-09-2026 kl. 19:30' — eller tom, når fremvisningen ikke kan
+    slås op. Delt af alle reservations-beskeder, så de skriver tiden ens."""
+    if reservation.screening_at is None:
+        return ""
+    return f" d. {reservation.screening_at:%d-%m-%Y kl. %H:%M}"
 
 
 def _seat_status(entries: list[dict], username: str) -> tuple[str, str | None, bool | None]:
@@ -102,12 +112,48 @@ async def get_seat_map(db: AsyncIOMotorDatabase, screening_id: str, username: st
     return SeatMap(screening_id=screening_id, seats=seats)
 
 
+async def _resolve_reservation_target(
+    db: AsyncIOMotorDatabase, reserved_for: str, role: str
+) -> dict:
+    """Feature #227 — slår brugeren op som en admin vil booke på vegne af.
+    Rollen tjekkes HER, mod payloadet, ikke kun med en Depends() på routen:
+    samme endpoint er åbent for alle roller, så det er først feltets
+    tilstedeværelse der gør kaldet til en admin-handling (CLAUDE.md regel 16
+    — håndhæv i backend, ikke kun ved at skjule formularen)."""
+    if role != "admin":
+        raise NotAuthorizedError("Kun en admin kan booke en plads på vegne af en anden bruger")
+    target = await user_repository.find_by_username_normalized(db, reserved_for.lower())
+    if target is None:
+        raise ReservationTargetError(f'Brugeren "{reserved_for}" findes ikke')
+    # Manglende status = ældre, aktiv konto (samme default som
+    # user_repository._migrate_missing_status).
+    if target.get("status", "active") != "active":
+        raise ReservationTargetError(
+            f'Brugeren "{target["username"]}" er ikke aktiv og kan ikke få en plads'
+        )
+    return target
+
+
 async def reserve_seats(
-    db: AsyncIOMotorDatabase, screening_id: str, seat_ids: list[str], username: str, role: str
+    db: AsyncIOMotorDatabase,
+    screening_id: str,
+    seat_ids: list[str],
+    username: str,
+    role: str,
+    reserved_for: str | None = None,
+    admin: dict | None = None,
 ) -> list[Reservation]:
     screening = await screening_repository.find_by_id(db, screening_id)
     if screening is None:
         raise ScreeningNotFoundError(screening_id)
+
+    # Feature #227 — booker en admin for en anden, er det den anden der ejer
+    # pladsen, og den er godkendt fra start (admin ER konduktøren).
+    target_doc = None
+    owner = username
+    if reserved_for is not None:
+        target_doc = await _resolve_reservation_target(db, reserved_for, role)
+        owner = target_doc["username"]
 
     # Feature #170 — Jan: en visning markeret som privat arrangement kan
     # gæst-rollen ikke booke sæder på. Håndhæves her (regel 16), ikke kun
@@ -131,7 +177,7 @@ async def reserve_seats(
     def _is_own(reservation: dict | None) -> bool:
         return (
             reservation is not None
-            and reservation["reserved_by"] == username
+            and reservation["reserved_by"] == owner
             and reservation.get("screening_id") == screening_id
             and not reservation.get("is_hold")
         )
@@ -147,19 +193,27 @@ async def reserve_seats(
     for seat_id in requested:
         existing = await reservation_repository.find_seat_conflict(db, seat_id, screening_id)
         if _is_own(existing):
-            # Allerede gæstens eget sæde for denne fremvisning — idempotent.
+            # Allerede ejerens eget sæde for denne fremvisning — idempotent.
+            # Tilføjer en admin en bruger der selv har en AFVENTENDE
+            # reservation på sædet, godkendes den i samme greb.
+            if target_doc is not None and existing["status"] != "approved":
+                existing = await reservation_repository.update(
+                    db,
+                    str(existing["_id"]),
+                    {"status": "approved", "approved_by": username, "updated_at": now},
+                )
             created.append(existing)
             continue
         document = {
             "seat_id": seat_id,
             "scope": "screening",
             "screening_id": screening_id,
-            "status": "pending",
+            "status": "approved" if target_doc is not None else "pending",
             "is_hold": False,
-            "reserved_by": username,
+            "reserved_by": owner,
             "created_at": now,
             "updated_at": now,
-            "approved_by": None,
+            "approved_by": username if target_doc is not None else None,
         }
         try:
             inserted = await reservation_repository.insert(db, document)
@@ -169,7 +223,18 @@ async def reserve_seats(
             raise SeatTakenError(SEAT_NUMBER_BY_ID[seat_id])
         created.append(inserted)
 
-    return [await _to_model(db, document) for document in created]
+    result = [await _to_model(db, document) for document in created]
+    if target_doc is not None and admin is not None:
+        for reservation in result:
+            await message_service.notify_reservation_added_by_admin(
+                db,
+                target_doc,
+                admin,
+                reservation.seat_number,
+                reservation.screening_title,
+                _when_text(reservation),
+            )
+    return result
 
 
 async def create_hold(
@@ -246,7 +311,7 @@ async def _notify_owner_approved(
     if owner is None:
         return
     film = f'"{reservation.screening_title}"' if reservation.screening_title else "fremvisningen"
-    when = f" d. {reservation.screening_at:%d-%m-%Y kl. %H:%M}" if reservation.screening_at else ""
+    when = _when_text(reservation)
     payload = MessageCreate(
         subject="Din pladsreservation er godkendt",
         body=(
@@ -269,9 +334,35 @@ async def cancel_reservation(
     if existing is None:
         raise ReservationNotFoundError(reservation_id)
     is_admin = current_user.get("role") == "admin"
-    if not is_admin and existing["reserved_by"] != current_user["username"]:
+    is_owner = existing["reserved_by"] == current_user["username"]
+    if not is_admin and not is_owner:
         raise NotAuthorizedError("Du kan kun annullere dine egne reservationer")
+    reservation = await _to_model(db, existing)
     await reservation_repository.delete(db, reservation_id)
+
+    # Feature #227 — ejeren meldte selv fra en GODKENDT plads ("Mine
+    # pladser"): konduktøren skal vide det. En afventende plads var aldrig
+    # lovet væk, og fjerner en admin den, ved admin det allerede.
+    if is_owner and not existing.get("is_hold") and existing["status"] == "approved":
+        await message_service.notify_admins_reservation_cancelled(
+            db,
+            current_user,
+            reservation.seat_number,
+            reservation.screening_title,
+            _when_text(reservation),
+        )
+
+
+async def clear_screening_reservations(
+    db: AsyncIOMotorDatabase, screening_id: str
+) -> ScreeningReservationsCleared:
+    """Feature #227 — admins "Ryd alle tilmeldte" for én visning. Globale
+    hold (screening_id: None) rammes aldrig — de tilhører ikke visningen."""
+    screening = await screening_repository.find_by_id(db, screening_id)
+    if screening is None:
+        raise ScreeningNotFoundError(screening_id)
+    removed = await reservation_repository.delete_for_screening(db, screening_id)
+    return ScreeningReservationsCleared(screening_id=screening_id, removed=removed)
 
 
 async def _cleanup_past_screening_reservations(db: AsyncIOMotorDatabase) -> None:
@@ -288,10 +379,9 @@ async def _cleanup_past_screening_reservations(db: AsyncIOMotorDatabase) -> None
     eksplicit handling. Kører derfor i stedet ved hver læsning af
     konduktør-køen (`list_reservations`), samme lette "ryd op ved brug"-
     princip som poster_cache bruger omvendt til at FYLDE i stedet for at
-    rydde. Ikke koblet på `list_my_reservations` — dens eneste kaldested i
-    frontend-koden er dødt (ubrugt siden det blev skrevet), så der er intet
-    reelt behov at dække dér. Global hold (screening_id: None) rammes
-    aldrig, ligesom delete_for_screening."""
+    rydde. Feature #227 kobler den også på `list_my_reservations`, som med
+    "Mine pladser" fik sit første rigtige kaldested i frontend. Global hold
+    (screening_id: None) rammes aldrig, ligesom delete_for_screening."""
     screening_ids = await reservation_repository.find_distinct_screening_ids(db)
     if not screening_ids:
         return
@@ -311,5 +401,18 @@ async def list_reservations(
 async def list_my_reservations(
     db: AsyncIOMotorDatabase, username: str
 ) -> list[Reservation]:
+    """Feature #227 — "Mine pladser". Rydder afholdte visninger op først
+    (ellers står en plads fra sidste måned for evigt på listen), og sorterer
+    efter visningstidspunkt, næste visning først. En reservation hvis
+    visning ikke kan slås op, lægges sidst frem for at vælte sorteringen."""
+    await _cleanup_past_screening_reservations(db)
     documents = await reservation_repository.find_for_user(db, username)
-    return [await _to_model(db, document) for document in documents]
+    reservations = [await _to_model(db, document) for document in documents]
+
+    def _sort_key(reservation: Reservation) -> tuple:
+        when = reservation.screening_at
+        if when is None:
+            return (1, datetime.max, reservation.seat_number)
+        return (0, when.replace(tzinfo=None), reservation.seat_number)
+
+    return sorted(reservations, key=_sort_key)

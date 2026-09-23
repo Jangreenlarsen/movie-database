@@ -369,11 +369,25 @@
     padding: 10px 12px;
   }
 
+  /* Feature #227 — med "Mine pladser" er der én knap mere end bredden kan
+     bære ved 390px: uden ombrydning blev "Log ud" skubbet ud over kanten og
+     knækket til "Log / ud". Blokken ombryder nu (tællerne øverst, knapperne
+     under, højrestillet), og ingen knap-tekst må selv knække. */
   .header-user {
     gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .header-user .btn {
+    white-space: nowrap;
   }
 
   .header-counts {
     gap: 4px;
+    /* Egen linje, så de tre knapper (opdatér, Mine pladser, Log ud) står
+       samlet nedenunder i stedet for at blive delt over to linjer. */
+    flex-basis: 100%;
+    justify-content: flex-end;
   }
 }

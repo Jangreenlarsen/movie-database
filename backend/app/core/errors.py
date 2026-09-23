@@ -470,3 +470,13 @@ class SeatTakenError(Exception):
     def __init__(self, seat_number: int):
         self.seat_number = seat_number
         super().__init__(f"Sæde {seat_number} er allerede optaget — vælg et andet.")
+
+
+class ReservationTargetError(Exception):
+    """Feature #227 — en admin forsøgte at booke en plads på vegne af en
+    bruger der ikke findes eller ikke er aktiv (afventer godkendelse, afvist
+    eller spærret). Oversættes til en pæn 400 med en dansk besked, frem for
+    at oprette en reservation på en konto der ikke kan bruge den."""
+
+    def __init__(self, message: str):
+        super().__init__(message)

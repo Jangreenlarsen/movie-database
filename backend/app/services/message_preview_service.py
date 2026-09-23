@@ -39,6 +39,7 @@ _SAMPLE_TIE_TITLE = "Arrival"
 _SAMPLE_USERNAME = "anna"
 _SAMPLE_POLL_TITLE = "Fredagsfilm"
 _SAMPLE_WHEN = " d. 12/12/2026 kl. 20:00"
+_SAMPLE_SEAT_WHEN = " d. 26-09-2026 kl. 19:30"
 _SAMPLE_REASON = "Vi har den faktisk allerede på Blu-ray i samlingen."
 
 
@@ -245,6 +246,24 @@ async def list_message_previews(db: AsyncIOMotorDatabase) -> list[MessagePreview
             "Afstemnings-forslag afvist",
             "Til forslagsstilleren, når en admin afviser deres afstemnings-forslag (feature #213).",
             ms._content_poll_suggestion_rejected(_SAMPLE_POLL_TITLE, overrides),
+            editable=True,
+            overrides=overrides,
+        ),
+        _entry(
+            "admins_reservation_cancelled",
+            "Admin: plads frigivet",
+            "Til alle admins, når en bruger melder fra en godkendt plads under \"Mine pladser\" (feature #227). Kun almindelig tekst.",
+            ms._content_admins_reservation_cancelled(
+                _SAMPLE_USERNAME, 6, _SAMPLE_MOVIE_TITLE, _SAMPLE_SEAT_WHEN, overrides
+            ),
+            editable=True,
+            overrides=overrides,
+        ),
+        _entry(
+            "reservation_added_by_admin",
+            "Plads tilføjet af admin",
+            "Til brugeren, når en admin booker en plads på deres vegne under \"Tilmeldte pr. visning\" (feature #227).",
+            ms._content_reservation_added_by_admin(6, _SAMPLE_MOVIE_TITLE, _SAMPLE_SEAT_WHEN, overrides),
             editable=True,
             overrides=overrides,
         ),

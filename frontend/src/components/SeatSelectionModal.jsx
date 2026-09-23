@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useT } from "../i18n";
+import { announceReservationsChanged } from "../utils/reservationEvents";
 import "./SeatSelectionModal.css";
 
 // Feature #133 — sæde-vælgeren. Selve salens layout (sofa-fløje, rækker, dør)
@@ -77,6 +78,7 @@ export default function SeatSelectionModal({ screeningId, screeningTitle, onClos
     try {
       await api.cancelReservation(seat.reservation_id);
       await load();
+      announceReservationsChanged();
     } catch (err) {
       // Vis den specifikke backend-fejl (CLAUDE.md regel 16).
       setError(err.message);
@@ -94,6 +96,8 @@ export default function SeatSelectionModal({ screeningId, screeningTitle, onClos
       await api.reserveSeats(screeningId, [...selected]);
       setSelected(new Set());
       await load();
+      // Feature #227 — tallet på "Mine pladser" i hovedet følger med.
+      announceReservationsChanged();
       setMessage(t("seat.reserveSuccess"));
     } catch (err) {
       setError(err.message);

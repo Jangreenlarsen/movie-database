@@ -423,11 +423,18 @@ export const api = {
 
   // Feature #133 — sæde-reservation til Voldby BIO.
   getSeatMap: (screeningId) => request(`/screenings/${screeningId}/seats`),
-  reserveSeats: (screeningId, seatIds) =>
+  // Feature #227 — `reservedFor` (kun admin) booker på vegne af en anden
+  // bruger; udeladt = kalderens egen reservation, som hidtil.
+  reserveSeats: (screeningId, seatIds, reservedFor) =>
     request(`/screenings/${screeningId}/reservations`, {
       method: "POST",
-      body: JSON.stringify({ seat_ids: seatIds }),
+      body: JSON.stringify(
+        reservedFor ? { seat_ids: seatIds, reserved_for: reservedFor } : { seat_ids: seatIds }
+      ),
     }),
+  // Feature #227 — admin: ryd alle tilmeldte på én visning.
+  clearScreeningReservations: (screeningId) =>
+    request(`/screenings/${screeningId}/reservations`, { method: "DELETE" }),
   listReservations: ({ status, screeningId } = {}) => {
     const params = new URLSearchParams();
     if (status) params.set("status", status);

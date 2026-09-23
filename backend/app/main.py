@@ -72,6 +72,7 @@ from app.core.errors import (
     PollNotPendingError,
     PreferredAtRequiredError,
     ReservationNotFoundError,
+    ReservationTargetError,
     SeatTakenError,
     SerialNumberConflictError,
     ScreeningNotFoundError,
@@ -465,6 +466,11 @@ async def plex_filter_unavailable_handler(
     request: Request, exc: PlexFilterUnavailableError
 ) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(ReservationTargetError)
+async def reservation_target_handler(request: Request, exc: ReservationTargetError) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
 @app.exception_handler(SeatTakenError)

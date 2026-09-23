@@ -351,10 +351,12 @@ async def test_past_screening_reservations_are_cleaned_up_on_list(client):
     movie_id = await _create_movie(client, "Afholdt Film")
     screening_id = await _create_screening(client, movie_id, "2020-01-01T20:00:00")
     guest = await _member_client(client, "g_past", role="guest")
-    await guest.post(
+    created = await guest.post(
         f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N1-1"]}
     )
-    assert len((await guest.get("/api/reservations/mine")).json()) == 1
+    # Forudsætning: reservationen blev faktisk oprettet. (Tjekket her via
+    # svaret, ikke /mine — siden feature #227 rydder /mine selv op.)
+    assert created.status_code == 201
 
     assert (await client.get("/api/reservations")).json() == []
     await guest.aclose()
@@ -502,4 +504,285 @@ async def test_guest_can_still_reserve_on_a_non_private_screening(client):
         f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N1-1"]}
     )
     assert resp.status_code == 201
+    await guest.aclose()
+
+
+# --- Feature #227: "Mine pladser" + admin-tilmeldte pr. visning -------------
+
+
+async def test_my_reservations_excludes_admin_holds(client):
+    """Et admin-hold har admins navn i reserved_by, men er en blokering, ikke
+    en plads admin kan melde fra i "Mine pladser"."""
+    movie_id = await _create_movie(client, "Hold Ikke Mine")
+    screening_id = await _create_screening(client, movie_id)
+    await client.post("/api/reservations/hold", json={"seat_id": "N3-5", "scope": "global"})
+    await client.post(
+        f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N1-1"]}
+    )
+
+    mine = (await client.get("/api/reservations/mine")).json()
+    assert [r["seat_id"] for r in mine] == ["N1-1"]
+
+
+async def test_my_reservations_cleans_up_past_screenings(client):
+    movie_id = await _create_movie(client, "Mine Afholdt")
+    past_id = await _create_screening(client, movie_id, "2020-01-01T20:00:00")
+    guest = await _member_client(client, "g_mine_past", role="guest")
+    await guest.post(f"/api/screenings/{past_id}/reservations", json={"seat_ids": ["N1-1"]})
+
+    assert (await guest.get("/api/reservations/mine")).json() == []
+    # Og den er faktisk slettet, ikke bare skjult.
+    assert (await client.get("/api/reservations")).json() == []
+    await guest.aclose()
+
+
+async def test_my_reservations_sorted_by_screening_time(client):
+    movie_id = await _create_movie(client, "Sortering")
+    later = await _create_screening(client, movie_id, "2099-12-01T20:00:00")
+    sooner = await _create_screening(client, movie_id, "2099-10-01T20:00:00")
+    guest = await _member_client(client, "g_sorted", role="guest")
+    await guest.post(f"/api/screenings/{later}/reservations", json={"seat_ids": ["N1-1"]})
+    await guest.post(f"/api/screenings/{sooner}/reservations", json={"seat_ids": ["N2-2", "N2-1"]})
+
+    mine = (await guest.get("/api/reservations/mine")).json()
+    assert [(r["screening_id"], r["seat_number"]) for r in mine] == [
+        (sooner, 5),
+        (sooner, 6),
+        (later, 1),
+    ]
+    await guest.aclose()
+
+
+async def test_owner_can_cancel_an_approved_reservation(client):
+    """At melde fra gælder også en godkendt plads — det er hele pointen."""
+    movie_id = await _create_movie(client, "Meld Fra Godkendt")
+    screening_id = await _create_screening(client, movie_id)
+    guest = await _member_client(client, "g_cancel_ok", role="guest")
+    created = (
+        await guest.post(f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N1-2"]})
+    ).json()
+    await client.post(f"/api/reservations/{created[0]['id']}/approve")
+
+    response = await guest.delete(f"/api/reservations/{created[0]['id']}")
+    assert response.status_code == 204
+    assert (await guest.get("/api/reservations/mine")).json() == []
+    await guest.aclose()
+
+
+async def test_cancelling_an_approved_seat_notifies_admins(client):
+    movie_id = await _create_movie(client, "Besked Til Konduktør")
+    screening_id = await _create_screening(client, movie_id)
+    guest = await _member_client(client, "g_notify_admin", role="guest")
+    created = (
+        await guest.post(f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N2-3"]})
+    ).json()
+    await client.post(f"/api/reservations/{created[0]['id']}/approve")
+
+    await guest.delete(f"/api/reservations/{created[0]['id']}")
+
+    inbox = (await client.get("/api/messages/inbox")).json()
+    assert len(inbox) == 1
+    assert inbox[0]["subject"] == "Plads frigivet i Voldby BIO"
+    assert "g_notify_admin" in inbox[0]["body"]
+    assert "sæde 7" in inbox[0]["body"]
+    assert "Besked Til Konduktør" in inbox[0]["body"]
+    await guest.aclose()
+
+
+async def test_cancelling_a_pending_seat_does_not_notify_admins(client):
+    """En afventende plads var aldrig lovet væk — ingen støj til admin."""
+    movie_id = await _create_movie(client, "Ingen Støj")
+    screening_id = await _create_screening(client, movie_id)
+    guest = await _member_client(client, "g_pending_quiet", role="guest")
+    created = (
+        await guest.post(f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N2-4"]})
+    ).json()
+
+    await guest.delete(f"/api/reservations/{created[0]['id']}")
+
+    assert (await client.get("/api/messages/inbox")).json() == []
+    await guest.aclose()
+
+
+async def test_admin_can_reserve_on_behalf_of_a_user(client):
+    movie_id = await _create_movie(client, "På Vegne Af")
+    screening_id = await _create_screening(client, movie_id)
+    guest = await _member_client(client, "g_behalf", role="guest")
+
+    response = await client.post(
+        f"/api/screenings/{screening_id}/reservations",
+        json={"seat_ids": ["N1-3"], "reserved_for": "G_Behalf"},
+    )
+    assert response.status_code == 201
+    created = response.json()
+    assert created[0]["reserved_by"] == "g_behalf"
+    assert created[0]["status"] == "approved"
+    assert created[0]["approved_by"] == "testuser"
+    assert created[0]["is_hold"] is False
+
+    mine = (await guest.get("/api/reservations/mine")).json()
+    assert [r["seat_id"] for r in mine] == ["N1-3"]
+
+    inbox = (await guest.get("/api/messages/inbox")).json()
+    assert len(inbox) == 1
+    assert inbox[0]["subject"] == "Du har fået en plads i Voldby BIO"
+    assert "sæde 3" in inbox[0]["body"]
+    await guest.aclose()
+
+
+async def test_non_admin_cannot_reserve_on_behalf_of_others(client):
+    """Håndhævet i backend, ikke kun ved at skjule formularen (regel 16)."""
+    movie_id = await _create_movie(client, "Ikke For Andre")
+    screening_id = await _create_screening(client, movie_id)
+    member = await _member_client(client, "std_behalf", role="standard")
+    victim = await _member_client(client, "victim_behalf", role="guest")
+
+    response = await member.post(
+        f"/api/screenings/{screening_id}/reservations",
+        json={"seat_ids": ["N1-1"], "reserved_for": "victim_behalf"},
+    )
+    assert response.status_code == 403
+    assert (await client.get("/api/reservations")).json() == []
+    await member.aclose()
+    await victim.aclose()
+
+
+async def test_reserving_for_an_unknown_user_is_a_clear_400(client):
+    movie_id = await _create_movie(client, "Ukendt Bruger")
+    screening_id = await _create_screening(client, movie_id)
+
+    response = await client.post(
+        f"/api/screenings/{screening_id}/reservations",
+        json={"seat_ids": ["N1-1"], "reserved_for": "findes_ikke"},
+    )
+    assert response.status_code == 400
+    assert "findes ikke" in response.json()["detail"]
+    assert (await client.get("/api/reservations")).json() == []
+
+
+async def test_reserving_for_an_inactive_user_is_rejected(client):
+    movie_id = await _create_movie(client, "Spærret Bruger")
+    screening_id = await _create_screening(client, movie_id)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as pending:
+        # Registreret men aldrig godkendt: status "pending".
+        await pending.post(
+            "/api/auth/register", json={"username": "still_pending", "password": "testpassword123"}
+        )
+
+    response = await client.post(
+        f"/api/screenings/{screening_id}/reservations",
+        json={"seat_ids": ["N1-1"], "reserved_for": "still_pending"},
+    )
+    assert response.status_code == 400
+    assert "ikke aktiv" in response.json()["detail"]
+
+
+async def test_blank_reserved_for_means_a_normal_own_reservation(client):
+    """Tom streng/whitespace er "ikke sat" — ikke et opslag på brugeren ''."""
+    movie_id = await _create_movie(client, "Blank Felt")
+    screening_id = await _create_screening(client, movie_id)
+
+    response = await client.post(
+        f"/api/screenings/{screening_id}/reservations",
+        json={"seat_ids": ["N1-1"], "reserved_for": "   "},
+    )
+    assert response.status_code == 201
+    assert response.json()[0]["reserved_by"] == "testuser"
+    assert response.json()[0]["status"] == "pending"
+
+
+async def test_admin_adding_a_user_on_a_taken_seat_is_409(client):
+    movie_id = await _create_movie(client, "Optaget Sæde")
+    screening_id = await _create_screening(client, movie_id)
+    first = await _member_client(client, "g_first_seat", role="guest")
+    second = await _member_client(client, "g_second_seat", role="guest")
+    await first.post(f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N1-1"]})
+
+    response = await client.post(
+        f"/api/screenings/{screening_id}/reservations",
+        json={"seat_ids": ["N1-1"], "reserved_for": "g_second_seat"},
+    )
+    assert response.status_code == 409
+    await first.aclose()
+    await second.aclose()
+
+
+async def test_admin_adding_a_user_approves_their_own_pending_seat(client):
+    """Har brugeren selv en afventende plads på sædet, godkendes den i stedet
+    for at give en 409 på brugerens egen reservation."""
+    movie_id = await _create_movie(client, "Egen Afventende")
+    screening_id = await _create_screening(client, movie_id)
+    guest = await _member_client(client, "g_own_pending", role="guest")
+    await guest.post(f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N2-5"]})
+
+    response = await client.post(
+        f"/api/screenings/{screening_id}/reservations",
+        json={"seat_ids": ["N2-5"], "reserved_for": "g_own_pending"},
+    )
+    assert response.status_code == 201
+    assert response.json()[0]["status"] == "approved"
+    assert len((await client.get("/api/reservations")).json()) == 1
+    await guest.aclose()
+
+
+async def test_admin_can_clear_all_reservations_on_one_screening(client):
+    movie_id = await _create_movie(client, "Ryd Alle")
+    target = await _create_screening(client, movie_id, "2099-10-01T20:00:00")
+    other = await _create_screening(client, movie_id, "2099-11-01T20:00:00")
+    guest = await _member_client(client, "g_clear", role="guest")
+    await guest.post(f"/api/screenings/{target}/reservations", json={"seat_ids": ["N1-1", "N1-2"]})
+    await guest.post(f"/api/screenings/{other}/reservations", json={"seat_ids": ["N1-1"]})
+    await client.post(
+        "/api/reservations/hold",
+        json={"seat_id": "N3-1", "scope": "screening", "screening_id": target},
+    )
+    await client.post("/api/reservations/hold", json={"seat_id": "N3-5", "scope": "global"})
+
+    response = await client.delete(f"/api/screenings/{target}/reservations")
+    assert response.status_code == 200
+    assert response.json() == {"screening_id": target, "removed": 3}
+
+    remaining = (await client.get("/api/reservations")).json()
+    # Den anden visnings plads + det globale hold står tilbage.
+    assert sorted((r["screening_id"] or "", r["seat_id"]) for r in remaining) == sorted(
+        [(other, "N1-1"), ("", "N3-5")]
+    )
+    await guest.aclose()
+
+
+async def test_only_admin_can_clear_a_screening(client):
+    movie_id = await _create_movie(client, "Ryd Kræver Admin")
+    screening_id = await _create_screening(client, movie_id)
+    member = await _member_client(client, "std_clear", role="standard")
+    await member.post(f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N1-1"]})
+
+    response = await member.delete(f"/api/screenings/{screening_id}/reservations")
+    assert response.status_code == 403
+    assert len((await client.get("/api/reservations")).json()) == 1
+    await member.aclose()
+
+
+async def test_clearing_an_unknown_screening_is_404(client):
+    response = await client.delete("/api/screenings/000000000000000000000000/reservations")
+    assert response.status_code == 404
+
+
+async def test_system_backup_keeps_admin_added_reservations(client):
+    """Regel 20 — en plads admin har tilføjet (reserved_by = en anden bruger,
+    approved_by = admin) skal overleve en system-backup rundtur uændret."""
+    movie_id = await _create_movie(client, "Backup Plads")
+    screening_id = await _create_screening(client, movie_id)
+    guest = await _member_client(client, "g_backup_seat", role="guest")
+    await client.post(
+        f"/api/screenings/{screening_id}/reservations",
+        json={"seat_ids": ["N1-4"], "reserved_for": "g_backup_seat"},
+    )
+
+    backup = (await client.get("/api/system/backup")).json()
+    saved = [r for r in backup["seat_reservations"] if r["seat_id"] == "N1-4"]
+    assert len(saved) == 1
+    assert saved[0]["reserved_by"] == "g_backup_seat"
+    assert saved[0]["approved_by"] == "testuser"
+    assert saved[0]["status"] == "approved"
     await guest.aclose()

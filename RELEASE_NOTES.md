@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.200.0 (build 0291) — 2026-09-23
+
+- **Ny knap "🎟️ Mine pladser" øverst ved siden af Log ud**: se alle dine kommende pladser i Voldby BIO samlet, og meld fra med ét klik, hvis du bliver forhindret — også en plads der allerede er godkendt. Tallet på knappen viser hvor mange pladser du har. Konduktøren får automatisk besked, når en godkendt plads bliver ledig igen.
+- **Til admin — "Tilmeldte pr. visning" på Bio-fanen**: se hvem der sidder hvor, visning for visning. Du kan godkende, fjerne en enkelt, rydde en hel visning eller tilføje en bruger på en ledig plads — pladsen er så godkendt med det samme, og brugeren får besked.
+
 ## v0.199.1 (build 0289) — 2026-09-21
 
 - **"Ryd alle" kan nu klikkes direkte fra beskeden om at du har flere ulæste**, ved siden af "Gå til Indstillinger" — ingen grund til at gå om ad Indstillinger, hvis du bare vil rydde det hele med det samme.

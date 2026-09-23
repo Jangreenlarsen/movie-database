@@ -40,7 +40,7 @@ from app.repositories import (
     user_repository,
 )
 from app.repositories.sort_title import strip_leading_article
-from app.services import message_service, tag_service
+from app.services import announcement_service, message_service, tag_service
 
 
 def _to_model(document: dict) -> TvShow:
@@ -325,13 +325,17 @@ async def create_tv_show(
                         db, wisher, model.name, is_tv=True
                     )
             # Feature #222 — se den identiske note i movie_service.create_movie.
-            elif payload.notify_all:
-                creator = await user_repository.find_by_username_normalized(
-                    db, registered_by.lower()
+            # Feature #228 — se den identiske note i movie_service.create_movie.
+            else:
+                mode = announcement_service.resolve_mode(payload.announce, payload.notify_all)
+                creator = (
+                    await user_repository.find_by_username_normalized(db, registered_by.lower())
+                    if mode != "none"
+                    else None
                 )
                 if creator is not None:
-                    await message_service.notify_library_addition_broadcast(
-                        db, creator, model.name, is_tv=True, poster_url=model.poster_url
+                    await announcement_service.handle_library_addition(
+                        db, creator, "tv", model.id, model.name, model.poster_url, mode
                     )
             return model
         except DuplicateKeyError as exc:
@@ -546,6 +550,8 @@ async def update_tv_show(
     requested_wishlist = fields.pop("is_wishlist", None)
     # Feature #222 — se den identiske note i movie_service.update_movie.
     notify_all = fields.pop("notify_all", False)
+    # Feature #228 — se TvShowUpdate.announce.
+    announce_mode = announcement_service.resolve_mode(fields.pop("announce", None), notify_all)
     requested_media_type = fields.get("media_type")
     requested_wishlist_status = fields.get("wishlist_status")
     requested_order_status = fields.get("order_status")
@@ -628,14 +634,16 @@ async def update_tv_show(
             db, current_doc, current_user, document.get("name"), is_tv=True
         )
         # Feature #222 — se den identiske note i movie_service.update_movie.
-        if notify_all:
-            await message_service.notify_library_addition_broadcast(
-                db,
-                current_user,
-                document.get("name"),
-                is_tv=True,
-                poster_url=document.get("poster_url"),
-            )
+        # Feature #228 — se den identiske note i movie_service.update_movie.
+        await announcement_service.handle_library_addition(
+            db,
+            current_user,
+            "tv",
+            tv_show_id,
+            document.get("name"),
+            document.get("poster_url"),
+            announce_mode,
+        )
     # Feature #166 — se den identiske note i movie_service.update_movie.
     if (
         requested_wishlist_status == WishlistStatus.APPROVED.value

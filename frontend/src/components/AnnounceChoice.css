@@ -1,0 +1,39 @@
+/* Feature #228 — de tre valg for beskeden til brugerne ved tilføjelse.
+   Samme dæmpede udtryk som #222's `.notify-toggle`, som den erstatter. */
+.announce-choice {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.announce-choice legend {
+  padding: 0 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.announce-choice-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.announce-choice-option input {
+  margin: 3px 0 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+
+.announce-choice-hint {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}

@@ -1,5 +1,10 @@
 # Release Notes
 
+## v0.201.0 (build 0292) — 2026-09-23
+
+- **Samlet opdatering til brugerne**: registrerer du flere film eller serier på én gang, får alle ikke længere én besked pr. titel. Ved tilføjelse vælger du nu mellem "Med i næste samlede opdatering" (standard), "Send besked til alle med det samme" eller "Ingen besked".
+- Titlerne samles i en fælles kø under **Indstillinger → Beskeder → Samlet opdatering**, hvor du kan fjerne dem, der ikke skal med, og sende det hele som én besked, når det passer. Venter der titler, står der en lille påmindelse øverst på Film- og TV-siden med en "Se og send"-knap. Gælder admins og standardbrugere.
+
 ## v0.200.0 (build 0291) — 2026-09-23
 
 - **Ny knap "🎟️ Mine pladser" øverst ved siden af Log ud**: se alle dine kommende pladser i Voldby BIO samlet, og meld fra med ét klik, hvis du bliver forhindret — også en plads der allerede er godkendt. Tallet på knappen viser hvor mange pladser du har. Konduktøren får automatisk besked, når en godkendt plads bliver ledig igen.

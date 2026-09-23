@@ -6,7 +6,7 @@
  * grene med det samme").
  */
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -121,68 +121,82 @@ describe("TvShowDetailModal — 'Bestilt'-badge for gæster (feature #203)", () 
 });
 
 /**
- * Feature #222 — se den identiske note i Library.test.jsx. TvShowDetailModal
- * er en struktureret tro kopi af MovieDetailModal (regel 16), så samme fire
- * tilstande dækkes her.
+ * Feature #228 (erstatter #222's ene flueben) — ved en ny biblioteks-
+ * tilføjelse eller "Flyt til bibliotek" vælger man mellem tre udfald for
+ * beskeden til brugerne. Det testværdige (regel 19): valgene vises kun hvor
+ * de er relevante, standarden er den samlede opdatering, og valget følger
+ * rent faktisk med i payloadet som `announce`.
  */
-describe("TvShowDetailModal — broadcast-flueben ved biblioteks-tilføjelse (feature #222)", () => {
+describe("TvShowDetailModal — besked-valg ved biblioteks-tilføjelse (feature #228)", () => {
   beforeEach(() => {
     vi.spyOn(api, "recordVisit").mockResolvedValue({});
     vi.spyOn(api, "myScreeningRequests").mockResolvedValue([]);
     vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({ require_preferred_at: false });
   });
 
-  it("vises ved 'Flyt til bibliotek' for et ønske, default fra, og sendes med i payload når afkrydset", async () => {
+  it("standard ved 'Flyt til bibliotek' er den samlede opdatering", async () => {
     vi.spyOn(api, "updateTvShow").mockResolvedValue({ ...baseShow, is_wishlist: false });
-    const show = { ...baseShow, media_type: "Fysisk", format: "F-DVD" };
-    renderAsAdmin(show);
+    renderAsAdmin({ ...baseShow, media_type: "Fysisk", format: "F-DVD" });
 
     await userEvent.click(await screen.findByRole("button", { name: "Redigér" }));
-    const checkbox = screen.getByRole("checkbox", {
-      name: "Send besked til alle når den flyttes til biblioteket",
+    const group = screen.getByRole("group", {
+      name: "Besked til brugerne når den flyttes til biblioteket",
     });
-    expect(checkbox).not.toBeChecked();
+    expect(within(group).getByRole("radio", { name: /Med i næste samlede opdatering/ })).toBeChecked();
 
-    await userEvent.click(checkbox);
+    await userEvent.click(screen.getByRole("button", { name: "Flyt til bibliotek" }));
+    await waitFor(() => expect(api.updateTvShow).toHaveBeenCalledTimes(1));
+    const [, payload] = api.updateTvShow.mock.calls[0];
+    expect(payload.announce).toBe("queue");
+    expect(payload).not.toHaveProperty("notify_all");
+  });
+
+  it("'Send besked til alle med det samme' sendes som announce: now ved flyt", async () => {
+    vi.spyOn(api, "updateTvShow").mockResolvedValue({ ...baseShow, is_wishlist: false });
+    renderAsAdmin({ ...baseShow, media_type: "Fysisk", format: "F-DVD" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Redigér" }));
+    await userEvent.click(screen.getByRole("radio", { name: /Send besked til alle med det samme/ }));
     await userEvent.click(screen.getByRole("button", { name: "Flyt til bibliotek" }));
 
     await waitFor(() => expect(api.updateTvShow).toHaveBeenCalledTimes(1));
     const [, payload] = api.updateTvShow.mock.calls[0];
-    expect(payload.notify_all).toBe(true);
+    expect(payload.announce).toBe("now");
   });
 
-  it("vises ved oprettelse af en ny (ikke-ønske) serie, og sendes med til createTvShow", async () => {
+  it("vises ved oprettelse af en ny (ikke-ønske) serie, og 'Ingen besked' sendes med", async () => {
     vi.spyOn(api, "createTvShow").mockResolvedValue({ ...baseShow, id: "show-2" });
-    const draft = {
+    renderAsAdmin({
       ...baseShow,
       id: undefined,
       is_wishlist: false,
       media_type: "Fysisk",
       format: "F-DVD",
-    };
-    renderAsAdmin(draft);
-
-    const checkbox = await screen.findByRole("checkbox", {
-      name: "Send besked til alle om denne nye tilføjelse",
     });
-    await userEvent.click(checkbox);
+
+    await screen.findByRole("group", { name: "Besked til brugerne om den nye titel" });
+    await userEvent.click(screen.getByRole("radio", { name: /Ingen besked/ }));
     await userEvent.click(screen.getByRole("button", { name: "Opret" }));
 
     await waitFor(() => expect(api.createTvShow).toHaveBeenCalledTimes(1));
     const [payload] = api.createTvShow.mock.calls[0];
-    expect(payload.notify_all).toBe(true);
+    expect(payload.announce).toBe("none");
   });
 
-  it("vises IKKE ved en almindelig redigering af en allerede-ejet serie (ikke en flyt-handling)", async () => {
-    const show = { ...baseShow, is_wishlist: false, media_type: "Fysisk", format: "F-DVD" };
-    renderAsAdmin(show);
+  it("vises IKKE ved oprettelse af et nyt ønske", async () => {
+    vi.spyOn(api, "createTvShow").mockResolvedValue({ ...baseShow, id: "show-2" });
+    renderAsAdmin({ ...baseShow, id: undefined, is_wishlist: true });
+
+    await screen.findByRole("button", { name: "Opret" });
+    expect(
+      screen.queryByRole("group", { name: "Besked til brugerne om den nye titel" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("vises IKKE ved en almindelig redigering af en allerede-ejet serie", async () => {
+    renderAsAdmin({ ...baseShow, is_wishlist: false, media_type: "Fysisk", format: "F-DVD" });
 
     await userEvent.click(await screen.findByRole("button", { name: "Redigér" }));
-    expect(
-      screen.queryByRole("checkbox", { name: "Send besked til alle når den flyttes til biblioteket" })
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("checkbox", { name: "Send besked til alle om denne nye tilføjelse" })
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /Med i næste samlede opdatering/ })).not.toBeInTheDocument();
   });
 });

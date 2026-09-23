@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import MessageBanner from "./components/MessageBanner";
 import MyReservationsButton from "./components/MyReservations";
+import { AnnouncementReminder } from "./components/AnnouncementQueue";
 import PendingApproval from "./pages/PendingApproval";
 import ForcePasswordChange from "./pages/ForcePasswordChange";
 import { api, setOnSessionExpired } from "./api/client";
@@ -302,6 +303,15 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
 
   const refreshCounts = () => setLibraryVersion((v) => v + 1);
 
+  // Feature #228 — åbn Indstillinger på en bestemt fane (fx Beskeder fra
+  // påmindelsen om den samlede opdatering). `key` monterer Settings på ny,
+  // så valget også virker hvis man allerede står i Indstillinger.
+  const [settingsTarget, setSettingsTarget] = useState({ tab: null, key: 0 });
+  const openSettings = (settingsTab) => {
+    setSettingsTarget((prev) => ({ tab: settingsTab, key: prev.key + 1 }));
+    setTab("settings");
+  };
+
   return (
     <div className="app">
       <header className="app-header">
@@ -355,7 +365,12 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
             )}
             <button
               className={tab === "settings" ? "active" : ""}
-              onClick={() => setTab("settings")}
+              onClick={() => {
+                // Almindelig navigation: glem en fane valgt af påmindelsen
+                // (feature #228), så Indstillinger åbner som den plejer.
+                setSettingsTarget((prev) => ({ tab: null, key: prev.key }));
+                setTab("settings");
+              }}
             >
               {t("app.nav.settings")}
             </button>
@@ -446,6 +461,11 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
             de kan fylde flere linjer, og et hoved der vokser ville skubbe
             hele siden ned hver gang der kommer en ny. */}
         <MessageBanner onGoToSettings={() => setTab("settings")} />
+        {/* Feature #228 — huskeseddel om titler der venter på den samlede
+            opdatering. Kun hvor man registrerer titler, og ikke for gæster. */}
+        {!isGuest && (tab === "library" || tab === "tv") && (
+          <AnnouncementReminder onOpen={() => openSettings("beskeder")} />
+        )}
         {tab === "library" && (
           <Library
             user={user}
@@ -468,7 +488,14 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
         {tab === "cinema" && <Cinema user={user} />}
         {!isGuest && tab === "print" && <PrintList />}
         {!isGuest && tab === "stats" && <Statistics />}
-        {tab === "settings" && <Settings user={user} onSettingsChanged={setUser} />}
+        {tab === "settings" && (
+          <Settings
+            key={settingsTarget.key}
+            user={user}
+            onSettingsChanged={setUser}
+            initialTab={settingsTarget.tab}
+          />
+        )}
       </main>
 
       <footer className="app-footer">

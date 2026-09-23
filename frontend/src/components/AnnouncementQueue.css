@@ -1,0 +1,75 @@
+/* Feature #228 — køen til den samlede opdatering + påmindelsen. */
+
+.announce-queue {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.announce-queue-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.announce-queue-row:last-child {
+  border-bottom: none;
+}
+
+.announce-queue-poster {
+  flex-shrink: 0;
+  width: 34px;
+  height: 51px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--surface-hover);
+}
+
+.announce-queue-poster--empty {
+  display: block;
+  border: 1px dashed var(--border);
+}
+
+.announce-queue-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.announce-queue-text strong {
+  overflow-wrap: anywhere;
+}
+
+.announce-queue-text .muted {
+  font-size: 0.8rem;
+}
+
+.announce-queue-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+/* Påmindelsen: dæmpet accent-flade som header-tællerne, ikke en fuld
+   besked-banner — det er en huskeseddel, ikke en besked fra et menneske. */
+.announce-reminder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--accent-soft-strong);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 0.88rem;
+  font-weight: 600;
+}

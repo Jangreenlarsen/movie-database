@@ -432,6 +432,10 @@ export const api = {
         reservedFor ? { seat_ids: seatIds, reserved_for: reservedFor } : { seat_ids: seatIds }
       ),
     }),
+  // Feature #228 — køen til den samlede opdatering (admin + standard).
+  listAnnouncements: () => request("/announcements"),
+  removeAnnouncement: (id) => request(`/announcements/${id}`, { method: "DELETE" }),
+  sendAnnouncements: () => request("/announcements/send", { method: "POST" }),
   // Feature #227 — admin: ryd alle tilmeldte på én visning.
   clearScreeningReservations: (screeningId) =>
     request(`/screenings/${screeningId}/reservations`, { method: "DELETE" }),

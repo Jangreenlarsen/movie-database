@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.db import get_database
 from app.main import app
 from app.repositories import (
+    announcement_repository,
     movie_repository,
     reservation_repository,
     screening_repository,
@@ -117,6 +118,7 @@ async def db():
     await screening_repository.ensure_indexes(test_db)
     await visit_repository.ensure_indexes(test_db)
     await reservation_repository.ensure_indexes(test_db)
+    await announcement_repository.ensure_indexes(test_db)
     return test_db
 
 

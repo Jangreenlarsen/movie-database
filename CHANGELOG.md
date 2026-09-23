@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.202.0 build 0293] — 2026-09-23 — feature: antal film/serier/ønsker i menupunkterne (FEATURES.md #229)
+
+Jan: *"på hovedsiden har vi de tre "film" og "tv-serie" og "indkøbsønsker" vi skal have info antal film og antal tv serie samt hvor mange emner der er på ønskelisten flyttet op til de tre menupunkter sådan vi får en mere ren side"*.
+
+Tællerblokken i hovedet ("12 film (9 fysisk / 3 digital)", "1 serier (...)", "5 på indkøbslisten" — feature #94/#107/#142) er fjernet. Antallet står nu som et lille tal i selve menupunkterne Film, TV-serier og Indkøbsønsker (ny `TabCount` i `App.jsx`, `.tab-count` i `App.css`, med egen kontrastfarve på den aktive fane). Fordelingen på fysisk/digital står i menupunktets hover-tekst. Samme data (`GET /api/library/counts`) og samme genhentning som før. De fem gamle `counts.*`-oversættelser er erstattet af `counts.tabMovies/tabShows` (ental/flertal) og `counts.tabWishlist`; tæller-reglerne i mobil-CSS'en er fjernet.
+
+Berørte filer: `frontend/src/App.jsx`, `frontend/src/App.css`, `frontend/src/App.test.jsx` (+2 tests), `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`. Ingen backend-ændring. Frontend-suite (313) grøn. Set i browser (Playwright/msedge mod en engangs-database, slettet bagefter): 1440px i mørkt og lyst tema, aktiv fane med tal, samt 390px og 360px — tallene 12/1/5 står korrekt, uden vandret overløb.
+
 ## [0.201.0 build 0292] — 2026-09-23 — feature: samlet opdatering af nye titler til brugerne (FEATURES.md #228)
 
 Jan: *"vi skal også have lavet en samlet opdaterings features når man registrerer film/tv ind i system sådan det er muligt at samle alle opdateringer til bruger på en gang ... en feature for adm/standard user hvor de kan vælge at sige til system at nu skal bruger opdateres med de cache informationer der står til sending"*. Jans valg: tre valg ved tilføjelse, én fælles kø, køen i Indstillinger → Beskeder med påmindelse på Film/TV-siden.

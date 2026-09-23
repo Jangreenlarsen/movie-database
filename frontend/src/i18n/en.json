@@ -806,7 +806,6 @@
   "plexImport.failedHint": "These were recognised but could not be created. Try the import again — it is usually a temporary TMDb error.",
   "audit.action.plexImported": "Imported from Plex",
   "detail.classificationRequired": "Media type and format must be chosen before this can be saved to the library. The media type decides which number series it gets — M#/T# for physical, D# for digital.",
-  "counts.title": "In the library: {movies} movies ({movePhysical} physical, {movieDigital} digital) and {shows} TV shows ({showPhysical} physical, {showDigital} digital)",
   "plexImport.formatFallback": "resolution unknown in Plex — set to D-1080",
   "plexAutoImport.heading": "Automatic Plex scan",
   "plexAutoImport.description": "Automatically run the same import as the button above, at regular intervals — so new movies/shows added to Plex show up in the library on their own, without anyone having to remember to click \"Import from Plex\". The manual button stays available alongside it.",
@@ -834,10 +833,6 @@
   "anthemDiag.fieldAudioChannels": "Channels",
   "anthemDiag.on": "On",
   "anthemDiag.off": "Off",
-  "counts.movies": "{count} movies",
-  "counts.shows": "{count} shows",
-  "counts.breakdown": " ({physical} physical / {digital} digital)",
-  "counts.wishlist": "{count} on the wishlist",
   "sort.serialDigitalFirst": "Serial number (D first)",
   "sort.serialMoviesFirst": "Serial number (M first)",
   "sort.serialShowsFirst": "Serial number (T first)",
@@ -961,5 +956,10 @@
   "announcements.sent_other": "Sent to everyone — {count} titles were included.",
   "announcements.reminder_one": "{count} new title is waiting for the combined update",
   "announcements.reminder_other": "{count} new titles are waiting for the combined update",
-  "announcements.reminderOpen": "View and send"
+  "announcements.reminderOpen": "View and send",
+  "counts.tabShows_one": "{count} TV series — {physical} physical, {digital} digital",
+  "counts.tabShows_other": "{count} TV series — {physical} physical, {digital} digital",
+  "counts.tabWishlist": "{count} on the shopping list",
+  "counts.tabMovies_one": "{count} movie — {physical} physical, {digital} digital",
+  "counts.tabMovies_other": "{count} movies — {physical} physical, {digital} digital"
 }

@@ -76,50 +76,29 @@
   color: var(--accent-contrast);
 }
 
-/* Feature #94 — optællingen står ved siden af brugernavnet i hovedet.
-   Skjules på smalle skærme sammen med brugernavnet (se media query
-   nederst): på en telefon er pladsen i hovedet allerede knap. */
-.header-counts {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-}
-
-/* Hvert tal som sin egen mærkat, så de kan aflæses hver for sig. Samme
-   bløde accent-flade som .brand-mark og .role-badge bruger — hovedet skal
-   have farve uden at konkurrere med den aktive fane. */
-.header-count {
-  font-size: 0.78rem;
-  font-weight: 700;
-  padding: 4px 9px;
+/* Feature #229 — antallet i menupunkterne Film/TV-serier/Indkøbsønsker
+   (før en tællerblok i hovedet, #94/#107/#142). Et lille, afdæmpet tal, så
+   selve fane-teksten stadig er det blikket lander på. */
+.tab-count {
+  display: inline-block;
+  min-width: 1.4em;
+  margin-left: 6px;
+  padding: 1px 6px;
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent-strong);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
-/* TV-serier får en neutral flade, så de to tal er til at skelne på et
-   øjekast og ikke bare er to ens klatter. */
-.header-count--shows {
-  background: var(--surface);
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-}
-
-/* Feature #142 — antal på indkøbslisten. Stiplet kant, så den skiller sig ud
-   fra biblioteks-tallene som "det du endnu ikke har". */
-.header-count--wishlist {
-  background: var(--surface);
-  color: var(--text-muted);
-  border: 1px dashed var(--border);
-}
-
-/* Feature #107 — fysisk/digital-fordelingen er lidt lysere end totaltallet,
-   så det stadig er totaltallet blikket lander på først. Skjules på smalle
-   skærme, se media query nederst. */
-.header-count-breakdown {
-  opacity: 0.75;
-  font-weight: 600;
+/* På den aktive (accent-fyldte) fane ville accent-på-accent forsvinde —
+   tallet får i stedet fanens egen kontrastfarve på en let mørkere flade. */
+.tabs button.active .tab-count {
+  background: rgba(0, 0, 0, 0.16);
+  color: var(--accent-contrast);
 }
 
 .header-user {
@@ -328,22 +307,16 @@
     white-space: nowrap;
   }
 
-  /* Brugernavnet ryger ud på smalle skærme — men optællingen bliver, da
-     den er hele pointen med feature #94 og fylder mindre end navnet. */
+  /* Brugernavnet ryger ud på smalle skærme — der er ikke plads i hovedet.
+     (Antallet film/serier/ønsker står i menupunkterne, feature #229.) */
   .header-user > span.muted {
     display: none;
   }
 
-  .header-count {
-    font-size: 0.72rem;
-    padding: 3px 7px;
-  }
-
-  /* Feature #107 — fordelingen på fysisk/digital er den del af mærkatet der
-     kan undværes på en telefon uden at totaltallet (hele pointen med
-     feature #94) også må vige. Fuld tekst er stadig i hover-titlen. */
-  .header-count-breakdown {
-    display: none;
+  .tab-count {
+    margin-left: 4px;
+    padding: 0 5px;
+    font-size: 0.68rem;
   }
 
   .app-main {
@@ -371,8 +344,8 @@
 
   /* Feature #227 — med "Mine pladser" er der én knap mere end bredden kan
      bære ved 390px: uden ombrydning blev "Log ud" skubbet ud over kanten og
-     knækket til "Log / ud". Blokken ombryder nu (tællerne øverst, knapperne
-     under, højrestillet), og ingen knap-tekst må selv knække. */
+     knækket til "Log / ud". Blokken må ombryde, og ingen knap-tekst må selv
+     knække. */
   .header-user {
     gap: 6px;
     flex-wrap: wrap;
@@ -381,13 +354,5 @@
 
   .header-user .btn {
     white-space: nowrap;
-  }
-
-  .header-counts {
-    gap: 4px;
-    /* Egen linje, så de tre knapper (opdatér, Mine pladser, Log ud) står
-       samlet nedenunder i stedet for at blive delt over to linjer. */
-    flex-basis: 100%;
-    justify-content: flex-end;
   }
 }

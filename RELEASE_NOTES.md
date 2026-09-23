@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.202.0 (build 0293) — 2026-09-23
+
+- **Renere hoved**: antallet af film, TV-serier og emner på indkøbslisten står nu som et lille tal direkte i menupunkterne "Film", "TV-serier" og "Indkøbsønsker" i stedet for i en række mærkater øverst til højre. Hold musen over et menupunkt for at se fordelingen på fysisk og digital.
+
 ## v0.201.0 (build 0292) — 2026-09-23
 
 - **Samlet opdatering til brugerne**: registrerer du flere film eller serier på én gang, får alle ikke længere én besked pr. titel. Ved tilføjelse vælger du nu mellem "Med i næste samlede opdatering" (standard), "Send besked til alle med det samme" eller "Ingen besked".

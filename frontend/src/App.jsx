@@ -281,6 +281,16 @@ function App() {
   );
 }
 
+// Feature #229 — det lille tal i et menupunkt. aria-hidden: menupunktets
+// title bærer den fulde sætning ("3 film — 3 fysiske, 0 digitale").
+function TabCount({ value }) {
+  return (
+    <span className="tab-count" aria-hidden="true">
+      {value}
+    </span>
+  );
+}
+
 function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }) {
   const t = useT();
   // Feature #94 — samlet optælling i hovedet, så man kan se biblioteksets
@@ -323,23 +333,55 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
             {t("app.brand")}
           </div>
           <nav className="tabs">
+            {/* Feature #229 — antallet står som et lille tal i selve
+                menupunktet (før en tællerblok i hovedet, #94/#107/#142).
+                Fordelingen på fysisk/digital står i hover-teksten; tallet er
+                aria-hidden, så skærmlæsere får den fulde sætning via title. */}
             <button
               className={tab === "library" ? "active" : ""}
               onClick={() => setTab("library")}
+              title={
+                counts
+                  ? t("counts.tabMovies", {
+                      count: counts.movies.total,
+                      physical: counts.movies.physical,
+                      digital: counts.movies.digital,
+                    })
+                  : undefined
+              }
             >
               {t("app.nav.movies")}
+              {counts && <TabCount value={counts.movies.total} />}
             </button>
             <button
               className={tab === "tv" ? "active" : ""}
               onClick={() => setTab("tv")}
+              title={
+                counts
+                  ? t("counts.tabShows", {
+                      count: counts.tv_shows.total,
+                      physical: counts.tv_shows.physical,
+                      digital: counts.tv_shows.digital,
+                    })
+                  : undefined
+              }
             >
               {t("app.nav.tv")}
+              {counts && <TabCount value={counts.tv_shows.total} />}
             </button>
             <button
               className={tab === "wishlist" ? "active" : ""}
               onClick={() => setTab("wishlist")}
+              title={
+                counts
+                  ? t("counts.tabWishlist", {
+                      count: counts.movies.wishlist + counts.tv_shows.wishlist,
+                    })
+                  : undefined
+              }
             >
               {t("app.nav.wishlist")}
+              {counts && <TabCount value={counts.movies.wishlist + counts.tv_shows.wishlist} />}
             </button>
             <button
               className={tab === "cinema" ? "active" : ""}
@@ -376,52 +418,6 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
             </button>
           </nav>
           <div className="header-user">
-            {counts && (
-              <span
-                className="header-counts"
-                title={t("counts.title", {
-                  movies: counts.movies.total,
-                  movePhysical: counts.movies.physical,
-                  movieDigital: counts.movies.digital,
-                  shows: counts.tv_shows.total,
-                  showPhysical: counts.tv_shows.physical,
-                  showDigital: counts.tv_shows.digital,
-                })}
-              >
-                {/* To separate mærkater frem for én streng: film og
-                    TV-serier er to adskilte ressourcer, og hvert tal skal
-                    kunne aflæses for sig uden at man læser en sætning.
-                    Feature #107 — fordelingen på fysisk/digital stod før kun
-                    i hover-teksten (usynlig på en telefon uden mus); den
-                    står nu i selve mærkatet, i sit eget span, så den kan
-                    skjules på en smal skærm (se media query i App.css) uden
-                    at totaltallet også forsvinder. */}
-                <span className="header-count header-count--movies">
-                  {t("counts.movies", { count: counts.movies.total })}
-                  <span className="header-count-breakdown">
-                    {t("counts.breakdown", {
-                      physical: counts.movies.physical,
-                      digital: counts.movies.digital,
-                    })}
-                  </span>
-                </span>
-                <span className="header-count header-count--shows">
-                  {t("counts.shows", { count: counts.tv_shows.total })}
-                  <span className="header-count-breakdown">
-                    {t("counts.breakdown", {
-                      physical: counts.tv_shows.physical,
-                      digital: counts.tv_shows.digital,
-                    })}
-                  </span>
-                </span>
-                {/* Feature #142 — antal film+serier på indkøbslisten. */}
-                <span className="header-count header-count--wishlist">
-                  {t("counts.wishlist", {
-                    count: counts.movies.wishlist + counts.tv_shows.wishlist,
-                  })}
-                </span>
-              </span>
-            )}
             {/* Feature #140 — vis også brugerens rolle (Jans ønske). */}
             <span className="muted">
               {user.username} ·{" "}

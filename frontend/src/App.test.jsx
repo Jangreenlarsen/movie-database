@@ -66,3 +66,50 @@ describe("App — login på den direkte /login-adresse (BUGS.md #98)", () => {
     expect(screen.queryByLabelText("Brugernavn")).not.toBeInTheDocument();
   });
 });
+
+/**
+ * Feature #229 — antallet film/serier/ønsker står i selve menupunkterne i
+ * stedet for i en tællerblok i hovedet. Testværdigt: at hvert tal lander i
+ * det rigtige menupunkt, at ønskelisten er film + serier tilsammen, og at
+ * fordelingen på fysisk/digital stadig findes i hover-teksten.
+ */
+describe("App — antal i menupunkterne (feature #229)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    window.history.pushState(null, "", "/");
+    vi.spyOn(api, "health").mockResolvedValue({ version: "0.0.0", build: "0000" });
+    vi.spyOn(api, "me").mockResolvedValue(activeUser());
+    vi.spyOn(api, "getLibraryCounts").mockResolvedValue({
+      movies: { total: 12, physical: 9, digital: 3, wishlist: 2 },
+      tv_shows: { total: 1, physical: 1, digital: 0, wishlist: 3 },
+    });
+    vi.spyOn(api, "recordVisit").mockResolvedValue();
+    vi.spyOn(api, "getInbox").mockResolvedValue([]);
+    vi.spyOn(api, "myReservations").mockResolvedValue([]);
+    vi.spyOn(api, "listAnnouncements").mockResolvedValue([]);
+  });
+
+  it("viser antallet i Film, TV-serier og Indkøbsønsker", async () => {
+    render(<App />);
+
+    const movies = await screen.findByRole("button", { name: "Film" });
+    await waitFor(() => expect(movies.querySelector(".tab-count")).toHaveTextContent("12"));
+    expect(movies).toHaveAttribute("title", "12 film — 9 fysiske, 3 digitale");
+
+    const shows = screen.getByRole("button", { name: "TV-serier" });
+    expect(shows.querySelector(".tab-count")).toHaveTextContent("1");
+    expect(shows).toHaveAttribute("title", "1 TV-serie — 1 fysisk, 0 digital");
+
+    // 2 film-ønsker + 3 serie-ønsker.
+    const wishlist = screen.getByRole("button", { name: "Indkøbsønsker" });
+    expect(wishlist.querySelector(".tab-count")).toHaveTextContent("5");
+    expect(wishlist).toHaveAttribute("title", "5 på indkøbslisten");
+  });
+
+  it("har ikke længere en tællerblok i hovedet", async () => {
+    const { container } = render(<App />);
+    await screen.findByRole("button", { name: "Film" });
+    await waitFor(() => expect(container.querySelector(".tab-count")).not.toBeNull());
+    expect(container.querySelector(".header-counts")).toBeNull();
+  });
+});

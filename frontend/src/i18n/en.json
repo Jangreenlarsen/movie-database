@@ -922,6 +922,8 @@
   "attendees.close": "Collapse",
   "attendees.empty": "No attendees yet.",
   "attendees.holdLabel": "fixed reservation",
+  "attendees.holdLabelGlobal": "fixed reservation · all screenings",
+  "attendees.confirmRemoveGlobal": "Release seat {number} ({name})? It is a fixed reservation, so the seat is released for ALL screenings.",
   "attendees.pending": "Pending",
   "attendees.remove": "Remove",
   "attendees.user": "User",

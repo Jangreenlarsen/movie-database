@@ -922,6 +922,8 @@
   "attendees.close": "Fold sammen",
   "attendees.empty": "Ingen tilmeldte endnu.",
   "attendees.holdLabel": "fast reservation",
+  "attendees.holdLabelGlobal": "fast reservation · alle visninger",
+  "attendees.confirmRemoveGlobal": "Frigiv sæde {number} ({name})? Det er en fast reservation, så sædet frigives på ALLE visninger.",
   "attendees.pending": "Afventer",
   "attendees.remove": "Fjern",
   "attendees.user": "Bruger",

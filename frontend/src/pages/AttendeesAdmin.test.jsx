@@ -154,6 +154,37 @@ describe("AttendeesAdmin (feature #227)", () => {
     expect(clear).toHaveBeenCalledWith("next");
   });
 
+  it("viser globale for-reserveringer under hver visning (BUGS.md #100)", async () => {
+    const cancel = vi.spyOn(api, "cancelReservation").mockResolvedValue(null);
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    renderPanel();
+    const user = userEvent.setup();
+    const block = openBlock();
+
+    expect(within(block).getByText("admin")).toBeInTheDocument();
+    expect(within(block).getByText(/alle visninger/)).toBeInTheDocument();
+    expect(within(block).getByText("For-reserveret")).toBeInTheDocument();
+
+    // Også under den sammenfoldede, senere visning.
+    await user.click(screen.getByRole("button", { name: "Vis og redigér" }));
+    const later = screen.getByText("Alien: Romulus").closest(".cinema-attendees-block");
+    expect(within(later).getByText("admin")).toBeInTheDocument();
+
+    // Fjern advarer om at sædet frigives på alle visninger.
+    const holdRow = within(block).getByText("admin").closest(".cinema-attendees-row");
+    await user.click(within(holdRow).getByRole("button", { name: "Fjern" }));
+    expect(confirm.mock.calls.at(-1)[0]).toMatch(/ALLE visninger/);
+    expect(cancel).toHaveBeenCalledWith("hold");
+  });
+
+  it('"Ryd alle tilmeldte" tæller kun visningens egne, ikke globale hold', async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    renderPanel();
+    const user = userEvent.setup();
+    await user.click(within(openBlock()).getByRole("button", { name: "Ryd alle tilmeldte" }));
+    expect(confirm.mock.calls[0][0]).toMatch(/alle 2 tilmeldte/);
+  });
+
   it("godkender en afventende og fjerner en enkelt", async () => {
     const approve = vi.spyOn(api, "approveReservation").mockResolvedValue({});
     const cancel = vi.spyOn(api, "cancelReservation").mockResolvedValue(null);

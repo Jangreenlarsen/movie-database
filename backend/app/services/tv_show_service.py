@@ -789,9 +789,14 @@ async def set_season_owned(
         ]
         await tv_show_repository.set_season_episodes(db, tv_show_id, season_number, episodes)
 
-    await tv_show_repository.set_season_owned(db, tv_show_id, season_number, owned)
+    # BUGS.md #110 — serien kan være slettet (eller sæsonen fjernet af
+    # TMDb-synken) mellem opslaget ovenfor og skrivningen.
+    if not await tv_show_repository.set_season_owned(db, tv_show_id, season_number, owned):
+        raise TvShowNotFoundError(tv_show_id)
 
     updated = await tv_show_repository.find_by_id(db, tv_show_id)
+    if updated is None:
+        raise TvShowNotFoundError(tv_show_id)
     return _to_model(updated)
 
 

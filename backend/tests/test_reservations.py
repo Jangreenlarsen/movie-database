@@ -813,3 +813,51 @@ async def test_system_backup_keeps_admin_added_reservations(client):
     assert saved[0]["approved_by"] == "testuser"
     assert saved[0]["status"] == "approved"
     await guest.aclose()
+
+
+async def test_approve_of_a_reservation_cancelled_meanwhile_is_404_not_500(client, monkeypatch):
+    """BUGS.md #110 — annulleres pladsen i samme øjeblik som den godkendes,
+    giver update() None; det skal være en pæn 404, ikke en rå 500."""
+    from app.repositories import reservation_repository
+
+    movie_id = await _create_movie(client, "Kapløb Godkend")
+    screening_id = await _create_screening(client, movie_id)
+    guest = await _member_client(client, "g_race_approve", role="guest")
+    created = (
+        await guest.post(f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N1-1"]})
+    ).json()
+
+    async def vanished(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(reservation_repository, "update", vanished)
+    response = await client.post(f"/api/reservations/{created[0]['id']}/approve")
+    assert response.status_code == 404
+    await guest.aclose()
+
+
+async def test_admin_adding_a_user_whose_pending_seat_vanished_creates_it_anew(client, monkeypatch):
+    """BUGS.md #110 — admin tilføjer en bruger på et sæde brugeren selv har
+    afventende; melder brugeren fra i samme øjeblik, oprettes pladsen på ny."""
+    from app.repositories import reservation_repository
+
+    movie_id = await _create_movie(client, "Kapløb Tilføj")
+    screening_id = await _create_screening(client, movie_id)
+    guest = await _member_client(client, "g_race_add", role="guest")
+    await guest.post(f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N1-2"]})
+
+    real_update = reservation_repository.update
+
+    async def vanished(db, reservation_id, fields):
+        await db[reservation_repository.COLLECTION].delete_many({})
+        return None
+
+    monkeypatch.setattr(reservation_repository, "update", vanished)
+    response = await client.post(
+        f"/api/screenings/{screening_id}/reservations",
+        json={"seat_ids": ["N1-2"], "reserved_for": "g_race_add"},
+    )
+    monkeypatch.setattr(reservation_repository, "update", real_update)
+    assert response.status_code == 201, response.text
+    assert response.json()[0]["status"] == "approved"
+    await guest.aclose()

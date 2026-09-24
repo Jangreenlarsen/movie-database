@@ -387,3 +387,17 @@ async def test_episode_watched_guard_rejects_a_shifted_index(client, monkeypatch
     assert await tv_show_repository.set_episode_watched(
         db, show_id, 0, 3, True, None, season_number=1, episode_number=4
     )
+
+
+async def test_set_season_owned_on_a_show_deleted_meanwhile_is_404(client, monkeypatch):
+    """BUGS.md #110 — slettes serien mellem opslag og skrivning, er det 404."""
+    from app.repositories import tv_show_repository
+
+    show_id = await _owned_show_with_episodes(client, monkeypatch)
+
+    async def gone(*args, **kwargs):
+        return False
+
+    monkeypatch.setattr(tv_show_repository, "set_season_owned", gone)
+    response = await client.patch(f"/api/tv-shows/{show_id}/seasons/1", json={"owned": False})
+    assert response.status_code == 404

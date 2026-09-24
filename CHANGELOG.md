@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.204.9 build 0309] — 2026-09-24 — fix: ingen rå 500 når en post slettes samtidig med en opdatering (BUGS.md #110)
+
+Fundet ved kodegennemgangen 2026-09-24: tre steder sendte et `None` fra en opdatering eller genlæsning direkte videre, så et kapløb med en samtidig sletning gav en rå 500. Nu en pæn 404, eller — ved admin-tilføjelse af en plads brugeren netop har meldt fra — en ny plads.
+
+Berørte filer: `backend/app/services/tv_show_service.py`, `backend/app/services/reservation_service.py`, `backend/tests/test_reservations.py` (+2), `backend/tests/test_tv_show_tmdb_sync.py` (+1), `BUGS.md`. Backend (1088) + frontend grøn.
+
 ## [0.204.8 build 0308] — 2026-09-24 — fix: TV-seriers serienummer kan redigeres i UI'et, med byt-plads-bekræftelse (BUGS.md #109)
 
 Fundet ved kodegennemgangen 2026-09-24 (regel 16, "regler der kun gælder én gren"): film fik redigerbart serienummer med byt-plads-bekræftelse i BUGS.md #56, men TV-serier viste kun "Redigér serienummeret via API'et om nødvendigt", selvom backend allerede understøttede det. Nu samme felt og samme bekræftelse.

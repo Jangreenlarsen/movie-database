@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.204.9 (build 0309) — 2026-09-24
+
+- **Rettet**: sjældne "serverfejl", hvis to personer samtidig ændrede og slettede den samme sæson eller biografplads. Nu får man i stedet en besked om, at den ikke findes længere.
+
 ## v0.204.8 (build 0308) — 2026-09-24
 
 - **TV-seriers serienummer kan nu ændres** i rediger-vinduet, præcis som for film. Er nummeret allerede i brug, bliver du spurgt om de to skal bytte plads, med titlen på den anden.

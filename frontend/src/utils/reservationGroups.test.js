@@ -1,7 +1,11 @@
 // Feature #227 — grupperingen bag "Mine pladser" og admins tilmeldte-liste.
 import { describe, expect, it } from "vitest";
 
-import { freeSeatNumbers, groupReservationsByScreening } from "./reservationGroups";
+import {
+  GLOBAL_GROUP_ID,
+  freeSeatNumbers,
+  groupReservationsByScreening,
+} from "./reservationGroups";
 
 const res = (id, screeningId, seatNumber, extra = {}) => ({
   id,
@@ -34,6 +38,22 @@ describe("groupReservationsByScreening", () => {
   it("springer globale hold (uden visning) over", () => {
     const groups = groupReservationsByScreening([res("a", null, 14, { scope: "global" })]);
     expect(groups).toEqual([]);
+  });
+
+  it("samler globale hold i én \"alle visninger\"-gruppe med includeGlobal (BUGS.md #100)", () => {
+    const groups = groupReservationsByScreening(
+      [
+        res("g2", null, 14, { scope: "global", is_hold: true }),
+        res("g1", null, 3, { scope: "global", is_hold: true }),
+        res("a", "s1", 7),
+      ],
+      { includeGlobal: true }
+    );
+    expect(groups.map((g) => g.screeningId)).toEqual([GLOBAL_GROUP_ID, "s1"]);
+    expect(groups[0].global).toBe(true);
+    expect(groups[0].title).toBeNull();
+    expect(groups[0].reservations.map((r) => r.seat_number)).toEqual([3, 14]);
+    expect(groups[1].global).toBe(false);
   });
 
   it("tåler en tom eller manglende liste", () => {

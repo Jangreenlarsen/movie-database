@@ -903,6 +903,8 @@
   "myReservations.seatCount_other": "{count} seats",
   "myReservations.approved": "Approved",
   "myReservations.pending": "Awaiting the usher",
+  "myReservations.held": "Pre-reserved",
+  "myReservations.allScreenings": "All screenings",
   "myReservations.cancel": "Cancel",
   "myReservations.cancelling": "Cancelling…",
   "myReservations.cancelAll_one": "Cancel the seat",

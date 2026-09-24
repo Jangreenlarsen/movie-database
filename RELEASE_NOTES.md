@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.202.2 (build 0295) — 2026-09-24
+
+- **Rettet**: sæder du som admin har for-reserveret, står nu under **🎟️ Mine pladser** med mærkatet "For-reserveret" — både for-reserveringer til én visning og dem der gælder alle visninger (samlet under "Alle visninger" øverst). Du kan frigive dem derfra med "Meld fra".
+
 ## v0.202.1 (build 0294) — 2026-09-24
 
 - **Rettet**: ejer du en film både digitalt og fysisk, står den nu altid som **fysisk** under "Del af samlingen:" — også selvom den digitale udgave blev registreret først.

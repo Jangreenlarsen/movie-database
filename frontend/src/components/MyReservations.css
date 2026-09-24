@@ -172,6 +172,14 @@
   color: var(--accent-strong);
 }
 
+/* BUGS.md #100 — admins egen for-reservering: neutral, hverken godkendt
+   eller afventende. */
+.my-seats-pill--hold {
+  background: var(--surface-hover);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
 .my-seats-cancel {
   flex-shrink: 0;
   min-height: 44px;

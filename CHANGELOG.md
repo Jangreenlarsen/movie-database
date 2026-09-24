@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.202.2 build 0295] — 2026-09-24 — fix: for-reserverede sæder vises under "Mine pladser" (BUGS.md #100)
+
+Jan: *"hvis nogen laver en resevering af sæde i forresevering så se man ikke det sæd under bruger som lave den ... for alle forreseviring af sæder og ikke kun for den enklede film"*. Admins for-reserveringer (hold) blev filtreret fra "Mine pladser" siden feature #227. Nu står de der — hold på én visning under visningen, globale hold samlet i en "Alle visninger"-gruppe øverst — med mærkatet "For-reserveret" og en "Meld fra"-knap der frigiver sædet.
+
+Berørte filer: `backend/app/repositories/reservation_repository.py`, `backend/app/services/reservation_service.py`, `backend/tests/test_reservations.py` (3 tests, erstatter 1), `frontend/src/utils/reservationGroups.js` (+`includeGlobal`, `GLOBAL_GROUP_ID`), `frontend/src/components/MyReservations.jsx`, `frontend/src/components/MyReservations.css`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, tests (+2), `BUGS.md`. Backend (1056) + frontend (315) grøn. Ingen placeringsændring — kun et nyt mærkat i eksisterende række; ikke set i browser.
+
 ## [0.202.1 build 0294] — 2026-09-24 — fix: fysisk kopi vinder over digital i "Del af samlingen:" (BUGS.md #99)
 
 Jan: *"det er mening at fysisk altid tage præsedent over digital"*. Ejer man samme film både digitalt og fysisk, viste "Del af samlingen:" den kopi der tilfældigvis blev læst sidst fra databasen — typisk den først oprettede — så en film der først kom ind digitalt, stod som digital for altid. `get_collection_info` vælger nu den bedste kopi pr. `tmdb_id` (bibliotek før ønske, fysisk før digital) via ny `_ownership_rank`, og `find_by_tmdb_ids` skærer ikke længere svaret af ved `len(tmdb_ids)`, som kunne tabe en af kopierne.

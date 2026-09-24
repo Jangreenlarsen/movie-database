@@ -72,9 +72,13 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved, mode 
   const [barcodeSource, setBarcodeSource] = useState(null);
   const [candidates, setCandidates] = useState([]);
   const [scanStatus, setScanStatus] = useState("idle");
+  // BUGS.md #107 — backendens egen fejltekst (fx "TMDb-nøgle ikke sat"),
+  // vist i stedet for den generiske når den findes (regel 16).
+  const [scanError, setScanError] = useState(null);
   const [manualBarcode, setManualBarcode] = useState("");
   const [manualQuery, setManualQuery] = useState("");
   const [manualStatus, setManualStatus] = useState("idle");
+  const [manualError, setManualError] = useState(null);
   // Titel-gættet fra stregkode-opslaget (feature #81) — vist til brugeren
   // som en redigerbar tekst, fordi kilderne (især EAN-Search.org) nogle
   // gange returnerer let korrupt eller støjfyldt tekst (fx "rmageddon" uden
@@ -120,6 +124,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved, mode 
   // om boksen vises.
   const [previewData, setPreviewData] = useState(null);
   const [previewStatus, setPreviewStatus] = useState("idle");
+  const [previewError, setPreviewError] = useState(null);
 
   useEffect(() => {
     api.attributeOptions().then(setAttributeOptions).catch(() => {});
@@ -137,6 +142,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved, mode 
     setBarcodeSource(null);
     setManualStatus("idle");
     setScanStatus("looking-up");
+    setScanError(null);
     try {
       const result = await api.scanLookup(code);
       setCandidates(result.candidates ?? []);
@@ -147,7 +153,8 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved, mode 
       // bogstav fra kilden) og trykke "Søg" for at prøve igen.
       setManualQuery(result.guessed_title ?? "");
       setScanStatus("ready");
-    } catch {
+    } catch (err) {
+      setScanError(err.message);
       setScanStatus("error");
     }
   }
@@ -167,11 +174,15 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved, mode 
     setBarcodeSource(null);
     setGuessedTitle(null);
     setManualStatus("searching");
+    setManualError(null);
     try {
       // Søger både film og TV-serier (feature #49/#50) — samme princip som
       // stregkode-opslaget, som allerede returnerer begge typer samlet.
       const [movieResults, tvResults] = await Promise.all([
         api.tmdbSearch(manualQuery.trim()),
+        // Bevidst tavs: TV-søgningen er et supplement. Er TMDb nede, fejler
+        // film-søgningen ovenfor også og viser fejlen; ellers vises blot
+        // film-resultaterne.
         api.tvTmdbSearch(manualQuery.trim()).catch(() => []),
       ]);
       setCandidates([
@@ -180,7 +191,8 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved, mode 
       ]);
       setScanStatus("ready");
       setManualStatus("ready");
-    } catch {
+    } catch (err) {
+      setManualError(err.message);
       setManualStatus("error");
     }
   }
@@ -309,6 +321,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved, mode 
       }
       setPreviewStatus("ready");
     } catch (err) {
+      setPreviewError(err.message);
       setPreviewStatus("error");
     }
   }
@@ -357,7 +370,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved, mode 
         )}
         {scanStatus === "looking-up" && <p className="muted">{t("scan.lookingUp")}</p>}
         {scanStatus === "error" && (
-          <div className="banner banner-error">{t("scan.lookupFailed")}</div>
+          <div className="banner banner-error">{scanError || t("scan.lookupFailed")}</div>
         )}
         {scanStatus === "ready" && candidates.length === 0 && !guessedTitle && (
           <div className="banner banner-info">{t("scan.noMatch")}</div>
@@ -419,7 +432,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved, mode 
         )}
         {manualStatus === "error" && (
           <div className="banner banner-error" style={{ marginTop: 10 }}>
-            {t("scan.searchFailed")}
+            {manualError || t("scan.searchFailed")}
           </div>
         )}
         {manualStatus === "ready" && candidates.length === 0 && (
@@ -475,7 +488,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved, mode 
           <div className="card scan-loading-card">
             {previewStatus === "error" ? (
               <>
-                <div className="banner banner-error">{t("scan.detailsFailed")}</div>
+                <div className="banner banner-error">{previewError || t("scan.detailsFailed")}</div>
                 <button type="button" className="btn" onClick={backToCandidates}>
                   {t("scan.backToCandidates")}
                 </button>
@@ -592,7 +605,7 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved, mode 
                 </div>
 
                 {previewStatus === "error" && (
-                  <div className="banner banner-error">{t("scan.detailsFailed")}</div>
+                  <div className="banner banner-error">{previewError || t("scan.detailsFailed")}</div>
                 )}
               </div>
 

@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.204.6 build 0306] — 2026-09-24 — fix: scanningsflowet og sædekortet viser backendens egen fejltekst (BUGS.md #107)
+
+Fundet ved kodegennemgangen 2026-09-24 (regel 16): scanningsflowet viste kun "Opslag fejlede"/"Søgning fejlede"/"Kunne ikke hente detaljer", også når backend sagde præcis hvad der var galt (fx manglende TMDb-nøgle eller rate-limit). Nu vises backendens tekst, med den generiske som fallback. Samme for sædekortet.
+
+Berørte filer: `frontend/src/components/MovieLookupForm.jsx`, `frontend/src/components/SeatSelectionModal.jsx`, `frontend/src/components/MovieLookupForm.test.jsx` (+3), `frontend/src/components/SeatSelectionModal.test.jsx` (+1), `BUGS.md`. Ingen backend-ændring. Frontend (337) grøn. Ingen layoutændring — samme banner, anden tekst.
+
 ## [0.204.5 build 0305] — 2026-09-24 — fix: begrænsning af gættede adgangskoder på login (BUGS.md #106)
 
 Fundet ved kodegennemgangen 2026-09-24: det offentlige login havde ingen begrænsning af gentagne forsøg, og nginx-proxyen heller ikke. Nu låses et brugernavn i 15 minutter efter 5 forkerte forsøg (429 + Retry-After), også for det rigtige kodeord under låsen. Tælles pr. brugernavn, fordi backenden bag nginx/Caddy kun ser 127.0.0.1.

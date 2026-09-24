@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.204.6 (build 0306) — 2026-09-24
+
+- **Bedre fejlbeskeder ved scanning**: går et stregkode-opslag, en titel-søgning eller hentningen af detaljer galt, står der nu hvad der er galt (fx at TMDb-nøglen mangler, eller at TMDb beder os vente lidt) i stedet for bare "Opslag fejlede". Det samme gælder sædevalget i Voldby BIO.
+
 ## v0.204.5 (build 0305) — 2026-09-24
 
 - **Sikkerhed**: efter 5 forkerte adgangskoder i træk på samme brugernavn skal man nu vente 15 minutter, før man kan prøve igen. Det gør det praktisk umuligt at gætte sig til en adgangskode. Logger du ind korrekt, nulstilles tælleren.

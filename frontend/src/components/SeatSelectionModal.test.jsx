@@ -40,6 +40,12 @@ describe("SeatSelectionModal (feature #133)", () => {
     vi.restoreAllMocks();
   });
 
+  it("viser backendens egen fejltekst når sædekortet ikke kan hentes (BUGS.md #107)", async () => {
+    vi.spyOn(api, "getSeatMap").mockRejectedValue(new Error("Visningen findes ikke længere"));
+    render(<SeatSelectionModal screeningId="s1" screeningTitle="Testfilm" onClose={() => {}} />);
+    expect(await screen.findByText("Visningen findes ikke længere")).toBeInTheDocument();
+  });
+
   it("mapper backend-tilstande til klikbarhed", async () => {
     vi.spyOn(api, "getSeatMap").mockResolvedValue(
       seatMapWith({

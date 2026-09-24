@@ -106,6 +106,19 @@ class InvalidCredentialsError(Exception):
         super().__init__("Invalid username or password")
 
 
+class LoginThrottledError(Exception):
+    """BUGS.md #106 — for mange forkerte login-forsøg på samme brugernavn
+    (se services/login_throttle.py). Mappes til 429 med Retry-After."""
+
+    def __init__(self, retry_after_seconds: int):
+        self.retry_after_seconds = retry_after_seconds
+        minutes = max(1, -(-retry_after_seconds // 60))
+        unit = "minut" if minutes == 1 else "minutter"
+        super().__init__(
+            f"For mange forkerte loginforsøg. Prøv igen om {minutes} {unit}."
+        )
+
+
 class NotAuthenticatedError(Exception):
     def __init__(self):
         super().__init__("Not authenticated")

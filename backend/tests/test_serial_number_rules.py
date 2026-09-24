@@ -355,3 +355,39 @@ async def test_serial_holder_ignores_a_holder_in_another_series(client, db):
     response = await client.get(f"/api/movies/{b_id}/serial-holder?serial_number=3")
     assert response.status_code == 200
     assert response.json()["title"] is None
+
+
+async def test_tv_serial_holder_names_the_show_in_the_same_series(client):
+    """BUGS.md #109 — TV-udgaven af serial-holder-opslaget (BUGS.md #56)."""
+    first = (await client.post("/api/tv-shows", json={"name": "Serie Et", "media_type": "Fysisk", "format": "F-DVD"})).json()
+    second = (await client.post("/api/tv-shows", json={"name": "Serie To", "media_type": "Fysisk", "format": "F-DVD"})).json()
+
+    taken = await client.get(
+        f"/api/tv-shows/{second['id']}/serial-holder", params={"serial_number": first["serial_number"]}
+    )
+    assert taken.status_code == 200
+    assert taken.json() == {"title": "Serie Et"}
+
+    free = await client.get(f"/api/tv-shows/{second['id']}/serial-holder", params={"serial_number": 999})
+    assert free.json() == {"title": None}
+
+    own = await client.get(
+        f"/api/tv-shows/{second['id']}/serial-holder", params={"serial_number": second["serial_number"]}
+    )
+    assert own.json() == {"title": None}
+
+
+async def test_tv_serial_holder_ignores_physical_movies_with_the_same_number(client):
+    """T# og M# er forskellige serier: en fysisk film med nummer 2 holder ikke
+    T2, så der skal ingen byt-plads-bekræftelse vises."""
+    for title in ("Film Et", "Film To"):
+        await client.post("/api/movies", json={"title": title, "media_type": "Fysisk", "format": "F-DVD"})
+    show = (await client.post("/api/tv-shows", json={"name": "Serie", "media_type": "Fysisk", "format": "F-DVD"})).json()
+    assert show["serial_number"] == 1
+    response = await client.get(f"/api/tv-shows/{show['id']}/serial-holder", params={"serial_number": 2})
+    assert response.json() == {"title": None}
+
+
+async def test_tv_serial_holder_unknown_show_is_404(client):
+    response = await client.get("/api/tv-shows/650000000000000000000099/serial-holder", params={"serial_number": 1})
+    assert response.status_code == 404

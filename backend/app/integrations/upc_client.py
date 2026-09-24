@@ -2,6 +2,7 @@ import logging
 
 import httpx
 
+from app.integrations.http_json import json_object
 from app.integrations.text_cleanup import clean_bracketed_title
 
 BASE_URL = "https://api.upcitemdb.com/prod/trial/lookup"
@@ -23,7 +24,13 @@ async def lookup_title(barcode: str) -> str | None:
         logger.info("UPC lookup returned %s for %s", response.status_code, barcode)
         return None
 
-    items = response.json().get("items") or []
+    data = json_object(response)
+    if data is None:
+        # BUGS.md #105 — fx en Cloudflare-side med status 200; docstringen
+        # lover "never raises", så det behandles som intet match.
+        logger.warning("UPCitemdb: svar var ikke gyldig JSON for %s", barcode)
+        return None
+    items = data.get("items") or []
     if not items:
         logger.info("UPCitemdb: intet match for %s", barcode)
         return None

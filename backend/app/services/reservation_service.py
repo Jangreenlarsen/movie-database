@@ -202,8 +202,11 @@ async def reserve_seats(
                     str(existing["_id"]),
                     {"status": "approved", "approved_by": username, "updated_at": now},
                 )
-            created.append(existing)
-            continue
+            # BUGS.md #110 — None: brugeren meldte selv fra i samme øjeblik;
+            # så oprettes pladsen på ny nedenfor i stedet for en rå 500.
+            if existing is not None:
+                created.append(existing)
+                continue
         document = {
             "seat_id": seat_id,
             "scope": "screening",
@@ -292,6 +295,9 @@ async def approve_reservation(
             "updated_at": datetime.now(timezone.utc),
         },
     )
+    if updated is None:
+        # BUGS.md #110 — annulleret i samme øjeblik som godkendelsen.
+        raise ReservationNotFoundError(reservation_id)
     reservation = await _to_model(db, updated)
     # Feature #134 — giv ejeren besked i indbakken om godkendelsen.
     await _notify_owner_approved(db, reservation, admin)

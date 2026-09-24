@@ -169,6 +169,7 @@ export default function PrintList() {
     api
       .getSerialNumberConfig()
       .then((config) => setSerialPaddingWidth(config.padding_width))
+      // Bevidst tavs: numrene udskrives blot uden foranstillede nuller.
       .catch(() => {});
   }, []);
 

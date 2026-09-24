@@ -294,3 +294,110 @@ async def test_sync_requires_admin(client):
         )
         response = await standard_client.post("/api/tv-shows/sync-tmdb")
         assert response.status_code == 403
+
+
+async def _owned_show_with_episodes(client, monkeypatch):
+    async def initial(tv_id):
+        return _fake_tv_details(tv_id)
+
+    async def season_details(tv_id, season_number):
+        return _fake_episodes(season_number, 7)
+
+    monkeypatch.setattr(tmdb_client, "get_tv_show_details", initial)
+    monkeypatch.setattr(tmdb_client, "get_season_details", season_details)
+    created = await client.post(
+        "/api/tv-shows",
+        json={"tmdb_id": 1396, "owned_seasons": [1], "media_type": "Fysisk", "format": "F-DVD"},
+    )
+    return created.json()["id"]
+
+
+async def test_sync_keeps_episode_marked_watched_while_it_runs(client, monkeypatch):
+    """BUGS.md #112 — synken læser serien ved batchens start; en episode
+    markeret som set mens den venter på TMDb må ikke overskrives."""
+    show_id = await _owned_show_with_episodes(client, monkeypatch)
+
+    async def refreshed(tv_id):
+        response = await client.patch(
+            f"/api/tv-shows/{show_id}/seasons/1/episodes/5", json={"watched": True}
+        )
+        assert response.status_code == 200
+        return _fake_tv_details(tv_id, name="Refreshed Name")
+
+    monkeypatch.setattr(tmdb_client, "get_tv_show_details", refreshed)
+    result = (await client.post("/api/tv-shows/sync-tmdb")).json()
+    assert result["synced"] == 1
+
+    show = (await client.get(f"/api/tv-shows/{show_id}")).json()
+    assert show["name"] == "Refreshed Name"
+    ep5 = next(e for e in show["seasons"][0]["episodes"] if e["episode_number"] == 5)
+    assert ep5["watched"] is True
+
+
+async def test_sync_keeps_season_marked_owned_while_it_runs(client, monkeypatch):
+    show_id = await _owned_show_with_episodes(client, monkeypatch)
+
+    async def refreshed(tv_id):
+        response = await client.patch(f"/api/tv-shows/{show_id}/seasons/2", json={"owned": True})
+        assert response.status_code == 200
+        return _fake_tv_details(tv_id)
+
+    monkeypatch.setattr(tmdb_client, "get_tv_show_details", refreshed)
+    await client.post("/api/tv-shows/sync-tmdb")
+
+    show = (await client.get(f"/api/tv-shows/{show_id}")).json()
+    season_2 = next(s for s in show["seasons"] if s["season_number"] == 2)
+    assert season_2["owned"] is True
+
+
+async def test_seasons_compare_and_swap_refuses_a_stale_snapshot(client, monkeypatch):
+    """BUGS.md #112 — selve værnet: skrivningen afvises når sæsonerne er
+    ændret siden de blev læst."""
+    from app.db import get_database
+    from app.main import app
+    from app.repositories import tv_show_repository
+
+    show_id = await _owned_show_with_episodes(client, monkeypatch)
+    db = app.dependency_overrides.get(get_database, get_database)()
+    stale = (await tv_show_repository.find_by_id(db, show_id))["seasons"]
+    await client.patch(f"/api/tv-shows/{show_id}/seasons/1/episodes/2", json={"watched": True})
+
+    assert not await tv_show_repository.update_if_seasons_unchanged(
+        db, show_id, stale, {"seasons": stale}
+    )
+    fresh = (await tv_show_repository.find_by_id(db, show_id))["seasons"]
+    assert await tv_show_repository.update_if_seasons_unchanged(
+        db, show_id, fresh, {"name": "CAS ok"}
+    )
+
+
+async def test_episode_watched_guard_rejects_a_shifted_index(client, monkeypatch):
+    """BUGS.md #112 — peger et indeks ikke længere på den forventede
+    sæson/episode, skrives intet."""
+    from app.db import get_database
+    from app.main import app
+    from app.repositories import tv_show_repository
+
+    show_id = await _owned_show_with_episodes(client, monkeypatch)
+    db = app.dependency_overrides.get(get_database, get_database)()
+    # Indeks 0/0 er sæson 1/episode 1 — men vi påstår det er episode 4.
+    assert not await tv_show_repository.set_episode_watched(
+        db, show_id, 0, 0, True, None, season_number=1, episode_number=4
+    )
+    assert await tv_show_repository.set_episode_watched(
+        db, show_id, 0, 3, True, None, season_number=1, episode_number=4
+    )
+
+
+async def test_set_season_owned_on_a_show_deleted_meanwhile_is_404(client, monkeypatch):
+    """BUGS.md #110 — slettes serien mellem opslag og skrivning, er det 404."""
+    from app.repositories import tv_show_repository
+
+    show_id = await _owned_show_with_episodes(client, monkeypatch)
+
+    async def gone(*args, **kwargs):
+        return False
+
+    monkeypatch.setattr(tv_show_repository, "set_season_owned", gone)
+    response = await client.patch(f"/api/tv-shows/{show_id}/seasons/1", json={"owned": False})
+    assert response.status_code == 404

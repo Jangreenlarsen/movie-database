@@ -9,6 +9,7 @@ from app.core.version_info import VERSION_INFO
 from app.models.backup import DatabaseResetResult, SystemBackup, SystemRestoreResult
 from app.models.settings import (
     PasswordPolicyUpdate,
+    PlexAutoImportPolicyUpdate,
     ScreeningRequestPolicyUpdate,
     SystemSettingsUpdate,
 )
@@ -108,6 +109,14 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
     screening_request_policy = (
         await system_settings_service.get_screening_request_policy(db)
     ).model_dump()
+    # BUGS.md #104 — regel 20: manglede helt, så en gendannelse nulstillede
+    # stille Plex-auto-importens til/fra, interval og import-tag.
+    # `test_mode` (feature #217) er BEVIDST udeladt: det er en midlertidig
+    # driftstilstand, og en backup taget i testtilstand må ikke stille slå
+    # e-mails/beskeder fra på den server den gendannes på.
+    plex_auto_import_policy = (
+        await system_settings_service.get_plex_auto_import_policy(db)
+    ).model_dump()
 
     return SystemBackup(
         backed_up_at=datetime.now(timezone.utc),
@@ -132,6 +141,7 @@ async def create_backup(db: AsyncIOMotorDatabase) -> SystemBackup:
         system_settings_plain=to_json_safe(system_settings_plain),
         password_policy=to_json_safe(password_policy),
         screening_request_policy=to_json_safe(screening_request_policy),
+        plex_auto_import_policy=to_json_safe(plex_auto_import_policy),
     )
 
 
@@ -230,6 +240,9 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
     password_policy = from_json_safe(backup.password_policy)
     # Feature #177 — samme `{}`-fallback-begrundelse som password_policy.
     screening_request_policy = from_json_safe(backup.screening_request_policy)
+    # BUGS.md #104 — samme `{}`-fallback: en ældre backup rører ikke den
+    # kørende Plex-politik.
+    plex_auto_import_policy = from_json_safe(backup.plex_auto_import_policy)
 
     await movie_repository.replace_all(db, movies)
     await tv_show_repository.replace_all(db, tv_shows)
@@ -260,6 +273,9 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
     await system_settings_service.update_screening_request_policy(
         db, ScreeningRequestPolicyUpdate(**screening_request_policy)
     )
+    await system_settings_service.update_plex_auto_import_policy(
+        db, PlexAutoImportPolicyUpdate(**plex_auto_import_policy)
+    )
 
     return SystemRestoreResult(
         movies_imported=len(movies),
@@ -282,6 +298,7 @@ async def restore_backup(db: AsyncIOMotorDatabase, backup: SystemBackup) -> Syst
         system_settings_plain_restored=system_settings_plain_restored,
         password_policy_restored=True,
         screening_request_policy_restored=True,
+        plex_auto_import_policy_restored=bool(plex_auto_import_policy),
     )
 
 

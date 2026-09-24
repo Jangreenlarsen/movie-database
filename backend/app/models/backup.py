@@ -93,6 +93,10 @@ class SystemBackup(BaseModel):
     # Feature #177 — samme rå, ingen-"unset"-håndtering som password_policy
     # ovenfor, blot det ene felt.
     screening_request_policy: dict = Field(default_factory=dict)
+    # BUGS.md #104 — Plex-auto-import (feature #181): til/fra, interval og
+    # det delte import-tag. Samme rå, altid-komplette håndtering; `{}` i en
+    # ældre backup gør gendannelsen til en no-op for netop disse felter.
+    plex_auto_import_policy: dict = Field(default_factory=dict)
     # Feature #225 — admin-tilpassede besked-skabeloner (regel 20 anvendt
     # proaktivt, som #174/#177 ovenfor): kun de besked-typer der rent
     # faktisk er tilpasset har et dokument; uden denne ville en admins
@@ -129,6 +133,8 @@ class SystemRestoreResult(BaseModel):
     password_policy_restored: bool
     # Feature #177 — samme begrundelse som password_policy_restored ovenfor.
     screening_request_policy_restored: bool
+    # BUGS.md #104 — False når backuppen er fra før feltet fandtes.
+    plex_auto_import_policy_restored: bool = False
     # Feature #225 — se den identiske note ved SystemBackup.message_templates.
     message_templates_imported: int
 

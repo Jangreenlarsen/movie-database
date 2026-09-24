@@ -68,3 +68,54 @@ describe("MovieLookupForm mode (feature #124)", () => {
     expect(scanHeading()).not.toBeInTheDocument();
   });
 });
+
+describe("MovieLookupForm valgmuligheder (BUGS.md #111)", () => {
+  it("viser en fejl når format-/medietype-listerne ikke kan hentes", async () => {
+    vi.spyOn(api, "attributeOptions").mockRejectedValue(new Error("Timeout"));
+    vi.spyOn(api, "listTags").mockResolvedValue([]);
+    vi.spyOn(api, "listOwners").mockResolvedValue([]);
+    vi.spyOn(api, "listLocations").mockResolvedValue([]);
+    vi.spyOn(api, "getSerialNumberConfig").mockResolvedValue({ padding_width: 0 });
+    render(<MovieLookupForm user={{ username: "x" }} mode="both" />);
+    expect(await screen.findByText(/Kunne ikke hente valgmulighederne.*Timeout/)).toBeInTheDocument();
+  });
+});
+
+describe("MovieLookupForm fejlbeskeder (BUGS.md #107)", () => {
+  beforeEach(() => {
+    vi.spyOn(api, "attributeOptions").mockResolvedValue({
+      formats: [], audio_types: [], media_types: [], order_statuses: [], subtitles: [],
+    });
+    vi.spyOn(api, "listTags").mockResolvedValue([]);
+    vi.spyOn(api, "listOwners").mockResolvedValue([]);
+    vi.spyOn(api, "listLocations").mockResolvedValue([]);
+    vi.spyOn(api, "getSerialNumberConfig").mockResolvedValue({ padding_width: 0 });
+  });
+
+  it("stregkode-opslaget viser backendens egen fejltekst", async () => {
+    vi.spyOn(api, "scanLookup").mockRejectedValue(new Error("TMDb-nøgle er ikke sat"));
+    render(<MovieLookupForm user={{ username: "x" }} mode="scan" />);
+    await userEvent.click(screen.getByTestId("fake-scan"));
+    expect(await screen.findByText("TMDb-nøgle er ikke sat")).toBeInTheDocument();
+  });
+
+  it("titel-søgningen viser backendens egen fejltekst", async () => {
+    vi.spyOn(api, "tmdbSearch").mockRejectedValue(new Error("TMDb rate-limit ramt (429), prøv igen om lidt"));
+    vi.spyOn(api, "tvTmdbSearch").mockResolvedValue([]);
+    render(<MovieLookupForm user={{ username: "x" }} mode="manual" />);
+    await userEvent.type(screen.getByPlaceholderText("Film- eller serietitel..."), "Alien");
+    await userEvent.click(screen.getByRole("button", { name: "Søg" }));
+    expect(
+      await screen.findByText("TMDb rate-limit ramt (429), prøv igen om lidt")
+    ).toBeInTheDocument();
+  });
+
+  it("falder tilbage til den generiske tekst uden en besked", async () => {
+    vi.spyOn(api, "scanLookup").mockRejectedValue(new Error(""));
+    render(<MovieLookupForm user={{ username: "x" }} mode="scan" />);
+    await userEvent.click(screen.getByTestId("fake-scan"));
+    expect(
+      await screen.findByText("Opslag fejlede. Prøv igen, eller søg manuelt på titel nedenfor.")
+    ).toBeInTheDocument();
+  });
+});

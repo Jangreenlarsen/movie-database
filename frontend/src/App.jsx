@@ -108,6 +108,7 @@ function App() {
     api
       .health()
       .then((data) => setVersionInfo({ version: data.version, build: data.build }))
+      // Bevidst tavs: versionsnummeret i hjørnet er kun information.
       .catch(() => {});
   }, []);
 

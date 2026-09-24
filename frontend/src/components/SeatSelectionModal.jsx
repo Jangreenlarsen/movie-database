@@ -11,6 +11,8 @@ import "./SeatSelectionModal.css";
 export default function SeatSelectionModal({ screeningId, screeningTitle, onClose }) {
   const t = useT();
   const [status, setStatus] = useState("loading");
+  // BUGS.md #107 — backendens egen tekst, når sædekortet ikke kan hentes.
+  const [loadError, setLoadError] = useState(null);
   const [seats, setSeats] = useState([]);
   const [selected, setSelected] = useState(() => new Set());
   const [busy, setBusy] = useState(false);
@@ -22,7 +24,8 @@ export default function SeatSelectionModal({ screeningId, screeningTitle, onClos
       const data = await api.getSeatMap(screeningId);
       setSeats(data.seats);
       setStatus("ready");
-    } catch {
+    } catch (err) {
+      setLoadError(err.message);
       setStatus("error");
     }
   }, [screeningId]);
@@ -146,7 +149,9 @@ export default function SeatSelectionModal({ screeningId, screeningTitle, onClos
         </header>
 
         {status === "loading" && <p className="muted">{t("common.loading")}</p>}
-        {status === "error" && <div className="banner banner-error">{t("seat.loadError")}</div>}
+        {status === "error" && (
+          <div className="banner banner-error">{loadError || t("seat.loadError")}</div>
+        )}
 
         {status === "ready" && (
           <div className="seat-modal-body">

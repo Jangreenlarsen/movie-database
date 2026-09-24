@@ -72,3 +72,65 @@ async def test_import_requires_admin(client):
         )
         response = await standard_client.post("/api/library/import", json=export_data)
         assert response.status_code == 403
+
+
+def _import_doc(oid, title, media_type, serial, **extra):
+    return {
+        "_id": {"$oid": oid},
+        "title": title,
+        "media_type": media_type,
+        "format": "F-DVD" if media_type == "Fysisk" else "D-1080",
+        "serial_number": serial,
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "updated_at": "2026-01-01T00:00:00+00:00",
+        "genres": [], "cast": [], "tags": [], "audio_types": [],
+        **extra,
+    }
+
+
+async def _import(client, movies=(), tv_shows=()):
+    response = await client.post("/api/library/import", json={
+        "exported_at": "2026-01-01T00:00:00+00:00", "app_version": "x",
+        "movies": list(movies), "tv_shows": list(tv_shows),
+    })
+    assert response.status_code == 200, response.text
+
+
+async def test_import_keeps_each_serial_series_on_its_own_counter(client):
+    """BUGS.md #103 — en import med digitale og 5000+-numre må ikke sende
+    M#-tælleren op i 5000+; hver serie fortsætter fra sit eget højeste nummer."""
+    await _import(client, movies=[
+        _import_doc("650000000000000000000001", "Fysisk", "Fysisk", 3),
+        _import_doc("650000000000000000000002", "Digital", "Digital", 300),
+        _import_doc("650000000000000000000003", "Anden pulje", "Fysisk", 5001),
+    ])
+
+    physical = await client.post("/api/movies", json={"title": "Ny fysisk", "media_type": "Fysisk", "format": "F-DVD"})
+    assert physical.json()["serial_number"] == 4
+
+    digital = await client.post("/api/movies", json={"title": "Ny digital", "media_type": "Digital", "format": "D-1080"})
+    assert digital.json()["serial_number"] == 301
+
+
+async def test_import_keeps_tv_physical_counter_off_other_series(client):
+    tv = _import_doc("650000000000000000000011", "Serie", "Fysisk", 2)
+    tv["name"] = tv.pop("title")
+    tv_digital = _import_doc("650000000000000000000012", "Digital serie", "Digital", 40)
+    tv_digital["name"] = tv_digital.pop("title")
+    await _import(client, tv_shows=[tv, tv_digital])
+
+    created = await client.post("/api/tv-shows", json={"name": "Ny serie", "media_type": "Fysisk", "format": "F-DVD"})
+    assert created.status_code == 201, created.text
+    assert created.json()["serial_number"] == 3
+
+
+async def test_import_moves_other_pool_counter_past_imported_numbers(client):
+    from app.db import get_database
+    from app.main import app
+    from app.repositories import digital_serial_repository
+
+    await _import(client, movies=[
+        _import_doc("650000000000000000000021", "Anden pulje", "Fysisk", 5007),
+    ])
+    db = app.dependency_overrides.get(get_database, get_database)()
+    assert await digital_serial_repository.next_other_serial_number(db) == 5008

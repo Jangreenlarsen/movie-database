@@ -59,6 +59,8 @@ export default function ScreeningRequestButton({ mediaKind, id, username }) {
         setStatus("requested");
         setMyRequest(ownEntry(mine));
       })
+      // Bevidst tavs: uden listen vises knappen blot som "ikke anmodet";
+      // backend afviser selv en dobbelt anmodning med sin egen besked.
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mediaKind, id, username]);
@@ -67,6 +69,8 @@ export default function ScreeningRequestButton({ mediaKind, id, username }) {
     api
       .getScreeningRequestPolicy()
       .then((policy) => setPreferredAtRequired(policy.require_preferred_at))
+      // Bevidst tavs: kun et UI-hint. Backend håndhæver selv kravet og
+      // svarer med sin egen fejl, hvis dato mangler.
       .catch(() => {});
   }, []);
 

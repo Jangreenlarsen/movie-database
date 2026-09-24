@@ -537,7 +537,17 @@ async def bump_serial_counter_past(db: AsyncIOMotorDatabase, documents: list[dic
     """After a wholesale import, the next auto-assigned serial number must
     be higher than any serial number the import just brought in — otherwise
     the very next created movie could collide with an imported one."""
-    existing_serials = [doc["serial_number"] for doc in documents if doc.get("serial_number") is not None]
+    # BUGS.md #103 — kun denne collections FYSISKE serie (M#/T#). Digitale
+    # (D#) og 5000+-puljen er egne serier med egne tællere
+    # (digital_serial_repository.bump_counters_past); tog vi dem med, sprang
+    # M#-tælleren fx til 5002 efter en import med en 5000+-post.
+    existing_serials = [
+        doc["serial_number"]
+        for doc in documents
+        if isinstance(doc.get("serial_number"), int)
+        and doc.get("media_type") != DIGITAL_MEDIA_TYPE
+        and doc["serial_number"] < digital_serial_repository.OTHER_SERIAL_START
+    ]
     if not existing_serials:
         return
     config = await _ensure_serial_config(db)

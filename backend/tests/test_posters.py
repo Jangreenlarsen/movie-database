@@ -104,3 +104,44 @@ async def test_poster_endpoint_requires_no_login(client, monkeypatch):
         response = await anon.get("/api/posters/w185/public.jpg")
     assert response.status_code == 302
     assert response.headers["location"] == f"{IMAGE_HOST}/w185/public.jpg"
+
+
+async def test_path_traversal_is_rejected_without_calling_tmdb(client, monkeypatch):
+    """BUGS.md #108 — "../" i stien slap ud af /t/p/ på image.tmdb.org. Nu
+    accepteres kun et TMDb-filnavn; intet hentes, caches eller redirectes."""
+    calls = []
+
+    async def fake_fetch(size, path):
+        calls.append(path)
+        return b"<html></html>", "text/html"
+
+    monkeypatch.setattr(tmdb_client, "fetch_poster_image", fake_fetch)
+    for path in ("..%2F..%2Findex.html", "..%2Fx.jpg", "sub%2Fdir.jpg", "evil.svg", "noext"):
+        response = await client.get(f"/api/posters/w342/{path}")
+        assert response.status_code == 404, path
+    assert calls == []
+
+
+async def test_non_image_content_is_never_cached(client, monkeypatch):
+    """BUGS.md #108 — svarer TMDb med noget andet end et rasterbillede (fx
+    SVG eller HTML), gemmes det ikke, og næste kald redirecter blot igen."""
+    async def fake_fetch(size, path):
+        return b"<svg onload='alert(1)'/>", "image/svg+xml"
+
+    monkeypatch.setattr(tmdb_client, "fetch_poster_image", fake_fetch)
+    first = await client.get("/api/posters/w342/sneaky.jpg")
+    second = await client.get("/api/posters/w342/sneaky.jpg")
+    assert first.status_code == 302
+    assert second.status_code == 302  # stadig ikke cachet
+
+
+async def test_cached_poster_is_served_with_nosniff(client, monkeypatch):
+    async def fake_fetch(size, path):
+        return b"jpeg", "image/jpeg; charset=binary"
+
+    monkeypatch.setattr(tmdb_client, "fetch_poster_image", fake_fetch)
+    await client.get("/api/posters/w185/ok.jpg")
+    cached = await client.get("/api/posters/w185/ok.jpg")
+    assert cached.status_code == 200
+    assert cached.headers["content-type"] == "image/jpeg"
+    assert cached.headers["x-content-type-options"] == "nosniff"

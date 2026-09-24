@@ -198,6 +198,9 @@ export const api = {
   // Bruges til byt-plads-bekræftelsen før et serienummer ændres.
   getSerialSwapTarget: (id, serialNumber) =>
     request(`/movies/${id}/serial-holder?${new URLSearchParams({ serial_number: serialNumber })}`),
+  // BUGS.md #109 — TV-udgaven af serial-holder-opslaget.
+  getTvSerialSwapTarget: (id, serialNumber) =>
+    request(`/tv-shows/${id}/serial-holder?${new URLSearchParams({ serial_number: serialNumber })}`),
   createMovie: (payload) =>
     request("/movies", { method: "POST", body: JSON.stringify(payload) }),
   updateMovie: (id, payload) =>

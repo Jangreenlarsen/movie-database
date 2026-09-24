@@ -393,3 +393,34 @@ async def test_restore_requires_admin(client):
         )
         response = await standard_client.post("/api/system/restore", json=backup)
         assert response.status_code == 403
+
+
+async def test_plex_auto_import_policy_survives_backup_and_restore(client):
+    """BUGS.md #104 — regel 20: Plex-auto-importens til/fra, interval og
+    import-tag skal med i system-backuppen og gendannes."""
+    wanted = {"plex_auto_import_enabled": True, "plex_auto_import_interval_minutes": 120, "plex_import_tag": "Min-tag"}
+    assert (await client.patch("/api/settings/plex-auto-import", json=wanted)).status_code == 200
+    backup = (await client.get("/api/system/backup")).json()
+    assert backup["plex_auto_import_policy"] == wanted
+
+    await client.patch(
+        "/api/settings/plex-auto-import",
+        json={"plex_auto_import_enabled": False, "plex_auto_import_interval_minutes": 60, "plex_import_tag": "Andet"},
+    )
+    restored = await client.post("/api/system/restore", json=backup)
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["plex_auto_import_policy_restored"] is True
+    assert (await client.get("/api/settings/plex-auto-import")).json() == wanted
+
+
+async def test_restore_of_older_backup_leaves_plex_policy_alone(client):
+    """En backup fra før feltet fandtes, må ikke nulstille den kørende politik."""
+    backup = (await client.get("/api/system/backup")).json()
+    backup.pop("plex_auto_import_policy")
+    current = {"plex_auto_import_enabled": True, "plex_auto_import_interval_minutes": 90, "plex_import_tag": "Behold"}
+    await client.patch("/api/settings/plex-auto-import", json=current)
+
+    restored = await client.post("/api/system/restore", json=backup)
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["plex_auto_import_policy_restored"] is False
+    assert (await client.get("/api/settings/plex-auto-import")).json() == current

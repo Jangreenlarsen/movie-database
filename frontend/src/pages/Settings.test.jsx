@@ -1016,6 +1016,17 @@ describe("PlexImportSection tag-indlæsning (feature #182)", () => {
 
     expect(await screen.findByLabelText(/Tag på importerede/)).toHaveValue("Plex-import");
   });
+
+  it("advarer når standard-tagget vises fordi indlæsningen fejlede (BUGS.md #111)", async () => {
+    // En rigtig import gemmer feltets tag som det delte — admin skal vide at
+    // det ikke er den gemte værdi, der står der.
+    vi.spyOn(api, "getPlexAutoImportPolicy").mockRejectedValue(new Error("Serveren svarer ikke"));
+
+    render(<PlexImportSection />);
+
+    expect(await screen.findByText(/Serveren svarer ikke/)).toBeInTheDocument();
+    expect(screen.getByText(/Feltet viser standardværdien/)).toBeInTheDocument();
+  });
 });
 
 /**

@@ -38,6 +38,11 @@ async def get_poster(
     offline-formål: et allerede cachet billede afhænger stadig aldrig af
     TMDb; kun det allerførste, aldrig-sete cache-miss opfører sig
     anderledes (hurtigere, ikke langsommere)."""
+    # BUGS.md #108 — alt andet end et gyldigt TMDb-filnavn i en kendt
+    # størrelse afvises, før der caches, redirectes eller hentes noget.
+    if not poster_cache_service.is_valid_request(size, path):
+        return Response(status_code=404)
+
     cached = await poster_cache_service.find_cached(db, size, path)
     if cached is not None:
         data, content_type = cached
@@ -46,11 +51,11 @@ async def get_poster(
             media_type=content_type,
             # Cachet permanent i backend'en, og (size, path) peger altid på
             # nøjagtig samme bytes — så browseren må også gerne gemme den for altid.
-            headers={"Cache-Control": "public, max-age=31536000, immutable"},
+            headers={
+                "Cache-Control": "public, max-age=31536000, immutable",
+                "X-Content-Type-Options": "nosniff",
+            },
         )
-
-    if size not in poster_cache_service.ALLOWED_SIZES:
-        return Response(status_code=404)
 
     background_tasks.add_task(poster_cache_service.cache_in_background, db, size, path)
     return RedirectResponse(f"{IMAGE_HOST}/{size}/{path}", status_code=302)

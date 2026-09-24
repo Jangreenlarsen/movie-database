@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -18,7 +19,7 @@ from app.core.errors import (
     WishlistNotPendingError,
 )
 from app.integrations import omdb_client, tmdb_client
-from app.models.movie import TmdbSyncResult
+from app.models.movie import SerialHolder, TmdbSyncResult
 from app.models.movie import MediaType, WishlistStatus, coerce_subtitles
 from app.models.tv_show import (
     DeletedTvShow,
@@ -41,6 +42,8 @@ from app.repositories import (
 )
 from app.repositories.sort_title import strip_leading_article
 from app.services import announcement_service, message_service, tag_service
+
+logger = logging.getLogger("moviedb")
 
 
 def _to_model(document: dict) -> TvShow:
@@ -156,6 +159,11 @@ async def preview_from_tmdb(tmdb_id: int) -> TvShowPreview:
 
 # BUGS.md #62 — se den identiske note i movie_service.
 SERIAL_ASSIGN_RETRY_LIMIT = 3
+
+# BUGS.md #112 — antal compare-and-swap-forsøg når en samtidig "set"/"ejet"-
+# markering og TMDb-synken rammer samme serie. Kollisioner er sjældne; tre
+# forsøg er rigeligt, og en serie der alligevel taber, tages ved næste synk.
+SYNC_CAS_ATTEMPTS = 3
 
 
 def _is_serial_collision(exc: DuplicateKeyError) -> bool:
@@ -483,6 +491,31 @@ async def get_tv_show(db: AsyncIOMotorDatabase, tv_show_id: str) -> TvShow:
 _TEMP_SERIAL_NUMBER = -1
 
 
+async def find_serial_swap_target(
+    db: AsyncIOMotorDatabase, tv_show_id: str, new_serial: int
+) -> SerialHolder:
+    """BUGS.md #109 — TV-udgaven af `movie_service.find_serial_swap_target`:
+    hvem holder `new_serial` i samme serie som serien (fysisk T#, eller den
+    delte digitale D#, hvor holderen kan være en film)?"""
+    current_doc = await tv_show_repository.find_by_id(db, tv_show_id)
+    if current_doc is None:
+        raise TvShowNotFoundError(tv_show_id)
+    if current_doc.get("serial_number") == new_serial:
+        return SerialHolder(title=None)
+
+    holder = await digital_serial_repository.find_series_holder(
+        db,
+        current_doc.get("media_type"),
+        new_serial,
+        tv_show_repository.COLLECTION,
+        current_doc["_id"],
+    )
+    if holder is None:
+        return SerialHolder(title=None)
+    _, doc = holder
+    return SerialHolder(title=doc.get("name") or doc.get("title"))
+
+
 async def _reassign_serial_number(
     db: AsyncIOMotorDatabase, tv_show_id: str, current_doc: dict, new_serial: int
 ) -> None:
@@ -756,9 +789,14 @@ async def set_season_owned(
         ]
         await tv_show_repository.set_season_episodes(db, tv_show_id, season_number, episodes)
 
-    await tv_show_repository.set_season_owned(db, tv_show_id, season_number, owned)
+    # BUGS.md #110 — serien kan være slettet (eller sæsonen fjernet af
+    # TMDb-synken) mellem opslaget ovenfor og skrivningen.
+    if not await tv_show_repository.set_season_owned(db, tv_show_id, season_number, owned):
+        raise TvShowNotFoundError(tv_show_id)
 
     updated = await tv_show_repository.find_by_id(db, tv_show_id)
+    if updated is None:
+        raise TvShowNotFoundError(tv_show_id)
     return _to_model(updated)
 
 
@@ -774,23 +812,40 @@ async def set_episode_watched(
     if document is None:
         raise TvShowNotFoundError(tv_show_id)
 
-    season_index = _find_season_index(document, season_number)
-    if season_index is None:
-        raise TvShowNotFoundError(tv_show_id)
-
-    episodes = document["seasons"][season_index].get("episodes", [])
-    episode_index = next(
-        (i for i, ep in enumerate(episodes) if ep["episode_number"] == episode_number), None
-    )
-    if episode_index is None:
-        raise TvShowNotFoundError(tv_show_id)
-
     # Atomic single-field update, not read-modify-write — see BUGS.md #25.
-    await tv_show_repository.set_episode_watched(
-        db, tv_show_id, season_index, episode_index, watched, watched_at
-    )
+    # BUGS.md #112 — skrivningen kræver at indekset stadig peger på samme
+    # sæson/episode; flyttede TMDb-synken rundt imens, slås der op igen.
+    for _attempt in range(SYNC_CAS_ATTEMPTS):
+        season_index = _find_season_index(document, season_number)
+        if season_index is None:
+            raise TvShowNotFoundError(tv_show_id)
+        episodes = document["seasons"][season_index].get("episodes", [])
+        episode_index = next(
+            (i for i, ep in enumerate(episodes) if ep["episode_number"] == episode_number), None
+        )
+        if episode_index is None:
+            raise TvShowNotFoundError(tv_show_id)
+        written = await tv_show_repository.set_episode_watched(
+            db,
+            tv_show_id,
+            season_index,
+            episode_index,
+            watched,
+            watched_at,
+            season_number=season_number,
+            episode_number=episode_number,
+        )
+        if written:
+            break
+        document = await tv_show_repository.find_by_id(db, tv_show_id)
+        if document is None:
+            raise TvShowNotFoundError(tv_show_id)
+    else:
+        raise TvShowNotFoundError(tv_show_id)
 
     updated = await tv_show_repository.find_by_id(db, tv_show_id)
+    if updated is None:
+        raise TvShowNotFoundError(tv_show_id)
     return _to_model(updated)
 
 
@@ -853,6 +908,7 @@ async def sync_all_from_tmdb(db: AsyncIOMotorDatabase) -> TmdbSyncResult:
             failed_titles.append(document["name"])
             continue
 
+        rating = await _resolve_rating(details)
         fields = {
             "name": details["name"],
             "year": details["year"],
@@ -863,15 +919,39 @@ async def sync_all_from_tmdb(db: AsyncIOMotorDatabase) -> TmdbSyncResult:
             "genres": details["genres"],
             "cast": details["cast"],
             "creators": details["creators"],
-            "rating": await _resolve_rating(details),
+            "rating": rating,
             "number_of_seasons": details["number_of_seasons"],
             "number_of_episodes": details["number_of_episodes"],
             "imdb_url": details["imdb_url"],
-            "seasons": _merge_seasons(document.get("seasons", []), details["seasons"]),
             "sort_name": strip_leading_article(details["name"]),
             "updated_at": datetime.now(timezone.utc),
         }
-        await tv_show_repository.update(db, str(document["_id"]), fields)
+        # BUGS.md #112 — `document` blev læst ved batchens start, måske for
+        # minutter siden. Flet sæsonerne ind i en FRISK læsning og skriv kun
+        # hvis de er uændrede siden (compare-and-swap); ellers er en episode
+        # markeret som set eller en sæson som ejet imens, og vi prøver igen
+        # i stedet for stille at overskrive markeringen.
+        show_id = str(document["_id"])
+        outcome = "conflict"
+        for _attempt in range(SYNC_CAS_ATTEMPTS):
+            current = await tv_show_repository.find_by_id(db, show_id)
+            if current is None:
+                outcome = "deleted"  # slettet under synken — intet at opdatere
+                break
+            expected = current["seasons"] if "seasons" in current else None
+            fields["seasons"] = _merge_seasons(expected or [], details["seasons"])
+            if await tv_show_repository.update_if_seasons_unchanged(db, show_id, expected, fields):
+                outcome = "written"
+                break
+        if outcome == "deleted":
+            continue
+        if outcome == "conflict":
+            logger.warning(
+                "TMDb-synk: %s blev ændret under hvert forsøg — springes over denne gang",
+                document["name"],
+            )
+            failed_titles.append(document["name"])
+            continue
         synced += 1
         await asyncio.sleep(0.05)  # be gentle with TMDb across a large batch
 

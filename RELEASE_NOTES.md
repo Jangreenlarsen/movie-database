@@ -1,5 +1,45 @@
 # Release Notes
 
+## v0.204.10 (build 0310) — 2026-09-24
+
+- **Tydeligere fejl**: kan appen ikke hente listerne over formater og medietyper, står der nu en besked om det (og at siden skal genindlæses) i stedet for tomme lister og en Gem-knap der ikke virker. Under "Importér fra Plex" advares du, hvis det gemte import-tag ikke kunne hentes.
+
+## v0.204.9 (build 0309) — 2026-09-24
+
+- **Rettet**: sjældne "serverfejl", hvis to personer samtidig ændrede og slettede den samme sæson eller biografplads. Nu får man i stedet en besked om, at den ikke findes længere.
+
+## v0.204.8 (build 0308) — 2026-09-24
+
+- **TV-seriers serienummer kan nu ændres** i rediger-vinduet, præcis som for film. Er nummeret allerede i brug, bliver du spurgt om de to skal bytte plads, med titlen på den anden.
+
+## v0.204.7 (build 0307) — 2026-09-24
+
+- **Sikkerhed**: den offentlige plakat-visning (også brugt på /bio-siden) accepterer nu kun rigtige filmplakater fra TMDb og gemmer kun almindelige billeder.
+
+## v0.204.6 (build 0306) — 2026-09-24
+
+- **Bedre fejlbeskeder ved scanning**: går et stregkode-opslag, en titel-søgning eller hentningen af detaljer galt, står der nu hvad der er galt (fx at TMDb-nøglen mangler, eller at TMDb beder os vente lidt) i stedet for bare "Opslag fejlede". Det samme gælder sædevalget i Voldby BIO.
+
+## v0.204.5 (build 0305) — 2026-09-24
+
+- **Sikkerhed**: efter 5 forkerte adgangskoder i træk på samme brugernavn skal man nu vente 15 minutter, før man kan prøve igen. Det gør det praktisk umuligt at gætte sig til en adgangskode. Logger du ind korrekt, nulstilles tælleren.
+
+## v0.204.4 (build 0304) — 2026-09-24
+
+- **Rettet**: svarer en af de eksterne tjenester (TMDb, stregkode-opslag, OMDb) med en fejlside i stedet for data, går scanningen ikke længere i stå med en uforståelig serverfejl — den fortsætter som ved "intet match" eller viser en forståelig besked. "Test forbindelse" under Indstillinger siger heller ikke længere "Virker" i det tilfælde.
+
+## v0.204.3 (build 0303) — 2026-09-24
+
+- **Rettet**: indstillingerne for automatisk Plex-import (til/fra, hvor ofte, og hvilket tag importerede titler får) kommer nu med i den fulde system-backup og bliver gendannet igen.
+
+## v0.204.2 (build 0302) — 2026-09-24
+
+- **Rettet**: efter "Importér bibliotek" fik den næste fysiske film eller serie et serienummer over 5000, hvis importen indeholdt digitale titler eller titler fra 5000+-puljen. Nu fortsætter hver nummerserie (M, T, D og 5000+) fra sit eget højeste nummer.
+
+## v0.204.1 (build 0301) — 2026-09-24
+
+- **Rettet**: markerer du en episode som set eller en sæson som ejet, mens TV-serierne synkroniseres med TMDb, bliver markeringen ikke længere overskrevet af synkroniseringen.
+
 ## v0.204.0 (build 0300) — 2026-09-24
 
 - **Til admin — for-reservér sæder direkte på salen**: "For-reservér et sæde" åbner nu samme grafiske sal som når man vælger plads til en film. Vælg "Alle visninger" eller en bestemt visning, se med det samme hvilke sæder der allerede er optaget, og for-reservér flere sæder på én gang.

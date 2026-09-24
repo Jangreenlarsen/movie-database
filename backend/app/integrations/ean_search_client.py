@@ -3,6 +3,7 @@ import logging
 import httpx
 
 from app.core.config import settings
+from app.integrations.http_json import parse_json
 from app.integrations.text_cleanup import clean_bracketed_title
 
 BASE_URL = "https://api.ean-search.org/api"
@@ -43,7 +44,10 @@ async def lookup_title(barcode: str) -> str | None:
         logger.info("EAN-Search.org lookup returned %s for %s", response.status_code, barcode)
         return None
 
-    data = response.json()
+    data = parse_json(response)
+    if data is None:
+        logger.warning("EAN-Search.org: svar var ikke gyldig JSON for %s", barcode)
+        return None
     if not isinstance(data, list) or not data:
         logger.info("EAN-Search.org: intet match for %s", barcode)
         return None
@@ -92,7 +96,11 @@ async def test_connection() -> tuple[bool, str]:
     if response.status_code != 200:
         return False, f"Uventet svar (HTTP {response.status_code})"
 
-    data = response.json()
-    if isinstance(data, list) and data and "error" in data[0]:
+    data = parse_json(response)
+    if not isinstance(data, list):
+        # BUGS.md #105 — uden dette svarede "Test forbindelse" "Virker" på
+        # en HTML-side.
+        return False, "Ugyldigt svar fra EAN-Search.org (ikke JSON)"
+    if data and isinstance(data[0], dict) and "error" in data[0]:
         return False, f"Token afvist: {data[0]['error']}"
     return True, "Virker"

@@ -200,3 +200,85 @@ describe("TvShowDetailModal — besked-valg ved biblioteks-tilføjelse (feature 
     expect(screen.queryByRole("radio", { name: /Med i næste samlede opdatering/ })).not.toBeInTheDocument();
   });
 });
+
+describe("TvShowDetailModal — redigerbart serienummer (BUGS.md #109)", () => {
+  const owned = {
+    ...baseShow,
+    is_wishlist: false,
+    media_type: "Fysisk",
+    format: "F-DVD",
+    serial_number: 3,
+    registered_by: "admin1",
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(api, "recordVisit").mockResolvedValue({});
+    vi.spyOn(api, "myScreeningRequests").mockResolvedValue([]);
+    vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({ require_preferred_at: false });
+  });
+
+  async function editSerial(value) {
+    await userEvent.click(await screen.findByRole("button", { name: "Redigér" }));
+    const input = screen.getByDisplayValue("3");
+    await userEvent.clear(input);
+    await userEvent.type(input, value);
+    await userEvent.click(screen.getByRole("button", { name: "Gem ændringer" }));
+  }
+
+  it("bekræfter byt-plads med titlen og sender det nye nummer", async () => {
+    vi.spyOn(api, "getTvSerialSwapTarget").mockResolvedValue({ title: "Anden Serie" });
+    const update = vi.spyOn(api, "updateTvShow").mockResolvedValue({});
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    renderAsAdmin(owned);
+
+    await editSerial("7");
+
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    expect(api.getTvSerialSwapTarget).toHaveBeenCalledWith("show-1", 7);
+    expect(confirm.mock.calls[0][0]).toContain("Anden Serie");
+    expect(update.mock.calls[0][1].serial_number).toBe(7);
+  });
+
+  it("gemmer intet når byttet fortrydes", async () => {
+    vi.spyOn(api, "getTvSerialSwapTarget").mockResolvedValue({ title: "Anden Serie" });
+    const update = vi.spyOn(api, "updateTvShow").mockResolvedValue({});
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    renderAsAdmin(owned);
+
+    await editSerial("7");
+    await waitFor(() => expect(api.getTvSerialSwapTarget).toHaveBeenCalled());
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("et frit nummer gemmes uden bekræftelse", async () => {
+    vi.spyOn(api, "getTvSerialSwapTarget").mockResolvedValue({ title: null });
+    const update = vi.spyOn(api, "updateTvShow").mockResolvedValue({});
+    const confirm = vi.spyOn(window, "confirm");
+    renderAsAdmin(owned);
+
+    await editSerial("12");
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    expect(confirm).not.toHaveBeenCalled();
+    expect(update.mock.calls[0][1].serial_number).toBe(12);
+  });
+
+  it("feltet er låst for en bruger der hverken er admin eller har registreret serien", async () => {
+    render(
+      <TvShowDetailModal
+        show={owned}
+        user={{ username: "andenbruger", role: "standard" }}
+        allTags={[]}
+        allOwners={[]}
+        allLocations={[]}
+        attributeOptions={attributeOptions}
+        serialPaddingWidth={0}
+        plex={basePlex}
+        onClose={() => {}}
+        onChanged={() => {}}
+      />
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "Redigér" }));
+    expect(screen.getByDisplayValue("3")).toBeDisabled();
+  });
+});

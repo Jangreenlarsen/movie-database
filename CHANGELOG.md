@@ -2,6 +2,66 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.204.10 build 0310] — 2026-09-24 — fix: tavse fejl med reel effekt vises nu, resten har fået deres begrundelse (BUGS.md #111)
+
+Fundet ved kodegennemgangen 2026-09-24 (regel 16): ca. 35 tavse `.catch(() => {})` uden begrundelse. To havde reel effekt — tomme format-/medietype-lister uden forklaring (titlen kunne ikke gemmes), og Plex-import-tagget, der ved en fejlet indlæsning stille viste standardværdien og gemte den over det delte tag ved næste import. Begge viser nu fejlen; resten er kommenteret.
+
+Berørte filer: `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/components/MovieLookupForm.jsx`, `frontend/src/pages/Settings.jsx`, `frontend/src/components/ScreeningRequestButton.jsx`, `frontend/src/pages/PrintList.jsx`, `frontend/src/pages/CinemaPublicV2.jsx`, `frontend/src/pages/Cinema.jsx`, `frontend/src/App.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, tests (+2), `BUGS.md`. Backend (1088) + frontend (343) grøn. Nye bannere står i de eksisterende banner-stakke (ingen placeringsændring); ikke set i browser.
+
+## [0.204.9 build 0309] — 2026-09-24 — fix: ingen rå 500 når en post slettes samtidig med en opdatering (BUGS.md #110)
+
+Fundet ved kodegennemgangen 2026-09-24: tre steder sendte et `None` fra en opdatering eller genlæsning direkte videre, så et kapløb med en samtidig sletning gav en rå 500. Nu en pæn 404, eller — ved admin-tilføjelse af en plads brugeren netop har meldt fra — en ny plads.
+
+Berørte filer: `backend/app/services/tv_show_service.py`, `backend/app/services/reservation_service.py`, `backend/tests/test_reservations.py` (+2), `backend/tests/test_tv_show_tmdb_sync.py` (+1), `BUGS.md`. Backend (1088) + frontend grøn.
+
+## [0.204.8 build 0308] — 2026-09-24 — fix: TV-seriers serienummer kan redigeres i UI'et, med byt-plads-bekræftelse (BUGS.md #109)
+
+Fundet ved kodegennemgangen 2026-09-24 (regel 16, "regler der kun gælder én gren"): film fik redigerbart serienummer med byt-plads-bekræftelse i BUGS.md #56, men TV-serier viste kun "Redigér serienummeret via API'et om nødvendigt", selvom backend allerede understøttede det. Nu samme felt og samme bekræftelse.
+
+Berørte filer: `backend/app/services/tv_show_service.py`, `backend/app/api/tv_shows.py`, `backend/tests/test_serial_number_rules.py` (+3), `frontend/src/pages/TvShows.jsx`, `frontend/src/api/client.js`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `frontend/src/pages/TvShows.test.jsx` (+4), `ARCHITECTURE.md`, `BUGS.md`. Backend (1085) + frontend (341) grøn. Ingen placeringsændring — et input i samme felt-celle som filmens; ikke set i browser.
+
+## [0.204.7 build 0307] — 2026-09-24 — fix: poster-proxyen accepterer kun TMDb-filnavne og rasterbilleder (BUGS.md #108)
+
+Fundet ved kodegennemgangen 2026-09-24: det offentlige poster-endpoint sendte stien uændret videre til image.tmdb.org ("../../" slap ud af poster-mappen) og gemte svaret permanent uden at tjekke typen, hvorefter det blev serveret fra vores eget domæne. Nu kun TMDb-filnavne og rasterbilleder, med nosniff.
+
+Berørte filer: `backend/app/services/poster_cache_service.py`, `backend/app/api/posters.py`, `backend/tests/test_posters.py` (+3 tests), `BUGS.md`. Backend + frontend grøn.
+
+## [0.204.6 build 0306] — 2026-09-24 — fix: scanningsflowet og sædekortet viser backendens egen fejltekst (BUGS.md #107)
+
+Fundet ved kodegennemgangen 2026-09-24 (regel 16): scanningsflowet viste kun "Opslag fejlede"/"Søgning fejlede"/"Kunne ikke hente detaljer", også når backend sagde præcis hvad der var galt (fx manglende TMDb-nøgle eller rate-limit). Nu vises backendens tekst, med den generiske som fallback. Samme for sædekortet.
+
+Berørte filer: `frontend/src/components/MovieLookupForm.jsx`, `frontend/src/components/SeatSelectionModal.jsx`, `frontend/src/components/MovieLookupForm.test.jsx` (+3), `frontend/src/components/SeatSelectionModal.test.jsx` (+1), `BUGS.md`. Ingen backend-ændring. Frontend (337) grøn. Ingen layoutændring — samme banner, anden tekst.
+
+## [0.204.5 build 0305] — 2026-09-24 — fix: begrænsning af gættede adgangskoder på login (BUGS.md #106)
+
+Fundet ved kodegennemgangen 2026-09-24: det offentlige login havde ingen begrænsning af gentagne forsøg, og nginx-proxyen heller ikke. Nu låses et brugernavn i 15 minutter efter 5 forkerte forsøg (429 + Retry-After), også for det rigtige kodeord under låsen. Tælles pr. brugernavn, fordi backenden bag nginx/Caddy kun ser 127.0.0.1.
+
+Berørte filer: `backend/app/services/login_throttle.py` (ny), `backend/app/services/auth_service.py`, `backend/app/core/errors.py`, `backend/app/main.py`, `backend/tests/conftest.py`, `backend/tests/test_login_throttle.py` (ny, 6 tests), `BUGS.md`. Backend (1079) + frontend (333) grøn.
+
+## [0.204.4 build 0304] — 2026-09-24 — fix: svar der ikke er JSON fra eksterne tjenester giver ikke længere en rå 500 (BUGS.md #105)
+
+Fundet ved kodegennemgangen 2026-09-24 og verificeret med test: svarer en ekstern tjeneste 200 med en HTML-side (Cloudflare, captive portal, proxy), kastede `response.json()` en rå `JSONDecodeError`, som endte som en 500 i scanningsflowet — også i `upc_client`, der lover aldrig at kaste. Nu en fælles, sikker afkodning, og hver klient oversætter til sit eget "intet match"/pæne fejl.
+
+Berørte filer: `backend/app/integrations/http_json.py` (ny), `backend/app/integrations/{upc,discogs,ean_search,upcdatabase,omdb,email,tmdb}_client.py`, `backend/tests/test_integrations_non_json.py` (ny, 8 tests), `BUGS.md`. Backend + frontend grøn.
+
+## [0.204.3 build 0303] — 2026-09-24 — fix: Plex-auto-import-indstillingerne med i system-backup/restore (BUGS.md #104)
+
+Fundet ved kodegennemgangen 2026-09-24 og verificeret med test (regel 20): system-backuppen tog adgangskode- og visnings-politikken med, men ikke Plex-auto-importen (feature #181), så en gendannelse nulstillede til/fra, interval og import-tag. Nu med, og en ældre backup uden feltet lader den kørende politik være.
+
+Berørte filer: `backend/app/models/backup.py`, `backend/app/services/system_backup_service.py`, `backend/tests/test_system_backup.py` (+2 tests), `BUGS.md`. Backend + frontend grøn.
+
+## [0.204.2 build 0302] — 2026-09-24 — fix: biblioteks-import holder hver serienummer-serie på sin egen tæller (BUGS.md #103)
+
+Fundet ved kodegennemgangen 2026-09-24 og verificeret med test: efter "Importér bibliotek" satte `bump_serial_counter_past` M#-/T#-tælleren forbi det højeste nummer blandt ALLE importerede poster — også digitale og 5000+-puljen — så næste fysiske film fik fx M5002. Hver serie justerer nu kun sin egen tæller, og D#/5000+ justeres særskilt.
+
+Berørte filer: `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/app/repositories/digital_serial_repository.py`, `backend/app/services/library_backup_service.py`, `backend/tests/test_library_backup.py` (+3 tests), `BUGS.md`. Backend + frontend grøn.
+
+## [0.204.1 build 0301] — 2026-09-24 — fix: TMDb-synk af TV-serier overskriver ikke længere "set"/"ejet" (BUGS.md #112)
+
+Fundet ved kodegennemgangen 2026-09-24 og verificeret med test: `sync_all_from_tmdb` læste alle serier ved batchens start og skrev hele `seasons`-arrayet tilbage for hver serie efter netværkskald — en episode markeret som set (eller en sæson som ejet) imens blev stille overskrevet. Nu compare-and-swap mod en frisk læsning, og episode-skrivningen er værnet mod forskudte indekser.
+
+Berørte filer: `backend/app/services/tv_show_service.py`, `backend/app/repositories/tv_show_repository.py`, `backend/tests/test_tv_show_tmdb_sync.py` (+4 tests), `BUGS.md`. Backend (1060) + frontend (333) grøn.
+
 ## [0.204.0 build 0300] — 2026-09-24 — feature: grafisk sædevalg ved for-reservering (FEATURES.md #231)
 
 Jan: *"for-reserver et sæde funktion må godt komme op med samme gfx sæde valg som ved sæde valg ved en film reservation"*. "For-reservér et sæde" på Bio-fanen er nu en knap ("Vælg sæder på salen…"), der åbner et vindue med samme sal som gæsternes sædevalg. Øverst vælges "Alle visninger" eller én visning; sæder der allerede er optaget for netop det valg, er grå (samme regler som backend: et globalt hold konflikter med enhver reservation på sædet, et hold på én visning med visningens egne og med globale hold — afventende tæller med). Flere sæder kan vælges og for-reserveres på én gang; ét kald pr. sæde, der stopper ved første afvisning og viser backendens egen fejltekst. Vinduet genindlæser reservationerne før det frigives igen, så et netop for-reserveret sæde aldrig står som ledigt et øjeblik (fundet ved browser-verifikationen).

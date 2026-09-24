@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.204.3 build 0303] — 2026-09-24 — fix: Plex-auto-import-indstillingerne med i system-backup/restore (BUGS.md #104)
+
+Fundet ved kodegennemgangen 2026-09-24 og verificeret med test (regel 20): system-backuppen tog adgangskode- og visnings-politikken med, men ikke Plex-auto-importen (feature #181), så en gendannelse nulstillede til/fra, interval og import-tag. Nu med, og en ældre backup uden feltet lader den kørende politik være.
+
+Berørte filer: `backend/app/models/backup.py`, `backend/app/services/system_backup_service.py`, `backend/tests/test_system_backup.py` (+2 tests), `BUGS.md`. Backend + frontend grøn.
+
 ## [0.204.2 build 0302] — 2026-09-24 — fix: biblioteks-import holder hver serienummer-serie på sin egen tæller (BUGS.md #103)
 
 Fundet ved kodegennemgangen 2026-09-24 og verificeret med test: efter "Importér bibliotek" satte `bump_serial_counter_past` M#-/T#-tælleren forbi det højeste nummer blandt ALLE importerede poster — også digitale og 5000+-puljen — så næste fysiske film fik fx M5002. Hver serie justerer nu kun sin egen tæller, og D#/5000+ justeres særskilt.

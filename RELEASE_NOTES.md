@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.204.3 (build 0303) — 2026-09-24
+
+- **Rettet**: indstillingerne for automatisk Plex-import (til/fra, hvor ofte, og hvilket tag importerede titler får) kommer nu med i den fulde system-backup og bliver gendannet igen.
+
 ## v0.204.2 (build 0302) — 2026-09-24
 
 - **Rettet**: efter "Importér bibliotek" fik den næste fysiske film eller serie et serienummer over 5000, hvis importen indeholdt digitale titler eller titler fra 5000+-puljen. Nu fortsætter hver nummerserie (M, T, D og 5000+) fra sit eget højeste nummer.

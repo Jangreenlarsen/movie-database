@@ -351,3 +351,8 @@
     transition: none;
   }
 }
+
+/* Feature #231 — omfangs-vælgeren i admins for-reservér-vindue. */
+.seat-hold-scope {
+  margin-top: 12px;
+}

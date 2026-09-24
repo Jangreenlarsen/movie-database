@@ -2,6 +2,14 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.204.0 build 0300] — 2026-09-24 — feature: grafisk sædevalg ved for-reservering (FEATURES.md #231)
+
+Jan: *"for-reserver et sæde funktion må godt komme op med samme gfx sæde valg som ved sæde valg ved en film reservation"*. "For-reservér et sæde" på Bio-fanen er nu en knap ("Vælg sæder på salen…"), der åbner et vindue med samme sal som gæsternes sædevalg. Øverst vælges "Alle visninger" eller én visning; sæder der allerede er optaget for netop det valg, er grå (samme regler som backend: et globalt hold konflikter med enhver reservation på sædet, et hold på én visning med visningens egne og med globale hold — afventende tæller med). Flere sæder kan vælges og for-reserveres på én gang; ét kald pr. sæde, der stopper ved første afvisning og viser backendens egen fejltekst. Vinduet genindlæser reservationerne før det frigives igen, så et netop for-reserveret sæde aldrig står som ledigt et øjeblik (fundet ved browser-verifikationen).
+
+Salens layout er trukket ud af `SeatSelectionModal` til ny `SeatRoom`, som begge vinduer bruger. Oversættelserne `cinema.holdSeat/holdSubmit/holdSuccess` (den gamle dropdown-formular) er erstattet af `cinema.holdOpen/holdSubmitCount/holdSuccessCount/holdPickScreeningFirst`.
+
+Berørte filer: `frontend/src/components/SeatRoom.jsx` (ny), `frontend/src/components/HoldSeatModal.jsx` (ny), `frontend/src/components/HoldSeatModal.test.jsx` (ny, 5 tests), `frontend/src/components/SeatSelectionModal.jsx`, `frontend/src/components/SeatSelectionModal.css`, `frontend/src/pages/Cinema.jsx`, `frontend/src/utils/reservationGroups.js` (+`holdBlockedSeatIds`), `frontend/src/utils/reservationGroups.test.js` (+3 tests), `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `FEATURES.md`. Ingen backend-ændring (samme `POST /api/reservations/hold`). Backend (1056) + frontend (333) grøn. Set i browser (Playwright/msedge mod en engangs-database, slettet bagefter): 1440px med "alle visninger" og én visning, for-reservering af to sæder end-to-end, samt 390px og 360px uden vandret overløb.
+
 ## [0.203.2 build 0299] — 2026-09-24 — fix: serienr.-badge på plakaten i detaljevisningen (BUGS.md #101)
 
 Jan: *"en badge på film icon som på hovedsiden"*. Detaljevinduet for film og TV-serier viser nu samme runde serienr.-mærke oppe i plakatens hjørne som kortene i listen (M/T/D-præfiks). `.modal-poster` fik `position: relative`, og en ny `.modal-serial` placerer mærket lidt tættere på hjørnet end på kortet.

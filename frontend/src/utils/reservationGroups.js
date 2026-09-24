@@ -44,3 +44,17 @@ export function freeSeatNumbers(allSeats, reservations, screeningId) {
   );
   return allSeats.filter((seat) => !taken.has(seat.id));
 }
+
+// Feature #231 — hvilke sæder kan IKKE for-reserveres? Samme regler som
+// backend (`reservation_service.create_hold`): et globalt hold konflikter
+// med enhver reservation på sædet; et hold på én visning med visningens egne
+// og med globale hold. Afventende tæller med — de er stadig nogens plads.
+export function holdBlockedSeatIds(reservations, scope, screeningId) {
+  const blocked = new Set();
+  for (const r of reservations ?? []) {
+    if (scope === "global" || r.scope === "global" || r.screening_id === screeningId) {
+      blocked.add(r.seat_id);
+    }
+  }
+  return blocked;
+}

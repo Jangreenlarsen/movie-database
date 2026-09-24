@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import CinemaShowcase from "../components/CinemaShowcase";
 import DateField from "../components/DateField";
 import DateTime24Input from "../components/DateTime24Input";
+import HoldSeatModal from "../components/HoldSeatModal";
 import SeatSelectionModal from "../components/SeatSelectionModal";
 import { announceReservationsChanged } from "../utils/reservationEvents";
 import { formatDateHeading, formatShortDate, formatTime, groupByDate } from "../utils/cinemaFormat";
@@ -1574,7 +1575,11 @@ function ReservationAdmin({ screenings }) {
 
       <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid var(--border)" }} />
 
-      <HoldTool screenings={screenings} onChanged={refresh} />
+      <HoldTool
+        screenings={screenings}
+        reservations={[...pending, ...approved]}
+        onChanged={refresh}
+      />
     </div>
 
     {/* Feature #227 — samme data og samme genindlæsning som køen ovenfor,
@@ -1698,92 +1703,28 @@ function ReservationRow({ reservation, onChanged }) {
   );
 }
 
-function HoldTool({ screenings, onChanged }) {
+// Feature #231 — for-reservering sker nu i et vindue med samme grafiske sal
+// som gæsternes sædevalg (HoldSeatModal); her står kun indgangen.
+function HoldTool({ screenings, reservations, onChanged }) {
   const t = useT();
-  const locale = useLocale();
-  const [seatId, setSeatId] = useState("N1-1");
-  const [scope, setScope] = useState("global");
-  const [screeningId, setScreeningId] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
-  const [ok, setOk] = useState(false);
-
-  const canSubmit = seatId && (scope === "global" || screeningId);
-
-  async function submit() {
-    if (!canSubmit) return;
-    setBusy(true);
-    setError(null);
-    setOk(false);
-    try {
-      await api.holdSeat({
-        seat_id: seatId,
-        scope,
-        ...(scope === "screening" ? { screening_id: screeningId } : {}),
-      });
-      setOk(true);
-      onChanged();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const [open, setOpen] = useState(false);
 
   return (
     <div>
       <h3 style={{ marginTop: 0 }}>{t("cinema.holdTitle")}</h3>
       <p className="muted">{t("cinema.holdHint")}</p>
-      <div className="cinema-hold-form">
-        <label>
-          {t("cinema.holdSeat")}
-          <select value={seatId} onChange={(e) => setSeatId(e.target.value)}>
-            {SEAT_OPTIONS.map((seat) => (
-              <option key={seat.id} value={seat.id}>
-                {t("seat.seatLabel", { number: seat.number })}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          {t("cinema.holdScope")}
-          <select
-            value={scope}
-            onChange={(e) => {
-              setScope(e.target.value);
-              setOk(false);
-            }}
-          >
-            <option value="global">{t("cinema.holdGlobal")}</option>
-            <option value="screening">{t("cinema.holdScreening")}</option>
-          </select>
-        </label>
-        {scope === "screening" && (
-          <label>
-            {t("cinema.holdPickScreening")}
-            <select value={screeningId} onChange={(e) => setScreeningId(e.target.value)}>
-              <option value="">{t("cinema.holdChoose")}</option>
-              {screenings.map((screening) => (
-                <option key={screening.id} value={screening.id}>
-                  {(screening.title ?? t("cinema.unknownTitle")) +
-                    " · " +
-                    formatShortDate(screening.scheduled_at, locale)}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={submit}
-          disabled={busy || !canSubmit}
-        >
-          {t(busy ? "cinema.holding" : "cinema.holdSubmit")}
-        </button>
-      </div>
-      {ok && <div className="banner banner-info" style={{ marginTop: 8 }}>{t("cinema.holdSuccess")}</div>}
-      {error && <div className="banner banner-error" style={{ marginTop: 8 }}>{error}</div>}
+      <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}>
+        {t("cinema.holdOpen")}
+      </button>
+      {open && (
+        <HoldSeatModal
+          seats={SEAT_OPTIONS}
+          screenings={screenings}
+          reservations={reservations}
+          onClose={() => setOpen(false)}
+          onChanged={onChanged}
+        />
+      )}
     </div>
   );
 }

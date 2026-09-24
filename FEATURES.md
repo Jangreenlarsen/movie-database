@@ -239,6 +239,7 @@ Begge tabeller opdateres når en feature tilføjes (jf. CLAUDE.md regel 2).
 | 228 | Samlet opdatering: nye film/serier kan lægges i en fælles kø i stedet for at sende én besked pr. titel; admin/standardbruger sender hele køen som én samlet besked til alle, når det passer (Indstillinger → Beskeder, med påmindelse på Film/TV-siden) | done | 0.201.0 |
 | 229 | Antal film, TV-serier og emner på indkøbslisten flyttet fra hovedets tællerblok ind som små tal i selve menupunkterne "Film", "TV-serier" og "Indkøbsønsker" — renere hoved | done | 0.202.0 |
 | 230 | "Del af samlingen:" — titler man har i databasen (ejet eller på ønskelisten) er klikbare links, der åbner filmen i samme detaljevindue med samlingen stadig foldet ud; den film man står på er fremhævet | done | 0.203.0 |
+| 231 | "For-reservér et sæde" (admin) bruger samme grafiske sædevalg som ved en film-reservation: et vindue med salen, hvor man vælger "alle visninger" eller én visning, ser hvilke sæder der allerede er optaget for netop det valg, og kan for-reservere flere sæder på én gang | done | 0.204.0 |
 
 ---
 

@@ -5,6 +5,7 @@ import {
   GLOBAL_GROUP_ID,
   freeSeatNumbers,
   groupReservationsByScreening,
+  holdBlockedSeatIds,
 } from "./reservationGroups";
 
 const res = (id, screeningId, seatNumber, extra = {}) => ({
@@ -59,6 +60,26 @@ describe("groupReservationsByScreening", () => {
   it("tåler en tom eller manglende liste", () => {
     expect(groupReservationsByScreening([])).toEqual([]);
     expect(groupReservationsByScreening(undefined)).toEqual([]);
+  });
+});
+
+describe("holdBlockedSeatIds (feature #231)", () => {
+  const reservations = [
+    { seat_id: "S1", scope: "screening", screening_id: "a" },
+    { seat_id: "S2", scope: "screening", screening_id: "b" },
+    { seat_id: "S3", scope: "global", screening_id: null },
+  ];
+
+  it("et globalt hold blokeres af enhver reservation på sædet", () => {
+    expect([...holdBlockedSeatIds(reservations, "global", "")].sort()).toEqual(["S1", "S2", "S3"]);
+  });
+
+  it("et hold på én visning blokeres af visningens egne og globale hold", () => {
+    expect([...holdBlockedSeatIds(reservations, "screening", "a")].sort()).toEqual(["S1", "S3"]);
+  });
+
+  it("tåler en manglende liste", () => {
+    expect(holdBlockedSeatIds(undefined, "global", "").size).toBe(0);
   });
 });
 

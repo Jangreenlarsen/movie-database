@@ -2,25 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useT } from "../i18n";
 import { announceReservationsChanged } from "../utils/reservationEvents";
+import SeatRoom from "./SeatRoom";
 import "./SeatSelectionModal.css";
 
-// Feature #133 — sæde-vælgeren. Selve salens layout (sofa-fløje, rækker, dør)
-// er ren præsentation og bor her i frontend; backend leverer kun hvert sædes
-// tilstand (free/mine/pending/taken) via GET /api/screenings/{id}/seats.
-// Nummereringen 1–14 og tilstandene kommer fra sædekortet, ikke fra dette array.
-const LAYOUT = [
-  {
-    kind: "sofa",
-    units: [
-      { pos: "left", seatIds: ["N1-1"] },
-      { pos: "mid", seatIds: ["N1-2", "N1-3"] },
-      { pos: "right", seatIds: ["N1-4"] },
-    ],
-  },
-  { kind: "chairs", seatIds: ["N2-1", "N2-2", "N2-3", "N2-4", "N2-5"] },
-  { kind: "chairs", seatIds: ["N3-1", "N3-2", "N3-3", "N3-4", "N3-5"] },
-];
-
+// Feature #133 — sæde-vælgeren. Salens layout bor i SeatRoom (feature #231);
+// backend leverer kun hvert sædes tilstand (free/mine/pending/taken) via
+// GET /api/screenings/{id}/seats.
 export default function SeatSelectionModal({ screeningId, screeningTitle, onClose }) {
   const t = useT();
   const [status, setStatus] = useState("loading");
@@ -163,35 +150,7 @@ export default function SeatSelectionModal({ screeningId, screeningTitle, onClos
 
         {status === "ready" && (
           <div className="seat-modal-body">
-            <div className="seat-room" role="group" aria-label={t("seat.roomAria")}>
-              <div className="seat-screen">
-                <div className="seat-screen-bar" aria-hidden="true" />
-                <span className="seat-screen-label">{t("seat.screen")}</span>
-              </div>
-              <div className="seat-gap" aria-hidden="true" />
-
-              {LAYOUT.map((row, i) =>
-                row.kind === "sofa" ? (
-                  <div className="seat-row" key={i}>
-                    <div className="seat-sofa">
-                      {row.units.map((u) => (
-                        <div className={`seat-sofa-unit seat-sofa-unit--${u.pos}`} key={u.pos}>
-                          {u.seatIds.map((id) => renderSeat(id, true))}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="seat-row" key={i}>
-                    <div className="seat-chairs">{row.seatIds.map((id) => renderSeat(id, false))}</div>
-                  </div>
-                )
-              )}
-
-              <div className="seat-door" aria-label={t("seat.door")}>
-                {t("seat.door")}
-              </div>
-            </div>
+            <SeatRoom renderSeat={renderSeat} />
 
             <aside className="seat-side">
               <div className="seat-panel">

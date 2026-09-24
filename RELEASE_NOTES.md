@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.204.0 (build 0300) — 2026-09-24
+
+- **Til admin — for-reservér sæder direkte på salen**: "For-reservér et sæde" åbner nu samme grafiske sal som når man vælger plads til en film. Vælg "Alle visninger" eller en bestemt visning, se med det samme hvilke sæder der allerede er optaget, og for-reservér flere sæder på én gang.
+
 ## v0.203.2 (build 0299) — 2026-09-24
 
 - **Serienummeret står nu også på plakaten**, når du åbner en film eller en serie — samme lille mærke i hjørnet som på kortene i listen.

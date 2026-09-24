@@ -14,6 +14,7 @@ from app.core.errors import (
     InvalidResetTokenError,
     InvalidUserStatusTransitionError,
     LastAdminError,
+    LoginThrottledError,
     NotAuthorizedError,
     PasswordResetUnavailableError,
     UserNotFoundError,
@@ -32,6 +33,7 @@ from app.models.user import (
     UserStatus,
 )
 from app.repositories import user_repository
+from app.services import login_throttle
 
 logger = logging.getLogger("moviedb")
 
@@ -113,11 +115,17 @@ async def register(db: AsyncIOMotorDatabase, payload: UserRegister) -> User:
 
 
 async def authenticate(db: AsyncIOMotorDatabase, payload: UserLogin) -> User:
-    document = await user_repository.find_by_username_normalized(
-        db, _normalize_username(payload.username)
-    )
+    key = _normalize_username(payload.username)
+    # BUGS.md #106 — tjekkes FØR adgangskoden, så et gæt under låsen hverken
+    # afprøves eller afslører om det var rigtigt.
+    wait = login_throttle.retry_after_seconds(key)
+    if wait is not None:
+        raise LoginThrottledError(wait)
+    document = await user_repository.find_by_username_normalized(db, key)
     if document is None or not verify_password(payload.password, document["password_hash"]):
+        login_throttle.record_failure(key)
         raise InvalidCredentialsError()
+    login_throttle.clear(key)
     return to_user_model(document)
 
 

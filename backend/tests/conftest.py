@@ -107,6 +107,18 @@ def _reset_anthem_session_state(monkeypatch):
     monkeypatch.setattr(anthem_service, "_session_active", False)
 
 
+@pytest.fixture(autouse=True)
+def _reset_login_throttle():
+    """BUGS.md #106 — login-tællerne lever i hukommelsen på modulniveau; uden
+    nulstilling ville en test med forkerte logins låse brugere i senere
+    tests i samme proces."""
+    from app.services import login_throttle
+
+    login_throttle.reset()
+    yield
+    login_throttle.reset()
+
+
 @pytest_asyncio.fixture
 async def db():
     test_db = AsyncMongoMockClient()["test_moviedb"]

@@ -54,6 +54,7 @@ from app.core.errors import (
     InvalidUserStatusTransitionError,
     InvalidMessageTemplateError,
     LastAdminError,
+    LoginThrottledError,
     MessageNotFoundError,
     MessageTemplateNotFoundError,
     MovieNotFoundError,
@@ -306,6 +307,17 @@ async def invalid_credentials_handler(
     request: Request, exc: InvalidCredentialsError
 ) -> JSONResponse:
     return JSONResponse(status_code=401, content={"detail": str(exc)})
+
+
+@app.exception_handler(LoginThrottledError)
+async def login_throttled_handler(request: Request, exc: LoginThrottledError) -> JSONResponse:
+    """BUGS.md #106 — 429 med Retry-After, så også andre klienter end vores
+    egen frontend kan se hvor længe de skal vente."""
+    return JSONResponse(
+        status_code=429,
+        content={"detail": str(exc)},
+        headers={"Retry-After": str(exc.retry_after_seconds)},
+    )
 
 
 @app.exception_handler(InvalidResetTokenError)

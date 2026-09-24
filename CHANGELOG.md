@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.204.5 build 0305] — 2026-09-24 — fix: begrænsning af gættede adgangskoder på login (BUGS.md #106)
+
+Fundet ved kodegennemgangen 2026-09-24: det offentlige login havde ingen begrænsning af gentagne forsøg, og nginx-proxyen heller ikke. Nu låses et brugernavn i 15 minutter efter 5 forkerte forsøg (429 + Retry-After), også for det rigtige kodeord under låsen. Tælles pr. brugernavn, fordi backenden bag nginx/Caddy kun ser 127.0.0.1.
+
+Berørte filer: `backend/app/services/login_throttle.py` (ny), `backend/app/services/auth_service.py`, `backend/app/core/errors.py`, `backend/app/main.py`, `backend/tests/conftest.py`, `backend/tests/test_login_throttle.py` (ny, 6 tests), `BUGS.md`. Backend (1079) + frontend (333) grøn.
+
 ## [0.204.4 build 0304] — 2026-09-24 — fix: svar der ikke er JSON fra eksterne tjenester giver ikke længere en rå 500 (BUGS.md #105)
 
 Fundet ved kodegennemgangen 2026-09-24 og verificeret med test: svarer en ekstern tjeneste 200 med en HTML-side (Cloudflare, captive portal, proxy), kastede `response.json()` en rå `JSONDecodeError`, som endte som en 500 i scanningsflowet — også i `upc_client`, der lover aldrig at kaste. Nu en fælles, sikker afkodning, og hver klient oversætter til sit eget "intet match"/pæne fejl.

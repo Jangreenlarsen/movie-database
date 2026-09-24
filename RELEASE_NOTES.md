@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.204.5 (build 0305) — 2026-09-24
+
+- **Sikkerhed**: efter 5 forkerte adgangskoder i træk på samme brugernavn skal man nu vente 15 minutter, før man kan prøve igen. Det gør det praktisk umuligt at gætte sig til en adgangskode. Logger du ind korrekt, nulstilles tælleren.
+
 ## v0.204.4 (build 0304) — 2026-09-24
 
 - **Rettet**: svarer en af de eksterne tjenester (TMDb, stregkode-opslag, OMDb) med en fejlside i stedet for data, går scanningen ikke længere i stå med en uforståelig serverfejl — den fortsætter som ved "intet match" eller viser en forståelig besked. "Test forbindelse" under Indstillinger siger heller ikke længere "Virker" i det tilfælde.

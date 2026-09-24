@@ -1247,6 +1247,12 @@ export function TvShowDetailModal({
         <div className="modal-header">
           <div className="modal-poster">
             {show.poster_url ? <img src={show.poster_url} alt={show.name} /> : "📺"}
+            {/* BUGS.md #101 — samme serienr.-badge som på kortet i listen. */}
+            {show.serial_number != null && (
+              <div className="movie-serial modal-serial">
+                {formatSerial(show.serial_number, serialPaddingWidth, serialPrefix(show.media_type, "tv"))}
+              </div>
+            )}
           </div>
           <div>
             <h2>{show.name}</h2>

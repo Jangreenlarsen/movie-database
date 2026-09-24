@@ -1452,6 +1452,12 @@ export function MovieDetailModal({
         <div className="modal-header">
           <div className="modal-poster">
             {movie.poster_url ? <img src={movie.poster_url} alt={movie.title} /> : "🎬"}
+            {/* BUGS.md #101 — samme serienr.-badge som på kortet i listen. */}
+            {movie.serial_number != null && (
+              <div className="movie-serial modal-serial">
+                {formatSerial(movie.serial_number, serialPaddingWidth, serialPrefix(movie.media_type, "movie"))}
+              </div>
+            )}
           </div>
           <div>
             <h2>{movie.title}</h2>

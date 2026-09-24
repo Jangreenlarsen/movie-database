@@ -21,18 +21,33 @@
 import { registerSW } from "virtual:pwa-register";
 
 const UPDATE_CHECK_INTERVAL_MS = 20 * 60 * 1000; // 20 minutter
+// BUGS.md #102 — mindste afstand mellem to tjek udløst af at appen kommer i
+// forgrunden, så hurtige fane-skift ikke giver en strøm af sw.js-hentninger.
+const VISIBLE_CHECK_MIN_GAP_MS = 60 * 1000;
 
 export function registerServiceWorker() {
   registerSW({
     immediate: true,
     onRegisteredSW(swUrl, registration) {
       if (!registration) return;
-      setInterval(() => {
+      let lastCheck = Date.now();
+      const check = () => {
         // "connection" findes ikke i alle browsere (fx ældre Safari) — spring
         // blot tjekket over i stedet for at fejle, næste interval prøver igen.
         if ("connection" in navigator && navigator.onLine === false) return;
+        lastCheck = Date.now();
+        // Et fejlet tjek (fx offline) er harmløst; næste forsøg tager det.
         registration.update().catch(() => {});
-      }, UPDATE_CHECK_INTERVAL_MS);
+      };
+      setInterval(check, UPDATE_CHECK_INTERVAL_MS);
+      // BUGS.md #102 — iOS sætter timere på pause mens en hjemmeskærms-PWA
+      // ligger i baggrunden, så intervallet alene fanger ikke "åbnede appen
+      // igen næste dag". Tjek derfor også når siden bliver synlig igen.
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState !== "visible") return;
+        if (Date.now() - lastCheck < VISIBLE_CHECK_MIN_GAP_MS) return;
+        check();
+      });
     },
   });
 }

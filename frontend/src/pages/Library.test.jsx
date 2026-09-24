@@ -397,6 +397,34 @@ describe("CollectionSection — klikbare dele (feature #230)", () => {
   });
 });
 
+describe("MovieDetailModal — serienr.-badge på plakaten (BUGS.md #101)", () => {
+  beforeEach(() => {
+    vi.spyOn(api, "recordVisit").mockResolvedValue({});
+    vi.spyOn(api, "myScreeningRequests").mockResolvedValue([]);
+    vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({ require_preferred_at: false });
+  });
+
+  it("viser serienummeret med præfiks som badge på plakaten", async () => {
+    const { container } = renderModal({
+      ...baseMovie,
+      is_wishlist: false,
+      media_type: "Fysisk",
+      format: "F-DVD",
+      serial_number: 171,
+    });
+    await screen.findByRole("button", { name: "Redigér" });
+    const badge = container.querySelector(".modal-poster .modal-serial");
+    expect(badge).not.toBeNull();
+    expect(badge.textContent).toBe("M171");
+  });
+
+  it("intet badge uden serienummer (fx et ønske)", async () => {
+    const { container } = renderModal(baseMovie);
+    await screen.findByRole("button", { name: "Redigér" });
+    expect(container.querySelector(".modal-serial")).toBeNull();
+  });
+});
+
 describe("MovieDetailModal — 'Bestilt'-badge for gæster (feature #203)", () => {
   function renderAsGuest(movie) {
     return render(

@@ -2,6 +2,20 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.203.2 build 0299] — 2026-09-24 — fix: serienr.-badge på plakaten i detaljevisningen (BUGS.md #101)
+
+Jan: *"en badge på film icon som på hovedsiden"*. Detaljevinduet for film og TV-serier viser nu samme runde serienr.-mærke oppe i plakatens hjørne som kortene i listen (M/T/D-præfiks). `.modal-poster` fik `position: relative`, og en ny `.modal-serial` placerer mærket lidt tættere på hjørnet end på kortet.
+
+Berørte filer: `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/pages/Library.css`, `frontend/src/pages/Library.test.jsx` (+2 tests), `BUGS.md`. Backend (1056) + frontend (325) grøn. Set i browser (Playwright/msedge, engangs-database slettet bagefter): film, digital uden plakat og serie på 1440px og 390px, uden vandret overløb.
+
+## [0.203.1 build 0298] — 2026-09-24 — fix: nye versioner når ud uden hard reload (BUGS.md #102)
+
+Jan: *"folk ... ser ikke den ny version før de laver en hard reset af deres browser, kan vi ikke få det på plads en gang for alle"*. Rodårsag: feature #190 satte `injectRegister: false`, og vite-plugin-pwa sætter kun `skipWaiting`/`clientsClaim` for `autoUpdate` når `injectRegister` er "auto". Den udrullede `sw.js` (målt i produktion) tog derfor aldrig over af sig selv — hver ny version lå i "waiting", indtil alle faner var lukket, og den gamle service worker blev ved med at servere den gamle `index.html`. Nu sat eksplicit i `vite.config.js`. `pwa.js` tjekker også for ny version når appen kommer i forgrunden igen (iOS pauser timere i baggrunden).
+
+Verificeret i Edge via Playwright med en simuleret deploy: gammel `sw.js` hænger i "waiting" og viser gammel version selv efter almindeligt reload; rettet `sw.js` genindlæser selv til den nye; og brugere med den gamle service worker kommer selv videre så snart rettelsen er deployet.
+
+Berørte filer: `frontend/vite.config.js`, `frontend/src/pwa.js`, `frontend/src/pwa.test.js` (+2 tests), `BUGS.md`. Backend (1056) + frontend (323) grøn.
+
 ## [0.203.0 build 0297] — 2026-09-24 — feature: klikbare titler i "Del af samlingen:" (FEATURES.md #230)
 
 Jan: *"kan vi ikke gøre list "del af samling" til klikbare links til de film vi har i databasen"*. Dele af en TMDb-samling som findes i databasen (ejet eller på ønskelisten, dvs. med `owned_movie_id`) er nu links. Et klik henter filmen friskt via `GET /api/movies/{id}` (samlings-svaret har kun titel/år/poster) og åbner den i samme detaljevindue; vinduet får `key={id}`, så dets redigerings-state ikke hænger fast fra den forrige film, og samlingen står foldet ud fra start, så man kan klikke sig videre gennem serien. Den film man står på, er fed (`aria-current`) og ikke et link; dele man ikke har, er uændrede med "+ Ønskeliste". Fejler hentningen, vises backendens egen fejltekst. Scan-flowet (`MovieLookupForm`) sender ingen `onOpenMovie` og er uændret.

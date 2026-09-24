@@ -890,6 +890,17 @@
   object-fit: cover;
 }
 
+/* BUGS.md #101 — serienr.-badget fra kortet, lagt oven på plakaten i
+   detaljevinduet. Plakaten er kun 76–100px bred, så lidt tættere på hjørnet. */
+.modal-poster {
+  position: relative;
+}
+
+.modal-serial {
+  top: 5px;
+  left: 5px;
+}
+
 .modal-body {
   padding: 20px;
   display: flex;

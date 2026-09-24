@@ -15,6 +15,7 @@ from app.models.movie import (
     MediaType,
     MovieFormat,
     OrderStatus,
+    SerialHolder,
     TmdbSyncResult,
     WishlistRejection,
 )
@@ -165,6 +166,17 @@ async def sync_tv_shows_from_tmdb(db: AsyncIOMotorDatabase = Depends(get_databas
 @router.get("/{tv_show_id}", response_model=TvShow)
 async def get_tv_show(tv_show_id: str, db: AsyncIOMotorDatabase = Depends(get_database)):
     return await tv_show_service.get_tv_show(db, tv_show_id)
+
+
+@router.get("/{tv_show_id}/serial-holder", response_model=SerialHolder)
+async def serial_holder(
+    tv_show_id: str,
+    serial_number: int = Query(..., ge=1),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+):
+    """BUGS.md #109 — TV-udgaven af filmenes serial-holder (BUGS.md #56):
+    rediger-vinduet bekræfter byt-plads, hvis nummeret er optaget."""
+    return await tv_show_service.find_serial_swap_target(db, tv_show_id, serial_number)
 
 
 @router.patch("/{tv_show_id}", response_model=TvShow)

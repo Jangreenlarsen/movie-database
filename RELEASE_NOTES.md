@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.204.8 (build 0308) — 2026-09-24
+
+- **TV-seriers serienummer kan nu ændres** i rediger-vinduet, præcis som for film. Er nummeret allerede i brug, bliver du spurgt om de to skal bytte plads, med titlen på den anden.
+
 ## v0.204.7 (build 0307) — 2026-09-24
 
 - **Sikkerhed**: den offentlige plakat-visning (også brugt på /bio-siden) accepterer nu kun rigtige filmplakater fra TMDb og gemmer kun almindelige billeder.

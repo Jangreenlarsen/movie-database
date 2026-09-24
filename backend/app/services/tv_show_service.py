@@ -19,7 +19,7 @@ from app.core.errors import (
     WishlistNotPendingError,
 )
 from app.integrations import omdb_client, tmdb_client
-from app.models.movie import TmdbSyncResult
+from app.models.movie import SerialHolder, TmdbSyncResult
 from app.models.movie import MediaType, WishlistStatus, coerce_subtitles
 from app.models.tv_show import (
     DeletedTvShow,
@@ -489,6 +489,31 @@ async def get_tv_show(db: AsyncIOMotorDatabase, tv_show_id: str) -> TvShow:
 
 
 _TEMP_SERIAL_NUMBER = -1
+
+
+async def find_serial_swap_target(
+    db: AsyncIOMotorDatabase, tv_show_id: str, new_serial: int
+) -> SerialHolder:
+    """BUGS.md #109 — TV-udgaven af `movie_service.find_serial_swap_target`:
+    hvem holder `new_serial` i samme serie som serien (fysisk T#, eller den
+    delte digitale D#, hvor holderen kan være en film)?"""
+    current_doc = await tv_show_repository.find_by_id(db, tv_show_id)
+    if current_doc is None:
+        raise TvShowNotFoundError(tv_show_id)
+    if current_doc.get("serial_number") == new_serial:
+        return SerialHolder(title=None)
+
+    holder = await digital_serial_repository.find_series_holder(
+        db,
+        current_doc.get("media_type"),
+        new_serial,
+        tv_show_repository.COLLECTION,
+        current_doc["_id"],
+    )
+    if holder is None:
+        return SerialHolder(title=None)
+    _, doc = holder
+    return SerialHolder(title=doc.get("name") or doc.get("title"))
 
 
 async def _reassign_serial_number(

@@ -1042,6 +1042,10 @@ export function TvShowDetailModal({
   const [format, setFormat] = useState(show.format ?? "");
   const [audioTypes, setAudioTypes] = useState(show.audio_types);
   const [mediaType, setMediaType] = useState(show.media_type ?? "");
+  // BUGS.md #109 — samme redigerbare serienummer som film (BUGS.md #56).
+  const [serialNumberInput, setSerialNumberInput] = useState(
+    show.serial_number != null ? String(show.serial_number) : ""
+  );
   const [location, setLocation] = useState(show.location ?? "");
   const [owner, setOwner] = useState(show.owner ?? "");
   // Feature #123 — undertekster som liste (se SubtitlesPicker), som i Library.jsx.
@@ -1075,6 +1079,7 @@ export function TvShowDetailModal({
     setFormat(show.format ?? "");
     setAudioTypes(show.audio_types);
     setMediaType(show.media_type ?? "");
+    setSerialNumberInput(show.serial_number != null ? String(show.serial_number) : "");
     setLocation(show.location ?? "");
     setOwner(show.owner ?? "");
     setSubtitles(show.subtitles ?? []);
@@ -1109,11 +1114,11 @@ export function TvShowDetailModal({
   }
 
   // Feature #196 — udtrukket fra save(), se den identiske note i
-  // Library.MovieDetailModal.buildPayload(). TV-serier har intet
-  // serienummer-felt i denne formular (kun film kan redigere det direkte),
-  // så her er det en ren, synkron felt-opbygning.
-  function buildPayload() {
-    return {
+  // Library.MovieDetailModal.buildPayload(). BUGS.md #109 — nu også med
+  // serienummeret og samme byt-plads-bekræftelse som film; returnerer null
+  // hvis brugeren fortryder byttet.
+  async function buildPayload() {
+    const payload = {
       tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
       format: format || null,
       audio_types: audioTypes,
@@ -1127,13 +1132,30 @@ export function TvShowDetailModal({
       watched,
       watched_at: watched && watchedAt ? watchedAt : null,
     };
+    if (show.id) {
+      const nextSerial = Number(serialNumberInput);
+      if (canEditSerial && nextSerial > 0 && nextSerial !== show.serial_number) {
+        // Er nummeret taget i samme serie (T#, eller den delte D# hvor det
+        // kan være en film), bytter de to plads — bekræft først med titlen.
+        const holder = await api.getTvSerialSwapTarget(show.id, nextSerial);
+        if (holder?.title) {
+          const confirmed = window.confirm(
+            t("detail.serialSwapConfirm", { serial: nextSerial, title: holder.title })
+          );
+          if (!confirmed) return null;
+        }
+        payload.serial_number = nextSerial;
+      }
+    }
+    return payload;
   }
 
   async function save() {
     setSaving(true);
     setError(null);
     try {
-      const payload = buildPayload();
+      const payload = await buildPayload();
+      if (!payload) return; // fortrudt byt-plads-bekræftelse — finally nulstiller saving
       if (show.id) {
         await api.updateTvShow(show.id, payload);
       } else {
@@ -1201,7 +1223,8 @@ export function TvShowDetailModal({
     setMoving(true);
     setError(null);
     try {
-      const payload = buildPayload();
+      const payload = await buildPayload();
+      if (!payload) return;
       await api.updateTvShow(show.id, { ...payload, is_wishlist: false, announce });
       announceQueueChanged();
       onChanged();
@@ -1450,9 +1473,17 @@ export function TvShowDetailModal({
                 {show.serial_number != null && (
                   <div>
                     <div className="modal-section-label">{t("field.serialNumber")}</div>
-                    <p className="muted" style={{ margin: 0 }}>
+                    <input
+                      type="number"
+                      min="1"
+                      disabled={!canEditSerial}
+                      value={serialNumberInput}
+                      onChange={(e) => setSerialNumberInput(e.target.value)}
+                      style={{ width: 100 }}
+                    />
+                    <p className="muted" style={{ marginTop: 4 }}>
                       {canEditSerial
-                        ? t("tv.serialEditHint")
+                        ? t("tv.serialSwapHint")
                         : t("tv.serialLockedHint", {
                             who: show.registered_by ?? t("tv.serialLockedFallback"),
                           })}

@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.204.8 build 0308] — 2026-09-24 — fix: TV-seriers serienummer kan redigeres i UI'et, med byt-plads-bekræftelse (BUGS.md #109)
+
+Fundet ved kodegennemgangen 2026-09-24 (regel 16, "regler der kun gælder én gren"): film fik redigerbart serienummer med byt-plads-bekræftelse i BUGS.md #56, men TV-serier viste kun "Redigér serienummeret via API'et om nødvendigt", selvom backend allerede understøttede det. Nu samme felt og samme bekræftelse.
+
+Berørte filer: `backend/app/services/tv_show_service.py`, `backend/app/api/tv_shows.py`, `backend/tests/test_serial_number_rules.py` (+3), `frontend/src/pages/TvShows.jsx`, `frontend/src/api/client.js`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `frontend/src/pages/TvShows.test.jsx` (+4), `ARCHITECTURE.md`, `BUGS.md`. Backend (1085) + frontend (341) grøn. Ingen placeringsændring — et input i samme felt-celle som filmens; ikke set i browser.
+
 ## [0.204.7 build 0307] — 2026-09-24 — fix: poster-proxyen accepterer kun TMDb-filnavne og rasterbilleder (BUGS.md #108)
 
 Fundet ved kodegennemgangen 2026-09-24: det offentlige poster-endpoint sendte stien uændret videre til image.tmdb.org ("../../" slap ud af poster-mappen) og gemte svaret permanent uden at tjekke typen, hvorefter det blev serveret fra vores eget domæne. Nu kun TMDb-filnavne og rasterbilleder, med nosniff.

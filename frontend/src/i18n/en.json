@@ -254,7 +254,7 @@
   "tv.createdBy": "Created by:",
   "tv.ownerPlaceholder": "Who owns it...",
   "tv.notePlaceholder": "Your own thoughts about the show...",
-  "tv.serialEditHint": "Edit the serial number via the API if necessary.",
+  "tv.serialSwapHint": "If the number is already used by another show, the two swap places automatically.",
   "tv.serialLockedHint": "Only an admin or {who} can change the serial number.",
   "tv.serialLockedFallback": "whoever registered the show",
   "tv.createHint": "Not created yet — press \"Create\" below to save it to the library. A serial number is assigned automatically.",

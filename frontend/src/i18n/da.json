@@ -254,7 +254,7 @@
   "tv.createdBy": "Skabt af:",
   "tv.ownerPlaceholder": "Hvem ejer den...",
   "tv.notePlaceholder": "Egne tanker om serien...",
-  "tv.serialEditHint": "Redigér serienummeret via API'et om nødvendigt.",
+  "tv.serialSwapHint": "Er nummeret allerede i brug af en anden serie, bytter de to automatisk plads.",
   "tv.serialLockedHint": "Kun en admin eller {who} kan ændre serienummeret.",
   "tv.serialLockedFallback": "den der registrerede serien",
   "tv.createHint": "Ikke oprettet endnu — tryk \"Opret\" nedenfor for at gemme i biblioteket. Serienummer tildeles automatisk ved oprettelse.",

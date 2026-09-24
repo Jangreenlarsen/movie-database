@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.204.1 (build 0301) — 2026-09-24
+
+- **Rettet**: markerer du en episode som set eller en sæson som ejet, mens TV-serierne synkroniseres med TMDb, bliver markeringen ikke længere overskrevet af synkroniseringen.
+
 ## v0.204.0 (build 0300) — 2026-09-24
 
 - **Til admin — for-reservér sæder direkte på salen**: "For-reservér et sæde" åbner nu samme grafiske sal som når man vælger plads til en film. Vælg "Alle visninger" eller en bestemt visning, se med det samme hvilke sæder der allerede er optaget, og for-reservér flere sæder på én gang.

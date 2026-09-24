@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.204.1 build 0301] — 2026-09-24 — fix: TMDb-synk af TV-serier overskriver ikke længere "set"/"ejet" (BUGS.md #112)
+
+Fundet ved kodegennemgangen 2026-09-24 og verificeret med test: `sync_all_from_tmdb` læste alle serier ved batchens start og skrev hele `seasons`-arrayet tilbage for hver serie efter netværkskald — en episode markeret som set (eller en sæson som ejet) imens blev stille overskrevet. Nu compare-and-swap mod en frisk læsning, og episode-skrivningen er værnet mod forskudte indekser.
+
+Berørte filer: `backend/app/services/tv_show_service.py`, `backend/app/repositories/tv_show_repository.py`, `backend/tests/test_tv_show_tmdb_sync.py` (+4 tests), `BUGS.md`. Backend (1060) + frontend (333) grøn.
+
 ## [0.204.0 build 0300] — 2026-09-24 — feature: grafisk sædevalg ved for-reservering (FEATURES.md #231)
 
 Jan: *"for-reserver et sæde funktion må godt komme op med samme gfx sæde valg som ved sæde valg ved en film reservation"*. "For-reservér et sæde" på Bio-fanen er nu en knap ("Vælg sæder på salen…"), der åbner et vindue med samme sal som gæsternes sædevalg. Øverst vælges "Alle visninger" eller én visning; sæder der allerede er optaget for netop det valg, er grå (samme regler som backend: et globalt hold konflikter med enhver reservation på sædet, et hold på én visning med visningens egne og med globale hold — afventende tæller med). Flere sæder kan vælges og for-reserveres på én gang; ét kald pr. sæde, der stopper ved første afvisning og viser backendens egen fejltekst. Vinduet genindlæser reservationerne før det frigives igen, så et netop for-reserveret sæde aldrig står som ledigt et øjeblik (fundet ved browser-verifikationen).

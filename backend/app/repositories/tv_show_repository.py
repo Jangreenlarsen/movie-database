@@ -487,6 +487,26 @@ async def count_many(db: AsyncIOMotorDatabase, filters: dict) -> int:
     return await db[COLLECTION].count_documents(filter_)
 
 
+async def update_if_seasons_unchanged(
+    db: AsyncIOMotorDatabase, tv_show_id: str, expected_seasons: list[dict] | None, fields: dict
+) -> bool:
+    """BUGS.md #112 — compare-and-swap for TMDb-synken: skriver kun `fields`
+    (inkl. et flettet `seasons`) hvis sæson-arrayet er PRÆCIS som da det
+    blev læst. Har en bruger imens markeret en episode som set eller en
+    sæson som ejet, matcher intet, og kalderen læser igen og fletter på ny
+    — i stedet for stille at overskrive markeringen. `expected_seasons=None`
+    betyder at dokumentet ikke havde feltet."""
+    if not ObjectId.is_valid(tv_show_id):
+        return False
+    query: dict = {"_id": ObjectId(tv_show_id)}
+    if expected_seasons is None:
+        query["seasons"] = {"$exists": False}
+    else:
+        query["seasons"] = expected_seasons
+    result = await db[COLLECTION].update_one(query, {"$set": fields})
+    return result.matched_count > 0
+
+
 async def update(db: AsyncIOMotorDatabase, tv_show_id: str, fields: dict) -> dict | None:
     if not ObjectId.is_valid(tv_show_id):
         return None
@@ -551,6 +571,8 @@ async def set_episode_watched(
     episode_index: int,
     watched: bool,
     watched_at,
+    season_number: int | None = None,
+    episode_number: int | None = None,
 ) -> bool:
     """Atomically updates a single episode's watched-status via a numeric
     array-index path (`seasons.<i>.episodes.<j>.watched`) instead of
@@ -567,9 +589,21 @@ async def set_episode_watched(
     seasons/episodes are never reordered after being written once from
     TMDb, so two concurrent calls addressing different episodes always
     resolve to different, stable index paths and never clobber each
-    other."""
+    other.
+
+    BUGS.md #112 — "never reordered" holder ikke helt: TMDb-synken kan
+    fjerne eller tilføje sæsoner, så et indeks slået op lige før kan pege
+    på en anden sæson/episode, når skrivningen lander. Filteret kræver
+    derfor at indekset STADIG peger på det forventede sæson-/episodenummer;
+    ellers matcher intet, og kalderen slår op igen. `season_number`/
+    `episode_number` er valgfrie for bagudkompatibilitet."""
+    query: dict = {"_id": ObjectId(tv_show_id)}
+    if season_number is not None:
+        query[f"seasons.{season_index}.season_number"] = season_number
+    if episode_number is not None:
+        query[f"seasons.{season_index}.episodes.{episode_index}.episode_number"] = episode_number
     result = await db[COLLECTION].update_one(
-        {"_id": ObjectId(tv_show_id)},
+        query,
         {
             "$set": {
                 f"seasons.{season_index}.episodes.{episode_index}.watched": watched,

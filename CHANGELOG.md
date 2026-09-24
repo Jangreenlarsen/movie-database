@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.204.7 build 0307] — 2026-09-24 — fix: poster-proxyen accepterer kun TMDb-filnavne og rasterbilleder (BUGS.md #108)
+
+Fundet ved kodegennemgangen 2026-09-24: det offentlige poster-endpoint sendte stien uændret videre til image.tmdb.org ("../../" slap ud af poster-mappen) og gemte svaret permanent uden at tjekke typen, hvorefter det blev serveret fra vores eget domæne. Nu kun TMDb-filnavne og rasterbilleder, med nosniff.
+
+Berørte filer: `backend/app/services/poster_cache_service.py`, `backend/app/api/posters.py`, `backend/tests/test_posters.py` (+3 tests), `BUGS.md`. Backend + frontend grøn.
+
 ## [0.204.6 build 0306] — 2026-09-24 — fix: scanningsflowet og sædekortet viser backendens egen fejltekst (BUGS.md #107)
 
 Fundet ved kodegennemgangen 2026-09-24 (regel 16): scanningsflowet viste kun "Opslag fejlede"/"Søgning fejlede"/"Kunne ikke hente detaljer", også når backend sagde præcis hvad der var galt (fx manglende TMDb-nøgle eller rate-limit). Nu vises backendens tekst, med den generiske som fallback. Samme for sædekortet.

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.204.7 (build 0307) — 2026-09-24
+
+- **Sikkerhed**: den offentlige plakat-visning (også brugt på /bio-siden) accepterer nu kun rigtige filmplakater fra TMDb og gemmer kun almindelige billeder.
+
 ## v0.204.6 (build 0306) — 2026-09-24
 
 - **Bedre fejlbeskeder ved scanning**: går et stregkode-opslag, en titel-søgning eller hentningen af detaljer galt, står der nu hvad der er galt (fx at TMDb-nøglen mangler, eller at TMDb beder os vente lidt) i stedet for bare "Opslag fejlede". Det samme gælder sædevalget i Voldby BIO.

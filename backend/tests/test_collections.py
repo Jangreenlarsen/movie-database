@@ -143,3 +143,55 @@ async def test_sync_refreshes_collection_fields(client, monkeypatch):
     refreshed = await client.get(f"/api/movies/{created.json()['id']}")
     assert refreshed.json()["collection_id"] == 42
     assert refreshed.json()["collection_name"] == "Newly Discovered Series"
+
+
+async def _collection_part_for(client, monkeypatch, copies):
+    """BUGS.md #99 — opretter flere kopier af samme film (i given rækkefølge)
+    og returnerer dens del af samlingen."""
+    async def fake_get_movie_details(tmdb_id):
+        return _fake_details(tmdb_id, "Kopi", collection_id=77, collection_name="A Saga")
+
+    monkeypatch.setattr(tmdb_client, "get_movie_details", fake_get_movie_details)
+    ids = {}
+    for label, payload in copies:
+        created = await client.post("/api/movies", json={"tmdb_id": 11, **payload})
+        assert created.status_code == 201, created.text
+        ids[label] = created.json()["id"]
+
+    async def fake_get_collection(collection_id):
+        return _fake_collection(
+            collection_id, [{"tmdb_id": 11, "title": "Kopi", "year": 2012, "poster_url": None}]
+        )
+
+    monkeypatch.setattr(tmdb_client, "get_collection", fake_get_collection)
+    response = await client.get("/api/movies/collections/77")
+    return response.json()["parts"][0], ids
+
+
+DIGITAL = {"media_type": "Digital", "format": "D-1080"}
+PHYSICAL = {"media_type": "Fysisk", "format": "F-DVD"}
+
+
+async def test_collection_physical_copy_wins_over_earlier_digital(client, monkeypatch):
+    part, ids = await _collection_part_for(
+        client, monkeypatch, [("digital", DIGITAL), ("physical", PHYSICAL)]
+    )
+    assert part["owned_media_type"] == "Fysisk"
+    assert part["owned_movie_id"] == ids["physical"]
+
+
+async def test_collection_physical_copy_wins_over_later_digital(client, monkeypatch):
+    part, ids = await _collection_part_for(
+        client, monkeypatch, [("physical", PHYSICAL), ("digital", DIGITAL)]
+    )
+    assert part["owned_media_type"] == "Fysisk"
+    assert part["owned_movie_id"] == ids["physical"]
+
+
+async def test_collection_library_copy_wins_over_wishlist(client, monkeypatch):
+    part, ids = await _collection_part_for(
+        client, monkeypatch, [("digital", DIGITAL), ("wish", {"is_wishlist": True})]
+    )
+    assert part["owned_is_wishlist"] is False
+    assert part["owned_media_type"] == "Digital"
+    assert part["owned_movie_id"] == ids["digital"]

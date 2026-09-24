@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.202.1 build 0294] — 2026-09-24 — fix: fysisk kopi vinder over digital i "Del af samlingen:" (BUGS.md #99)
+
+Jan: *"det er mening at fysisk altid tage præsedent over digital"*. Ejer man samme film både digitalt og fysisk, viste "Del af samlingen:" den kopi der tilfældigvis blev læst sidst fra databasen — typisk den først oprettede — så en film der først kom ind digitalt, stod som digital for altid. `get_collection_info` vælger nu den bedste kopi pr. `tmdb_id` (bibliotek før ønske, fysisk før digital) via ny `_ownership_rank`, og `find_by_tmdb_ids` skærer ikke længere svaret af ved `len(tmdb_ids)`, som kunne tabe en af kopierne.
+
+Berørte filer: `backend/app/services/movie_service.py`, `backend/app/repositories/movie_repository.py`, `backend/tests/test_collections.py` (+3 tests), `BUGS.md`. Backend-suite (1054) grøn.
+
 ## [0.202.0 build 0293] — 2026-09-23 — feature: antal film/serier/ønsker i menupunkterne (FEATURES.md #229)
 
 Jan: *"på hovedsiden har vi de tre "film" og "tv-serie" og "indkøbsønsker" vi skal have info antal film og antal tv serie samt hvor mange emner der er på ønskelisten flyttet op til de tre menupunkter sådan vi får en mere ren side"*.

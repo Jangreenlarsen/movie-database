@@ -47,6 +47,15 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       workbox: {
+        // BUGS.md #102 — SKAL stå eksplicit. vite-plugin-pwa sætter kun
+        // disse to af sig selv ved `autoUpdate` når `injectRegister` er
+        // "auto"; med `injectRegister: false` ovenfor (feature #190) blev de
+        // stille udeladt, og hver ny version lå så i "waiting" indtil ALLE
+        // faner med appen var lukket — derfor krævede en ny version et hard
+        // reload. Med dem aktiveres en ny service worker straks, overtager
+        // de åbne sider, og `registerSW` genindlæser dem (pwa.js).
+        skipWaiting: true,
+        clientsClaim: true,
         // BUGS.md #68 — uden denne ekskludering fanger service workerens
         // NavigationRoute (workbox' SPA-fallback) ALLE top-niveau-
         // navigationer, ogsaa direkte "aabn i ny fane"-links til statiske

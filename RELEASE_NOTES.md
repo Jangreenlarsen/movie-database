@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.203.1 (build 0298) — 2026-09-24
+
+- **Rettet: nye versioner kommer nu af sig selv** — du skal ikke længere lave et "hard reload" for at se en opdatering. Appen skifter selv til den nye version kort efter den er lagt ud, også når du åbner appen igen fra hjemmeskærmen på telefonen.
+
 ## v0.203.0 (build 0297) — 2026-09-24
 
 - **Klik dig gennem en filmserie**: under "Del af samlingen:" kan du nu klikke på de film, du har i biblioteket eller på ønskelisten — så åbnes filmen med det samme, og samlingen står stadig åben, så du kan hoppe videre til næste del.

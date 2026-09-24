@@ -318,6 +318,85 @@ describe("CollectionSection — viser medietype for ejede dele (feature #201)", 
   });
 });
 
+describe("CollectionSection — klikbare dele (feature #230)", () => {
+  const parts = [
+    { tmdb_id: 1, title: "Del Én", year: 2019, poster_url: null, owned: true, owned_movie_id: "movie-1", owned_is_wishlist: false, owned_media_type: "Fysisk" },
+    { tmdb_id: 2, title: "Del To", year: 2020, poster_url: null, owned: true, owned_movie_id: "m2", owned_is_wishlist: false, owned_media_type: "Digital" },
+    { tmdb_id: 3, title: "Del Tre", year: 2021, poster_url: null, owned: false, owned_movie_id: null, owned_is_wishlist: false },
+  ];
+  const ownedMovie = {
+    ...baseMovie,
+    is_wishlist: false,
+    media_type: "Fysisk",
+    format: "F-DVD",
+    collection_id: 99,
+    collection_name: "Test-trilogien",
+  };
+
+  function renderWithOpen(onOpenMovie, extra = {}) {
+    return render(
+      <MovieDetailModal
+        movie={ownedMovie}
+        user={{ username: "admin1", role: "admin" }}
+        allTags={[]}
+        allOwners={[]}
+        allLocations={[]}
+        attributeOptions={attributeOptions}
+        serialPaddingWidth={0}
+        plex={basePlex}
+        onClose={() => {}}
+        onChanged={() => {}}
+        onFilterByPerson={() => {}}
+        onOpenMovie={onOpenMovie}
+        {...extra}
+      />
+    );
+  }
+
+  beforeEach(() => {
+    vi.spyOn(api, "recordVisit").mockResolvedValue({});
+    vi.spyOn(api, "myScreeningRequests").mockResolvedValue([]);
+    vi.spyOn(api, "getScreeningRequestPolicy").mockResolvedValue({ require_preferred_at: false });
+    vi.spyOn(api, "getCollection").mockResolvedValue({ id: 99, name: "Test-trilogien", poster_url: null, parts });
+  });
+
+  it("åbner en ejet søster-film med dens fulde data, men ikke den man står på eller en man ikke ejer", async () => {
+    const full = { ...ownedMovie, id: "m2", title: "Del To" };
+    vi.spyOn(api, "getMovie").mockResolvedValue(full);
+    const onOpenMovie = vi.fn();
+    renderWithOpen(onOpenMovie);
+
+    await userEvent.click(screen.getByText(/Del af samlingen: Test-trilogien/));
+    await userEvent.click(await screen.findByRole("button", { name: "Del To (2020)" }));
+
+    expect(api.getMovie).toHaveBeenCalledWith("m2");
+    await waitFor(() => expect(onOpenMovie).toHaveBeenCalledWith(full));
+    expect(screen.queryByRole("button", { name: "Del Én (2019)" })).toBeNull();
+    expect(screen.getByText("Del Én (2019)")).toHaveAttribute("aria-current", "true");
+    expect(screen.queryByRole("button", { name: "Del Tre (2021)" })).toBeNull();
+  });
+
+  it("viser backendens fejltekst når filmen ikke kan hentes", async () => {
+    vi.spyOn(api, "getMovie").mockRejectedValue(new Error("Filmen blev ikke fundet"));
+    renderWithOpen(vi.fn());
+    await userEvent.click(screen.getByText(/Del af samlingen: Test-trilogien/));
+    await userEvent.click(await screen.findByRole("button", { name: "Del To (2020)" }));
+    expect(await screen.findByText("Filmen blev ikke fundet")).toBeInTheDocument();
+  });
+
+  it("er foldet ud fra start når filmen blev åbnet fra en anden films samling", async () => {
+    renderWithOpen(vi.fn(), { collectionInitiallyExpanded: true });
+    expect(await screen.findByRole("button", { name: "Del To (2020)" })).toBeInTheDocument();
+  });
+
+  it("uden onOpenMovie (fx scan-flowet) er delene bare tekst", async () => {
+    renderWithOpen(undefined);
+    await userEvent.click(screen.getByText(/Del af samlingen: Test-trilogien/));
+    await screen.findByText("Del To (2020)");
+    expect(screen.queryByRole("button", { name: "Del To (2020)" })).toBeNull();
+  });
+});
+
 describe("MovieDetailModal — 'Bestilt'-badge for gæster (feature #203)", () => {
   function renderAsGuest(movie) {
     return render(

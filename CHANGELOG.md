@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.204.4 build 0304] — 2026-09-24 — fix: svar der ikke er JSON fra eksterne tjenester giver ikke længere en rå 500 (BUGS.md #105)
+
+Fundet ved kodegennemgangen 2026-09-24 og verificeret med test: svarer en ekstern tjeneste 200 med en HTML-side (Cloudflare, captive portal, proxy), kastede `response.json()` en rå `JSONDecodeError`, som endte som en 500 i scanningsflowet — også i `upc_client`, der lover aldrig at kaste. Nu en fælles, sikker afkodning, og hver klient oversætter til sit eget "intet match"/pæne fejl.
+
+Berørte filer: `backend/app/integrations/http_json.py` (ny), `backend/app/integrations/{upc,discogs,ean_search,upcdatabase,omdb,email,tmdb}_client.py`, `backend/tests/test_integrations_non_json.py` (ny, 8 tests), `BUGS.md`. Backend + frontend grøn.
+
 ## [0.204.3 build 0303] — 2026-09-24 — fix: Plex-auto-import-indstillingerne med i system-backup/restore (BUGS.md #104)
 
 Fundet ved kodegennemgangen 2026-09-24 og verificeret med test (regel 20): system-backuppen tog adgangskode- og visnings-politikken med, men ikke Plex-auto-importen (feature #181), så en gendannelse nulstillede til/fra, interval og import-tag. Nu med, og en ældre backup uden feltet lader den kørende politik være.

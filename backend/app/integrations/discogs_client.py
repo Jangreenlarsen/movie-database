@@ -3,6 +3,7 @@ import logging
 import httpx
 
 from app.core.config import settings
+from app.integrations.http_json import json_object
 from app.integrations.text_cleanup import clean_bracketed_title
 
 BASE_URL = "https://api.discogs.com/database/search"
@@ -42,7 +43,11 @@ async def lookup_title(barcode: str) -> str | None:
         logger.info("Discogs lookup returned %s for %s", response.status_code, barcode)
         return None
 
-    results = response.json().get("results") or []
+    data = json_object(response)
+    if data is None:
+        logger.warning("Discogs: svar var ikke gyldig JSON for %s", barcode)
+        return None
+    results = data.get("results") or []
     if not results:
         logger.info("Discogs: intet match for %s", barcode)
         return None

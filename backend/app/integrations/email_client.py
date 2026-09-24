@@ -4,6 +4,7 @@ import httpx
 
 from app.core.config import settings
 from app.core.errors import EmailRateLimitedError
+from app.integrations.http_json import json_object
 
 BASE_URL = "https://api.resend.com"
 
@@ -50,7 +51,9 @@ async def send_email(to: str, subject: str, text: str, html: str | None = None) 
         logger.warning("Resend afviste afsendelsen (HTTP %s): %s", response.status_code, response.text)
         return False
 
-    logger.info("Resend: e-mail sendt (id=%s)", response.json().get("id"))
+    # BUGS.md #105 — mailen ER sendt her; et uventet svar-format må ikke
+    # vende det til en fejl bagefter.
+    logger.info("Resend: e-mail sendt (id=%s)", (json_object(response) or {}).get("id"))
     return True
 
 
@@ -80,7 +83,7 @@ async def test_connection() -> tuple[bool, str]:
         return True, "Virker (fuld adgang)"
 
     if response.status_code == 401:
-        body = response.json() if response.text else {}
+        body = json_object(response) or {}
         if body.get("name") == "restricted_api_key":
             return True, "Nøglen accepteres (kun sende-adgang)"
         return False, "Resend afviste nøglen (ugyldig)"

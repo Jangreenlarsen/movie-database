@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.204.4 (build 0304) — 2026-09-24
+
+- **Rettet**: svarer en af de eksterne tjenester (TMDb, stregkode-opslag, OMDb) med en fejlside i stedet for data, går scanningen ikke længere i stå med en uforståelig serverfejl — den fortsætter som ved "intet match" eller viser en forståelig besked. "Test forbindelse" under Indstillinger siger heller ikke længere "Virker" i det tilfælde.
+
 ## v0.204.3 (build 0303) — 2026-09-24
 
 - **Rettet**: indstillingerne for automatisk Plex-import (til/fra, hvor ofte, og hvilket tag importerede titler får) kommer nu med i den fulde system-backup og bliver gendannet igen.

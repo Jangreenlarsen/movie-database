@@ -3,6 +3,7 @@ import logging
 import httpx
 
 from app.core.config import settings
+from app.integrations.http_json import json_object
 from app.integrations.text_cleanup import clean_bracketed_title
 
 BASE_URL = "https://api.upcdatabase.org/product"
@@ -37,7 +38,10 @@ async def lookup_title(barcode: str) -> str | None:
         logger.info("UPCDatabase.org lookup returned %s for %s", response.status_code, barcode)
         return None
 
-    data = response.json()
+    data = json_object(response)
+    if data is None:
+        logger.warning("UPCDatabase.org: svar var ikke gyldig JSON for %s", barcode)
+        return None
     if not data.get("success"):
         # BUGS.md #37 — et ugyldigt token giver også HTTP 200 med
         # "success": false, ligesom et ægte "ingen match"-udfald. Kun den
@@ -89,7 +93,9 @@ async def test_connection() -> tuple[bool, str]:
     if response.status_code != 200:
         return False, f"Uventet svar (HTTP {response.status_code})"
 
-    data = response.json()
+    data = json_object(response)
+    if data is None:
+        return False, "Ugyldigt svar fra UPCDatabase.org (ikke JSON)"
     if "apikey" in (data.get("error") or {}):
         return False, f"Token afvist: {data['error'].get('message')}"
     return True, "Virker"

@@ -2,6 +2,7 @@ import httpx
 
 from app.core.config import settings
 from app.core.errors import TmdbNotFoundError, TmdbRateLimitedError, TmdbUnavailableError
+from app.integrations.http_json import json_object
 
 BASE_URL = "https://api.themoviedb.org/3"
 IMAGE_HOST = "https://image.tmdb.org/t/p"
@@ -55,6 +56,16 @@ def _trailer_url(videos: list[dict]) -> str | None:
         if key and video.get("site") == "YouTube" and video.get("type") == "Trailer":
             return f"https://www.youtube.com/watch?v={key}"
     return None
+
+
+def _json(response: httpx.Response) -> dict:
+    """BUGS.md #105 — TMDbs svar som et JSON-objekt, ellers en pæn
+    TmdbUnavailableError (502) i stedet for en rå JSONDecodeError (500) —
+    fx når en proxy eller captive portal svarer 200 med en HTML-side."""
+    data = json_object(response)
+    if data is None:
+        raise TmdbUnavailableError("TMDb svarede med et ugyldigt svar (ikke JSON)")
+    return data
 
 
 def _raise_for_status(response: httpx.Response) -> None:
@@ -132,7 +143,7 @@ async def search_movies(query: str) -> list[dict]:
         raise TmdbUnavailableError("TMDb rate-limit ramt (429), prøv igen om lidt")
     _raise_for_status(response)
 
-    results = response.json().get("results", [])
+    results = _json(response).get("results", [])
     return [_to_candidate(item) for item in results[:8]]
 
 
@@ -155,7 +166,7 @@ async def get_movie_details(tmdb_id: int) -> dict:
         raise TmdbRateLimitedError()
     _raise_for_status(detail_response)
 
-    detail = detail_response.json()
+    detail = _json(detail_response)
     credits = detail.get("credits", {})
     videos = detail.get("videos", {}).get("results", [])
     external_ids = detail.get("external_ids", {})
@@ -210,7 +221,7 @@ async def search_tv(query: str) -> list[dict]:
         raise TmdbUnavailableError("TMDb rate-limit ramt (429), prøv igen om lidt")
     _raise_for_status(response)
 
-    results = response.json().get("results", [])
+    results = _json(response).get("results", [])
     return [_to_tv_candidate(item) for item in results[:8]]
 
 
@@ -238,7 +249,7 @@ async def get_tv_show_details(tv_id: int) -> dict:
         raise TmdbRateLimitedError()
     _raise_for_status(detail_response)
 
-    detail = detail_response.json()
+    detail = _json(detail_response)
     credits = detail.get("credits", {})
     external_ids = detail.get("external_ids", {})
 
@@ -290,7 +301,7 @@ async def get_season_details(tv_id: int, season_number: int) -> list[dict]:
         raise TmdbRateLimitedError()
     _raise_for_status(response)
 
-    data = response.json()
+    data = _json(response)
     return [
         {
             "episode_number": episode["episode_number"],
@@ -319,7 +330,7 @@ async def get_collection(collection_id: int) -> dict:
         raise TmdbRateLimitedError()
     _raise_for_status(response)
 
-    data = response.json()
+    data = _json(response)
     return {
         "id": data["id"],
         "name": data.get("name"),

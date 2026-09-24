@@ -3,6 +3,7 @@ import logging
 import httpx
 
 from app.core.config import settings
+from app.integrations.http_json import json_object
 
 BASE_URL = "https://www.omdbapi.com/"
 
@@ -35,7 +36,10 @@ async def get_imdb_rating(imdb_id: str | None) -> float | None:
         logger.info("OMDb-opslag returnerede %s for %s", response.status_code, imdb_id)
         return None
 
-    data = response.json()
+    data = json_object(response)
+    if data is None:
+        logger.warning("OMDb: svar var ikke gyldig JSON for %s", imdb_id)
+        return None
     if data.get("Response") == "False":
         logger.info("OMDb fandt intet for %s: %s", imdb_id, data.get("Error"))
         return None
@@ -70,7 +74,9 @@ async def test_connection() -> tuple[bool, str]:
     if response.status_code != 200:
         return False, f"Uventet svar (HTTP {response.status_code})"
 
-    data = response.json()
+    data = json_object(response)
+    if data is None:
+        return False, "Ugyldigt svar fra OMDb (ikke JSON)"
     if data.get("Response") == "False":
         return False, f"OMDb afviste nøglen: {data.get('Error')}"
     return True, "Virker"

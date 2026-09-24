@@ -69,6 +69,8 @@ export default function Cinema({ user }) {
         setLinkCopied(true);
         setTimeout(() => setLinkCopied(false), 2000);
       })
+      // Bevidst tavs: uden adgang til udklipsholderen udebliver bare
+      // "Kopieret"-kvitteringen; linket kan stadig kopieres manuelt.
       .catch(() => {});
   }
 

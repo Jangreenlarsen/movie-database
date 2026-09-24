@@ -144,6 +144,8 @@ export default function TvShows({
   const [allTags, setAllTags] = useState([]);
   const [allOwners, setAllOwners] = useState([]);
   const [allLocations, setAllLocations] = useState([]);
+  // BUGS.md #111 — se den identiske note i Library.jsx.
+  const [optionsError, setOptionsError] = useState(null);
   const [attributeOptions, setAttributeOptions] = useState({
     formats: [],
     audio_types: [],
@@ -208,10 +210,16 @@ export default function TvShows({
   }
 
   useEffect(() => {
+    // Bevidst tavse (regel 16): autocomplete-forslag og visningshjælpere.
+    // Fejler de, virker siden stadig — felterne har bare ingen forslag, og
+    // serienumre vises uden foranstillede nuller.
     api.listTags().then(setAllTags).catch(() => {});
     api.listOwners().then(setAllOwners).catch(() => {});
     api.listLocations().then(setAllLocations).catch(() => {});
-    api.tvAttributeOptions().then(setAttributeOptions).catch(() => {});
+    api
+      .tvAttributeOptions()
+      .then(setAttributeOptions)
+      .catch((err) => setOptionsError(err.message));
     api.listTvGenres().then(setAllGenres).catch(() => {});
     api
       .getSerialNumberConfig()
@@ -817,6 +825,12 @@ export default function TvShows({
         </div>
       )}
 
+      {optionsError && (
+        <div className="banner banner-error">
+          {t("lib.optionsLoadFailed", { message: optionsError })}
+        </div>
+      )}
+
       {status === "error" && (
         <div className="banner banner-error">{listError || t("tv.loadError")}</div>
       )}
@@ -994,6 +1008,7 @@ export default function TvShows({
           onClose={() => setActiveShow(null)}
           onChanged={() => {
             refresh();
+            // Bevidst tavse: kun genopfriskning af autocomplete-forslag.
             api.listTags().then(setAllTags).catch(() => {});
             api.listOwners().then(setAllOwners).catch(() => {});
             api.listLocations().then(setAllLocations).catch(() => {});

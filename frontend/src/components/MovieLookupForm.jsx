@@ -126,8 +126,17 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved, mode 
   const [previewStatus, setPreviewStatus] = useState("idle");
   const [previewError, setPreviewError] = useState(null);
 
+  // BUGS.md #111 — se den identiske note i Library.jsx.
+  const [optionsError, setOptionsError] = useState(null);
+
   useEffect(() => {
-    api.attributeOptions().then(setAttributeOptions).catch(() => {});
+    api
+      .attributeOptions()
+      .then(setAttributeOptions)
+      .catch((err) => setOptionsError(err.message));
+    // Bevidst tavse (regel 16): autocomplete-forslag og visningshjælpere.
+    // Fejler de, virker siden stadig — felterne har bare ingen forslag, og
+    // serienumre vises uden foranstillede nuller.
     api.listTags().then(setAllTags).catch(() => {});
     api.listOwners().then(setAllOwners).catch(() => {});
     api.listLocations().then(setAllLocations).catch(() => {});
@@ -345,6 +354,11 @@ export default function MovieLookupForm({ user, wishlist = false, onSaved, mode 
 
   return (
     <section className="scan-layout">
+      {optionsError && (
+        <div className="banner banner-error">
+          {t("lib.optionsLoadFailed", { message: optionsError })}
+        </div>
+      )}
       {activeMode !== "manual" && (
       <div className="card scan-card">
         <h2>{t("scan.heading")}</h2>

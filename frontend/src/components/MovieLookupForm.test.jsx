@@ -69,6 +69,18 @@ describe("MovieLookupForm mode (feature #124)", () => {
   });
 });
 
+describe("MovieLookupForm valgmuligheder (BUGS.md #111)", () => {
+  it("viser en fejl når format-/medietype-listerne ikke kan hentes", async () => {
+    vi.spyOn(api, "attributeOptions").mockRejectedValue(new Error("Timeout"));
+    vi.spyOn(api, "listTags").mockResolvedValue([]);
+    vi.spyOn(api, "listOwners").mockResolvedValue([]);
+    vi.spyOn(api, "listLocations").mockResolvedValue([]);
+    vi.spyOn(api, "getSerialNumberConfig").mockResolvedValue({ padding_width: 0 });
+    render(<MovieLookupForm user={{ username: "x" }} mode="both" />);
+    expect(await screen.findByText(/Kunne ikke hente valgmulighederne.*Timeout/)).toBeInTheDocument();
+  });
+});
+
 describe("MovieLookupForm fejlbeskeder (BUGS.md #107)", () => {
   beforeEach(() => {
     vi.spyOn(api, "attributeOptions").mockResolvedValue({

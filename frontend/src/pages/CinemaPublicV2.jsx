@@ -49,6 +49,7 @@ export default function CinemaPublicV2({ user = null, language, onLanguageChange
   }, []);
 
   useEffect(() => {
+    // Bevidst tavs: besøgstælling er statistik, ikke noget den besøgende skal mærke.
     api.recordVisit({ page: "bio2" }).catch(() => {});
   }, []);
 

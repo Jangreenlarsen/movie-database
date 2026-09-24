@@ -179,6 +179,9 @@ export default function Library({
   const [allTags, setAllTags] = useState([]);
   const [allOwners, setAllOwners] = useState([]);
   const [allLocations, setAllLocations] = useState([]);
+  // BUGS.md #111 — uden valgmulighederne er format-/medietype-listerne
+  // tomme, og en film kan ikke gemmes; det skal brugeren kunne se.
+  const [optionsError, setOptionsError] = useState(null);
   const [attributeOptions, setAttributeOptions] = useState({
     formats: [],
     audio_types: [],
@@ -259,10 +262,16 @@ export default function Library({
   }
 
   useEffect(() => {
+    // Bevidst tavse (regel 16): autocomplete-forslag og visningshjælpere.
+    // Fejler de, virker siden stadig — felterne har bare ingen forslag, og
+    // serienumre vises uden foranstillede nuller.
     api.listTags().then(setAllTags).catch(() => {});
     api.listOwners().then(setAllOwners).catch(() => {});
     api.listLocations().then(setAllLocations).catch(() => {});
-    api.attributeOptions().then(setAttributeOptions).catch(() => {});
+    api
+      .attributeOptions()
+      .then(setAttributeOptions)
+      .catch((err) => setOptionsError(err.message));
     api.listMovieGenres().then(setAllGenres).catch(() => {});
     api
       .getSerialNumberConfig()
@@ -881,6 +890,12 @@ export default function Library({
         </div>
       )}
 
+      {optionsError && (
+        <div className="banner banner-error">
+          {t("lib.optionsLoadFailed", { message: optionsError })}
+        </div>
+      )}
+
       {refreshError && (
         <div className="banner banner-error">
           {t("lib.refreshFailed", { message: refreshError })}
@@ -1121,6 +1136,7 @@ export default function Library({
           }}
           onChanged={() => {
             refresh();
+            // Bevidst tavse: kun genopfriskning af autocomplete-forslag.
             api.listTags().then(setAllTags).catch(() => {});
             api.listOwners().then(setAllOwners).catch(() => {});
             api.listLocations().then(setAllLocations).catch(() => {});

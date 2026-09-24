@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.204.10 build 0310] — 2026-09-24 — fix: tavse fejl med reel effekt vises nu, resten har fået deres begrundelse (BUGS.md #111)
+
+Fundet ved kodegennemgangen 2026-09-24 (regel 16): ca. 35 tavse `.catch(() => {})` uden begrundelse. To havde reel effekt — tomme format-/medietype-lister uden forklaring (titlen kunne ikke gemmes), og Plex-import-tagget, der ved en fejlet indlæsning stille viste standardværdien og gemte den over det delte tag ved næste import. Begge viser nu fejlen; resten er kommenteret.
+
+Berørte filer: `frontend/src/pages/Library.jsx`, `frontend/src/pages/TvShows.jsx`, `frontend/src/components/MovieLookupForm.jsx`, `frontend/src/pages/Settings.jsx`, `frontend/src/components/ScreeningRequestButton.jsx`, `frontend/src/pages/PrintList.jsx`, `frontend/src/pages/CinemaPublicV2.jsx`, `frontend/src/pages/Cinema.jsx`, `frontend/src/App.jsx`, `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, tests (+2), `BUGS.md`. Backend (1088) + frontend (343) grøn. Nye bannere står i de eksisterende banner-stakke (ingen placeringsændring); ikke set i browser.
+
 ## [0.204.9 build 0309] — 2026-09-24 — fix: ingen rå 500 når en post slettes samtidig med en opdatering (BUGS.md #110)
 
 Fundet ved kodegennemgangen 2026-09-24: tre steder sendte et `None` fra en opdatering eller genlæsning direkte videre, så et kapløb med en samtidig sletning gav en rå 500. Nu en pæn 404, eller — ved admin-tilføjelse af en plads brugeren netop har meldt fra — en ny plads.

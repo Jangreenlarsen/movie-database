@@ -856,6 +856,7 @@ function TlsCertSection() {
             type="button"
             className="btn"
             style={{ marginTop: 8 }}
+            // Bevidst tavs: kopiering er en genvej; teksten står synlig ovenfor.
             onClick={() => navigator.clipboard.writeText(csrPem).catch(() => {})}
           >
             {t("cert.copyCsr")}
@@ -1888,6 +1889,10 @@ export function PlexImportSection() {
   const [includeMovies, setIncludeMovies] = useState(true);
   const [includeShows, setIncludeShows] = useState(true);
   const [tag, setTag] = useState("Plex-import");
+  // BUGS.md #111 — fejler indlæsningen af det gemte tag, står standard-
+  // værdien i feltet, og en rigtig import gemmer den som det delte tag.
+  // Advar derfor tydeligt i stedet for stille at vise standarden.
+  const [tagLoadError, setTagLoadError] = useState(null);
   const [status, setStatus] = useState("idle"); // idle | previewing | preview | importing | done | error
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -1901,7 +1906,7 @@ export function PlexImportSection() {
     api
       .getPlexAutoImportPolicy()
       .then((policy) => setTag(policy.plex_import_tag))
-      .catch(() => {});
+      .catch((err) => setTagLoadError(err.message));
   }, []);
 
   function call(dryRun) {
@@ -1956,6 +1961,11 @@ export function PlexImportSection() {
           {t("plexImport.tagLabel")} — <span className="muted">{t("plexImport.tagHint")}</span>
           <input value={tag} onChange={(e) => setTag(e.target.value)} maxLength={60} />
         </label>
+        {tagLoadError && (
+          <div className="banner banner-error" style={{ marginTop: 8 }}>
+            {t("plexImport.tagLoadFailed", { message: tagLoadError })}
+          </div>
+        )}
       </div>
 
       <button
@@ -2259,7 +2269,8 @@ export function MessagesSection({ currentUserId }) {
 
   function load() {
     api.listMessages().then(setMessages).catch((err) => setError(err.message));
-    api.listUsers().then(setUsers).catch(() => {});
+    // BUGS.md #111 — uden brugerlisten er modtager-vælgeren tom; vis hvorfor.
+    api.listUsers().then(setUsers).catch((err) => setError(err.message));
   }
 
   useEffect(load, []);
@@ -3331,6 +3342,7 @@ export function DeploySection() {
     api
       .health()
       .then((data) => setCurrentBuild(data.build))
+      // Bevidst tavs: kun visning af nuværende build; opdateringen virker uden.
       .catch(() => {});
   }, []);
 
@@ -3575,6 +3587,7 @@ export function UsersSection({ currentUserId }) {
         setPasswordCopied(true);
         setTimeout(() => setPasswordCopied(false), 2000);
       })
+      // Bevidst tavs: kodeordet står synligt i vinduet og kan kopieres manuelt.
       .catch(() => {});
   }
 
@@ -4238,6 +4251,7 @@ export function AnthemDiagnosticsSection() {
     try {
       const response = await api.openAnthemDiagnosticsStream(controller.signal);
       if (!response.ok) {
+        // Intet JSON i fejlsvaret → den generiske tekst nedenfor overtager.
         const body = await response.json().catch(() => null);
         setErrorMessage(body?.detail ?? t("anthemDiag.genericError"));
         setStreamStatus("error");

@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.204.10 (build 0310) — 2026-09-24
+
+- **Tydeligere fejl**: kan appen ikke hente listerne over formater og medietyper, står der nu en besked om det (og at siden skal genindlæses) i stedet for tomme lister og en Gem-knap der ikke virker. Under "Importér fra Plex" advares du, hvis det gemte import-tag ikke kunne hentes.
+
 ## v0.204.9 (build 0309) — 2026-09-24
 
 - **Rettet**: sjældne "serverfejl", hvis to personer samtidig ændrede og slettede den samme sæson eller biografplads. Nu får man i stedet en besked om, at den ikke findes længere.

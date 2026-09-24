@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.204.2 build 0302] — 2026-09-24 — fix: biblioteks-import holder hver serienummer-serie på sin egen tæller (BUGS.md #103)
+
+Fundet ved kodegennemgangen 2026-09-24 og verificeret med test: efter "Importér bibliotek" satte `bump_serial_counter_past` M#-/T#-tælleren forbi det højeste nummer blandt ALLE importerede poster — også digitale og 5000+-puljen — så næste fysiske film fik fx M5002. Hver serie justerer nu kun sin egen tæller, og D#/5000+ justeres særskilt.
+
+Berørte filer: `backend/app/repositories/movie_repository.py`, `backend/app/repositories/tv_show_repository.py`, `backend/app/repositories/digital_serial_repository.py`, `backend/app/services/library_backup_service.py`, `backend/tests/test_library_backup.py` (+3 tests), `BUGS.md`. Backend + frontend grøn.
+
 ## [0.204.1 build 0301] — 2026-09-24 — fix: TMDb-synk af TV-serier overskriver ikke længere "set"/"ejet" (BUGS.md #112)
 
 Fundet ved kodegennemgangen 2026-09-24 og verificeret med test: `sync_all_from_tmdb` læste alle serier ved batchens start og skrev hele `seasons`-arrayet tilbage for hver serie efter netværkskald — en episode markeret som set (eller en sæson som ejet) imens blev stille overskrevet. Nu compare-and-swap mod en frisk læsning, og episode-skrivningen er værnet mod forskudte indekser.

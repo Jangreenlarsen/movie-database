@@ -11,7 +11,7 @@ from app.models.backup import (
     LibraryImportResult,
     MediaTypeCounts,
 )
-from app.repositories import movie_repository, tv_show_repository
+from app.repositories import digital_serial_repository, movie_repository, tv_show_repository
 
 
 async def export_library(db: AsyncIOMotorDatabase) -> LibraryExport:
@@ -40,6 +40,8 @@ async def import_library(
     await movie_repository.bump_serial_counter_past(db, movie_docs)
     await tv_show_repository.replace_all(db, tv_show_docs)
     await tv_show_repository.bump_serial_counter_past(db, tv_show_docs)
+    # BUGS.md #103 — D# og 5000+-puljen deles af film og serier.
+    await digital_serial_repository.bump_counters_past(db, movie_docs + tv_show_docs)
 
     return LibraryImportResult(movies_imported=len(movie_docs), tv_shows_imported=len(tv_show_docs))
 

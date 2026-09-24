@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.204.2 (build 0302) — 2026-09-24
+
+- **Rettet**: efter "Importér bibliotek" fik den næste fysiske film eller serie et serienummer over 5000, hvis importen indeholdt digitale titler eller titler fra 5000+-puljen. Nu fortsætter hver nummerserie (M, T, D og 5000+) fra sit eget højeste nummer.
+
 ## v0.204.1 (build 0301) — 2026-09-24
 
 - **Rettet**: markerer du en episode som set eller en sæson som ejet, mens TV-serierne synkroniseres med TMDb, bliver markeringen ikke længere overskrevet af synkroniseringen.

@@ -169,6 +169,39 @@ async def _is_other_taken(db: AsyncIOMotorDatabase, candidate: int) -> bool:
     return False
 
 
+async def bump_counters_past(db: AsyncIOMotorDatabase, documents: list[dict]) -> None:
+    """BUGS.md #103 — efter en biblioteks-import: flyt D#-tælleren forbi det
+    højeste importerede digitale nummer og 5000+-tælleren forbi det højeste
+    5000+-nummer, hver i sin egen serie (film og serier under ét, ligesom
+    tællerne selv). Uden dette virkede tildelingen stadig — den springer
+    optagne numre over — men første nye post skulle i værste fald prøve sig
+    igennem hvert eneste importerede nummer ét for ét."""
+    digital = [
+        doc["serial_number"]
+        for doc in documents
+        if isinstance(doc.get("serial_number"), int)
+        and doc.get("media_type") == DIGITAL
+        and doc["serial_number"] < OTHER_SERIAL_START
+    ]
+    other = [
+        doc["serial_number"]
+        for doc in documents
+        if isinstance(doc.get("serial_number"), int) and doc["serial_number"] >= OTHER_SERIAL_START
+    ]
+    if digital:
+        config = await _ensure_config(db)
+        if config.get("next_value", 1) <= max(digital):
+            await db[COUNTERS_COLLECTION].update_one(
+                {"_id": SERIAL_COUNTER_ID}, {"$set": {"next_value": max(digital) + 1}}
+            )
+    if other:
+        config = await _ensure_other_config(db)
+        if config.get("next_value", OTHER_SERIAL_START) <= max(other):
+            await db[COUNTERS_COLLECTION].update_one(
+                {"_id": OTHER_SERIAL_COUNTER_ID}, {"$set": {"next_value": max(other) + 1}}
+            )
+
+
 async def next_other_serial_number(db: AsyncIOMotorDatabase) -> int:
     """Feature #139 — næste ledige nummer fra den delte 5000+-pulje. Tæller kun
     opad fra 5000 (ingen genbrug — bevidst adskilt fra #131's M/T/D-genbrug), med

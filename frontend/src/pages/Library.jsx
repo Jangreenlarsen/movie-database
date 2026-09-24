@@ -204,6 +204,9 @@ export default function Library({
   // og ikke forveksles med den generelle søgning.
   const [addMode, setAddMode] = useState(null);
   const [serialPaddingWidth, setSerialPaddingWidth] = useState(0);
+  // Feature #230 — holder samlingslisten foldet ud når man klikker sig
+  // fra film til film i den.
+  const [collectionExpanded, setCollectionExpanded] = useState(false);
   const [settingsError, setSettingsError] = useState(null);
   // BUGS.md #61 — en fejlet genindlæsning efter gem/slet vises nu (før slugt).
   const [refreshError, setRefreshError] = useState(null);
@@ -944,7 +947,14 @@ export default function Library({
           }`}
         >
           {movies.map((movie) => (
-            <li key={movie.id} className="movie-card" onClick={() => setActiveMovie(movie)}>
+            <li
+              key={movie.id}
+              className="movie-card"
+              onClick={() => {
+                setCollectionExpanded(false);
+                setActiveMovie(movie);
+              }}
+            >
               {/* Feature #92 — betinget af nummeret selv, ikke af
                   ønskeliste-flaget: en digital biblioteks-post har heller
                   ikke noget nummer at vise. */}
@@ -1087,7 +1097,16 @@ export default function Library({
 
       {activeMovie && (
         <MovieDetailModal
+          // Feature #230 — nøglen tvinger en frisk modal når man klikker sig
+          // videre til en anden film i samlingen: vinduets redigerings-state
+          // er initialiseret fra `movie` og ville ellers blive hængende.
+          key={activeMovie.id}
           movie={activeMovie}
+          collectionInitiallyExpanded={collectionExpanded}
+          onOpenMovie={(next) => {
+            setCollectionExpanded(true);
+            setActiveMovie(next);
+          }}
           user={user}
           allTags={allTags}
           allOwners={allOwners}
@@ -1096,7 +1115,10 @@ export default function Library({
           serialPaddingWidth={serialPaddingWidth}
           plex={plex}
           plexAvailability={plex.items[activeMovie.id]}
-          onClose={() => setActiveMovie(null)}
+          onClose={() => {
+            setActiveMovie(null);
+            setCollectionExpanded(false);
+          }}
           onChanged={() => {
             refresh();
             api.listTags().then(setAllTags).catch(() => {});
@@ -1132,6 +1154,10 @@ export function MovieDetailModal({
   // forkerte match.
   duplicates,
   onBackToCandidates,
+  // Feature #230 — valgfri: åbner en anden film fra "Del af samlingen:".
+  // Udeladt (MovieLookupForm), er samlingens titler bare tekst som før.
+  onOpenMovie,
+  collectionInitiallyExpanded = false,
   onClose,
   onChanged,
   onFilterByPerson,
@@ -1539,7 +1565,12 @@ export function MovieDetailModal({
           )}
 
           {movie.id && movie.collection_id && (
-            <CollectionSection movie={movie} onChanged={onChanged} />
+            <CollectionSection
+              movie={movie}
+              onChanged={onChanged}
+              onOpenMovie={onOpenMovie}
+              initiallyExpanded={collectionInitiallyExpanded}
+            />
           )}
 
           {/* Feature #88/2026-08-10 — en fysisk kopi er per definition ikke i
@@ -1942,13 +1973,33 @@ export function MovieDetailModal({
   );
 }
 
-function CollectionSection({ movie, onChanged }) {
+function CollectionSection({ movie, onChanged, onOpenMovie, initiallyExpanded = false }) {
   const t = useT();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(initiallyExpanded);
   const [collection, setCollection] = useState(null);
   const [status, setStatus] = useState("idle");
   const [addingId, setAddingId] = useState(null);
   const [addError, setAddError] = useState(null);
+  const [openingId, setOpeningId] = useState(null);
+
+  // Feature #230 — åbnet via et klik i en anden films samling: hent listen
+  // med det samme, så man kan klikke sig videre gennem serien.
+  useEffect(() => {
+    if (initiallyExpanded) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function openPart(part) {
+    setAddError(null);
+    setOpeningId(part.owned_movie_id);
+    try {
+      // Hele filmen hentes frisk — samlings-svaret har kun titel/år/poster.
+      onOpenMovie(await api.getMovie(part.owned_movie_id));
+    } catch (err) {
+      setAddError(err.message);
+      setOpeningId(null);
+    }
+  }
 
   function load() {
     setStatus("loading");
@@ -2016,9 +2067,24 @@ function CollectionSection({ movie, onChanged }) {
           {status === "ready" &&
             collection.parts.map((part) => (
               <div key={part.tmdb_id} className="collection-part-row">
-                <span>
-                  {part.title} {part.year ? `(${part.year})` : ""}
-                </span>
+                {part.owned_movie_id === movie.id ? (
+                  <span className="collection-part-current" aria-current="true">
+                    {part.title} {part.year ? `(${part.year})` : ""}
+                  </span>
+                ) : part.owned && part.owned_movie_id && onOpenMovie ? (
+                  <button
+                    type="button"
+                    className="person-link collection-part-link"
+                    onClick={() => openPart(part)}
+                    disabled={openingId !== null}
+                  >
+                    {part.title} {part.year ? `(${part.year})` : ""}
+                  </button>
+                ) : (
+                  <span>
+                    {part.title} {part.year ? `(${part.year})` : ""}
+                  </span>
+                )}
                 {part.owned ? (
                   <span className="muted">
                     {part.owned_is_wishlist

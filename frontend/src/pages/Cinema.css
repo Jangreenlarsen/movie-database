@@ -683,6 +683,13 @@
   color: var(--accent-strong);
 }
 
+/* BUGS.md #100 — for-reservering: neutral, samme udtryk som i "Mine pladser". */
+.cinema-attendees-pill--hold {
+  background: var(--surface-hover);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
 .cinema-attendees-remove {
   color: var(--danger);
   font-weight: 600;

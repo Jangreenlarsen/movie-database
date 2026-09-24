@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.203.0 build 0297] — 2026-09-24 — feature: klikbare titler i "Del af samlingen:" (FEATURES.md #230)
+
+Jan: *"kan vi ikke gøre list "del af samling" til klikbare links til de film vi har i databasen"*. Dele af en TMDb-samling som findes i databasen (ejet eller på ønskelisten, dvs. med `owned_movie_id`) er nu links. Et klik henter filmen friskt via `GET /api/movies/{id}` (samlings-svaret har kun titel/år/poster) og åbner den i samme detaljevindue; vinduet får `key={id}`, så dets redigerings-state ikke hænger fast fra den forrige film, og samlingen står foldet ud fra start, så man kan klikke sig videre gennem serien. Den film man står på, er fed (`aria-current`) og ikke et link; dele man ikke har, er uændrede med "+ Ønskeliste". Fejler hentningen, vises backendens egen fejltekst. Scan-flowet (`MovieLookupForm`) sender ingen `onOpenMovie` og er uændret.
+
+Berørte filer: `frontend/src/pages/Library.jsx`, `frontend/src/pages/Library.css`, `frontend/src/pages/Library.test.jsx` (+4 tests), `FEATURES.md`. Ingen backend-ændring, intet nyt data (regel 20). Backend (1056) + frontend (321) grøn. Ingen placeringsændring (et link i stedet for tekst i en eksisterende række); ikke set i browser.
+
+## [0.202.3 build 0296] — 2026-09-24 — fix: faste for-reserveringer under "Tilmeldte pr. visning" (BUGS.md #100, opfølgning)
+
+Jan (skærmbillede): et fast hold på alle visninger ("Sæde 4 · For-reserveret af Lis") stod under Godkendte / for-reserverede sæder, men ikke under "Tilmeldte pr. visning". `AttendeesBlock` tog kun reservationer med visningens eget `screening_id`; globale hold har intet. De står nu under hver visning som "fast reservation · alle visninger" med mærkatet "For-reserveret" (også hold på én visning, som før viste "Godkendt"). "Fjern" på et globalt hold advarer om at sædet frigives på alle visninger, og "Ryd alle tilmeldte" tæller kun visningens egne pladser, som er dem backend faktisk rydder.
+
+Berørte filer: `frontend/src/pages/Cinema.jsx`, `frontend/src/pages/Cinema.css`, `frontend/src/pages/AttendeesAdmin.test.jsx` (+2 tests), `frontend/src/i18n/da.json`, `frontend/src/i18n/en.json`, `BUGS.md`. Ingen backend-ændring. Backend (1056) + frontend (317) grøn. Ingen placeringsændring (nye rækker i en eksisterende liste); ikke set i browser.
+
 ## [0.202.2 build 0295] — 2026-09-24 — fix: for-reserverede sæder vises under "Mine pladser" (BUGS.md #100)
 
 Jan: *"hvis nogen laver en resevering af sæde i forresevering så se man ikke det sæd under bruger som lave den ... for alle forreseviring af sæder og ikke kun for den enklede film"*. Admins for-reserveringer (hold) blev filtreret fra "Mine pladser" siden feature #227. Nu står de der — hold på én visning under visningen, globale hold samlet i en "Alle visninger"-gruppe øverst — med mærkatet "For-reserveret" og en "Meld fra"-knap der frigiver sædet.

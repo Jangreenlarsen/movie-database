@@ -1866,9 +1866,14 @@ function AttendeesBlock({ screening, reservations, users, expanded, onToggle, on
   const [username, setUsername] = useState("");
   const [seatId, setSeatId] = useState("");
 
+  // BUGS.md #100 — globale for-reserveringer (scope "global", intet
+  // screening_id) gælder alle visninger og står derfor under hver af dem.
   const own = reservations
-    .filter((r) => r.screening_id === screening.id)
+    .filter((r) => r.screening_id === screening.id || r.scope === "global")
     .sort((a, b) => a.seat_number - b.seat_number);
+  // "Ryd alle tilmeldte" rydder kun visningens egne (backend rører aldrig
+  // globale hold), så bekræftelsen skal tælle det samme.
+  const clearable = own.filter((r) => r.scope !== "global");
   const free = freeSeatNumbers(SEAT_OPTIONS, reservations, screening.id);
   const booked = SEAT_OPTIONS.length - free.length;
   const title = screening.title ?? t("cinema.unknownTitle");
@@ -1909,16 +1914,16 @@ function AttendeesBlock({ screening, reservations, users, expanded, onToggle, on
   }
 
   function remove(reservation) {
-    const text = t("attendees.confirmRemove", {
-      number: reservation.seat_number,
-      name: reservation.reserved_by,
-    });
+    const text = t(
+      reservation.scope === "global" ? "attendees.confirmRemoveGlobal" : "attendees.confirmRemove",
+      { number: reservation.seat_number, name: reservation.reserved_by }
+    );
     if (!window.confirm(text)) return;
     run(() => api.cancelReservation(reservation.id));
   }
 
   function clearAll() {
-    if (!window.confirm(t("attendees.confirmClear", { count: own.length, title }))) return;
+    if (!window.confirm(t("attendees.confirmClear", { count: clearable.length, title }))) return;
     run(() => api.clearScreeningReservations(screening.id));
   }
 
@@ -1967,17 +1972,32 @@ function AttendeesBlock({ screening, reservations, users, expanded, onToggle, on
             </span>
             {reservation.reserved_by}
             {reservation.is_hold && (
-              <span className="muted"> · {t("attendees.holdLabel")}</span>
+              <span className="muted">
+                {" · "}
+                {t(
+                  reservation.scope === "global"
+                    ? "attendees.holdLabelGlobal"
+                    : "attendees.holdLabel"
+                )}
+              </span>
             )}
           </span>
           <span
             className={`cinema-attendees-pill ${
-              reservation.status === "approved"
-                ? "cinema-attendees-pill--approved"
-                : "cinema-attendees-pill--pending"
+              reservation.is_hold
+                ? "cinema-attendees-pill--hold"
+                : reservation.status === "approved"
+                  ? "cinema-attendees-pill--approved"
+                  : "cinema-attendees-pill--pending"
             }`}
           >
-            {t(reservation.status === "approved" ? "myReservations.approved" : "attendees.pending")}
+            {t(
+              reservation.is_hold
+                ? "myReservations.held"
+                : reservation.status === "approved"
+                  ? "myReservations.approved"
+                  : "attendees.pending"
+            )}
           </span>
           {reservation.status !== "approved" && (
             <button
@@ -2027,7 +2047,7 @@ function AttendeesBlock({ screening, reservations, users, expanded, onToggle, on
           {t("attendees.add")}
         </button>
         <span className="cinema-attendees-spacer" />
-        {own.length > 0 && (
+        {clearable.length > 0 && (
           <button
             type="button"
             className="btn cinema-attendees-clear"

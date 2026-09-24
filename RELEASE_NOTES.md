@@ -1,5 +1,13 @@
 # Release Notes
 
+## v0.203.0 (build 0297) — 2026-09-24
+
+- **Klik dig gennem en filmserie**: under "Del af samlingen:" kan du nu klikke på de film, du har i biblioteket eller på ønskelisten — så åbnes filmen med det samme, og samlingen står stadig åben, så du kan hoppe videre til næste del.
+
+## v0.202.3 (build 0296) — 2026-09-24
+
+- **Rettet (admin)**: faste for-reserveringer der gælder alle visninger, står nu også under **Tilmeldte pr. visning** — under hver visning, markeret "fast reservation · alle visninger" og "For-reserveret". Fjerner du en af dem dér, bliver du advaret om at sædet frigives på alle visninger.
+
 ## v0.202.2 (build 0295) — 2026-09-24
 
 - **Rettet**: sæder du som admin har for-reserveret, står nu under **🎟️ Mine pladser** med mærkatet "For-reserveret" — både for-reserveringer til én visning og dem der gælder alle visninger (samlet under "Alle visninger" øverst). Du kan frigive dem derfra med "Meld fra".

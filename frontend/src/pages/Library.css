@@ -520,6 +520,16 @@
   font-size: 0.85rem;
 }
 
+/* Feature #230 — ejede dele er links til filmen; den man står på er fed. */
+.collection-part-link {
+  text-align: left;
+  font-size: inherit;
+}
+
+.collection-part-current {
+  font-weight: 700;
+}
+
 .person-filter-banner {
   justify-content: space-between;
   margin-bottom: 16px;

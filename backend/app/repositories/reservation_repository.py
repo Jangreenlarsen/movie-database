@@ -77,13 +77,11 @@ async def find_all(
 
 
 async def find_for_user(db: AsyncIOMotorDatabase, username: str) -> list[dict]:
-    """Feature #227 — kun personlige pladser: et admin-hold har også admins
-    navn i `reserved_by`, men er en blokering, ikke en plads man kan melde
-    fra. `$ne: True` (ikke `False`) så også ældre dokumenter uden feltet
-    kommer med."""
-    cursor = db[COLLECTION].find({"reserved_by": username, "is_hold": {"$ne": True}}).sort(
-        "created_at", -1
-    )
+    """Feature #227 — "Mine pladser". Siden BUGS.md #100 også admins egne
+    for-reserveringer (hold), både på én visning og globalt: den der har
+    for-reserveret et sæde, skal kunne se og frigive det samme sted som
+    sine øvrige pladser."""
+    cursor = db[COLLECTION].find({"reserved_by": username}).sort("created_at", -1)
     return await cursor.to_list(length=500)
 
 

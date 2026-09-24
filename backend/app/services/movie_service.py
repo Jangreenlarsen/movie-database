@@ -468,11 +468,28 @@ async def list_genres(db: AsyncIOMotorDatabase) -> list[str]:
     return await movie_repository.distinct_genres(db)
 
 
+def _ownership_rank(doc: dict) -> tuple[int, int]:
+    """Lavest vinder: en biblioteks-post før en ønske-post, og inden for
+    biblioteket fysisk før digital (fysisk har altid forrang, jf. Jan)."""
+    return (
+        1 if doc.get("is_wishlist") else 0,
+        0 if doc.get("media_type") == MediaType.PHYSICAL.value else 1,
+    )
+
+
 async def get_collection_info(db: AsyncIOMotorDatabase, collection_id: int) -> CollectionInfo:
     collection = await tmdb_client.get_collection(collection_id)
     tmdb_ids = [part["tmdb_id"] for part in collection["parts"]]
     owned_docs = await movie_repository.find_by_tmdb_ids(db, tmdb_ids)
-    owned_by_tmdb_id = {doc["tmdb_id"]: doc for doc in owned_docs}
+    # BUGS.md #99 — samme film kan ejes i flere kopier (fx digital fra Plex
+    # og senere fysisk fra en scanning). Et simpelt dict gav den sidst læste
+    # kopi, så den først oprettede "digital" stod der for evigt. Vælg i
+    # stedet den bedste: bibliotek frem for ønske, fysisk frem for digital.
+    owned_by_tmdb_id: dict = {}
+    for doc in owned_docs:
+        current = owned_by_tmdb_id.get(doc["tmdb_id"])
+        if current is None or _ownership_rank(doc) < _ownership_rank(current):
+            owned_by_tmdb_id[doc["tmdb_id"]] = doc
 
     parts = []
     for part in collection["parts"]:

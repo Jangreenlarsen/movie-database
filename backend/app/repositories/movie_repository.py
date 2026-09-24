@@ -473,11 +473,13 @@ async def find_all_library_movies(db: AsyncIOMotorDatabase) -> list[dict]:
 
 async def find_by_tmdb_ids(db: AsyncIOMotorDatabase, tmdb_ids: list[int]) -> list[dict]:
     """Batch lookup for feature #42 (collection ownership) — a single query
-    instead of one per collection part."""
+    instead of one per collection part. Uden længde-loft: samme film kan ejes
+    i flere kopier (digital + fysisk), og et loft på `len(tmdb_ids)` kunne
+    skære en af dem væk (BUGS.md #99)."""
     if not tmdb_ids:
         return []
     cursor = db[COLLECTION].find({"tmdb_id": {"$in": tmdb_ids}})
-    return await cursor.to_list(length=len(tmdb_ids))
+    return await cursor.to_list(length=None)
 
 
 async def find_all_with_tmdb_id(db: AsyncIOMotorDatabase) -> list[dict]:

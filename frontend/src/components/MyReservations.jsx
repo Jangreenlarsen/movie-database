@@ -125,7 +125,8 @@ export function MyReservationsModal({ onClose, onChanged }) {
     }
   }
 
-  const groups = groupReservationsByScreening(reservations);
+  // BUGS.md #100 — admins globale for-reserveringer hører med her.
+  const groups = groupReservationsByScreening(reservations, { includeGlobal: true });
 
   return (
     <div className="my-seats-overlay" role="presentation" onClick={onClose}>
@@ -160,7 +161,9 @@ export function MyReservationsModal({ onClose, onChanged }) {
 
         <div className="my-seats-groups">
           {groups.map((group) => {
-            const title = group.title ?? t("cinema.unknownTitle");
+            const title = group.global
+              ? t("myReservations.allScreenings")
+              : group.title ?? t("cinema.unknownTitle");
             return (
               <section className="my-seats-group" key={group.screeningId}>
                 <div className="my-seats-group-head">
@@ -185,15 +188,19 @@ export function MyReservationsModal({ onClose, onChanged }) {
                     </span>
                     <span
                       className={`my-seats-pill ${
-                        reservation.status === "approved"
-                          ? "my-seats-pill--approved"
-                          : "my-seats-pill--pending"
+                        reservation.is_hold
+                          ? "my-seats-pill--hold"
+                          : reservation.status === "approved"
+                            ? "my-seats-pill--approved"
+                            : "my-seats-pill--pending"
                       }`}
                     >
                       {t(
-                        reservation.status === "approved"
-                          ? "myReservations.approved"
-                          : "myReservations.pending"
+                        reservation.is_hold
+                          ? "myReservations.held"
+                          : reservation.status === "approved"
+                            ? "myReservations.approved"
+                            : "myReservations.pending"
                       )}
                     </span>
                     <button

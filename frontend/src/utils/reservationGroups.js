@@ -5,17 +5,23 @@
 // Rækkefølgen følger det første forekomst af hver visning i input — backend
 // sorterer allerede /reservations/mine efter visningstidspunkt. Inden for en
 // visning sorteres sæderne efter nummer. En reservation uden screening_id
-// (et globalt admin-hold) tilhører ingen visning og springes over.
-export function groupReservationsByScreening(reservations) {
+// (et globalt admin-hold) tilhører ingen visning og springes over — medmindre
+// `includeGlobal` er sat ("Mine pladser", BUGS.md #100): så samles de i én
+// gruppe med `global: true` og screeningId GLOBAL_GROUP_ID.
+export const GLOBAL_GROUP_ID = "global";
+
+export function groupReservationsByScreening(reservations, { includeGlobal = false } = {}) {
   const groups = new Map();
   for (const reservation of reservations ?? []) {
-    const screeningId = reservation.screening_id;
-    if (!screeningId) continue;
+    const isGlobal = !reservation.screening_id;
+    if (isGlobal && !includeGlobal) continue;
+    const screeningId = isGlobal ? GLOBAL_GROUP_ID : reservation.screening_id;
     if (!groups.has(screeningId)) {
       groups.set(screeningId, {
         screeningId,
-        title: reservation.screening_title ?? null,
-        at: reservation.screening_at ?? null,
+        global: isGlobal,
+        title: isGlobal ? null : reservation.screening_title ?? null,
+        at: isGlobal ? null : reservation.screening_at ?? null,
         reservations: [],
       });
     }

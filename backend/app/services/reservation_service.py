@@ -403,16 +403,20 @@ async def list_my_reservations(
 ) -> list[Reservation]:
     """Feature #227 — "Mine pladser". Rydder afholdte visninger op først
     (ellers står en plads fra sidste måned for evigt på listen), og sorterer
-    efter visningstidspunkt, næste visning først. En reservation hvis
-    visning ikke kan slås op, lægges sidst frem for at vælte sorteringen."""
+    efter visningstidspunkt, næste visning først. Globale for-reserveringer
+    (BUGS.md #100) gælder alle visninger og står derfor øverst. En
+    reservation hvis visning ikke kan slås op, lægges sidst frem for at
+    vælte sorteringen."""
     await _cleanup_past_screening_reservations(db)
     documents = await reservation_repository.find_for_user(db, username)
     reservations = [await _to_model(db, document) for document in documents]
 
     def _sort_key(reservation: Reservation) -> tuple:
+        if reservation.screening_id is None:
+            return (0, datetime.min, reservation.seat_number)
         when = reservation.screening_at
         if when is None:
-            return (1, datetime.max, reservation.seat_number)
-        return (0, when.replace(tzinfo=None), reservation.seat_number)
+            return (2, datetime.max, reservation.seat_number)
+        return (1, when.replace(tzinfo=None), reservation.seat_number)
 
     return sorted(reservations, key=_sort_key)

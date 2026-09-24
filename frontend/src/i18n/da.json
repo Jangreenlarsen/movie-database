@@ -903,6 +903,8 @@
   "myReservations.seatCount_other": "{count} pladser",
   "myReservations.approved": "Godkendt",
   "myReservations.pending": "Afventer konduktør",
+  "myReservations.held": "For-reserveret",
+  "myReservations.allScreenings": "Alle visninger",
   "myReservations.cancel": "Meld fra",
   "myReservations.cancelling": "Melder fra…",
   "myReservations.cancelAll_one": "Meld fra pladsen",

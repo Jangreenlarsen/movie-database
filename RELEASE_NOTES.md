@@ -1,5 +1,13 @@
 # Release Notes
 
+## v0.202.2 (build 0295) — 2026-09-24
+
+- **Rettet**: sæder du som admin har for-reserveret, står nu under **🎟️ Mine pladser** med mærkatet "For-reserveret" — både for-reserveringer til én visning og dem der gælder alle visninger (samlet under "Alle visninger" øverst). Du kan frigive dem derfra med "Meld fra".
+
+## v0.202.1 (build 0294) — 2026-09-24
+
+- **Rettet**: ejer du en film både digitalt og fysisk, står den nu altid som **fysisk** under "Del af samlingen:" — også selvom den digitale udgave blev registreret først.
+
 ## v0.202.0 (build 0293) — 2026-09-23
 
 - **Renere hoved**: antallet af film, TV-serier og emner på indkøbslisten står nu som et lille tal direkte i menupunkterne "Film", "TV-serier" og "Indkøbsønsker" i stedet for i en række mærkater øverst til højre. Hold musen over et menupunkt for at se fordelingen på fysisk og digital.

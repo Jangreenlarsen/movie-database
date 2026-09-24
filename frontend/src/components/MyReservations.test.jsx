@@ -59,6 +59,28 @@ describe("MyReservationsModal (feature #227)", () => {
     expect(within(paddington).queryByRole("button", { name: /alle/ })).toBeNull();
   });
 
+  it("viser admins for-reserveringer — globale som \"Alle visninger\" (BUGS.md #100)", async () => {
+    api.myReservations.mockResolvedValue([
+      { id: "h3", screening_id: null, scope: "global", is_hold: true, seat_number: 3, status: "approved" },
+      { ...ROWS[2], id: "h13", seat_number: 13, is_hold: true },
+    ]);
+    const cancel = vi.spyOn(api, "cancelReservation").mockResolvedValue(null);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+    render(<MyReservationsModal onClose={() => {}} />);
+
+    const global = (await screen.findByText("Alle visninger")).closest("section");
+    expect(within(global).getByText("Sæde 3")).toBeInTheDocument();
+    expect(within(global).getByText("For-reserveret")).toBeInTheDocument();
+
+    const paddington = screen.getByText("Paddington i Peru").closest("section");
+    expect(within(paddington).getByText("For-reserveret")).toBeInTheDocument();
+    expect(within(paddington).queryByText("Godkendt")).toBeNull();
+
+    await user.click(within(global).getByRole("button", { name: "Meld fra" }));
+    expect(cancel).toHaveBeenCalledWith("h3");
+  });
+
   it("melder én plads fra efter bekræftelse", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     const cancel = vi.spyOn(api, "cancelReservation").mockResolvedValue(null);

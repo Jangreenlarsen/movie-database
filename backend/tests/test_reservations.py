@@ -510,18 +510,45 @@ async def test_guest_can_still_reserve_on_a_non_private_screening(client):
 # --- Feature #227: "Mine pladser" + admin-tilmeldte pr. visning -------------
 
 
-async def test_my_reservations_excludes_admin_holds(client):
-    """Et admin-hold har admins navn i reserved_by, men er en blokering, ikke
-    en plads admin kan melde fra i "Mine pladser"."""
-    movie_id = await _create_movie(client, "Hold Ikke Mine")
+async def test_my_reservations_includes_own_holds(client):
+    """BUGS.md #100 — admins egne for-reserveringer står i "Mine pladser",
+    både det globale hold (øverst) og hold på en enkelt visning."""
+    movie_id = await _create_movie(client, "Hold Er Mine")
     screening_id = await _create_screening(client, movie_id)
-    await client.post("/api/reservations/hold", json={"seat_id": "N3-5", "scope": "global"})
     await client.post(
         f"/api/screenings/{screening_id}/reservations", json={"seat_ids": ["N1-1"]}
     )
+    await client.post("/api/reservations/hold", json={"seat_id": "N3-5", "scope": "global"})
+    await client.post(
+        "/api/reservations/hold",
+        json={"seat_id": "N2-1", "scope": "screening", "screening_id": screening_id},
+    )
 
     mine = (await client.get("/api/reservations/mine")).json()
-    assert [r["seat_id"] for r in mine] == ["N1-1"]
+    assert mine[0]["seat_id"] == "N3-5"
+    assert mine[0]["is_hold"] is True and mine[0]["screening_id"] is None
+    assert sorted(r["seat_id"] for r in mine[1:]) == ["N1-1", "N2-1"]
+    assert all(r["screening_id"] == screening_id for r in mine[1:])
+
+
+async def test_admin_holds_not_shown_to_other_users(client):
+    movie_id = await _create_movie(client, "Hold Andres")
+    await _create_screening(client, movie_id)
+    await client.post("/api/reservations/hold", json={"seat_id": "N3-5", "scope": "global"})
+    guest = await _member_client(client, "g_no_holds", role="guest")
+    assert (await guest.get("/api/reservations/mine")).json() == []
+    await guest.aclose()
+
+
+async def test_admin_can_release_own_hold_without_notifying(client):
+    """At frigive sit eget hold fra "Mine pladser" er en admin-handling —
+    konduktøren (admin selv) skal ikke have en fraværs-besked."""
+    held = (
+        await client.post("/api/reservations/hold", json={"seat_id": "N3-5", "scope": "global"})
+    ).json()
+    response = await client.delete(f"/api/reservations/{held['id']}")
+    assert response.status_code == 204
+    assert (await client.get("/api/reservations/mine")).json() == []
 
 
 async def test_my_reservations_cleans_up_past_screenings(client):

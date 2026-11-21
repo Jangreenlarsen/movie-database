@@ -216,6 +216,23 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now moviedb-reboot.path
 ```
 
+## IPv6 er slået fra (2026-11-21)
+
+Jan: *"alt ip v6 skal disables"*. Det gælder både appserveren og nginx-proxyen foran, og hele stakken kører kun IPv4. Nogen offentlig IPv6 var der ikke i forvejen (DNS har kun en A-post).
+
+| Hvad | Hvor | Indhold |
+|---|---|---|
+| Kernen | `/etc/sysctl.d/90-disable-ipv6.conf` | `disable_ipv6 = 1` for `all`, `default` og `lo` |
+| SSH | `/etc/ssh/sshd_config.d/10-ipv4-only.conf` | `AddressFamily inet` |
+| UFW | `/etc/default/ufw` | `IPV6=no` (backup: `ufw.bak-ipv6`) |
+| Caddy | `/etc/caddy/Caddyfile`, global blok | `default_bind tcp4/0.0.0.0` (backup: `Caddyfile.bak-ipv6`) |
+
+**Caddy-detalje:** `default_bind 0.0.0.0` er ikke nok. Caddy er skrevet i Go, og Go åbner en dual-stack IPv6-socket (`*:443` i `ss`) selv for `0.0.0.0`, så længe man ikke skriver `tcp4/`. Kontrol: `ss -tulnH -6` skal give tomt output.
+
+**Backend og MongoDB:** begge lytter kun på `127.0.0.1`. `MONGO_URI=mongodb://localhost:27017` virker også uden IPv6 (afprøvet: genstart af backend og `/api/health` 200), fordi MongoDB kun lytter på IPv4.
+
+Tilbage til IPv6: slet sysctl-filen og sshd-drop-in'en, sæt `IPV6=yes`, fjern `default_bind`-linjen og genstart `ssh`, `ufw` og `caddy`.
+
 ## Fejlsøgning
 
 ```bash

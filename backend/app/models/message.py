@@ -55,6 +55,17 @@ class Message(BaseModel):
     is_broadcast: bool
 
 
+class MessageMedia(BaseModel):
+    """Feature #232 — én titel en besked handler om (samlet opdatering /
+    ny i samlingen), så portalen kan vise plakaterne og ikke kun teksten.
+    Et øjebliksbillede taget ved afsendelse, som modtagerlisten."""
+
+    title: str
+    media_kind: Literal["movie", "tv"]
+    year: int | None = None
+    poster_url: str | None = None
+
+
 class InboxMessage(BaseModel):
     """Én ulæst besked set fra modtagerens side. Modtagerlisten er bevidst
     ikke med — hvem der ellers har fået beskeden, er afsenderens oplysning,
@@ -65,6 +76,8 @@ class InboxMessage(BaseModel):
     body: str
     sent_by: str
     created_at: datetime
+    # Feature #232 — tom for alle beskeder der ikke handler om titler.
+    media: list[MessageMedia] = Field(default_factory=list)
 
 
 class MarkAllReadResult(BaseModel):

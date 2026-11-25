@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import AnnouncementQueueSection from "../components/AnnouncementQueue";
 import Chip from "../components/Chip";
+import MessageMediaStrip from "../components/MessageMediaStrip";
 import { LANGUAGES, useLocale, useT } from "../i18n";
 import "./Settings.css";
 
@@ -2182,6 +2183,7 @@ export function MyMessagesSection() {
                     <li key={message.id} className="message-sent-row">
                       <div className="message-sent-main">
                         <strong>{message.subject}</strong>
+                        <MessageMediaStrip media={message.media} />
                         <div className="muted message-sent-meta">{message.body}</div>
                         <div className="muted message-sent-meta">
                           {t("messages.from", {

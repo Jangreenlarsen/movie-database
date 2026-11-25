@@ -1,5 +1,12 @@
 # Release Notes
 
+## v0.205.0 (build 0311) — 2026-11-25
+
+- **Flottere samlet opdatering**: mailen viser nu alle de nye film og serier, ikke kun den første. Øverst er der en collage af plakaterne, og derunder et kort for hver titel med år, genrer, bedømmelse og et kort resumé. Film og serier har hver sin farve. "Send besked med det samme" ser ud på samme måde.
+- **Se mailen før du sender**: under Indstillinger → Beskeder → Samlet opdatering kan du trykke "Forhåndsvis mail" og se præcis den mail, der bliver sendt.
+- **Plakater i portalen**: beskeden om nye titler viser plakaterne øverst i banneret og under "Dine beskeder", og listen viser året.
+- **Rettet**: en meget lang samlet opdatering kunne slet ikke sendes. Nu bliver tekstlisten forkortet, og mailen har stadig alle titler med.
+
 ## v0.204.10 (build 0310) — 2026-09-24
 
 - **Tydeligere fejl**: kan appen ikke hente listerne over formater og medietyper, står der nu en besked om det (og at siden skal genindlæses) i stedet for tomme lister og en Gem-knap der ikke virker. Under "Importér fra Plex" advares du, hvis det gemte import-tag ikke kunne hentes.

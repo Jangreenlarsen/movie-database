@@ -20,9 +20,20 @@ class PendingAnnouncement(BaseModel):
     # titel eller plakat slår igennem uden at køen skal opdateres.
     title: str
     poster_url: str | None = None
+    # Feature #232 — vises i køen, så man kan skelne en genindspilning.
+    year: int | None = None
     added_by: str
     created_at: datetime
 
 
 class AnnouncementSendResult(BaseModel):
     sent_count: int
+
+
+class AnnouncementPreview(BaseModel):
+    """Feature #232 — den samlede opdatering som den ville blive sendt nu."""
+
+    subject: str
+    body: str
+    html: str
+    count: int

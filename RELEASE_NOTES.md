@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.205.1 (build 0312) — 2026-11-25
+
+- **Rettet**: når en besked blev sendt til mange brugere på én gang (fx den samlede opdatering), kunne nogle af dem ikke få mailen. Mailene sendes nu i et roligere tempo og prøves igen, hvis mail-tjenesten beder om en pause.
+
 ## v0.205.0 (build 0311) — 2026-11-25
 
 - **Flottere samlet opdatering**: mailen viser nu alle de nye film og serier, ikke kun den første. Øverst er der en collage af plakaterne, og derunder et kort for hver titel med år, genrer, bedømmelse og et kort resumé. Film og serier har hver sin farve. "Send besked med det samme" ser ud på samme måde.

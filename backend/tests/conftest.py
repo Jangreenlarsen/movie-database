@@ -85,6 +85,17 @@ def _pin_plex_auto_import_policy(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _no_email_pacing(monkeypatch):
+    """BUGS.md #113 — tempoet mod Resend (0,6 s mellem mails, ventetid ved
+    429) må ikke gøre suiten langsom. Testene der tjekker selve tempoet,
+    sætter værdierne igen og måler `asyncio.sleep`-kaldene."""
+    from app.services import message_service
+
+    monkeypatch.setattr(message_service, "EMAIL_SPACING_SECONDS", 0)
+    monkeypatch.setattr(message_service, "EMAIL_DEFAULT_RETRY_WAIT_SECONDS", 0)
+
+
+@pytest.fixture(autouse=True)
 def _pin_test_mode(monkeypatch):
     """Feature #217 — same isolation concern as `_pin_password_policy`
     above: pinned to the code default (`False`) so a test that turns test

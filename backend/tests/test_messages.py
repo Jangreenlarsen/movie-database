@@ -547,6 +547,8 @@ async def test_send_stops_the_rest_of_the_batch_on_a_rate_limit(client, second_u
 
     response = await client.post("/api/messages", json={"subject": "Emne", "body": "Krop"})
     assert response.status_code == 201
-    # Kun ÉT forsøg — udsendelsen stoppede efter den første 429 i stedet for
-    # at forsøge den anden modtager også.
-    assert len(calls) == 1
+    # BUGS.md #113 — ét genforsøg på SAMME modtager efter en kort pause;
+    # er Resend stadig blokeret, stoppes resten (den anden modtager
+    # forsøges aldrig).
+    assert len(calls) == 2
+    assert len(set(calls)) == 1

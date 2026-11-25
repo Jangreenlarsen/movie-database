@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.205.1 build 0312] — 2026-11-25 — fix: e-mails til alle brugere går ikke længere tabt ved Resends rate-limit (BUGS.md #113)
+
+Fundet ved gennemgangen af opdaterings-systemet: mails blev sendt i en tæt løkke og stoppede ved første 429, så en udsendelse til mere end et par brugere kunne miste resten uden at nogen opdagede det. Nu er der 0,6 s mellem kaldene og ét genforsøg efter `Retry-After` (højst 5 s), før resten opgives.
+
+Berørte filer: `backend/app/services/message_service.py`, `backend/app/integrations/email_client.py`, `backend/app/core/errors.py`, `backend/tests/conftest.py`, `backend/tests/test_email_pacing.py` (+9), `backend/tests/test_messages.py`, `BUGS.md`. Backend (1113) + frontend (349) grøn.
+
 ## [0.205.0 build 0311] — 2026-11-25 — feature: farverig samlet opdatering med alle titler (FEATURES.md #232)
 
 Den samlede opdatering viste kun den første titels plakat og resten som en navneliste. Nu viser mailen alle titler: en plakat-collage (3 pr. række, op til 12 felter + "+N") og et kort pr. titel med plakat, år, farvet film/serie-mærke, genrer, TMDb-bedømmelse og forkortet resumé. "Send med det samme" bruger samme kort-layout. Portal-beskeden får titlerne som `media` (plakatstribe i banneret og under "Dine beskeder"), og tekstlisten viser året. Ny `GET /api/announcements/preview` + "Forhåndsvis mail" i køen. En kø med en brødtekst over 2000 tegn fejler ikke længere hele afsendelsen; tekstlisten afkortes.

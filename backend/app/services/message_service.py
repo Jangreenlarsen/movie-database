@@ -24,6 +24,7 @@ Bevidst UDELADT fra skabelon-systemet: `notify_poll_cancelled`s pulje af
 tilfældig-vittighed-pulje, ikke én skabelon med pladsholdere, og forbliver
 hardkodet uændret."""
 
+import asyncio
 import logging
 import random
 from datetime import datetime, timezone
@@ -414,6 +415,16 @@ async def _resolve_recipients(
     ]
 
 
+# BUGS.md #113 — Resend tillader som standard 2 kald i sekundet. Uden et
+# tempo nåede en udsendelse til mange brugere kun de første to, og resten
+# blev stille sprunget over. Testene sætter begge til 0 (conftest).
+EMAIL_SPACING_SECONDS = 0.6
+# Længste ventetid vi accepterer fra en `Retry-After`, før vi giver op —
+# afsendelsen sker inde i et HTTP-kald, som ikke må hænge i minutter.
+EMAIL_MAX_RETRY_WAIT_SECONDS = 5.0
+EMAIL_DEFAULT_RETRY_WAIT_SECONDS = 1.0
+
+
 async def _send_emails(
     recipients: list[dict], subject: str, body: str, html: str | None = None
 ) -> None:
@@ -432,12 +443,27 @@ async def _send_emails(
     funktioner nedenfor. `body` (ren tekst) sendes altid, uanset `html`."""
     if not settings.resend_api_key or not settings.email_from_address:
         return
+    first = True
     for recipient in recipients:
         email = recipient.get("_email")
         if not email:
             continue
+        if not first:
+            await asyncio.sleep(EMAIL_SPACING_SECONDS)
+        first = False
         try:
-            ok = await email_client.send_email(to=email, subject=subject, text=body, html=html)
+            try:
+                ok = await email_client.send_email(to=email, subject=subject, text=body, html=html)
+            except EmailRateLimitedError as exc:
+                # BUGS.md #113 — én kort pause og ét nyt forsøg på SAMME
+                # modtager. Er Resend stadig blokeret (eller beder om en
+                # længere pause end vi vil vente), stoppes resten som før.
+                wait = exc.retry_after if exc.retry_after is not None else EMAIL_DEFAULT_RETRY_WAIT_SECONDS
+                if wait > EMAIL_MAX_RETRY_WAIT_SECONDS:
+                    raise
+                logger.info("Resend rate-limit — venter %.1fs og prøver %s igen", wait, recipient["username"])
+                await asyncio.sleep(wait)
+                ok = await email_client.send_email(to=email, subject=subject, text=body, html=html)
             if not ok:
                 logger.warning("E-mail-notifikation fejlede for %s (%r)", recipient["username"], subject)
         except EmailRateLimitedError:

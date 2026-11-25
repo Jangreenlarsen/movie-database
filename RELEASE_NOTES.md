@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.208.0 (build 0315) — 2026-11-25
+
+- **Til toppen**: når du har scrollet et stykke ned i Film, TV-serier eller Indkøbsønsker, dukker en rund knap op nederst til højre, som fører dig tilbage til toppen.
+
 ## v0.207.0 (build 0314) — 2026-11-25
 
 - **Brugere har fået deres egen fane**: under Indstillinger → Brugere kan du nu søge på brugernavn, navn eller e-mail og vise f.eks. kun dem, der afventer godkendelse. Adgangskode-politik og aktivitetslog ligger nu under den nye fane "Sikkerhed".

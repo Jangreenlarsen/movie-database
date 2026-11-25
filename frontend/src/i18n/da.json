@@ -40,6 +40,7 @@
   "language.description": "Vælger sproget i hele brugerfladen. Gemmes på din bruger, så det følger med uanset hvilken enhed du logger ind fra.",
   "language.saveError": "Sproget kunne ikke gemmes: {message}",
   "common.saving": "Gemmer...",
+  "common.scrollToTop": "Til toppen",
   "common.save": "Gem",
   "common.cancel": "Annullér",
   "common.close": "Luk",

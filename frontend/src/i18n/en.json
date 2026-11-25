@@ -40,6 +40,7 @@
   "language.description": "Sets the language across the whole interface. Saved to your account, so it follows you regardless of which device you log in from.",
   "language.saveError": "Could not save the language: {message}",
   "common.saving": "Saving...",
+  "common.scrollToTop": "Back to top",
   "common.save": "Save",
   "common.cancel": "Cancel",
   "common.close": "Close",

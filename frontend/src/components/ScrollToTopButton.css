@@ -1,0 +1,45 @@
+/* Feature #235 — fast nederst til højre. z-index 50: over indholdet, men
+   under detaljevinduer og sædevalg (100+), så den aldrig ligger ovenpå et
+   åbent vindue. Sikkert område på iPhone (hjemme-indikatoren). */
+.scroll-to-top {
+  position: fixed;
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  z-index: 50;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  opacity: 0.92;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.scroll-to-top:hover {
+  opacity: 1;
+  transform: translateY(-2px);
+}
+
+.scroll-to-top:focus-visible {
+  outline: 3px solid var(--accent-soft-strong, var(--accent));
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-to-top {
+    transition: none;
+  }
+
+  .scroll-to-top:hover {
+    transform: none;
+  }
+}

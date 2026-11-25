@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.207.0 (build 0314) — 2026-11-25
+
+- **Brugere har fået deres egen fane**: under Indstillinger → Brugere kan du nu søge på brugernavn, navn eller e-mail og vise f.eks. kun dem, der afventer godkendelse. Adgangskode-politik og aktivitetslog ligger nu under den nye fane "Sikkerhed".
+
 ## v0.206.0 (build 0313) — 2026-11-25
 
 - **Hvornår er der anmodet?** Under Voldby BIO → Anmodninger står der nu ved hver person, hvornår de har anmodet om visningen (dato og klokkeslæt), med de ældste først.

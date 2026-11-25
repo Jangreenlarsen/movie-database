@@ -4,6 +4,7 @@ import AnnouncementQueueSection from "../components/AnnouncementQueue";
 import Chip from "../components/Chip";
 import MessageMediaStrip from "../components/MessageMediaStrip";
 import { LANGUAGES, useLocale, useT } from "../i18n";
+import { countByStatus, filterUsers, USER_STATUS_FILTERS } from "../utils/userFilter";
 import "./Settings.css";
 
 // Feature #78 — kategoriseret undermenu i stedet for én lang scroll.
@@ -26,6 +27,9 @@ function settingsTabs(isAdmin, isGuest) {
     { id: "backup", labelKey: "settings.tab.backup", visible: isAdmin },
     { id: "noegler", labelKey: "settings.tab.keys", visible: isAdmin },
     { id: "drift", labelKey: "settings.tab.ops", visible: isAdmin },
+    // Feature #234 — adgangskode-politik og aktivitetslog flyttet hertil,
+    // så "Brugere" kun er selve brugerstyringen.
+    { id: "sikkerhed", labelKey: "settings.tab.security", visible: isAdmin },
   ].filter((tab) => tab.visible);
 }
 
@@ -59,9 +63,10 @@ export default function Settings({ user, onSettingsChanged, initialTab }) {
         ))}
       </div>
 
-      {activeTab === "brugere" && isAdmin && (
+      {activeTab === "brugere" && isAdmin && <UsersSection currentUserId={user.id} />}
+
+      {activeTab === "sikkerhed" && isAdmin && (
         <>
-          <UsersSection currentUserId={user.id} />
           <PasswordPolicySection />
           <AuditLogSection />
         </>
@@ -3494,6 +3499,9 @@ export function UsersSection({ currentUserId }) {
   // e-mail-redigering har sin egen inputværdi at holde styr på.
   const [editingEmailId, setEditingEmailId] = useState(null);
   const [emailDraft, setEmailDraft] = useState("");
+  // Feature #234 — søgning og status-filter, kun i browseren.
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   // BUGS.md #74 — banneret (nedenfor) renderes øverst i sektionen, over
   // bruger-listen. Med mange brugere er admin typisk scrollet langt ned for
   // overhovedet at kunne se/klikke den række der udløste handlingen, så
@@ -3636,6 +3644,9 @@ export function UsersSection({ currentUserId }) {
   }
 
   const pendingCount = users.filter((u) => u.status === "pending").length;
+  const statusCounts = countByStatus(users);
+  const visibleUsers = filterUsers(users, query, statusFilter);
+  const filtering = query.trim() !== "" || statusFilter !== "all";
 
   return (
     <div className="card settings-section">
@@ -3683,8 +3694,42 @@ export function UsersSection({ currentUserId }) {
       </div>
 
       {status === "ready" && (
+        <div className="user-search">
+          <input
+            type="search"
+            className="user-search-input"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("users.searchPlaceholder")}
+            aria-label={t("users.searchLabel")}
+          />
+          <div className="chip-row user-status-filters" role="group" aria-label={t("users.statusFilterLabel")}>
+            {USER_STATUS_FILTERS.filter(
+              (key) => key === "all" || key === statusFilter || statusCounts[key] > 0
+            ).map((key) => (
+              <Chip
+                key={key}
+                label={`${t(`users.filter.${key}`)} (${statusCounts[key]})`}
+                active={statusFilter === key}
+                onClick={() => setStatusFilter(key)}
+              />
+            ))}
+          </div>
+          {filtering && (
+            <p className="muted user-search-summary">
+              {t("users.searchSummary", { shown: visibleUsers.length, count: users.length })}
+            </p>
+          )}
+        </div>
+      )}
+
+      {status === "ready" && filtering && visibleUsers.length === 0 && (
+        <p className="muted">{t("users.noMatches")}</p>
+      )}
+
+      {status === "ready" && (
         <ul className="user-list">
-          {users.map((u) => (
+          {visibleUsers.map((u) => (
             <li key={u.id} className="user-row">
               <span className="user-row-name">
                 {u.username}

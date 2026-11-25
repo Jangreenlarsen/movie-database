@@ -43,6 +43,57 @@ _SAMPLE_SEAT_WHEN = " d. 26-09-2026 kl. 19:30"
 _SAMPLE_REASON = "Vi har den faktisk allerede på Blu-ray i samlingen."
 
 
+def _sample_poster(label: str, color: str) -> str:
+    return (
+        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' "
+        f"height='210'%3E%3Crect width='140' height='210' fill='%23{color}'/%3E"
+        "%3Ctext x='50%25' y='50%25' fill='%23fff' font-family='sans-serif' "
+        f"font-size='15' text-anchor='middle' dy='.3em'%3E{label}%3C/text%3E%3C/svg%3E"
+    )
+
+
+# Feature #232 — eksempel-titler til showcase-layoutet (collage + kort).
+# Hver sin farve-plakat, så previewet viser hvordan collagen faktisk ser ud.
+_SAMPLE_SHOWCASE = [
+    {
+        "title": _SAMPLE_MOVIE_TITLE,
+        "media_kind": "movie",
+        "year": 2024,
+        "poster_url": _sample_poster("Dune", "7c2d12"),
+        "genres": ["Science Fiction", "Eventyr"],
+        "rating": 8.2,
+        "overview": "Paul Atreides slår sig sammen med Chani og fremenerne for at hævne sig på de sammensvorne, der ødelagde hans familie.",
+    },
+    {
+        "title": _SAMPLE_TV_TITLE,
+        "media_kind": "tv",
+        "year": 2022,
+        "poster_url": _sample_poster("The Bear", "134e4a"),
+        "genres": ["Drama", "Komedie"],
+        "rating": 8.1,
+        "overview": "En ung kok fra fine-dining-verdenen vender hjem til Chicago for at drive familiens sandwichbar.",
+    },
+    {
+        "title": _SAMPLE_TIE_TITLE,
+        "media_kind": "movie",
+        "year": 2016,
+        "poster_url": _sample_poster("Arrival", "1e3a8a"),
+        "genres": ["Drama", "Science Fiction"],
+        "rating": 7.6,
+        "overview": "Da tolv rumskibe lander rundt om på Jorden, hentes sprogforskeren Louise Banks ind for at tale med de besøgende.",
+    },
+    {
+        "title": "Oppenheimer",
+        "media_kind": "movie",
+        "year": 2023,
+        "poster_url": _sample_poster("Oppenheimer", "831843"),
+        "genres": ["Drama", "Historie"],
+        "rating": 8.1,
+        "overview": "Historien om J. Robert Oppenheimer og hans rolle i udviklingen af atombomben.",
+    },
+]
+
+
 def _entry(
     key: str,
     name: str,
@@ -51,12 +102,16 @@ def _entry(
     *,
     editable: bool = False,
     overrides: dict[str, dict] | None = None,
+    showcase_items: list[dict] | None = None,
 ) -> MessagePreview:
-    html = (
-        email_templates.render_notification_email(**content.html_kwargs)
-        if content.html_kwargs is not None
-        else None
-    )
+    # Feature #232 — titel-beskederne bruger showcase-layoutet; previewet
+    # bygger det med SAMME funktion som den rigtige afsendelse.
+    if showcase_items is not None:
+        html = ms.showcase_html(content, showcase_items)
+    elif content.html_kwargs is not None:
+        html = email_templates.render_notification_email(**content.html_kwargs)
+    else:
+        html = None
     template = None
     placeholders: list[str] = []
     is_customized = False
@@ -208,24 +263,16 @@ async def list_message_previews(db: AsyncIOMotorDatabase) -> list[MessagePreview
             ms._content_library_addition_broadcast(_SAMPLE_MOVIE_TITLE, False, _SAMPLE_POSTER, overrides),
             editable=True,
             overrides=overrides,
+            showcase_items=_SAMPLE_SHOWCASE[:1],
         ),
         _entry(
             "library_additions_digest",
             "Samlet opdatering — til alle",
             "Til ALLE aktive brugere, når nogen sender køen under \"Samlet opdatering\": én besked med alle de nye titler i stedet for én pr. titel (feature #228).",
-            ms._content_library_additions_digest(
-                ms.format_digest_titles(
-                    [
-                        {"title": _SAMPLE_MOVIE_TITLE, "media_kind": "movie"},
-                        {"title": _SAMPLE_TV_TITLE, "media_kind": "tv"},
-                        {"title": _SAMPLE_TIE_TITLE, "media_kind": "movie"},
-                    ]
-                ),
-                _SAMPLE_POSTER,
-                overrides,
-            ),
+            ms.build_library_additions_digest(_SAMPLE_SHOWCASE, overrides)[0],
             editable=True,
             overrides=overrides,
+            showcase_items=_SAMPLE_SHOWCASE,
         ),
         _entry(
             "poll_closed_single",

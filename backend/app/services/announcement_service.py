@@ -14,11 +14,17 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.core.errors import AnnouncementNotFoundError, EmptyAnnouncementQueueError
 from app.models.announcement import (
     AnnounceMode,
+    AnnouncementPreview,
     AnnouncementSendResult,
     MediaKind,
     PendingAnnouncement,
 )
-from app.repositories import announcement_repository, movie_repository, tv_show_repository
+from app.repositories import (
+    announcement_repository,
+    message_template_repository,
+    movie_repository,
+    tv_show_repository,
+)
 from app.services import message_service
 
 
@@ -44,8 +50,18 @@ async def handle_library_addition(
     biblioteket. Best-effort, som #222's broadcast: selve film-/serie-
     gemningen er allerede sket, så en fejl her må ikke vælte den."""
     if mode == "now":
+        # Feature #232 — hele dokumentet slås op, så mailens kort kan vise
+        # år/genrer/resumé. Fejler opslaget, sendes beskeden stadig med det
+        # kalderen gav (titel + plakat).
+        item = None
+        try:
+            document = await _find_item(db, media_kind, item_id)
+            if document is not None:
+                item = message_service.showcase_item(document, media_kind)
+        except Exception:
+            item = None
         await message_service.notify_library_addition_broadcast(
-            db, user, title, is_tv=media_kind == "tv", poster_url=poster_url
+            db, user, title, is_tv=media_kind == "tv", poster_url=poster_url, item=item
         )
     elif mode == "queue":
         try:
@@ -77,12 +93,12 @@ def _display_title(item: dict, media_kind: str) -> str:
     return item.get("title") or "Ukendt titel"
 
 
-async def _live_queue(db: AsyncIOMotorDatabase) -> list[tuple[dict, PendingAnnouncement]]:
+async def _live_queue(db: AsyncIOMotorDatabase) -> list[tuple[dict, PendingAnnouncement, dict]]:
     """Køen beriget med titel/plakat fra selve film-/serie-dokumentet.
     Poster hvis titel siden er slettet eller flyttet tilbage til ønskelisten,
     ryddes væk her (CLAUDE.md regel 16) — de ville ellers stå som "Ukendt"
     for evigt, eller blive annonceret som ny i samlingen uden at være det."""
-    result: list[tuple[dict, PendingAnnouncement]] = []
+    result: list[tuple[dict, PendingAnnouncement, dict]] = []
     for document in await announcement_repository.find_all(db):
         item = await _find_item(db, document["media_kind"], document["item_id"])
         if item is None or item.get("is_wishlist"):
@@ -97,16 +113,19 @@ async def _live_queue(db: AsyncIOMotorDatabase) -> list[tuple[dict, PendingAnnou
                     item_id=document["item_id"],
                     title=_display_title(item, document["media_kind"]),
                     poster_url=item.get("poster_url"),
+                    year=item.get("year"),
                     added_by=document.get("added_by") or "",
                     created_at=document["created_at"],
                 ),
+                # Feature #232 — det mailen og portalens plakatstribe bruger.
+                message_service.showcase_item(item, document["media_kind"]),
             )
         )
     return result
 
 
 async def list_pending(db: AsyncIOMotorDatabase) -> list[PendingAnnouncement]:
-    return [model for _, model in await _live_queue(db)]
+    return [model for _, model, _ in await _live_queue(db)]
 
 
 async def remove(db: AsyncIOMotorDatabase, announcement_id: str) -> None:
@@ -122,10 +141,21 @@ async def send(db: AsyncIOMotorDatabase, sender: dict) -> AnnouncementSendResult
     queue = await _live_queue(db)
     if not queue:
         raise EmptyAnnouncementQueueError()
-    items = [
-        {"title": model.title, "media_kind": model.media_kind, "poster_url": model.poster_url}
-        for _, model in queue
-    ]
+    items = [showcase for _, _, showcase in queue]
     await message_service.send_library_additions_digest(db, sender, items)
-    await announcement_repository.delete_many_by_ids(db, [document["_id"] for document, _ in queue])
+    await announcement_repository.delete_many_by_ids(db, [document["_id"] for document, _, _ in queue])
     return AnnouncementSendResult(sent_count=len(queue))
+
+
+async def preview(db: AsyncIOMotorDatabase) -> AnnouncementPreview:
+    """Feature #232 — præcis den besked `send()` ville sende lige nu,
+    bygget af samme kode (inkl. admin-tilpasset ordlyd). Sender intet og
+    rører ikke køen — ud over den samme oprydning af slettede titler som
+    enhver læsning af køen laver."""
+    queue = await _live_queue(db)
+    if not queue:
+        raise EmptyAnnouncementQueueError()
+    items = [showcase for _, _, showcase in queue]
+    overrides = await message_template_repository.find_all(db)
+    content, html = message_service.build_library_additions_digest(items, overrides)
+    return AnnouncementPreview(subject=content.subject, body=content.body, html=html, count=len(items))

@@ -46,7 +46,7 @@ async def send_email(to: str, subject: str, text: str, html: str | None = None) 
         return False
 
     if response.status_code == 429:
-        raise EmailRateLimitedError()
+        raise EmailRateLimitedError(_retry_after_seconds(response.headers.get("retry-after")))
     if response.status_code not in (200, 201):
         logger.warning("Resend afviste afsendelsen (HTTP %s): %s", response.status_code, response.text)
         return False
@@ -55,6 +55,19 @@ async def send_email(to: str, subject: str, text: str, html: str | None = None) 
     # vende det til en fejl bagefter.
     logger.info("Resend: e-mail sendt (id=%s)", (json_object(response) or {}).get("id"))
     return True
+
+
+def _retry_after_seconds(value: str | None) -> float | None:
+    """BUGS.md #113 — Resend sender `Retry-After` som et antal sekunder.
+    Alt andet (tomt, en dato, negativt) giver None, og kalderen bruger sin
+    egen standard-ventetid."""
+    if value is None or not value.strip():
+        return None
+    try:
+        seconds = float(value.strip())
+    except ValueError:
+        return None
+    return seconds if seconds >= 0 else None
 
 
 async def test_connection() -> tuple[bool, str]:

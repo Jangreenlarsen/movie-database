@@ -2,6 +2,18 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.205.1 build 0312] — 2026-11-25 — fix: e-mails til alle brugere går ikke længere tabt ved Resends rate-limit (BUGS.md #113)
+
+Fundet ved gennemgangen af opdaterings-systemet: mails blev sendt i en tæt løkke og stoppede ved første 429, så en udsendelse til mere end et par brugere kunne miste resten uden at nogen opdagede det. Nu er der 0,6 s mellem kaldene og ét genforsøg efter `Retry-After` (højst 5 s), før resten opgives.
+
+Berørte filer: `backend/app/services/message_service.py`, `backend/app/integrations/email_client.py`, `backend/app/core/errors.py`, `backend/tests/conftest.py`, `backend/tests/test_email_pacing.py` (+9), `backend/tests/test_messages.py`, `BUGS.md`. Backend (1113) + frontend (349) grøn.
+
+## [0.205.0 build 0311] — 2026-11-25 — feature: farverig samlet opdatering med alle titler (FEATURES.md #232)
+
+Den samlede opdatering viste kun den første titels plakat og resten som en navneliste. Nu viser mailen alle titler: en plakat-collage (3 pr. række, op til 12 felter + "+N") og et kort pr. titel med plakat, år, farvet film/serie-mærke, genrer, TMDb-bedømmelse og forkortet resumé. "Send med det samme" bruger samme kort-layout. Portal-beskeden får titlerne som `media` (plakatstribe i banneret og under "Dine beskeder"), og tekstlisten viser året. Ny `GET /api/announcements/preview` + "Forhåndsvis mail" i køen. En kø med en brødtekst over 2000 tegn fejler ikke længere hele afsendelsen; tekstlisten afkortes.
+
+Berørte filer: `backend/app/integrations/email_templates.py`, `backend/app/services/message_service.py`, `backend/app/services/announcement_service.py`, `backend/app/services/message_preview_service.py`, `backend/app/api/announcements.py`, `backend/app/models/announcement.py`, `backend/app/models/message.py`, `backend/tests/test_showcase_email.py` (+16), `frontend/src/components/MessageMediaStrip.{jsx,css}` (ny), `frontend/src/components/AnnouncementQueue.{jsx,css}`, `frontend/src/components/MessageBanner.jsx`, `frontend/src/pages/Settings.jsx`, `frontend/src/api/client.js`, `frontend/src/i18n/{da,en}.json`, `frontend/src/components/AnnouncementPreview.test.jsx` (+6), `ARCHITECTURE.md`, `FEATURES.md`. Backend (1104) + frontend (349) grøn; set i browser på 1280 og 500 px.
+
 ## [0.204.10 build 0310] — 2026-09-24 — fix: tavse fejl med reel effekt vises nu, resten har fået deres begrundelse (BUGS.md #111)
 
 Fundet ved kodegennemgangen 2026-09-24 (regel 16): ca. 35 tavse `.catch(() => {})` uden begrundelse. To havde reel effekt — tomme format-/medietype-lister uden forklaring (titlen kunne ikke gemmes), og Plex-import-tagget, der ved en fejlet indlæsning stille viste standardværdien og gemte den over det delte tag ved næste import. Begge viser nu fejlen; resten er kommenteret.

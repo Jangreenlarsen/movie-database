@@ -439,6 +439,8 @@ export const api = {
   listAnnouncements: () => request("/announcements"),
   removeAnnouncement: (id) => request(`/announcements/${id}`, { method: "DELETE" }),
   sendAnnouncements: () => request("/announcements/send", { method: "POST" }),
+  // Feature #232 — den mail der ville blive sendt nu (sender intet).
+  previewAnnouncements: () => request("/announcements/preview"),
   // Feature #227 — admin: ryd alle tilmeldte på én visning.
   clearScreeningReservations: (screeningId) =>
     request(`/screenings/${screeningId}/reservations`, { method: "DELETE" }),

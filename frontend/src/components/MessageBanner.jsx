@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { api } from "../api/client";
 import { useLocale, useT } from "../i18n";
+import MessageMediaStrip from "./MessageMediaStrip";
 import "./MessageBanner.css";
 
 // Feature #135 — hvor ofte indbakken polles, så en besked sendt til en
@@ -146,6 +147,7 @@ export default function MessageBanner({ pollIntervalMs = POLL_INTERVAL_MS, onGoT
         <div key={message.id} className="message-banner">
           <div className="message-banner-body">
             <div className="message-banner-subject">{message.subject}</div>
+            <MessageMediaStrip media={message.media} />
             <p className="message-banner-text">{message.body}</p>
             <div className="message-banner-meta">
               {t("messages.from", {

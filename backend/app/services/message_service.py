@@ -24,6 +24,7 @@ Bevidst UDELADT fra skabelon-systemet: `notify_poll_cancelled`s pulje af
 tilfældig-vittighed-pulje, ikke én skabelon med pladsholdere, og forbliver
 hardkodet uændret."""
 
+import asyncio
 import logging
 import random
 from datetime import datetime, timezone
@@ -40,7 +41,13 @@ from app.core.errors import (
     UserNotFoundError,
 )
 from app.integrations import email_client, email_templates
-from app.models.message import InboxMessage, Message, MessageCreate, MessageRecipient
+from app.models.message import (
+    InboxMessage,
+    Message,
+    MessageCreate,
+    MessageMedia,
+    MessageRecipient,
+)
 from app.models.poll import Poll, PollCandidateResult
 from app.models.user import UserStatus
 from app.repositories import message_repository, message_template_repository, user_repository
@@ -408,6 +415,16 @@ async def _resolve_recipients(
     ]
 
 
+# BUGS.md #113 — Resend tillader som standard 2 kald i sekundet. Uden et
+# tempo nåede en udsendelse til mange brugere kun de første to, og resten
+# blev stille sprunget over. Testene sætter begge til 0 (conftest).
+EMAIL_SPACING_SECONDS = 0.6
+# Længste ventetid vi accepterer fra en `Retry-After`, før vi giver op —
+# afsendelsen sker inde i et HTTP-kald, som ikke må hænge i minutter.
+EMAIL_MAX_RETRY_WAIT_SECONDS = 5.0
+EMAIL_DEFAULT_RETRY_WAIT_SECONDS = 1.0
+
+
 async def _send_emails(
     recipients: list[dict], subject: str, body: str, html: str | None = None
 ) -> None:
@@ -426,12 +443,27 @@ async def _send_emails(
     funktioner nedenfor. `body` (ren tekst) sendes altid, uanset `html`."""
     if not settings.resend_api_key or not settings.email_from_address:
         return
+    first = True
     for recipient in recipients:
         email = recipient.get("_email")
         if not email:
             continue
+        if not first:
+            await asyncio.sleep(EMAIL_SPACING_SECONDS)
+        first = False
         try:
-            ok = await email_client.send_email(to=email, subject=subject, text=body, html=html)
+            try:
+                ok = await email_client.send_email(to=email, subject=subject, text=body, html=html)
+            except EmailRateLimitedError as exc:
+                # BUGS.md #113 — én kort pause og ét nyt forsøg på SAMME
+                # modtager. Er Resend stadig blokeret (eller beder om en
+                # længere pause end vi vil vente), stoppes resten som før.
+                wait = exc.retry_after if exc.retry_after is not None else EMAIL_DEFAULT_RETRY_WAIT_SECONDS
+                if wait > EMAIL_MAX_RETRY_WAIT_SECONDS:
+                    raise
+                logger.info("Resend rate-limit — venter %.1fs og prøver %s igen", wait, recipient["username"])
+                await asyncio.sleep(wait)
+                ok = await email_client.send_email(to=email, subject=subject, text=body, html=html)
             if not ok:
                 logger.warning("E-mail-notifikation fejlede for %s (%r)", recipient["username"], subject)
         except EmailRateLimitedError:
@@ -448,6 +480,7 @@ async def send(
     payload: MessageCreate,
     sender: dict,
     email_html: str | None = None,
+    media: list[dict] | None = None,
 ) -> Message:
     """`email_html` (feature #204) er bevidst IKKE en del af `MessageCreate` —
     den er kun tilgængelig for interne kaldere (de admin→bruger-svar-
@@ -489,6 +522,10 @@ async def send(
         "recipients": recipients,
         "is_broadcast": payload.recipient_user_id is None,
     }
+    if media:
+        # Feature #232 — kun interne kaldere (samlet opdatering / ny i
+        # samlingen) sætter den; den offentlige "send besked" kan ikke.
+        document["media"] = [media_entry(item) for item in media]
     message = _to_model(await message_repository.insert(db, document))
     await _send_emails(resolved, message.subject, message.body, html=email_html)
     return message
@@ -1130,8 +1167,14 @@ async def notify_library_addition_broadcast(
     title: str | None,
     is_tv: bool,
     poster_url: str | None = None,
+    item: dict | None = None,
 ) -> None:
-    """Feature #222 (Jan: "hvis nye film/tv bliver adderet til database så
+    """Feature #232 — `item` er titlens showcase-data (`showcase_item`); er
+    den sat, får mailen samme kort-layout som den samlede opdatering, og
+    portal-beskeden får plakaten med. Uden den (ældre kaldere) bygges et
+    minimalt kort af titel/plakat.
+
+    Feature #222 (Jan: "hvis nye film/tv bliver adderet til database så
     bliver der sendt en besked til alle at der er kommet en ny fede
     film/tv til samlingen og at man nu kan anmode om bio tid ... lave
     også et flueben ... om hvor vidt man vil sende besked til alle eller
@@ -1156,6 +1199,10 @@ async def notify_library_addition_broadcast(
     display_title = title or f"En ny {kind}"
     overrides = await message_template_repository.find_all(db)
     content = _content_library_addition_broadcast(display_title, is_tv, poster_url, overrides)
+    showcase = dict(item) if item else {}
+    showcase.setdefault("media_kind", "tv" if is_tv else "movie")
+    showcase["title"] = showcase.get("title") or display_title
+    showcase.setdefault("poster_url", poster_url)
     payload = MessageCreate(
         subject=content.subject,
         body=content.body,
@@ -1166,9 +1213,11 @@ async def notify_library_addition_broadcast(
             db,
             payload,
             creator,
-            email_html=email_templates.render_notification_email(**content.html_kwargs),
+            email_html=showcase_html(content, [showcase]),
+            media=[showcase],
         )
     except Exception:
+        # Best-effort som de øvrige notify_*: titlen er allerede gemt.
         pass
 
 
@@ -1422,9 +1471,23 @@ async def inbox(db: AsyncIOMotorDatabase, user_id: str) -> list[InboxMessage]:
             body=document["body"],
             sent_by=document["sent_by"],
             created_at=document["created_at"],
+            media=_media_models(document.get("media")),
         )
         for document in await message_repository.list_unread_for_user(db, user_id)
     ]
+
+
+def _media_models(raw) -> list[MessageMedia]:
+    """Feature #232 — tåler beskeder fra før feltet fandtes (intet felt /
+    `None`) og en enkelt ødelagt post (fx fra en håndredigeret restore):
+    den springes over i stedet for at vælte hele indbakken."""
+    result: list[MessageMedia] = []
+    for entry in raw or []:
+        try:
+            result.append(MessageMedia(**entry))
+        except Exception:
+            logger.warning("Ugyldig media-post på besked ignoreret: %r", entry)
+    return result
 
 
 async def mark_read(db: AsyncIOMotorDatabase, message_id: str, user_id: str) -> None:
@@ -1534,13 +1597,69 @@ async def notify_reservation_added_by_admin(
         pass
 
 
-def format_digest_titles(items: list[dict]) -> str:
-    """Feature #228 — "• Titel (film)" pr. linje, i køens rækkefølge."""
+def format_digest_titles(items: list[dict], limit: int | None = None) -> str:
+    """Feature #228 — "• Titel (film)" pr. linje, i køens rækkefølge.
+    Feature #232 — med år når det kendes: "• Titel (2024, film)".
+
+    `limit` (feature #232) viser kun de første N og afslutter med
+    "• … og N mere" — bruges når hele listen ikke kan være i en besked."""
+    shown = items if limit is None else items[:limit]
     lines = []
-    for item in items:
+    for item in shown:
         kind = "serie" if item.get("media_kind") == "tv" else "film"
-        lines.append(f"• {item.get('title') or 'Ukendt titel'} ({kind})")
+        year = item.get("year")
+        label = f"{year}, {kind}" if year is not None else kind
+        lines.append(f"• {item.get('title') or 'Ukendt titel'} ({label})")
+    hidden = len(items) - len(shown)
+    if hidden > 0:
+        lines.append(f"• … og {hidden} mere")
     return "\n".join(lines)
+
+
+def showcase_item(document: dict, media_kind: str) -> dict:
+    """Feature #232 — de felter fra et film-/serie-dokument som showcase-
+    mailen og portalens plakatstribe bruger. Ren funktion; `document` er
+    det rå Mongo-dokument."""
+    if media_kind == "tv":
+        title = document.get("name") or document.get("title")
+    else:
+        title = document.get("title")
+    return {
+        "title": title or "Ukendt titel",
+        "media_kind": "tv" if media_kind == "tv" else "movie",
+        "year": document.get("year"),
+        "poster_url": document.get("poster_url") or None,
+        "genres": list(document.get("genres") or []),
+        "rating": document.get("rating"),
+        "overview": document.get("overview"),
+    }
+
+
+def media_entry(item: dict) -> dict:
+    """Det lille udsnit af et showcase-item der gemmes på beskeden
+    (`MessageMedia`) — ikke resumé/genrer, som kun mailen bruger."""
+    year = item.get("year")
+    return {
+        "title": item.get("title") or "Ukendt titel",
+        "media_kind": "tv" if item.get("media_kind") == "tv" else "movie",
+        "year": year if isinstance(year, int) else None,
+        "poster_url": item.get("poster_url") or None,
+    }
+
+
+def showcase_html(content: MessageContent, items: list[dict]) -> str:
+    """Feature #232 — showcase-mailen med skabelonens (evt. admin-
+    tilpassede, #225) overskrift/undertekst/farve/knap. Delt af den rigtige
+    afsendelse og af previewet, så de aldrig kan vise noget forskelligt."""
+    kwargs = content.html_kwargs or {}
+    return email_templates.render_showcase_email(
+        headline=kwargs.get("headline") or content.subject,
+        tagline=kwargs.get("tagline") or "",
+        items=items,
+        accent=kwargs.get("accent") or "gold",
+        cta_url=kwargs.get("cta_url"),
+        cta_label=kwargs.get("cta_label"),
+    )
 
 
 def _content_library_additions_digest(
@@ -1554,6 +1673,38 @@ def _content_library_additions_digest(
     )
 
 
+# MessageCreate.body's max_length. Holdt her som konstant, så digesten kan
+# afkorte titel-listen i stedet for at fejle ved en meget lang kø.
+_MAX_BODY_LENGTH = next(
+    m.max_length for m in MessageCreate.model_fields["body"].metadata if hasattr(m, "max_length")
+)
+
+
+def build_library_additions_digest(
+    items: list[dict], overrides: dict[str, dict]
+) -> tuple[MessageContent, str]:
+    """Feature #232 — (indhold, html) for den samlede opdatering. Delt af
+    afsendelsen og forhåndsvisningen (`GET /api/announcements/preview`).
+
+    En meget lang kø (eller en lang admin-tilpasset brødtekst) kunne før
+    give en brødtekst over beskedens grænse på 2000 tegn, og så fejlede
+    HELE afsendelsen med en valideringsfejl. Nu afkortes portal-/tekst-
+    listen med "… og N mere"; mailens kort viser stadig alle titler."""
+    limit: int | None = None
+    while True:
+        content = _content_library_additions_digest(
+            format_digest_titles(items, limit), None, overrides
+        )
+        if len(content.body) <= _MAX_BODY_LENGTH or limit == 0:
+            break
+        limit = len(items) - 1 if limit is None else limit - 1
+    if len(content.body) > _MAX_BODY_LENGTH:
+        # Selv uden titler er skabelonen for lang — skær hårdt, hellere
+        # end at hele udsendelsen fejler.
+        content = content._replace(body=content.body[: _MAX_BODY_LENGTH - 1] + "…")
+    return content, showcase_html(content, items)
+
+
 async def send_library_additions_digest(
     db: AsyncIOMotorDatabase, sender: dict, items: list[dict]
 ) -> Message:
@@ -1562,15 +1713,12 @@ async def send_library_additions_digest(
     IKKE: det er en handling brugeren bevidst udfører, og kalderen
     (announcement_service) må kun tømme køen hvis beskeden faktisk gik ud —
     fx giver test-tilstand (#217) en tydelig 409 og køen står urørt, ligesom
-    admins manuelle "send besked". Plakaten i e-mailen er den første titel
-    med en plakat — skabelonen har plads til ét billede."""
+    admins manuelle "send besked".
+
+    Feature #232 — mailen viser ALLE titler (collage + et kort pr. titel),
+    ikke længere kun den første plakat, og portal-beskeden får titlerne med
+    som `media`, så banneret kan vise plakaterne."""
     overrides = await message_template_repository.find_all(db)
-    poster_url = next((item.get("poster_url") for item in items if item.get("poster_url")), None)
-    content = _content_library_additions_digest(format_digest_titles(items), poster_url, overrides)
+    content, html = build_library_additions_digest(items, overrides)
     payload = MessageCreate(subject=content.subject, body=content.body, recipient_user_id=None)
-    return await send(
-        db,
-        payload,
-        sender,
-        email_html=email_templates.render_notification_email(**content.html_kwargs),
-    )
+    return await send(db, payload, sender, email_html=html, media=items)

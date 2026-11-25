@@ -52,8 +52,36 @@
 
 .announce-queue-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: 8px;
   margin-top: 12px;
+}
+
+.announce-queue-year {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* Feature #232 — forhåndsvisning af den rigtige mail. */
+.announce-preview {
+  margin-top: 14px;
+}
+
+.announce-preview-subject {
+  margin-bottom: 8px;
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.announce-preview-frame {
+  display: block;
+  width: 100%;
+  height: 640px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  /* Mailens egen baggrund — iframen har ikke appens tema. */
+  background: #f5f1ea;
 }
 
 /* Påmindelsen: dæmpet accent-flade som header-tællerne, ikke en fuld

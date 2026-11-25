@@ -18,6 +18,8 @@ export default function AnnouncementQueueSection() {
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState(null);
   const [sentCount, setSentCount] = useState(null);
+  // Feature #232 — forhåndsvisning af den rigtige mail (null = lukket).
+  const [preview, setPreview] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -32,10 +34,28 @@ export default function AnnouncementQueueSection() {
     load();
   }, [load]);
 
+  async function togglePreview() {
+    if (preview) {
+      setPreview(null);
+      return;
+    }
+    setBusy("preview");
+    setError(null);
+    try {
+      setPreview(await api.previewAnnouncements());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function remove(item) {
     setBusy(item.id);
     setError(null);
     setSentCount(null);
+    // Previewet viste den gamle kø — luk det hellere end at vise noget forkert.
+    setPreview(null);
     try {
       await api.removeAnnouncement(item.id);
       setItems((prev) => prev.filter((i) => i.id !== item.id));
@@ -54,6 +74,7 @@ export default function AnnouncementQueueSection() {
     setBusy("send");
     setError(null);
     setSentCount(null);
+    setPreview(null);
     try {
       const result = await api.sendAnnouncements();
       setSentCount(result.sent_count);
@@ -95,7 +116,10 @@ export default function AnnouncementQueueSection() {
                   <span className="announce-queue-poster announce-queue-poster--empty" aria-hidden="true" />
                 )}
                 <span className="announce-queue-text">
-                  <strong>{item.title}</strong>
+                  <strong>
+                    {item.title}
+                    {item.year != null && <span className="announce-queue-year"> ({item.year})</span>}
+                  </strong>
                   <span className="muted">
                     {t(item.media_kind === "tv" ? "announcements.kindTv" : "announcements.kindMovie")}
                     {" · "}
@@ -120,6 +144,17 @@ export default function AnnouncementQueueSection() {
           <div className="announce-queue-actions">
             <button
               type="button"
+              className="btn"
+              onClick={togglePreview}
+              disabled={busy !== null}
+              aria-expanded={preview !== null}
+            >
+              {busy === "preview"
+                ? t("announcements.previewLoading")
+                : t(preview ? "announcements.previewHide" : "announcements.preview")}
+            </button>
+            <button
+              type="button"
               className="btn btn-primary"
               onClick={sendAll}
               disabled={busy !== null}
@@ -129,6 +164,19 @@ export default function AnnouncementQueueSection() {
                 : t("announcements.send", { count: items.length })}
             </button>
           </div>
+          {preview && (
+            <div className="announce-preview">
+              <div className="announce-preview-subject">
+                <span className="muted">{t("announcements.previewSubject")}</span> <strong>{preview.subject}</strong>
+              </div>
+              <iframe
+                title={t("announcements.previewFrameTitle")}
+                srcDoc={preview.html}
+                className="announce-preview-frame"
+                sandbox=""
+              />
+            </div>
+          )}
         </>
       )}
     </div>

@@ -419,8 +419,10 @@ class EmailRateLimitedError(Exception):
     forsøge resten af en allerede rate-limitet udsendelse (CLAUDE.md regel
     16's bulk-eksternt-API-princip)."""
 
-    def __init__(self):
+    def __init__(self, retry_after: float | None = None):
         super().__init__("Resend rate-limit ramt (429)")
+        # BUGS.md #113 — Resends `Retry-After` i sekunder, hvis den kom med.
+        self.retry_after = retry_after
 
 
 class ReservationNotFoundError(Exception):

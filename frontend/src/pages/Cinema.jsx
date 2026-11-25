@@ -6,7 +6,13 @@ import DateTime24Input from "../components/DateTime24Input";
 import HoldSeatModal from "../components/HoldSeatModal";
 import SeatSelectionModal from "../components/SeatSelectionModal";
 import { announceReservationsChanged } from "../utils/reservationEvents";
-import { formatDateHeading, formatShortDate, formatTime, groupByDate } from "../utils/cinemaFormat";
+import {
+  formatDateHeading,
+  formatServerTimestamp,
+  formatShortDate,
+  formatTime,
+  groupByDate,
+} from "../utils/cinemaFormat";
 import { posterSrc } from "../utils/posterUrl";
 import { freeSeatNumbers } from "../utils/reservationGroups";
 import { useLocale, useT } from "../i18n";
@@ -406,6 +412,14 @@ function earliestUpcomingSuggestion(requestedBy) {
   return upcoming.length > 0 ? upcoming[0].slice(0, 16) : "";
 }
 
+function RequestedAt({ value }) {
+  const t = useT();
+  const locale = useLocale();
+  const formatted = formatServerTimestamp(value, locale);
+  if (!formatted) return null;
+  return <span className="cinema-request-when"> · {t("cinema.requestedAt", formatted)}</span>;
+}
+
 export function RequestRow({ request, onChanged }) {
   const t = useT();
   const locale = useLocale();
@@ -486,13 +500,15 @@ export function RequestRow({ request, onChanged }) {
             names: request.requested_by.map((r) => r.username).join(", "),
           })}
         </div>
-        {/* Feature #85 — kun de ønskere der faktisk skrev noget får en
-            linje, så en anmodning uden beskeder ser ud som før. */}
-        {request.requested_by
-          .filter((r) => r.message || r.preferred_at)
+        {/* Feature #233 — hver ønsker får sin egen linje med hvornår de
+            anmodede (ældste først), plus evt. besked og foreslået tid
+            (feature #85). */}
+        {[...request.requested_by]
+          .sort((a, b) => String(a.requested_at).localeCompare(String(b.requested_at)))
           .map((r) => (
             <div key={r.username} className="cinema-request-wish">
               <strong>{r.username}</strong>
+              <RequestedAt value={r.requested_at} />
               {r.message && <> „{r.message}“</>}
               {r.preferred_at && (
                 <>

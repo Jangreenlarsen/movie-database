@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.206.0 build 0313] — 2026-11-25 — feature: anmodninger om visning viser hvornår der er anmodet (FEATURES.md #233)
+
+Admin-listen under Voldby BIO → Anmodninger viser nu hver ønsker på sin egen linje med "anmodet 24. nov. 2026 kl. 19:30", ældste først, ved siden af evt. besked og foreslået tid. Ny `parseServerTimestamp`/`formatServerTimestamp` læser backendens tidszone-løse UTC-tidsstempler som UTC.
+
+Berørte filer: `frontend/src/pages/Cinema.jsx`, `frontend/src/utils/cinemaFormat.js`, `frontend/src/utils/cinemaFormat.test.js` (ny, +4), `frontend/src/pages/Cinema.test.jsx` (+2), `frontend/src/i18n/{da,en}.json`, `FEATURES.md`. Backend + frontend (355) grøn.
+
 ## [0.205.1 build 0312] — 2026-11-25 — fix: e-mails til alle brugere går ikke længere tabt ved Resends rate-limit (BUGS.md #113)
 
 Fundet ved gennemgangen af opdaterings-systemet: mails blev sendt i en tæt løkke og stoppede ved første 429, så en udsendelse til mere end et par brugere kunne miste resten uden at nogen opdagede det. Nu er der 0,6 s mellem kaldene og ét genforsøg efter `Retry-After` (højst 5 s), før resten opgives.

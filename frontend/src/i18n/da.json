@@ -397,6 +397,7 @@
   "cinema.noPendingRequests": "Ingen ventende anmodninger.",
   "cinema.viewDetails": "Vis detaljer",
   "cinema.requestedBy": "Ønsket af: {names}",
+  "cinema.requestedAt": "anmodet {date} kl. {time}",
   "cinema.schedule": "Planlæg",
   "cinema.decline": "Afvis",
   "cinema.suggestionHint": "Forudfyldt med det tidligste ønskede tidspunkt — ret det frit.",

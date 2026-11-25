@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.206.0 (build 0313) — 2026-11-25
+
+- **Hvornår er der anmodet?** Under Voldby BIO → Anmodninger står der nu ved hver person, hvornår de har anmodet om visningen (dato og klokkeslæt), med de ældste først.
+
 ## v0.205.1 (build 0312) — 2026-11-25
 
 - **Rettet**: når en besked blev sendt til mange brugere på én gang (fx den samlede opdatering), kunne nogle af dem ikke få mailen. Mailene sendes nu i et roligere tempo og prøves igen, hvis mail-tjenesten beder om en pause.

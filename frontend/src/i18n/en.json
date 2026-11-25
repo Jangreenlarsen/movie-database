@@ -397,6 +397,7 @@
   "cinema.noPendingRequests": "No pending requests.",
   "cinema.viewDetails": "View details",
   "cinema.requestedBy": "Requested by: {names}",
+  "cinema.requestedAt": "requested {date} at {time}",
   "cinema.schedule": "Schedule",
   "cinema.decline": "Decline",
   "cinema.suggestionHint": "Pre-filled with the earliest requested time — change it freely.",

@@ -11,6 +11,7 @@ import CinemaPublicV2 from "./pages/CinemaPublicV2";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import MessageBanner from "./components/MessageBanner";
+import ScrollToTopButton from "./components/ScrollToTopButton";
 import MyReservationsButton from "./components/MyReservations";
 import { AnnouncementReminder } from "./components/AnnouncementQueue";
 import PendingApproval from "./pages/PendingApproval";
@@ -482,6 +483,9 @@ function AppShell({ user, isGuest, tab, setTab, setUser, versionInfo, onLogout }
         {tab === "wishlist" && (
           <Wishlist user={user} onSettingsChanged={setUser} onLibraryChanged={refreshCounts} />
         )}
+        {/* Feature #235 — de tre lange lister. `key` nulstiller synligheden
+            ved fane-skift, så knappen ikke hænger ved fra forrige fane. */}
+        {(tab === "library" || tab === "tv" || tab === "wishlist") && <ScrollToTopButton key={tab} />}
         {tab === "cinema" && <Cinema user={user} />}
         {!isGuest && tab === "print" && <PrintList />}
         {!isGuest && tab === "stats" && <Statistics />}

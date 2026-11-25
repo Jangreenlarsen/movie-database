@@ -2,6 +2,12 @@
 
 Nyeste øverst. Hver entry tagges med `[version build NNNN]` (jf. CLAUDE.md regel 4).
 
+## [0.208.0 build 0315] — 2026-11-25 — feature: "Til toppen"-knap på Film, TV-serier og Indkøbsønsker (FEATURES.md #235)
+
+Rund knap nederst til højre, der dukker op efter ca. 600 px scroll og fører blødt tilbage til toppen (øjeblikkeligt ved reduceret bevægelse). Fælles komponent renderet af `App.jsx` på de tre faner. z-index 50, så den ligger under detaljevinduer. Det er `body`, der scroller i appen, ikke vinduet (`overflow-x: hidden` på både `html` og `body`), så komponenten læser og scroller begge.
+
+Berørte filer: `frontend/src/components/ScrollToTopButton.{jsx,css}` (ny), `frontend/src/components/ScrollToTopButton.test.jsx` (ny, +5), `frontend/src/App.jsx`, `frontend/src/i18n/{da,en}.json`, `FEATURES.md`. Backend + frontend grøn; set i browser på 1280 og 500 px.
+
 ## [0.207.0 build 0314] — 2026-11-25 — feature: egen brugerstyrings-fane med søgning (FEATURES.md #234)
 
 "Brugere" (admin) viser nu kun brugerlisten, med søgefelt (brugernavn, fulde navn, e-mail) og status-filter med antal. Adgangskode-politik og aktivitetslog er flyttet til en ny admin-fane, "Sikkerhed".

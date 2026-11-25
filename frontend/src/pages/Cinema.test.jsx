@@ -115,6 +115,33 @@ describe("Cinema — del-link (feature #193)", () => {
   });
 });
 
+describe("RequestRow — hvornår der er anmodet (feature #233)", () => {
+  it("viser hver ønsker med tidspunktet, ældste først, også uden besked", () => {
+    const { container } = render(
+      <RequestRow
+        request={_request({
+          requested_by: [
+            { username: "anna", requested_at: "2026-11-20T10:00:00", message: null, preferred_at: null },
+            { username: "bo", requested_at: "2026-11-02T08:15:00", message: "Gerne fredag", preferred_at: null },
+          ],
+        })}
+        onChanged={() => {}}
+      />
+    );
+    const lines = [...container.querySelectorAll(".cinema-request-wish")];
+    expect(lines.map((line) => line.querySelector("strong").textContent)).toEqual(["bo", "anna"]);
+    expect(lines[0].textContent).toMatch(/anmodet .*2026 kl\. \d{2}[.:]\d{2}/);
+    expect(lines[0].textContent).toContain("Gerne fredag");
+    expect(lines[1].textContent).toMatch(/anmodet .*2026/);
+  });
+
+  it("udelader tidspunktet hvis det mangler i data", () => {
+    const { container } = render(<RequestRow request={_request()} onChanged={() => {}} />);
+    const line = container.querySelector(".cinema-request-wish");
+    expect(line.textContent).toBe("testuser");
+  });
+});
+
 describe("RequestRow (feature #185)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();

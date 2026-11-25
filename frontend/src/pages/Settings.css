@@ -278,6 +278,31 @@
    i settings" — stakket gap, pr.-række padding OG selve knap-/select-
    størrelsen (den globale .btn's 9px/16px-padding var den reelle
    flaskehals for rækkehøjden, ikke .user-row's egen padding) strammet op. */
+/* Feature #234 — søgning + status-filter over brugerlisten. */
+.user-search {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.user-search-input {
+  width: 100%;
+  max-width: 420px;
+  box-sizing: border-box;
+}
+
+.user-status-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.user-search-summary {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
 .user-list {
   list-style: none;
   padding: 0;
